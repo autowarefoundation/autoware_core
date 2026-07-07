@@ -27,9 +27,10 @@
 // guard bounds the floor->i64 narrowing); indexing_slicing = constant indices into fixed `[_; 3]`;
 // many_single_char_names = x/y/z geometry notation.
 
-use alloc::boxed::Box;
 use alloc::collections::BTreeMap;
 use alloc::vec::Vec;
+
+use crate::ffi_ptr::{self, ffi_mut, ffi_read, ffi_ref, ffi_slice};
 
 use nalgebra::{Matrix3, Vector3};
 
@@ -318,21 +319,13 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_build(
     min_points: i32,
     eig_mult: f64,
 ) -> *mut VoxelGrid {
-    if points.is_null() || leaf_size.is_null() {
-        return core::ptr::null_mut();
-    }
     let Some(flat_len) = n.checked_mul(3) else {
         return core::ptr::null_mut();
     };
-    // SAFETY: caller guarantees `3*n` f32 at `points` and 3 f64 at `leaf_size`.
-    let (pts, ls) = unsafe {
-        (
-            core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n),
-            &*leaf_size.cast::<[f64; 3]>(),
-        )
-    };
     let _ = flat_len;
-    Box::into_raw(Box::new(VoxelGrid::build(pts, *ls, min_points, eig_mult)))
+    let pts = ffi_slice!(points, n, [f32; 3], else return core::ptr::null_mut());
+    let ls = ffi_read!(leaf_size, [f64; 3], else return core::ptr::null_mut());
+    ffi_ptr::into_handle(VoxelGrid::build(pts, ls, min_points, eig_mult))
 }
 
 /// # Safety
@@ -349,17 +342,17 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_leaf_at(
     mean_out: *mut f64,
     icov_out: *mut f64,
 ) -> bool {
-    if grid.is_null() || point.is_null() || mean_out.is_null() || icov_out.is_null() {
+    let grid = ffi_ref!(grid, else return false);
+    let p = ffi_read!(point, [f32; 3], else return false);
+    if mean_out.is_null() || icov_out.is_null() {
         return false;
     }
-    // SAFETY: valid handle + 3 f32 at `point` per the contract.
-    let (grid, p) = unsafe { (&*grid, &*point.cast::<[f32; 3]>()) };
-    match grid.leaf_at(*p) {
+    match grid.leaf_at(p) {
         Some(leaf) => {
-            // SAFETY: `mean_out`/`icov_out` have 3 / 9 f64 per the contract.
+            // SAFETY: non-null per the check above; 3/9 f64 per the contract, audited in ffi_ptr.
             unsafe {
-                *mean_out.cast::<[f64; 3]>() = leaf.mean;
-                *icov_out.cast::<[f64; 9]>() = leaf.icov;
+                ffi_ptr::write_out(mean_out.cast::<[f64; 3]>(), leaf.mean);
+                ffi_ptr::write_out(icov_out.cast::<[f64; 9]>(), leaf.icov);
             }
             true
         }
@@ -375,11 +368,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_leaf_at(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_free(grid: *mut VoxelGrid) {
-    if grid.is_null() {
-        return;
-    }
-    // SAFETY: `grid` came from `Box::into_raw` and is dropped exactly once.
-    drop(unsafe { Box::from_raw(grid) });
+    // SAFETY: `grid` is a handle from `_build` (or null → no-op); reclaimed once in ffi_ptr.
+    unsafe { ffi_ptr::free_handle(grid) };
 }
 
 // ---- multi-grid map + kd-tree (the MultiVoxelGridCovariance equivalent) ----
@@ -472,12 +462,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_new(
     min_points: i32,
     eig_mult: f64,
 ) -> *mut VoxelGridMap {
-    if leaf_size.is_null() {
-        return core::ptr::null_mut();
-    }
-    // SAFETY: caller guarantees 3 f64 at `leaf_size`.
-    let ls = unsafe { *leaf_size.cast::<[f64; 3]>() };
-    Box::into_raw(Box::new(VoxelGridMap::new(ls, min_points, eig_mult)))
+    let ls = ffi_read!(leaf_size, [f64; 3], else return core::ptr::null_mut());
+    ffi_ptr::into_handle(VoxelGridMap::new(ls, min_points, eig_mult))
 }
 
 /// # Safety
@@ -493,16 +479,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_add_target(
     n: usize,
     id: u64,
 ) {
-    if map.is_null() || points.is_null() {
-        return;
-    }
-    // SAFETY: valid handle + `n` xyz triples per the contract.
-    let (map, pts) = unsafe {
-        (
-            &mut *map,
-            core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n),
-        )
-    };
+    let map = ffi_mut!(map, else return);
+    let pts = ffi_slice!(points, n, [f32; 3], else return);
     map.add_target(pts, id);
 }
 
@@ -517,11 +495,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_targ
     map: *mut VoxelGridMap,
     id: u64,
 ) {
-    if map.is_null() {
-        return;
-    }
-    // SAFETY: valid handle per the contract.
-    unsafe { &mut *map }.remove_target(id);
+    ffi_mut!(map, else return).remove_target(id);
 }
 
 /// # Safety
@@ -534,11 +508,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_remove_targ
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_create_kdtree(
     map: *mut VoxelGridMap,
 ) {
-    if map.is_null() {
-        return;
-    }
-    // SAFETY: valid handle per the contract.
-    unsafe { &mut *map }.create_kdtree();
+    ffi_mut!(map, else return).create_kdtree();
 }
 
 /// # Safety
@@ -563,17 +533,15 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_radius_sear
     out_idx: *mut u32,
     cap: u32,
 ) -> u32 {
-    if map.is_null() || point.is_null() {
-        return 0;
-    }
-    // SAFETY: valid handle + 3 f32 at `point`.
-    let (map, p) = unsafe { (&*map, *point.cast::<[f32; 3]>()) };
+    let map = ffi_ref!(map, else return 0);
+    let p = ffi_read!(point, [f32; 3], else return 0);
     let mut found: Vec<usize> = Vec::new();
     map.radius_search(p, radius, max_nn as usize, &mut found);
-    if !out_idx.is_null() {
-        for (k, &leaf_idx) in found.iter().take(cap as usize).enumerate() {
-            // SAFETY: k < cap, so `out_idx.add(k)` is in bounds of the caller's buffer.
-            unsafe { *out_idx.add(k) = leaf_idx as u32 };
+    // SAFETY: `out_idx` addresses `cap` writable u32 per the contract (null → skipped); the zip
+    // bounds writes to `min(cap, found.len())`. Deref audited in ffi_ptr.
+    if let Some(out) = unsafe { ffi_ptr::opt_slice_mut(out_idx, cap as usize) } {
+        for (dst, &leaf_idx) in out.iter_mut().zip(found.iter()) {
+            *dst = leaf_idx as u32;
         }
     }
     found.len() as u32
@@ -598,17 +566,16 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
     mean_out: *mut f64,
     icov_out: *mut f64,
 ) -> bool {
-    if map.is_null() || mean_out.is_null() || icov_out.is_null() {
+    let map = ffi_ref!(map, else return false);
+    if mean_out.is_null() || icov_out.is_null() {
         return false;
     }
-    // SAFETY: valid handle per the contract.
-    let map = unsafe { &*map };
     match map.leaf(idx as usize) {
         Some(leaf) => {
-            // SAFETY: `mean_out`/`icov_out` have 3 / 9 f64 per the contract.
+            // SAFETY: non-null per the check above; 3/9 f64 per the contract, audited in ffi_ptr.
             unsafe {
-                *mean_out.cast::<[f64; 3]>() = leaf.mean;
-                *icov_out.cast::<[f64; 9]>() = leaf.icov;
+                ffi_ptr::write_out(mean_out.cast::<[f64; 3]>(), leaf.mean);
+                ffi_ptr::write_out(icov_out.cast::<[f64; 9]>(), leaf.icov);
             }
             true
         }
@@ -624,11 +591,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_voxel_grid_map_free(map: *mut VoxelGridMap) {
-    if map.is_null() {
-        return;
-    }
-    // SAFETY: `map` came from `Box::into_raw` and is dropped exactly once.
-    drop(unsafe { Box::from_raw(map) });
+    // SAFETY: `map` is a handle from `_map_new` (or null → no-op); reclaimed once in ffi_ptr.
+    unsafe { ffi_ptr::free_handle(map) };
 }
 
 #[cfg(test)]

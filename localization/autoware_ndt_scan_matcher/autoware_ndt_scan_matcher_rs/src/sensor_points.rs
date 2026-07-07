@@ -30,6 +30,7 @@ use crate::ffi_host::{
     AwFloat32Topic, AwHost, AwInt32Topic, AwPointCloudTopic, AwPose, AwPoseArrayTopic, AwPoseTopic,
     LOG_ERROR, LOG_WARN,
 };
+use crate::ffi_ptr::{self, ffi_mut, ffi_mut_slice, ffi_ref, ffi_slice};
 use crate::node::{DIAGNOSTIC_ERROR, DIAGNOSTIC_WARN, Diagnostics};
 use crate::node_handle::NdtScanMatcherRs;
 
@@ -116,19 +117,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_prep
     out_cap: usize,
     out_count: *mut usize,
 ) -> i32 {
-    if handle.is_null()
-        || host.is_null()
-        || diag.is_null()
-        || view.is_null()
-        || out_points_xyz.is_null()
-        || out_count.is_null()
-    {
-        return SP_INVALID;
-    }
-    // SAFETY: non-null per the check; caller guarantees valid, live handle/host/diag/view.
-    let (h, ho, d, v) = unsafe { (&*handle, &*host, &*diag, &*view) };
-    // SAFETY: `out_points_xyz` addresses `out_cap` writable f32 per the contract.
-    let out = unsafe { core::slice::from_raw_parts_mut(out_points_xyz, out_cap) };
+    let h = ffi_ref!(handle, else return SP_INVALID);
+    let ho = ffi_ref!(host, else return SP_INVALID);
+    let d = ffi_ref!(diag, else return SP_INVALID);
+    let v = ffi_ref!(view, else return SP_INVALID);
+    let out = ffi_mut_slice!(out_points_xyz, out_cap, else return SP_INVALID);
+    let out_count = ffi_mut!(out_count, else return SP_INVALID);
 
     d.add_i64("topic_time_stamp", v.stamp_ns);
 
@@ -173,8 +167,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_prep
     d.add_bool("is_succeed_transform_sensor_points", true);
 
     // decode xyz + transform into base_link, tracking the max distance.
-    // SAFETY: `data` addresses `data_len` readable bytes per the contract.
-    let data = unsafe { core::slice::from_raw_parts(v.data, v.data_len) };
+    let data = ffi_slice!(v.data, v.data_len, else return SP_INVALID);
     let point_step = usize::try_from(v.point_step).unwrap_or(0);
     let x_off = usize::try_from(v.x_offset).unwrap_or(0);
     let y_off = usize::try_from(v.y_offset).unwrap_or(0);
@@ -221,15 +214,14 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_prep
         return SP_TOO_CLOSE;
     }
 
-    // SAFETY: `out_count` is non-null per the check and points to a writable usize.
-    unsafe {
-        *out_count = count;
-    }
+    // `out_count` is a `&mut usize` from `ffi_mut!`; the write is plain safe code.
+    *out_count = count;
     let prepared = if count == 0 {
-        &[]
+        &[][..]
     } else {
-        // SAFETY: `out` contains at least `3 * count` initialized f32 values written above.
-        unsafe { core::slice::from_raw_parts(out.as_ptr().cast::<[f32; 3]>(), count) }
+        // SAFETY: `out` holds ≥ `3 * count` initialized f32 written above; reinterpret as `count`
+        // xyz triples (its pointer is non-null, so `opt_slice` yields the slice). Audited in ffi_ptr.
+        unsafe { ffi_ptr::opt_slice(out.as_ptr().cast::<[f32; 3]>(), count) }.unwrap_or(&[])
     };
     h.store_latest_sensor_points(prepared);
     SP_PREPARED
@@ -481,25 +473,18 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_matc
     source_count: usize,
     out: *mut AwSensorPointsMatchOutput,
 ) -> i32 {
-    if handle.is_null()
-        || engine.is_null()
-        || host.is_null()
-        || diag.is_null()
-        || params.is_null()
-        || out.is_null()
-        || (source_count > 0 && source_xyz.is_null())
-    {
+    let h = ffi_ref!(handle, else return SM_INVALID);
+    let eng = ffi_ref!(engine, else return SM_INVALID);
+    let ho = ffi_ref!(host, else return SM_INVALID);
+    let d = ffi_ref!(diag, else return SM_INVALID);
+    let prm = ffi_ref!(params, else return SM_INVALID);
+    let o = ffi_mut!(out, else return SM_INVALID);
+    if source_count > 0 && source_xyz.is_null() {
         return SM_INVALID;
     }
-    // SAFETY: non-null per the check; caller guarantees valid, live handle/engine/host/diag/params/out.
-    let (h, eng, ho, d, prm, o) =
-        unsafe { (&*handle, &*engine, &*host, &*diag, &*params, &mut *out) };
-    // SAFETY: `source_xyz` addresses `3 * source_count` readable f32 per the contract (empty if null/0).
-    let source: &[[f32; 3]] = if source_count == 0 {
-        &[]
-    } else {
-        unsafe { core::slice::from_raw_parts(source_xyz.cast::<[f32; 3]>(), source_count) }
-    };
+    // SAFETY: `source_xyz` addresses `3 * source_count` readable f32 (empty if null/0); audited in ffi_ptr.
+    let source: &[[f32; 3]] =
+        unsafe { ffi_ptr::slice_or_empty(source_xyz.cast::<[f32; 3]>(), source_count) };
 
     // check is_activated
     let is_activated = h.is_activated();
@@ -800,11 +785,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points(
     view: *const AwPointCloud2View,
     out_is_converged: *mut bool,
 ) -> i32 {
-    if view.is_null() || out_is_converged.is_null() {
-        return SM_INVALID;
-    }
-    // SAFETY: `view` is non-null per the check; caller guarantees a valid borrowed view.
-    let v = unsafe { &*view };
+    let v = ffi_ref!(view, else return SM_INVALID);
+    let out_is_converged = ffi_mut!(out_is_converged, else return SM_INVALID);
     let width = usize::try_from(v.width).unwrap_or(0);
     let height = usize::try_from(v.height).unwrap_or(0);
     let max_points = width.saturating_mul(height);
@@ -844,10 +826,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points(
         )
     };
     if status == SM_MATCHED {
-        // SAFETY: out pointer is non-null per the check and points to writable bool.
-        unsafe {
-            *out_is_converged = out.is_converged;
-        }
+        // `out_is_converged` is a `&mut bool` from `ffi_mut!`; the write is plain safe code.
+        *out_is_converged = out.is_converged;
     }
     status
 }

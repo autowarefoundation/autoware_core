@@ -26,6 +26,8 @@
 
 use nalgebra::{Matrix2, Vector2};
 
+use crate::ffi_ptr::{self, ffi_mut_slice, ffi_ref, ffi_slice};
+
 fn mat2(row_major: &[f64; 4]) -> Matrix2<f64> {
     let &[m00, m01, m10, m11] = row_major;
     Matrix2::new(m00, m01, m10, m11)
@@ -156,16 +158,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calc_weight_vec(
     temperature: f64,
     out: *mut f64,
 ) {
-    if scores.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: caller guarantees `n` valid f64 at each pointer (see contract).
-    let (scores, out) = unsafe {
-        (
-            core::slice::from_raw_parts(scores, n),
-            core::slice::from_raw_parts_mut(out, n),
-        )
-    };
+    let scores = ffi_slice!(scores, n, else return);
+    let out = ffi_mut_slice!(out, n, else return);
     calc_weight_vec(scores, temperature, out);
 }
 
@@ -183,24 +177,19 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_calculate_weighted_mean_an
     mean_out: *mut f64,
     cov_out: *mut f64,
 ) {
-    if poses2d.is_null() || weights.is_null() || mean_out.is_null() || cov_out.is_null() {
+    if mean_out.is_null() || cov_out.is_null() {
         return;
     }
     let Some(poses_len) = n.checked_mul(2) else {
         return;
     };
-    // SAFETY: caller guarantees the documented lengths.
-    let (poses, weights) = unsafe {
-        (
-            core::slice::from_raw_parts(poses2d, poses_len),
-            core::slice::from_raw_parts(weights, n),
-        )
-    };
+    let poses = ffi_slice!(poses2d, poses_len, else return);
+    let weights = ffi_slice!(weights, n, else return);
     let (mean, cov) = calculate_weighted_mean_and_cov(poses, weights);
-    // SAFETY: mean_out has 2, cov_out has 4 f64.
+    // SAFETY: mean_out has 2, cov_out has 4 f64 per the contract, audited in ffi_ptr.
     unsafe {
-        *mean_out.cast::<[f64; 2]>() = mean;
-        *cov_out.cast::<[f64; 4]>() = cov;
+        ffi_ptr::write_out(mean_out.cast::<[f64; 2]>(), mean);
+        ffi_ptr::write_out(cov_out.cast::<[f64; 4]>(), cov);
     }
 }
 
@@ -215,13 +204,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_laplace_xy_covariance(
     hessian: *const f64,
     cov_out: *mut f64,
 ) {
-    if hessian.is_null() || cov_out.is_null() {
-        return;
-    }
-    // SAFETY: caller guarantees 36 f64 in / 4 f64 out.
-    let hessian = unsafe { &*hessian.cast::<[f64; 36]>() };
+    let hessian = ffi_ref!(hessian.cast::<[f64; 36]>(), else return);
     let result = laplace_xy_covariance(hessian);
-    unsafe { *cov_out.cast::<[f64; 4]>() = result };
+    // SAFETY: `cov_out` has 4 f64 per the contract, audited in ffi_ptr.
+    unsafe { ffi_ptr::write_out(cov_out.cast::<[f64; 4]>(), result) };
 }
 
 /// # Safety
@@ -236,13 +222,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance_to_base_
     rot: *const f64,
     out: *mut f64,
 ) {
-    if cov.is_null() || rot.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: 4 f64 at each pointer per the contract.
-    let (cov, rot) = unsafe { (&*cov.cast::<[f64; 4]>(), &*rot.cast::<[f64; 4]>()) };
+    let cov = ffi_ref!(cov.cast::<[f64; 4]>(), else return);
+    let rot = ffi_ref!(rot.cast::<[f64; 4]>(), else return);
     let result = rotate_covariance_to_base_link(cov, rot);
-    unsafe { *out.cast::<[f64; 4]>() = result };
+    // SAFETY: `out` has 4 f64 per the contract, audited in ffi_ptr.
+    unsafe { ffi_ptr::write_out(out.cast::<[f64; 4]>(), result) };
 }
 
 /// # Safety
@@ -257,13 +241,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance_to_map(
     rot: *const f64,
     out: *mut f64,
 ) {
-    if cov.is_null() || rot.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: 4 f64 at each pointer per the contract.
-    let (cov, rot) = unsafe { (&*cov.cast::<[f64; 4]>(), &*rot.cast::<[f64; 4]>()) };
+    let cov = ffi_ref!(cov.cast::<[f64; 4]>(), else return);
+    let rot = ffi_ref!(rot.cast::<[f64; 4]>(), else return);
     let result = rotate_covariance_to_map(cov, rot);
-    unsafe { *out.cast::<[f64; 4]>() = result };
+    // SAFETY: `out` has 4 f64 per the contract, audited in ffi_ptr.
+    unsafe { ffi_ptr::write_out(out.cast::<[f64; 4]>(), result) };
 }
 
 /// # Safety
@@ -280,13 +262,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_adjust_diagonal_covariance
     fixed_cov11: f64,
     out: *mut f64,
 ) {
-    if cov.is_null() || rot.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: 4 f64 at each pointer per the contract.
-    let (cov, rot) = unsafe { (&*cov.cast::<[f64; 4]>(), &*rot.cast::<[f64; 4]>()) };
+    let cov = ffi_ref!(cov.cast::<[f64; 4]>(), else return);
+    let rot = ffi_ref!(rot.cast::<[f64; 4]>(), else return);
     let result = adjust_diagonal_covariance(cov, rot, fixed_cov00, fixed_cov11);
-    unsafe { *out.cast::<[f64; 4]>() = result };
+    // SAFETY: `out` has 4 f64 per the contract, audited in ffi_ptr.
+    unsafe { ffi_ptr::write_out(out.cast::<[f64; 4]>(), result) };
 }
 
 #[cfg(test)]

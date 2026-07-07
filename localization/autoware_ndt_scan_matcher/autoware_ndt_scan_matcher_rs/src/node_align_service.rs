@@ -24,6 +24,7 @@ use nalgebra::{Matrix3, Matrix4, Quaternion, Rotation3, UnitQuaternion, Vector6}
 use crate::engine::{NdtEngine, run_align};
 #[cfg(feature = "std")]
 use crate::ffi_host::AwPose;
+use crate::ffi_ptr::{ffi_mut, ffi_mut_slice, ffi_ref, ffi_slice};
 #[cfg(feature = "std")]
 use crate::node_handle::NdtScanMatcherRs;
 #[cfg(feature = "std")]
@@ -441,11 +442,7 @@ fn make_response_trace_event(input: &AwNdtAlignServiceResponse) -> AwNdtAlignSer
     reason = "C ABI trace buffer boundary; pointer validity and capacity are caller contract, bounds checked before write"
 )]
 fn write_trace_event(trace: *mut AwNdtAlignServiceTrace, event: &AwNdtAlignServiceTraceEvent) {
-    if trace.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, aligned trace header.
-    let trace_ref = unsafe { &mut *trace };
+    let trace_ref = ffi_mut!(trace, else return);
     if trace_ref.events.is_null() || trace_ref.capacity == 0 {
         trace_ref.overflowed = 1;
         return;
@@ -841,39 +838,25 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align_service_sea
     input: *const AwNdtAlignServiceSearchInput,
     out: *mut AwNdtAlignServiceSearchOutput,
 ) -> i32 {
-    if engine.is_null() || input.is_null() || out.is_null() {
-        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
-    }
-    // SAFETY: non-null per the check; caller guarantees valid, live structs for the call.
-    let (engine_ref, input_ref, out_ref) = unsafe { (&*engine, &*input, &mut *out) };
+    let engine_ref = ffi_ref!(engine, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let input_ref = ffi_ref!(input, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let out_ref = ffi_mut!(out, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
     set_search_invalid(out_ref);
     let cap = out_ref.particles_capacity;
-    if out_ref.initial_poses.is_null()
-        || out_ref.result_poses.is_null()
-        || out_ref.scores.is_null()
-        || out_ref.iterations.is_null()
-    {
-        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
-    }
-    if input_ref.source_points.is_null() {
-        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
-    }
-    // SAFETY: `input_ref.source_points` addresses `source_points_len` readable xyz triples by the C ABI contract.
-    let source = unsafe {
-        core::slice::from_raw_parts(
-            input_ref.source_points.cast::<[f32; 3]>(),
-            input_ref.source_points_len,
-        )
-    };
-    // SAFETY: output pointers each address `cap` writable elements by the C ABI contract.
-    let (initial_poses, result_poses, scores, iterations) = unsafe {
-        (
-            core::slice::from_raw_parts_mut(out_ref.initial_poses, cap),
-            core::slice::from_raw_parts_mut(out_ref.result_poses, cap),
-            core::slice::from_raw_parts_mut(out_ref.scores, cap),
-            core::slice::from_raw_parts_mut(out_ref.iterations, cap),
-        )
-    };
+    // `input_ref.source_points` addresses `source_points_len` readable xyz triples (null → INVALID);
+    // the output pointers each address `cap` writable elements. All derefs audited in ffi_ptr.
+    let source = ffi_slice!(
+        input_ref.source_points,
+        input_ref.source_points_len,
+        [f32; 3],
+        else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT
+    );
+    let initial_poses = ffi_mut_slice!(out_ref.initial_poses, cap, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let result_poses = ffi_mut_slice!(out_ref.result_poses, cap, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let scores =
+        ffi_mut_slice!(out_ref.scores, cap, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let iterations =
+        ffi_mut_slice!(out_ref.iterations, cap, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
     let Some(result) = run_align_service_search_impl(
         engine_ref,
         input_ref,
@@ -914,12 +897,11 @@ fn copy_source_points_to_output(
     if out.source_points_capacity == 0 {
         return true;
     }
-    if out.source_points.is_null() || out.source_points_capacity < source.len() {
+    if out.source_points_capacity < source.len() {
         return false;
     }
     let flat_len = out.source_points_capacity.saturating_mul(3);
-    // SAFETY: caller provided `source_points_capacity` writable xyz slots.
-    let out_flat = unsafe { core::slice::from_raw_parts_mut(out.source_points, flat_len) };
+    let out_flat = ffi_mut_slice!(out.source_points, flat_len, else return false);
     for (dst, point) in out_flat.chunks_exact_mut(3).zip(source.iter()) {
         dst[0] = point[0];
         dst[1] = point[1];
@@ -953,9 +935,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align_service_sea
     if handle.is_null() || engine.is_null() || input.is_null() || out.is_null() {
         return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
     }
-    // SAFETY: non-null per the check; caller guarantees valid, live structs for the call.
-    let (handle_ref, engine_ref, input_ref, out_ref) =
-        unsafe { (&*handle, &*engine, &*input, &mut *out) };
+    let handle_ref = ffi_ref!(handle, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let engine_ref = ffi_ref!(engine, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let input_ref = ffi_ref!(input, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let out_ref = ffi_mut!(out, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
     set_search_invalid(out_ref);
     let Some(source) = handle_ref.latest_sensor_points_snapshot() else {
         return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
@@ -972,15 +955,14 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align_service_sea
         set_search_invalid(out_ref);
         return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
     }
-    // SAFETY: output pointers each address `cap` writable elements by the C ABI contract.
-    let (initial_poses, result_poses, scores, iterations) = unsafe {
-        (
-            core::slice::from_raw_parts_mut(out_ref.initial_poses, cap),
-            core::slice::from_raw_parts_mut(out_ref.result_poses, cap),
-            core::slice::from_raw_parts_mut(out_ref.scores, cap),
-            core::slice::from_raw_parts_mut(out_ref.iterations, cap),
-        )
-    };
+    // Output pointers each address `cap` writable elements per the contract; checked non-null above,
+    // so these `else` arms are unreachable. Derefs audited in ffi_ptr.
+    let initial_poses = ffi_mut_slice!(out_ref.initial_poses, cap, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let result_poses = ffi_mut_slice!(out_ref.result_poses, cap, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let scores =
+        ffi_mut_slice!(out_ref.scores, cap, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+    let iterations =
+        ffi_mut_slice!(out_ref.iterations, cap, else return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
     let Some(result) = run_align_service_search_impl(
         engine_ref,
         input_ref,
@@ -1025,17 +1007,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_decide_align_service_
     trace: *mut AwNdtAlignServiceTrace,
     out: *mut AwNdtAlignServiceDecision,
 ) {
-    if input.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, aligned input struct, read once.
-    let input_ref = unsafe { &*input };
+    let input_ref = ffi_ref!(input, else return);
+    let out = ffi_mut!(out, else return);
     let result = decide_align_service(input_ref);
     append_trace_event(trace, input_ref, result);
-    // SAFETY: `out` is non-null per the check and points to a writable decision per the contract.
-    unsafe {
-        *out = result;
-    }
+    // `out` is a `&mut AwNdtAlignServiceDecision` from `ffi_mut!`; the write is plain safe code.
+    *out = result;
 }
 
 /// Decide the deterministic align-service branch/response state.
@@ -1077,16 +1054,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_assemble_align_servic
     input: *const AwNdtAlignServiceAlignedInput,
     out: *mut AwNdtAlignServiceResponse,
 ) {
-    if input.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, aligned input struct, read once.
-    let input_ref = unsafe { &*input };
+    let input_ref = ffi_ref!(input, else return);
+    let out = ffi_mut!(out, else return);
     let result = assemble_aligned_response(input_ref);
-    // SAFETY: `out` is non-null per the check and points to writable response storage.
-    unsafe {
-        *out = result;
-    }
+    // `out` is a `&mut AwNdtAlignServiceResponse` from `ffi_mut!`; the write is plain safe code.
+    *out = result;
 }
 
 /// Evaluate the deterministic align-service gate action and optionally append one semantic decision
@@ -1107,18 +1079,13 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_align_servic
     trace: *mut AwNdtAlignServiceTrace,
     out: *mut AwNdtAlignServiceGateAction,
 ) {
-    if input.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, aligned input struct, read once.
-    let input_ref = unsafe { &*input };
+    let input_ref = ffi_ref!(input, else return);
+    let out = ffi_mut!(out, else return);
     let decision = decide_align_service(input_ref);
     append_trace_event(trace, input_ref, decision);
     let action = gate_action_from_decision(decision);
-    // SAFETY: `out` is non-null per the check and points to writable action storage.
-    unsafe {
-        *out = action;
-    }
+    // `out` is a `&mut AwNdtAlignServiceGateAction` from `ffi_mut!`; the write is plain safe code.
+    *out = action;
 }
 
 /// Append one semantic summary event for the existing C++ align-service TPE/search loop.
@@ -1137,11 +1104,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_append_align_service_
     input: *const AwNdtAlignServiceSearchSummaryInput,
     trace: *mut AwNdtAlignServiceTrace,
 ) {
-    if input.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, aligned input struct, read once.
-    let input_ref = unsafe { &*input };
+    let input_ref = ffi_ref!(input, else return);
     append_search_summary_trace(input_ref, trace);
 }
 
@@ -1160,11 +1123,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_append_align_service_
     input: *const AwNdtAlignServiceResponse,
     trace: *mut AwNdtAlignServiceTrace,
 ) {
-    if input.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, aligned response struct, read once.
-    let input_ref = unsafe { &*input };
+    let input_ref = ffi_ref!(input, else return);
     append_response_trace(input_ref, trace);
 }
 

@@ -22,6 +22,9 @@
 
 use alloc::vec::Vec;
 
+#[cfg(feature = "std")]
+use crate::ffi_ptr::{self, ffi_mut, ffi_ref};
+
 const INPUT_DIMENSION: usize = 6;
 const PRIOR_DIMENSION: usize = 5;
 const MAX_GOOD_NUM: usize = 10;
@@ -421,11 +424,8 @@ fn checked_slice<'a>(ptr: *const f64, len: usize, expected_len: usize) -> Result
     if len != expected_len {
         return Err(AW_TPE_STATUS_INVALID_LENGTH);
     }
-    if ptr.is_null() {
-        return Err(AW_TPE_STATUS_NULL_POINTER);
-    }
-    // SAFETY: pointer is non-null and caller promises `len` readable f64 values.
-    Ok(unsafe { core::slice::from_raw_parts(ptr, len) })
+    // SAFETY: caller promises `len` readable f64 values; deref audited in ffi_ptr (null → None).
+    unsafe { ffi_ptr::opt_slice(ptr, len) }.ok_or(AW_TPE_STATUS_NULL_POINTER)
 }
 
 #[cfg(feature = "std")]
@@ -441,11 +441,8 @@ fn checked_output_slice<'a>(
     if len != expected_len {
         return Err(AW_TPE_STATUS_INVALID_LENGTH);
     }
-    if ptr.is_null() {
-        return Err(AW_TPE_STATUS_NULL_POINTER);
-    }
-    // SAFETY: pointer is non-null and caller promises `len` writable f64 values.
-    Ok(unsafe { core::slice::from_raw_parts_mut(ptr, len) })
+    // SAFETY: caller promises `len` writable f64 values; deref audited in ffi_ptr (null → None).
+    unsafe { ffi_ptr::opt_slice_mut(ptr, len) }.ok_or(AW_TPE_STATUS_NULL_POINTER)
 }
 
 /// Construct an owned Rust TPE handle. Returns null on invalid input.
@@ -480,7 +477,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_new(
     };
     match TreeStructuredParzenEstimator::with_seed(direction, n_startup_trials, mean, stddev, seed)
     {
-        Ok(inner) => Box::into_raw(Box::new(AwTpe { inner })),
+        Ok(inner) => ffi_ptr::into_handle(AwTpe { inner }),
         Err(_) => core::ptr::null_mut(),
     }
 }
@@ -497,12 +494,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_new(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_free(handle: *mut AwTpe) {
-    if !handle.is_null() {
-        // SAFETY: non-null handle is owned by the caller and was allocated by `tpe_new`.
-        unsafe {
-            drop(Box::from_raw(handle));
-        }
-    }
+    // SAFETY: `handle` is null or a live handle from `tpe_new`; reclaimed once in ffi_ptr.
+    unsafe { ffi_ptr::free_handle(handle) };
 }
 
 /// Generate one TPE input into `out_input`.
@@ -520,9 +513,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_get_next_input(
     out_input: *mut f64,
     out_len: usize,
 ) -> i32 {
-    if handle.is_null() {
-        return AW_TPE_STATUS_NULL_POINTER;
-    }
+    let tpe = ffi_mut!(handle, else return AW_TPE_STATUS_NULL_POINTER);
     let Ok(out) = checked_output_slice(out_input, out_len, INPUT_DIMENSION) else {
         return if out_len == INPUT_DIMENSION {
             AW_TPE_STATUS_NULL_POINTER
@@ -530,8 +521,6 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_get_next_input(
             AW_TPE_STATUS_INVALID_LENGTH
         };
     };
-    // SAFETY: handle is non-null and caller promises it is a live unique mutable handle.
-    let tpe = unsafe { &mut *handle };
     match tpe.inner.get_next_input() {
         Ok(input) => {
             for (dst, src) in out.iter_mut().zip(input.iter().copied()) {
@@ -559,9 +548,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_add_trial(
     input_len: usize,
     score: f64,
 ) -> i32 {
-    if handle.is_null() {
-        return AW_TPE_STATUS_NULL_POINTER;
-    }
+    let tpe = ffi_mut!(handle, else return AW_TPE_STATUS_NULL_POINTER);
     let Ok(input_slice) = checked_slice(input, input_len, INPUT_DIMENSION) else {
         return if input_len == INPUT_DIMENSION {
             AW_TPE_STATUS_NULL_POINTER
@@ -572,8 +559,6 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_add_trial(
     let Ok(input) = <[f64; INPUT_DIMENSION]>::try_from(input_slice) else {
         return AW_TPE_STATUS_INVALID_LENGTH;
     };
-    // SAFETY: handle is non-null and caller promises it is a live unique mutable handle.
-    let tpe = unsafe { &mut *handle };
     match tpe.inner.add_trial(Trial { input, score }) {
         Ok(()) => AW_TPE_STATUS_OK,
         Err(error) => status_from_error(error),
@@ -593,11 +578,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_add_trial(
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_trials_len(
     handle: *const AwTpe,
 ) -> usize {
-    if handle.is_null() {
-        return 0;
-    }
-    // SAFETY: handle is non-null and caller promises it is live for the duration of the call.
-    let tpe = unsafe { &*handle };
+    let tpe = ffi_ref!(handle, else return 0);
     tpe.inner.trials_len()
 }
 
@@ -612,11 +593,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_trials_len(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_tpe_above_num(handle: *const AwTpe) -> usize {
-    if handle.is_null() {
-        return 0;
-    }
-    // SAFETY: handle is non-null and caller promises it is live for the duration of the call.
-    let tpe = unsafe { &*handle };
+    let tpe = ffi_ref!(handle, else return 0);
     tpe.inner.above_num()
 }
 

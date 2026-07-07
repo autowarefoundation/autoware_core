@@ -36,10 +36,11 @@
 //!
 //! Control-plane: the WCET-bounded path is the inner [`crate::ndt::align`], not this wrapper.
 
-use alloc::boxed::Box;
 use alloc::sync::Arc;
 
 use nalgebra::{Matrix4, Matrix6};
+
+use crate::ffi_ptr::{self, ffi_mut, ffi_mut_slice, ffi_ref, ffi_slice};
 
 #[cfg(any(feature = "std", not(feature = "mt")))]
 use crate::ndt::AwNdtAlignOutput;
@@ -787,7 +788,7 @@ pub extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_new(
     min_points: i32,
     eig_mult: f64,
 ) -> *mut NdtEngine {
-    Box::into_raw(Box::new(NdtEngine::new(resolution, min_points, eig_mult)))
+    ffi_ptr::into_handle(NdtEngine::new(resolution, min_points, eig_mult))
 }
 
 /// # Safety
@@ -795,11 +796,8 @@ pub extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_new(
 #[expect(unsafe_code, reason = "C ABI boundary; reclaims an owned handle")]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_free(engine: *mut NdtEngine) {
-    if engine.is_null() {
-        return;
-    }
-    // SAFETY: `engine` came from `Box::into_raw` and is dropped exactly once.
-    drop(unsafe { Box::from_raw(engine) });
+    // SAFETY: `engine` is a handle from `_new`/`_clone` (or null → no-op); reclaimed once in ffi_ptr.
+    unsafe { ffi_ptr::free_handle(engine) };
 }
 
 /// Deep-copy an engine (the node's map-update double-buffer). Null → null.
@@ -810,12 +808,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_free(engine: *m
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_clone(
     engine: *const NdtEngine,
 ) -> *mut NdtEngine {
-    if engine.is_null() {
-        return core::ptr::null_mut();
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid handle.
-    let e = unsafe { &*engine };
-    Box::into_raw(Box::new(e.clone()))
+    // SAFETY: `engine` is a valid handle or null; deep-copied once in ffi_ptr.
+    unsafe { ffi_ptr::clone_handle(engine) }
 }
 
 /// # Safety
@@ -837,11 +831,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_set_params(
     outlier_ratio: f64,
     num_threads: i32,
 ) {
-    if engine.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid handle.
-    let e = unsafe { &*engine };
+    let e = ffi_ref!(engine, else return);
     e.set_params(
         trans_epsilon,
         step_size,
@@ -862,11 +852,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_set_regularizat
     pose_y: f32,
     scale: f32,
 ) {
-    if engine.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid handle.
-    let e = unsafe { &*engine };
+    let e = ffi_ref!(engine, else return);
     e.set_regularization(pose_x, pose_y, scale);
 }
 
@@ -881,16 +867,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target(
     n: usize,
     id: u64,
 ) {
-    if engine.is_null() || points.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `points`.
-    let (e, pts) = unsafe {
-        (
-            &*engine,
-            core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n),
-        )
-    };
+    let e = ffi_ref!(engine, else return);
+    let pts = ffi_slice!(points, n, [f32; 3], else return);
     e.add_target(pts, id);
 }
 
@@ -902,11 +880,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target(
     engine: *const NdtEngine,
     id: u64,
 ) {
-    if engine.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid handle.
-    unsafe { &*engine }.remove_target(id);
+    ffi_ref!(engine, else return).remove_target(id);
 }
 
 /// Add a target tile keyed by the cell-id bytes (`points` is `3 * n` f32; `id` is `id_len` bytes).
@@ -926,21 +900,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
     id: *const u8,
     id_len: usize,
 ) {
-    if engine.is_null() || points.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees `3 * n` f32 + `id_len` bytes.
-    let (e, pts, id_bytes) = unsafe {
-        (
-            &*engine,
-            core::slice::from_raw_parts(points.cast::<[f32; 3]>(), n),
-            if id.is_null() || id_len == 0 {
-                &[][..]
-            } else {
-                core::slice::from_raw_parts(id, id_len)
-            },
-        )
-    };
+    let e = ffi_ref!(engine, else return);
+    let pts = ffi_slice!(points, n, [f32; 3], else return);
+    // SAFETY: caller guarantees `id_len` readable bytes (or null/0 → empty), audited in ffi_ptr.
+    let id_bytes = unsafe { ffi_ptr::slice_or_empty(id, id_len) };
     e.add_target_bytes(pts, id_bytes);
 }
 
@@ -955,20 +918,9 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_remove_target_s
     id: *const u8,
     id_len: usize,
 ) {
-    if engine.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees `id_len` readable bytes.
-    let (e, id_bytes) = unsafe {
-        (
-            &*engine,
-            if id.is_null() || id_len == 0 {
-                &[][..]
-            } else {
-                core::slice::from_raw_parts(id, id_len)
-            },
-        )
-    };
+    let e = ffi_ref!(engine, else return);
+    // SAFETY: caller guarantees `id_len` readable bytes (or null/0 → empty), audited in ffi_ptr.
+    let id_bytes = unsafe { ffi_ptr::slice_or_empty(id, id_len) };
     e.remove_target_bytes(id_bytes);
 }
 
@@ -1003,31 +955,23 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map
     out_count: *mut u32,
     out_total_len: *mut u32,
 ) {
-    if engine.is_null() || out_count.is_null() || out_total_len.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees valid handle + writable count/total.
-    let e = unsafe { &*engine };
+    // All-or-nothing: engine + both counters must be non-null before anything is written.
+    let e = ffi_ref!(engine, else return);
+    let out_count = ffi_mut!(out_count, else return);
+    let out_total_len = ffi_mut!(out_total_len, else return);
     let st = e.load_state();
     let ids: alloc::vec::Vec<&[u8]> = st.id_map.keys().map(alloc::vec::Vec::as_slice).collect();
     let total: usize = ids.iter().map(|s| s.len()).sum();
-    // SAFETY: non-null per the check.
-    unsafe {
-        *out_count = ids.len() as u32;
-        *out_total_len = total as u32;
-    }
+    *out_count = ids.len() as u32;
+    *out_total_len = total as u32;
     let fill_lengths = !out_lengths.is_null() && lengths_cap as usize >= ids.len();
     let fill_bytes = !out_bytes.is_null() && bytes_cap as usize >= total;
     if !fill_lengths || !fill_bytes {
         return;
     }
-    // SAFETY: caps verified ≥ the required sizes above; both buffers non-null.
-    let (lens, bytes) = unsafe {
-        (
-            core::slice::from_raw_parts_mut(out_lengths, ids.len()),
-            core::slice::from_raw_parts_mut(out_bytes, total),
-        )
-    };
+    // Caps verified ≥ the required sizes above; both buffers non-null.
+    let lens = ffi_mut_slice!(out_lengths, ids.len(), else return);
+    let bytes = ffi_mut_slice!(out_bytes, total, else return);
     let mut off = 0usize;
     for (k, id) in ids.iter().enumerate() {
         lens[k] = id.len() as u32;
@@ -1043,11 +987,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(
     engine: *const NdtEngine,
 ) {
-    if engine.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid handle.
-    unsafe { &*engine }.create_kdtree();
+    ffi_ref!(engine, else return).create_kdtree();
 }
 
 /// Atomically publish `src`'s map state into `dst` (the map-update commit). No-op if either is null.
@@ -1062,11 +1002,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_commit_from(
     dst: *const NdtEngine,
     src: *const NdtEngine,
 ) {
-    if dst.is_null() || src.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees both are valid handles.
-    let (d, s) = unsafe { (&*dst, &*src) };
+    let d = ffi_ref!(dst, else return);
+    let s = ffi_ref!(src, else return);
     d.commit_from(s);
 }
 
@@ -1077,11 +1014,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_commit_from(
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_has_target(
     engine: *const NdtEngine,
 ) -> bool {
-    if engine.is_null() {
-        return false;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid handle.
-    unsafe { &*engine }.has_target()
+    ffi_ref!(engine, else return false).has_target()
 }
 
 /// # Safety
@@ -1091,11 +1024,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_has_target(
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(
     engine: *const NdtEngine,
 ) -> i32 {
-    if engine.is_null() {
-        return 0;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid handle.
-    unsafe { &*engine }.max_iterations()
+    ffi_ref!(engine, else return 0).max_iterations()
 }
 
 /// Align `source` (`3 * n` `f32`) from `guess` (16 row-major `f32`), storing the result in the
@@ -1114,17 +1043,9 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_align(
     source: *const f32,
     n: usize,
 ) {
-    if engine.is_null() || guess.is_null() || source.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees the documented lengths.
-    let (e, guess_buf, src) = unsafe {
-        (
-            &*engine,
-            core::slice::from_raw_parts(guess, 16),
-            core::slice::from_raw_parts(source.cast::<[f32; 3]>(), n),
-        )
-    };
+    let e = ffi_ref!(engine, else return);
+    let guess_buf = ffi_slice!(guess, 16, else return);
+    let src = ffi_slice!(source, n, [f32; 3], else return);
     e.align(&matrix4_from_row_major(guess_buf), src);
 }
 
@@ -1139,16 +1060,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_transforma
     cloud: *const f32,
     n: usize,
 ) -> f64 {
-    if engine.is_null() || cloud.is_null() {
-        return 0.0;
-    }
-    // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `cloud`.
-    let (e, c) = unsafe {
-        (
-            &*engine,
-            core::slice::from_raw_parts(cloud.cast::<[f32; 3]>(), n),
-        )
-    };
+    let e = ffi_ref!(engine, else return 0.0);
+    let c = ffi_slice!(cloud, n, [f32; 3], else return 0.0);
     e.calc_transformation_probability(c)
 }
 
@@ -1163,16 +1076,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_vo
     cloud: *const f32,
     n: usize,
 ) -> f64 {
-    if engine.is_null() || cloud.is_null() {
-        return 0.0;
-    }
-    // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `cloud`.
-    let (e, c) = unsafe {
-        (
-            &*engine,
-            core::slice::from_raw_parts(cloud.cast::<[f32; 3]>(), n),
-        )
-    };
+    let e = ffi_ref!(engine, else return 0.0);
+    let c = ffi_slice!(cloud, n, [f32; 3], else return 0.0);
     e.calc_nearest_voxel_likelihood(c)
 }
 
@@ -1199,33 +1104,26 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
     engine: *const NdtEngine,
     output: *const AwNdtAlignOutput,
 ) {
-    if engine.is_null() || output.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid handle + output struct.
-    let (e, out) = unsafe { (&*engine, &*output) };
+    let e = ffi_ref!(engine, else return);
+    let out = ffi_ref!(output, else return);
     let result = e.result();
-    // SAFETY: each non-null output pointer addresses its documented length.
+    // SAFETY: each non-null output pointer addresses its documented length; the derefs are audited
+    // in ffi_ptr (null → skipped: `opt_slice_mut` → None, `write_out` → false without writing).
     unsafe {
-        if !out.pose.is_null() {
-            let pose = core::slice::from_raw_parts_mut(out.pose, 16);
+        if let Some(pose) = ffi_ptr::opt_slice_mut(out.pose, 16) {
             for r in 0..4 {
                 for c in 0..4 {
                     pose[(r * 4) + c] = result.pose[(r, c)];
                 }
             }
         }
-        if !out.iteration_num.is_null() {
-            *out.iteration_num = result.iteration_num;
-        }
-        if !out.transform_probability.is_null() {
-            *out.transform_probability = result.transform_probability;
-        }
-        if !out.nearest_voxel_likelihood.is_null() {
-            *out.nearest_voxel_likelihood = result.nearest_voxel_likelihood;
-        }
-        if !out.hessian.is_null() {
-            let h = core::slice::from_raw_parts_mut(out.hessian, 36);
+        ffi_ptr::write_out(out.iteration_num, result.iteration_num);
+        ffi_ptr::write_out(out.transform_probability, result.transform_probability);
+        ffi_ptr::write_out(
+            out.nearest_voxel_likelihood,
+            result.nearest_voxel_likelihood,
+        );
+        if let Some(h) = ffi_ptr::opt_slice_mut(out.hessian, 36) {
             for r in 0..6 {
                 for c in 0..6 {
                     h[(r * 6) + c] = result.hessian[(r, c)];
@@ -1234,15 +1132,19 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
         }
         if !out.transformation_array.is_null() && !out.transforms_count.is_null() {
             let cap = out.transforms_cap as usize;
-            let buf = core::slice::from_raw_parts_mut(out.transformation_array, cap * 16);
-            for (k, m) in result.transformation_array.iter().take(cap).enumerate() {
-                for r in 0..4 {
-                    for c in 0..4 {
-                        buf[(k * 16) + (r * 4) + c] = m[(r, c)];
+            if let Some(buf) = ffi_ptr::opt_slice_mut(out.transformation_array, cap * 16) {
+                for (k, m) in result.transformation_array.iter().take(cap).enumerate() {
+                    for r in 0..4 {
+                        for c in 0..4 {
+                            buf[(k * 16) + (r * 4) + c] = m[(r, c)];
+                        }
                     }
                 }
             }
-            *out.transforms_count = result.transformation_array.len() as u32;
+            ffi_ptr::write_out(
+                out.transforms_count,
+                result.transformation_array.len() as u32,
+            );
         }
     }
 }
@@ -1263,17 +1165,9 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_vo
     n: usize,
     out_scores: *mut f32,
 ) {
-    if engine.is_null() || cloud.is_null() || out_scores.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees `3 * n` f32 at `cloud`, `n` at `out_scores`.
-    let (e, c, out) = unsafe {
-        (
-            &*engine,
-            core::slice::from_raw_parts(cloud.cast::<[f32; 3]>(), n),
-            core::slice::from_raw_parts_mut(out_scores, n),
-        )
-    };
+    let e = ffi_ref!(engine, else return);
+    let c = ffi_slice!(cloud, n, [f32; 3], else return);
+    let out = ffi_mut_slice!(out_scores, n, else return);
     let mut scores = alloc::vec::Vec::new();
     e.nearest_voxel_score_each_point(c, &mut scores);
     out.copy_from_slice(&scores);
@@ -1304,18 +1198,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_score_array
     cap: u32,
     out_count: *mut u32,
 ) {
-    if engine.is_null() || out_tp.is_null() || out_nvl.is_null() || out_count.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees `cap` f32 at each array + one u32.
-    let (e, tp_out, nvl_out, count) = unsafe {
-        (
-            &*engine,
-            core::slice::from_raw_parts_mut(out_tp, cap as usize),
-            core::slice::from_raw_parts_mut(out_nvl, cap as usize),
-            &mut *out_count,
-        )
-    };
+    let e = ffi_ref!(engine, else return);
+    let tp_out = ffi_mut_slice!(out_tp, cap as usize, else return);
+    let nvl_out = ffi_mut_slice!(out_nvl, cap as usize, else return);
+    let count = ffi_mut!(out_count, else return);
     let (tp, nvl) = e.score_arrays();
     let k = tp.len().min(cap as usize);
     tp_out[..k].copy_from_slice(&tp[..k]);

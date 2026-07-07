@@ -29,6 +29,7 @@ use core::future::Future;
 use alloc::vec::Vec;
 
 use crate::engine::NdtEngine;
+use crate::ffi_ptr::{self, ffi_mut, ffi_ref, ffi_slice};
 use crate::host::{MapDelta, MapSource, MapTile};
 use crate::scan_matcher::apply_map_update;
 
@@ -115,23 +116,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_delta_add(
     pts_ptr: *const f32,
     n_pts: usize,
 ) {
-    if builder.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; the caller guarantees the builder is the live `*mut MapDelta`.
-    let delta = unsafe { &mut *builder.cast::<MapDelta>() };
-    let id = if id_ptr.is_null() || id_len == 0 {
-        Vec::new()
-    } else {
-        // SAFETY: `id_ptr` is readable for `id_len` bytes per the contract.
-        unsafe { core::slice::from_raw_parts(id_ptr, id_len) }.to_vec()
-    };
-    let points = if pts_ptr.is_null() || n_pts == 0 {
-        Vec::new()
-    } else {
-        // SAFETY: `pts_ptr` is readable for `3 * n_pts` f32 (== `n_pts` `[f32; 3]`) per the contract.
-        unsafe { core::slice::from_raw_parts(pts_ptr.cast::<[f32; 3]>(), n_pts) }.to_vec()
-    };
+    let delta = ffi_mut!(builder.cast::<MapDelta>(), else return);
+    // SAFETY: caller guarantees the id/cloud lengths (or null/0 → empty); audited in ffi_ptr.
+    let id = unsafe { ffi_ptr::slice_or_empty(id_ptr, id_len) }.to_vec();
+    let points = unsafe { ffi_ptr::slice_or_empty(pts_ptr.cast::<[f32; 3]>(), n_pts) }.to_vec();
     delta.add.push(MapTile { id, points });
 }
 
@@ -151,13 +139,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_delta_remove(
     id_ptr: *const u8,
     id_len: usize,
 ) {
-    if builder.is_null() || id_ptr.is_null() || id_len == 0 {
+    let delta = ffi_mut!(builder.cast::<MapDelta>(), else return);
+    if id_len == 0 {
         return;
     }
-    // SAFETY: non-null per the check; the caller guarantees the builder is the live `*mut MapDelta`.
-    let delta = unsafe { &mut *builder.cast::<MapDelta>() };
-    // SAFETY: `id_ptr` is readable for `id_len` bytes per the contract.
-    let id = unsafe { core::slice::from_raw_parts(id_ptr, id_len) }.to_vec();
+    let id = ffi_slice!(id_ptr, id_len, else return).to_vec();
     delta.remove.push(id);
 }
 
@@ -183,11 +169,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_update_map(
     radius: f64,
     rebuild: bool,
 ) {
-    if engine.is_null() || source.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; the caller guarantees both handles are valid for the call.
-    let (eng, src) = unsafe { (&*engine, &*source) };
+    let eng = ffi_ref!(engine, else return);
+    let src = ffi_ref!(source, else return);
     let host = FfiHost { src };
     block_on(apply_map_update(eng, &host, [cx, cy], radius, rebuild));
 }

@@ -23,6 +23,7 @@ use alloc::vec::Vec;
 use nalgebra::{Matrix2, Matrix4, Vector2};
 
 use crate::covariance::{calc_weight_vec, calculate_weighted_mean_and_cov};
+use crate::ffi_ptr::{ffi_mut_slice, ffi_ref, ffi_slice};
 use crate::ndt::{
     AlignResult, AlignWorkspace, NdtParams, align, nearest_voxel_transformation_likelihood,
 };
@@ -248,29 +249,15 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_estimate_cov_multi_ndt(
     out_mean: *mut f64,
     out_cov: *mut f64,
 ) {
-    if input.is_null() || out_mean.is_null() || out_cov.is_null() {
+    let inp = ffi_ref!(input, else return);
+    if out_mean.is_null() || out_cov.is_null() {
         return;
     }
-    // SAFETY: non-null per the check; caller guarantees a valid struct.
-    let inp = unsafe { &*input };
-    if inp.target_xyz.is_null()
-        || inp.source_xyz.is_null()
-        || inp.main_pose.is_null()
-        || inp.offset_x.is_null()
-        || inp.offset_y.is_null()
-    {
-        return;
-    }
-    // SAFETY: caller guarantees the documented lengths.
-    let (target, source, main_buf, offset_x, offset_y) = unsafe {
-        (
-            core::slice::from_raw_parts(inp.target_xyz.cast::<[f32; 3]>(), inp.n_target),
-            core::slice::from_raw_parts(inp.source_xyz.cast::<[f32; 3]>(), inp.n_source),
-            core::slice::from_raw_parts(inp.main_pose, 16),
-            core::slice::from_raw_parts(inp.offset_x, inp.n_offsets),
-            core::slice::from_raw_parts(inp.offset_y, inp.n_offsets),
-        )
-    };
+    let target = ffi_slice!(inp.target_xyz, inp.n_target, [f32; 3], else return);
+    let source = ffi_slice!(inp.source_xyz, inp.n_source, [f32; 3], else return);
+    let main_buf = ffi_slice!(inp.main_pose, 16, else return);
+    let offset_x = ffi_slice!(inp.offset_x, inp.n_offsets, else return);
+    let offset_y = ffi_slice!(inp.offset_y, inp.n_offsets, else return);
     let main_pose = matrix4_from_row_major(main_buf);
     let mut map = VoxelGridMap::new([inp.resolution; 3], 6, 0.01);
     map.add_target(target, 0);
@@ -292,11 +279,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_estimate_cov_multi_ndt(
     let mut ws = AlignWorkspace::new();
     let result =
         estimate_xy_covariance_by_multi_ndt(&main_ndt, &poses, &map, source, &params, &mut ws);
-    // SAFETY: out_mean has 2 f64, out_cov has 4, per the contract.
-    unsafe {
-        core::slice::from_raw_parts_mut(out_mean, 2).copy_from_slice(&result.mean);
-        core::slice::from_raw_parts_mut(out_cov, 4).copy_from_slice(&result.covariance);
-    }
+    ffi_mut_slice!(out_mean, 2, else return).copy_from_slice(&result.mean);
+    ffi_mut_slice!(out_cov, 4, else return).copy_from_slice(&result.covariance);
 }
 
 /// # Safety
@@ -312,29 +296,15 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_estimate_cov_multi_ndt_sco
     out_mean: *mut f64,
     out_cov: *mut f64,
 ) {
-    if input.is_null() || out_mean.is_null() || out_cov.is_null() {
+    let inp = ffi_ref!(input, else return);
+    if out_mean.is_null() || out_cov.is_null() {
         return;
     }
-    // SAFETY: non-null per the check; caller guarantees a valid struct.
-    let inp = unsafe { &*input };
-    if inp.target_xyz.is_null()
-        || inp.source_xyz.is_null()
-        || inp.main_pose.is_null()
-        || inp.offset_x.is_null()
-        || inp.offset_y.is_null()
-    {
-        return;
-    }
-    // SAFETY: caller guarantees the documented lengths.
-    let (target, source, main_buf, offset_x, offset_y) = unsafe {
-        (
-            core::slice::from_raw_parts(inp.target_xyz.cast::<[f32; 3]>(), inp.n_target),
-            core::slice::from_raw_parts(inp.source_xyz.cast::<[f32; 3]>(), inp.n_source),
-            core::slice::from_raw_parts(inp.main_pose, 16),
-            core::slice::from_raw_parts(inp.offset_x, inp.n_offsets),
-            core::slice::from_raw_parts(inp.offset_y, inp.n_offsets),
-        )
-    };
+    let target = ffi_slice!(inp.target_xyz, inp.n_target, [f32; 3], else return);
+    let source = ffi_slice!(inp.source_xyz, inp.n_source, [f32; 3], else return);
+    let main_buf = ffi_slice!(inp.main_pose, 16, else return);
+    let offset_x = ffi_slice!(inp.offset_x, inp.n_offsets, else return);
+    let offset_y = ffi_slice!(inp.offset_y, inp.n_offsets, else return);
     let main_pose = matrix4_from_row_major(main_buf);
     let mut map = VoxelGridMap::new([inp.resolution; 3], 6, 0.01);
     map.add_target(target, 0);
@@ -364,11 +334,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_estimate_cov_multi_ndt_sco
         inp.temperature,
         &mut ws,
     );
-    // SAFETY: out_mean has 2 f64, out_cov has 4, per the contract.
-    unsafe {
-        core::slice::from_raw_parts_mut(out_mean, 2).copy_from_slice(&result.mean);
-        core::slice::from_raw_parts_mut(out_cov, 4).copy_from_slice(&result.covariance);
-    }
+    ffi_mut_slice!(out_mean, 2, else return).copy_from_slice(&result.mean);
+    ffi_mut_slice!(out_cov, 4, else return).copy_from_slice(&result.covariance);
 }
 
 /// # Safety
@@ -392,18 +359,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_propose_poses_to_search(
     n: usize,
     out_poses: *mut f32,
 ) {
-    if main_pose.is_null() || offset_x.is_null() || offset_y.is_null() || out_poses.is_null() {
-        return;
-    }
-    // SAFETY: caller guarantees the documented lengths.
-    let (main_buf, ox, oy, out) = unsafe {
-        (
-            core::slice::from_raw_parts(main_pose, 16),
-            core::slice::from_raw_parts(offset_x, n),
-            core::slice::from_raw_parts(offset_y, n),
-            core::slice::from_raw_parts_mut(out_poses, n.saturating_mul(16)),
-        )
-    };
+    let main_buf = ffi_slice!(main_pose, 16, else return);
+    let ox = ffi_slice!(offset_x, n, else return);
+    let oy = ffi_slice!(offset_y, n, else return);
+    let out = ffi_mut_slice!(out_poses, n.saturating_mul(16), else return);
     let poses = propose_poses_to_search(&matrix4_from_row_major(main_buf), ox, oy);
     for (i, pose) in poses.iter().enumerate() {
         for r in 0..4 {

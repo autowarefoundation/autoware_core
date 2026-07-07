@@ -37,6 +37,9 @@ pub mod ffi;
 // ROS side-effects host vtable (AwHost: clock/log/TF) — the C-ABI adapter for the portable Host seam.
 #[cfg(feature = "std")]
 pub mod ffi_host;
+// Audited C-ABI pointer helpers + guard macros — the single home for raw-pointer dereferences at
+// the FFI boundary. core + alloc only (NOT std-gated: many FFI fns exist in the no_std build).
+pub mod ffi_ptr;
 pub mod helper;
 // Portable node orchestration: the `Host` port traits + the `no_std` scan matcher over the engine
 // (reusable on ROS / bare-metal / the Tokio example).
@@ -90,6 +93,8 @@ mod ros_msgs {
     include!(concat!(env!("OUT_DIR"), "/ros_msgs.rs"));
 }
 
+use crate::ffi_ptr::ffi_ref;
+
 #[must_use]
 pub fn add(left: u64, right: u64) -> u64 {
     left.saturating_add(right)
@@ -124,16 +129,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_rotate_covariance(
     rot: *const f64,
     out_cov: *mut f64,
 ) {
-    if src_cov.is_null() || rot.is_null() || out_cov.is_null() {
-        return;
-    }
-    // SAFETY: the caller guarantees `src_cov`/`rot` point to valid, aligned arrays of 36 and
-    // 9 `f64` respectively (see the `# Safety` contract); both are read-only here.
-    let (src, rotation) = unsafe { (&*src_cov.cast::<[f64; 36]>(), &*rot.cast::<[f64; 9]>()) };
+    let src = ffi_ref!(src_cov.cast::<[f64; 36]>(), else return);
+    let rotation = ffi_ref!(rot.cast::<[f64; 9]>(), else return);
     let result = helper::rotate_covariance(src, rotation);
-    // SAFETY: `out_cov` is a valid, aligned, writable array of 36 `f64` per the contract.
+    // SAFETY: `out_cov` is a valid, aligned, writable [f64; 36] per the contract, audited in ffi_ptr.
     unsafe {
-        *out_cov.cast::<[f64; 36]>() = result;
+        ffi_ptr::write_out(out_cov.cast::<[f64; 36]>(), result);
     }
 }
 
@@ -156,16 +157,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_count_oscillation(
     poses: *const core::ffi::c_void,
     num_poses: usize,
 ) -> i32 {
-    if poses.is_null() || num_poses == 0 {
+    if num_poses == 0 {
         return 0;
     }
     // SAFETY: per the `# Safety` contract, `poses` points to `num_poses` valid, aligned Pose values.
-    let slice = unsafe {
-        core::slice::from_raw_parts(
-            poses.cast::<ros_msgs::geometry_msgs__msg__Pose>(),
-            num_poses,
-        )
-    };
+    let slice = crate::ffi_ptr::ffi_slice!(poses, num_poses, ros_msgs::geometry_msgs__msg__Pose, else return 0);
     helper::count_oscillation_poses(slice)
 }
 

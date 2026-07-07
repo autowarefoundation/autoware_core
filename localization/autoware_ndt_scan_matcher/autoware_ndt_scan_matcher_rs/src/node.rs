@@ -23,6 +23,7 @@ use core::ffi::c_void;
 // The pure convergence decision now lives in the no_std `convergence` module (so the portable
 // `scan_matcher` can reuse it); this module keeps the `Aw*` C-ABI mirrors + the `extern "C"` shim.
 use crate::convergence::{ConvergenceInput, evaluate_convergence};
+use crate::ffi_ptr::{self, ffi_mut, ffi_ref};
 use crate::node_handle::{AwPoseWithCovarianceStampedView, NdtScanMatcherRs};
 
 /// A node callback's `DiagnosticsInterface` (the `/diagnostics` status it builds + publishes), as a
@@ -103,11 +104,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_trigger(
     activate: bool,
     now_ns: i64,
 ) -> bool {
-    if handle.is_null() || diag.is_null() {
-        return false;
-    }
-    // SAFETY: non-null per the check; caller guarantees valid, live handle + diagnostics handle.
-    let (h, d) = unsafe { (&*handle, &*diag) };
+    let h = ffi_ref!(handle, else return false);
+    let d = ffi_ref!(diag, else return false);
     d.reset();
     d.add_i64("service_call_time_stamp", now_ns);
     h.set_activated(activate);
@@ -148,11 +146,9 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_initial_pose(
     diag: *const Diagnostics,
     view: *const AwPoseWithCovarianceStampedView,
 ) -> i32 {
-    if handle.is_null() || diag.is_null() || view.is_null() {
-        return INITIAL_POSE_NOT_ACTIVATED;
-    }
-    // SAFETY: non-null per the check; caller guarantees valid, live handle + diagnostics + view.
-    let (h, d, v) = unsafe { (&*handle, &*diag, &*view) };
+    let h = ffi_ref!(handle, else return INITIAL_POSE_NOT_ACTIVATED);
+    let d = ffi_ref!(diag, else return INITIAL_POSE_NOT_ACTIVATED);
+    let v = ffi_ref!(view, else return INITIAL_POSE_NOT_ACTIVATED);
     d.reset();
     d.add_i64("topic_time_stamp", v.stamp_ns);
 
@@ -209,11 +205,9 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_regularization_pos
     diag: *const Diagnostics,
     view: *const AwPoseWithCovarianceStampedView,
 ) {
-    if handle.is_null() || diag.is_null() || view.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees valid, live handle + diagnostics + view.
-    let (h, d, v) = unsafe { (&*handle, &*diag, &*view) };
+    let h = ffi_ref!(handle, else return);
+    let d = ffi_ref!(diag, else return);
+    let v = ffi_ref!(view, else return);
     d.reset();
     d.add_i64("topic_time_stamp", v.stamp_ns);
     h.push_regularization(&v.to_timed());
@@ -230,11 +224,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_regularization_pos
     reason = "C ABI host-interface boundary; validated per rust-c-ffi-safety"
 )]
 unsafe fn str_bytes<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
-    if ptr.is_null() || len == 0 {
-        return &[];
-    }
-    // SAFETY: non-null with len > 0 per the check; caller guarantees `len` readable bytes.
-    unsafe { core::slice::from_raw_parts(ptr, len) }
+    // SAFETY: caller guarantees `len` readable bytes (or null/0 → empty); audited in ffi_ptr.
+    unsafe { ffi_ptr::slice_or_empty(ptr, len) }
 }
 
 /// C ABI mirror of [`ConvergenceInput`] (same field order/types). Plain scalars — no pointers.
@@ -281,11 +272,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_convergence(
     input: *const AwConvergenceInput,
     out: *mut AwConvergenceVerdict,
 ) {
-    if input.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, aligned struct (read once).
-    let i = unsafe { &*input };
+    let i = ffi_ref!(input, else return);
+    let out = ffi_mut!(out, else return);
     let verdict = evaluate_convergence(&ConvergenceInput {
         iteration_num: i.iteration_num,
         max_iterations: i.max_iterations,
@@ -297,18 +285,16 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_convergence(
         converged_param_nearest_voxel_transformation_likelihood: i
             .converged_param_nearest_voxel_transformation_likelihood,
     });
-    // SAFETY: `out` is non-null per the check and a valid, aligned, writable verdict per the contract.
-    unsafe {
-        *out = AwConvergenceVerdict {
-            valid_param_type: verdict.valid_param_type,
-            is_ok_iteration_num: verdict.is_ok_iteration_num,
-            is_local_optimal_solution_oscillation: verdict.is_local_optimal_solution_oscillation,
-            is_ok_score: verdict.is_ok_score,
-            is_converged: verdict.is_converged,
-            score: verdict.score,
-            score_threshold: verdict.score_threshold,
-        };
-    }
+    // `out` is a `&mut AwConvergenceVerdict` from `ffi_mut!`; the write is plain safe code.
+    *out = AwConvergenceVerdict {
+        valid_param_type: verdict.valid_param_type,
+        is_ok_iteration_num: verdict.is_ok_iteration_num,
+        is_local_optimal_solution_oscillation: verdict.is_local_optimal_solution_oscillation,
+        is_ok_score: verdict.is_ok_score,
+        is_converged: verdict.is_converged,
+        score: verdict.score,
+        score_threshold: verdict.score_threshold,
+    };
 }
 
 /// Inputs to the dynamic-map-update distance decision: the current position, the position at the
@@ -394,11 +380,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_map_update(
     input: *const AwMapUpdateInput,
     out: *mut AwMapUpdateVerdict,
 ) {
-    if input.is_null() || out.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, aligned struct (read once).
-    let i = unsafe { &*input };
+    let i = ffi_ref!(input, else return);
+    let out = ffi_mut!(out, else return);
     let verdict = evaluate_map_update(&MapUpdateInput {
         current_x: i.current_x,
         current_y: i.current_y,
@@ -408,14 +391,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_evaluate_map_update(
         map_radius: i.map_radius,
         update_distance: i.update_distance,
     });
-    // SAFETY: `out` is non-null per the check and a valid, aligned, writable verdict per the contract.
-    unsafe {
-        *out = AwMapUpdateVerdict {
-            distance: verdict.distance,
-            out_of_keep_up: verdict.out_of_keep_up,
-            should_update: verdict.should_update,
-        };
-    }
+    // `out` is a `&mut AwMapUpdateVerdict` from `ffi_mut!`; the write is plain safe code.
+    *out = AwMapUpdateVerdict {
+        distance: verdict.distance,
+        out_of_keep_up: verdict.out_of_keep_up,
+        should_update: verdict.should_update,
+    };
 }
 
 #[cfg(test)]

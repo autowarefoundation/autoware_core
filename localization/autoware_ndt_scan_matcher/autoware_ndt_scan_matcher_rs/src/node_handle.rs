@@ -27,6 +27,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::engine::NdtEngine;
 use crate::ffi::{Error, ffi_boundary_ptr};
+use crate::ffi_ptr::{self, ffi_mut, ffi_mut_slice, ffi_ref};
 use crate::node::{MapUpdateInput, evaluate_map_update};
 use crate::pose_buffer::{InterpolateResult, PoseBuffer, TimedPoseWithCov};
 
@@ -454,11 +455,8 @@ pub struct AwInitialPoseInterpolation {
     reason = "C ABI boundary; pointer validated per rust-c-ffi-safety"
 )]
 unsafe fn f64_slice<'a>(ptr: *const f64, len: usize) -> &'a [f64] {
-    if ptr.is_null() || len == 0 {
-        return &[];
-    }
-    // SAFETY: non-null with len > 0 per the check; caller guarantees `len` readable f64 values.
-    unsafe { core::slice::from_raw_parts(ptr, len) }
+    // SAFETY: caller guarantees `len` readable f64 (or null/0 → empty); audited in ffi_ptr.
+    unsafe { ffi_ptr::slice_or_empty(ptr, len) }
 }
 
 /// View `[ptr, ptr+len)` as a byte slice, treating a null/zero-length pointer as empty.
@@ -470,11 +468,8 @@ unsafe fn f64_slice<'a>(ptr: *const f64, len: usize) -> &'a [f64] {
     reason = "C ABI boundary; pointer validated per rust-c-ffi-safety"
 )]
 unsafe fn byte_slice<'a>(ptr: *const u8, len: usize) -> &'a [u8] {
-    if ptr.is_null() || len == 0 {
-        return &[];
-    }
-    // SAFETY: non-null with len > 0 per the check; caller guarantees `len` readable bytes.
-    unsafe { core::slice::from_raw_parts(ptr, len) }
+    // SAFETY: caller guarantees `len` readable bytes (or null/0 → empty); audited in ffi_ptr.
+    unsafe { ffi_ptr::slice_or_empty(ptr, len) }
 }
 
 impl Params {
@@ -558,11 +553,10 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_new(
     params: *const AwNdtParams,
 ) -> *mut NdtScanMatcherRs {
     ffi_boundary_ptr(|| {
-        // SAFETY: caller guarantees a valid, aligned AwNdtParams (or null → None → NullPtr error).
-        let p = unsafe { params.as_ref() }.ok_or(Error::NullPtr)?;
+        let p = ffi_ref!(params, or Error::NullPtr)?;
         // SAFETY: the offset-model pointers in `p` are valid for their stated lengths per the contract.
         let params = unsafe { Params::try_from_ffi(p) }?;
-        Ok(Box::into_raw(Box::new(NdtScanMatcherRs::new(params))))
+        Ok(ffi_ptr::into_handle(NdtScanMatcherRs::new(params)))
     })
 }
 
@@ -576,10 +570,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_new(
 )]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_free(ptr: *mut NdtScanMatcherRs) {
-    if !ptr.is_null() {
-        // SAFETY: non-null and produced by `_new` (Box::into_raw) per the contract; freed once.
-        drop(unsafe { Box::from_raw(ptr) });
-    }
+    // SAFETY: `ptr` is null or a handle from `_new`; reclaimed once in ffi_ptr.
+    unsafe { ffi_ptr::free_handle(ptr) };
 }
 
 /// Return the number of points in the latest Rust-owned base-link sensor cloud. Zero means that the
@@ -595,11 +587,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_free(ptr: *mut NdtScanMatc
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_sensor_points_count(
     handle: *const NdtScanMatcherRs,
 ) -> usize {
-    if handle.is_null() {
-        return 0;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    unsafe { &*handle }.latest_sensor_points_count()
+    ffi_ref!(handle, else return 0).latest_sensor_points_count()
 }
 
 /// Copy the latest Rust-owned base-link sensor cloud into a caller-owned flat xyz buffer. Returns the
@@ -622,19 +610,15 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_sensor_points_copy(
     out_xyz: *mut f32,
     out_points_capacity: usize,
 ) -> usize {
-    if handle.is_null() || out_xyz.is_null() {
-        return 0;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    let Some(points) = (unsafe { &*handle }).latest_sensor_points_snapshot() else {
+    let handle = ffi_ref!(handle, else return 0);
+    let Some(points) = handle.latest_sensor_points_snapshot() else {
         return 0;
     };
     if out_points_capacity < points.len() {
         return 0;
     }
     let flat_len = out_points_capacity.saturating_mul(3);
-    // SAFETY: `out_xyz` addresses `3 * out_points_capacity` writable f32 values per the contract.
-    let out = unsafe { core::slice::from_raw_parts_mut(out_xyz, flat_len) };
+    let out = ffi_mut_slice!(out_xyz, flat_len, else return 0);
     for (dst, point) in out.chunks_exact_mut(3).zip(points.iter()) {
         dst[0] = point[0];
         dst[1] = point[1];
@@ -656,11 +640,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_sensor_points_copy(
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_engine(
     handle: *const NdtScanMatcherRs,
 ) -> *const NdtEngine {
-    if handle.is_null() {
-        return core::ptr::null();
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    core::ptr::from_ref(unsafe { &*handle }.engine())
+    core::ptr::from_ref(ffi_ref!(handle, else return core::ptr::null()).engine())
 }
 
 /// Interpolate the regularization pose at `stamp_ns` from the handle's Rust-owned buffer, writing the
@@ -682,21 +662,16 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_regularization_interpolate
     stamp_ns: i64,
     out: *mut AwInterpolatedPose,
 ) -> bool {
-    if handle.is_null() || out.is_null() {
-        return false;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    let h = unsafe { &*handle };
+    let h = ffi_ref!(handle, else return false);
+    let out = ffi_mut!(out, else return false);
     let Some(result) = h.interpolate_regularization(stamp_ns) else {
         return false;
     };
-    // SAFETY: `out` is non-null per the check and a valid, aligned, writable struct per the contract.
-    unsafe {
-        *out = AwInterpolatedPose {
-            position: result.position,
-            orientation: result.orientation,
-        };
-    }
+    // `out` is a `&mut AwInterpolatedPose` from `ffi_mut!`; the write is plain safe code.
+    *out = AwInterpolatedPose {
+        position: result.position,
+        orientation: result.orientation,
+    };
     true
 }
 
@@ -714,11 +689,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_regularization_interpolate
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_is_activated(
     handle: *const NdtScanMatcherRs,
 ) -> bool {
-    if handle.is_null() {
-        return false;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    unsafe { &*handle }.is_activated()
+    ffi_ref!(handle, else return false).is_activated()
 }
 
 /// Write the latest EKF position `[x, y, z]` into `*out_xyz` and return `true`; `false` (leaving
@@ -737,17 +708,12 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_ekf_position(
     handle: *const NdtScanMatcherRs,
     out_xyz: *mut f64,
 ) -> bool {
-    if handle.is_null() || out_xyz.is_null() {
-        return false;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    let Some(p) = unsafe { &*handle }.latest_ekf_position() else {
+    let handle = ffi_ref!(handle, else return false);
+    let out = ffi_mut_slice!(out_xyz, 3, else return false);
+    let Some(p) = handle.latest_ekf_position() else {
         return false;
     };
-    // SAFETY: `out_xyz` points to 3 writable, aligned f64 per the contract.
-    unsafe {
-        core::slice::from_raw_parts_mut(out_xyz, 3).copy_from_slice(&p);
-    }
+    out.copy_from_slice(&p);
     true
 }
 
@@ -769,24 +735,19 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_initial_pose_interpolate(
     stamp_ns: i64,
     out: *mut AwInitialPoseInterpolation,
 ) -> bool {
-    if handle.is_null() || out.is_null() {
-        return false;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    let h = unsafe { &*handle };
+    let h = ffi_ref!(handle, else return false);
+    let out = ffi_mut!(out, else return false);
     let Some(result) = h.interpolate_initial_pose(stamp_ns) else {
         return false;
     };
-    // SAFETY: `out` is non-null per the check and a valid, aligned, writable struct per the contract.
-    unsafe {
-        *out = AwInitialPoseInterpolation {
-            interpolated_position: result.position,
-            interpolated_orientation: result.orientation,
-            interpolated_covariance: result.covariance,
-            old_position: result.old.position,
-            new_position: result.new_entry.position,
-        };
-    }
+    // `out` is a `&mut AwInitialPoseInterpolation` from `ffi_mut!`; the write is plain safe code.
+    *out = AwInitialPoseInterpolation {
+        interpolated_position: result.position,
+        interpolated_orientation: result.orientation,
+        interpolated_covariance: result.covariance,
+        old_position: result.old.position,
+        new_position: result.new_entry.position,
+    };
     true
 }
 
@@ -811,20 +772,9 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_evaluate(
     update_distance: f64,
     out: *mut AwMapUpdateDecision,
 ) -> bool {
-    if handle.is_null() || out.is_null() {
-        return false;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    let decision = unsafe { &*handle }.map_update_evaluate(
-        [cur_x, cur_y],
-        lidar_radius,
-        map_radius,
-        update_distance,
-    );
-    // SAFETY: `out` is non-null per the check and a valid, aligned, writable struct per the contract.
-    unsafe {
-        *out = decision;
-    }
+    let h = ffi_ref!(handle, else return false);
+    let out = ffi_mut!(out, else return false);
+    *out = h.map_update_evaluate([cur_x, cur_y], lidar_radius, map_radius, update_distance);
     true
 }
 
@@ -841,11 +791,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_evaluate(
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_need_rebuild(
     handle: *const NdtScanMatcherRs,
 ) -> bool {
-    if handle.is_null() {
-        return false;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    unsafe { &*handle }.map_update_need_rebuild()
+    ffi_ref!(handle, else return false).map_update_need_rebuild()
 }
 
 /// Record an attempted map update at `(x, y)` (the C++ `update_map_internal`): the last-update
@@ -864,11 +810,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_record(
     y: f64,
     success: bool,
 ) {
-    if handle.is_null() {
-        return;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    unsafe { &*handle }.map_update_record([x, y], success);
+    ffi_ref!(handle, else return).map_update_record([x, y], success);
 }
 
 /// Whether `(cur_x, cur_y)` is outside the loaded map's keep-up range (the C++ `out_of_map_range`);
@@ -888,11 +830,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_map_update_out_of_range(
     lidar_radius: f64,
     map_radius: f64,
 ) -> bool {
-    if handle.is_null() {
-        return true;
-    }
-    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
-    unsafe { &*handle }.map_update_out_of_range([cur_x, cur_y], lidar_radius, map_radius)
+    ffi_ref!(handle, else return true).map_update_out_of_range(
+        [cur_x, cur_y],
+        lidar_radius,
+        map_radius,
+    )
 }
 
 #[cfg(test)]

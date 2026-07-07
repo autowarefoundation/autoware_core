@@ -37,6 +37,7 @@ use nalgebra::{Matrix3, Matrix4, Matrix6, SVD, Vector3, Vector6};
 use crate::derivatives::{
     AngleDerivatives, compute_angle_derivatives, compute_point_derivatives, update_derivatives,
 };
+use crate::ffi_ptr::{self, ffi_ref, ffi_slice};
 use crate::transform::{
     GaussConstants, gauss_constants, matrix_to_euler, se3_matrix_f32, transform_cloud_f32,
 };
@@ -768,23 +769,11 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_align(
     input: *const AwNdtAlignInput,
     output: *const AwNdtAlignOutput,
 ) {
-    if input.is_null() || output.is_null() {
-        return;
-    }
-    // SAFETY: both are non-null per the check; the caller guarantees they point to valid structs.
-    let (inp, outp) = unsafe { (&*input, &*output) };
-    if inp.target_xyz.is_null() || inp.source_xyz.is_null() || inp.guess.is_null() {
-        return;
-    }
-
-    // SAFETY: caller guarantees the documented cloud / guess lengths.
-    let (target, source, guess_arr) = unsafe {
-        (
-            core::slice::from_raw_parts(inp.target_xyz.cast::<[f32; 3]>(), inp.n_target),
-            core::slice::from_raw_parts(inp.source_xyz.cast::<[f32; 3]>(), inp.n_source),
-            core::slice::from_raw_parts(inp.guess, 16),
-        )
-    };
+    let inp = ffi_ref!(input, else return);
+    let outp = ffi_ref!(output, else return);
+    let target = ffi_slice!(inp.target_xyz, inp.n_target, [f32; 3], else return);
+    let source = ffi_slice!(inp.source_xyz, inp.n_source, [f32; 3], else return);
+    let guess_arr = ffi_slice!(inp.guess, 16, else return);
 
     let mut guess = Matrix4::<f32>::zeros();
     for r in 0..4 {
@@ -821,27 +810,23 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_align(
     let mut result = AlignResult::default();
     align(&map, source, &guess, &params, &mut ws, &mut result);
 
-    // SAFETY: each output pointer is either null (skipped) or valid for its documented length.
+    // SAFETY: each output pointer is either null (skipped) or valid for its documented length;
+    // the derefs are audited in ffi_ptr (null → `opt_slice_mut` None / `write_out` false, i.e. skip).
     unsafe {
-        if !outp.pose.is_null() {
-            let pose = core::slice::from_raw_parts_mut(outp.pose, 16);
+        if let Some(pose) = ffi_ptr::opt_slice_mut(outp.pose, 16) {
             for r in 0..4 {
                 for c in 0..4 {
                     pose[(r * 4) + c] = result.pose[(r, c)];
                 }
             }
         }
-        if !outp.iteration_num.is_null() {
-            *outp.iteration_num = result.iteration_num;
-        }
-        if !outp.transform_probability.is_null() {
-            *outp.transform_probability = result.transform_probability;
-        }
-        if !outp.nearest_voxel_likelihood.is_null() {
-            *outp.nearest_voxel_likelihood = result.nearest_voxel_likelihood;
-        }
-        if !outp.hessian.is_null() {
-            let h = core::slice::from_raw_parts_mut(outp.hessian, 36);
+        ffi_ptr::write_out(outp.iteration_num, result.iteration_num);
+        ffi_ptr::write_out(outp.transform_probability, result.transform_probability);
+        ffi_ptr::write_out(
+            outp.nearest_voxel_likelihood,
+            result.nearest_voxel_likelihood,
+        );
+        if let Some(h) = ffi_ptr::opt_slice_mut(outp.hessian, 36) {
             for r in 0..6 {
                 for c in 0..6 {
                     h[(r * 6) + c] = result.hessian[(r, c)];
@@ -850,15 +835,19 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_align(
         }
         if !outp.transformation_array.is_null() && !outp.transforms_count.is_null() {
             let cap = outp.transforms_cap as usize;
-            let buf = core::slice::from_raw_parts_mut(outp.transformation_array, cap * 16);
-            for (k, m) in result.transformation_array.iter().take(cap).enumerate() {
-                for r in 0..4 {
-                    for c in 0..4 {
-                        buf[(k * 16) + (r * 4) + c] = m[(r, c)];
+            if let Some(buf) = ffi_ptr::opt_slice_mut(outp.transformation_array, cap * 16) {
+                for (k, m) in result.transformation_array.iter().take(cap).enumerate() {
+                    for r in 0..4 {
+                        for c in 0..4 {
+                            buf[(k * 16) + (r * 4) + c] = m[(r, c)];
+                        }
                     }
                 }
             }
-            *outp.transforms_count = result.transformation_array.len() as u32;
+            ffi_ptr::write_out(
+                outp.transforms_count,
+                result.transformation_array.len() as u32,
+            );
         }
     }
 }
