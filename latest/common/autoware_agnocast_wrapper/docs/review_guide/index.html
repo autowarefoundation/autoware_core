@@ -9496,9 +9496,9 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 <td><code>this-&gt;create_publisher&lt;msg_type&gt;(...)</code></td>
 </tr>
 <tr>
-<td><code>AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, topic, qos)</code></td>
-<td><code>agnocast_wrapper::create_polling_subscriber&lt;msg_type&gt;(...)</code></td>
-<td><code>InterProcessPollingSubscriber::create_subscription(...)</code></td>
+<td><code>AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, policy, topic, qos)</code></td>
+<td><code>agnocast_wrapper::create_polling_subscriber&lt;msg_type, policy&gt;(...)</code></td>
+<td><code>InterProcessPollingSubscriber&lt;msg_type, policy&gt;::create_subscription(...)</code></td>
 </tr>
 </tbody>
 </table>
