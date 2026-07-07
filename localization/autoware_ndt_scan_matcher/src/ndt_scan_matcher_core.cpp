@@ -72,10 +72,6 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   tf2_listener_(tf2_buffer_),
   is_activated_(false),
   param_(this)
-#ifdef NDT_USE_RUST
-  ,
-  rs_(make_aw_ndt_params(param_))
-#endif
 {
   timer_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::CallbackGroup::SharedPtr initial_pose_callback_group =
@@ -178,10 +174,6 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
     std::bind(
       &NDTScanMatcher::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
     AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), sensor_callback_group);
-
-#ifndef NDT_USE_RUST
-  ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
-#endif
 
   initialize_mode_specific_state();
   create_map_update_module();

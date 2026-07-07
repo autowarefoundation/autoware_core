@@ -92,6 +92,7 @@ bool NDTScanMatcher::is_node_activated()
 
 void NDTScanMatcher::initialize_mode_specific_state()
 {
+  rs_.initialize(make_aw_ndt_params(param_));
 }
 
 void NDTScanMatcher::create_map_update_module()

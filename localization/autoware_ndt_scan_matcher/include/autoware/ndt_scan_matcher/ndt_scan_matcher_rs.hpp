@@ -141,18 +141,14 @@ inline AwPoseWithCovarianceStampedView make_pose_with_cov_view(
   return v;
 }
 
-/// RAII owner of the opaque Rust node handle (`AwNdtScanMatcher *`). Constructs via `_new` (throwing
-/// on a null result), frees via `_free`. Non-copyable, non-movable — a single owner per node.
+/// RAII owner of the opaque Rust node handle (`AwNdtScanMatcher *`). Initializes via `_new`
+/// (throwing on a null result), frees via `_free`. Non-copyable, non-movable — a single owner per
+/// node.
 class NDTScanMatcherRS
 {
 public:
-  explicit NDTScanMatcherRS(const AwNdtParams & params)
-  : handle_(autoware_ndt_scan_matcher_rs_new(&params))
-  {
-    if (handle_ == nullptr) {
-      throw std::runtime_error("failed to create Rust NdtScanMatcherRs");
-    }
-  }
+  NDTScanMatcherRS() = default;
+  explicit NDTScanMatcherRS(const AwNdtParams & params) { initialize(params); }
 
   ~NDTScanMatcherRS() { autoware_ndt_scan_matcher_rs_free(handle_); }
 
@@ -160,6 +156,15 @@ public:
   NDTScanMatcherRS & operator=(const NDTScanMatcherRS &) = delete;
   NDTScanMatcherRS(NDTScanMatcherRS &&) = delete;
   NDTScanMatcherRS & operator=(NDTScanMatcherRS &&) = delete;
+
+  void initialize(const AwNdtParams & params)
+  {
+    autoware_ndt_scan_matcher_rs_free(handle_);
+    handle_ = autoware_ndt_scan_matcher_rs_new(&params);
+    if (handle_ == nullptr) {
+      throw std::runtime_error("failed to create Rust NdtScanMatcherRs");
+    }
+  }
 
   AwNdtScanMatcher * raw() { return handle_; }
   const AwNdtEngine * engine_raw() const { return autoware_ndt_scan_matcher_rs_engine(handle_); }

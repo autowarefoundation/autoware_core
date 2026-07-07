@@ -27,6 +27,8 @@ bool NDTScanMatcher::is_node_activated()
 
 void NDTScanMatcher::initialize_mode_specific_state()
 {
+  ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
+
   if (param_.ndt_regularization_enable) {
     const double value_as_unlimited = 1000.0;
     regularization_pose_buffer_ =
