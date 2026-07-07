@@ -59,20 +59,14 @@ class MapUpdateModule
   struct BuilderState
   {
     bool need_rebuild{true};
-#ifndef NDT_USE_RUST
-    NdtPtrType secondary_ndt_ptr;
-#endif
   };
+  struct LegacyState;
 
 public:
-#ifdef NDT_USE_RUST
   MapUpdateModule(
-    rclcpp::Node * node, HyperParameters::DynamicMapLoading param, AwNdtScanMatcher * rs_handle);
-#else
-  MapUpdateModule(
-    rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param,
-    AwNdtScanMatcher * rs_handle = nullptr);
-#endif
+    rclcpp::Node * node, EngineHolder * legacy_ndt_ptr, HyperParameters::DynamicMapLoading param,
+    AwNdtScanMatcher * rs_handle);
+  ~MapUpdateModule();
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
@@ -91,7 +85,7 @@ private:
     BuilderState & builder_state, const geometry_msgs::msg::Point & position,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
 
-  // Do not call this function while holding the lock for ndt_ptr_.
+  // Do not call this function while holding the legacy engine lock.
   void update_map(
     const geometry_msgs::msg::Point & position,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
@@ -124,12 +118,10 @@ private:
   rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
     pcd_loader_client_;
 
-  // Lock ordering (OFF, where these are real mutexes): builder_state_ -> ndt_ptr_ and
+  // Lock ordering (OFF, where these are real mutexes): builder_state_ -> legacy_->ndt_ptr and
   // builder_state_ -> last_update_position_. Under NDT_USE_RUST the live engine is owned by the Rust
   // node handle, so only builder_state_/last_update_position_ are real locks here.
-#ifndef NDT_USE_RUST
-  EngineHolder & ndt_ptr_;
-#endif
+  std::unique_ptr<LegacyState> legacy_;
   Guarded<BuilderState> builder_state_;
   // Phase 6: the map-update decision state (last-update position + need-rebuild) lives Rust-side on
   // the node handle; this module reads/updates it through the `..._map_update_*` FFIs.

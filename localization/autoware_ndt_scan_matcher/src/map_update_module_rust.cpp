@@ -27,6 +27,11 @@
 
 namespace autoware::ndt_scan_matcher
 {
+
+struct MapUpdateModule::LegacyState
+{
+};
+
 namespace
 {
 std::vector<std::string> current_map_ids(const AwNdtEngine * engine)
@@ -51,8 +56,10 @@ std::vector<std::string> current_map_ids(const AwNdtEngine * engine)
 }  // namespace
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, HyperParameters::DynamicMapLoading param, AwNdtScanMatcher * rs_handle)
-: rs_handle_(rs_handle), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
+  rclcpp::Node * node, EngineHolder * /*legacy_ndt_ptr*/, HyperParameters::DynamicMapLoading param,
+  AwNdtScanMatcher * rs_handle)
+: legacy_(std::make_unique<LegacyState>()), rs_handle_(rs_handle), logger_(node->get_logger()),
+  clock_(node->get_clock()), param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
@@ -68,6 +75,8 @@ MapUpdateModule::MapUpdateModule(
     throw std::runtime_error(message.str());
   }
 }
+
+MapUpdateModule::~MapUpdateModule() = default;
 
 bool MapUpdateModule::should_update_map(
   BuilderState & builder_state, const geometry_msgs::msg::Point & position,

@@ -41,7 +41,7 @@ void NDTScanMatcher::initialize_mode_specific_state()
 void NDTScanMatcher::create_map_update_module()
 {
   map_update_module_ =
-    std::make_unique<MapUpdateModule>(this, ndt_ptr_, param_.dynamic_map_loading);
+    std::make_unique<MapUpdateModule>(this, &ndt_ptr_, param_.dynamic_map_loading, nullptr);
 }
 
 void NDTScanMatcher::callback_timer()

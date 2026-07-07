@@ -23,12 +23,27 @@
 namespace autoware::ndt_scan_matcher
 {
 
-MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param,
-  AwNdtScanMatcher * rs_handle)
-: ndt_ptr_(ndt_ptr), rs_handle_(rs_handle), logger_(node->get_logger()), clock_(node->get_clock()),
-  param_(param)
+struct MapUpdateModule::LegacyState
 {
+  explicit LegacyState(EngineHolder & ndt) : ndt_ptr(ndt) {}
+
+  EngineHolder & ndt_ptr;
+  NdtPtrType secondary_ndt_ptr;
+};
+
+MapUpdateModule::MapUpdateModule(
+  rclcpp::Node * node, EngineHolder * legacy_ndt_ptr, HyperParameters::DynamicMapLoading param,
+  AwNdtScanMatcher * rs_handle)
+: rs_handle_(rs_handle), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
+{
+  if (legacy_ndt_ptr == nullptr) {
+    std::stringstream message;
+    message << "Error at MapUpdateModule::MapUpdateModule."
+            << "`legacy_ndt_ptr` is null in the legacy build.";
+    throw std::runtime_error(message.str());
+  }
+  legacy_ = std::make_unique<LegacyState>(*legacy_ndt_ptr);
+
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
 
@@ -36,17 +51,15 @@ MapUpdateModule::MapUpdateModule(
     node->create_client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>("pcd_loader_service");
 
   auto copied = builder_state_.with([&](auto & builder_state) {
-    // Initially, a direct map update on ndt_ptr_ is needed.
-    // ndt_ptr_'s mutex is locked until it is fully rebuilt.
-    // From the second update, the update is done on secondary_ndt_ptr_,
-    // and ndt_ptr_ is only locked when swapping its pointer with
-    // secondary_ndt_ptr_.
+    // Initially, a direct map update on the legacy engine is needed.
+    // Its mutex is locked until the first map is fully rebuilt. From the second update, the update
+    // is done on the secondary engine, and the main engine is only locked when swapping pointers.
     builder_state.need_rebuild = true;
-    builder_state.secondary_ndt_ptr.reset(new NdtType);
+    legacy_->secondary_ndt_ptr.reset(new NdtType);
 
-    return ndt_ptr_.with([&](const auto & ptr) {
+    return legacy_->ndt_ptr.with([&](const auto & ptr) {
       if (ptr) {
-        *builder_state.secondary_ndt_ptr = *ptr;
+        *legacy_->secondary_ndt_ptr = *ptr;
         return true;
       } else {
         return false;
@@ -61,6 +74,8 @@ MapUpdateModule::MapUpdateModule(
     throw std::runtime_error(message.str());
   }
 }
+
+MapUpdateModule::~MapUpdateModule() = default;
 
 bool MapUpdateModule::should_update_map(
   BuilderState & builder_state, const geometry_msgs::msg::Point & position,
@@ -87,7 +102,7 @@ bool MapUpdateModule::should_update_map(
       diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
 
     // If the map does not keep up with the current position,
-    // lock ndt_ptr_ entirely until it is fully rebuilt.
+    // lock the legacy engine entirely until it is fully rebuilt.
     builder_state.need_rebuild = true;
   }
 
@@ -118,10 +133,10 @@ void MapUpdateModule::update_map_internal(
   diagnostics_ptr->add_key_value("is_need_rebuild", builder_state.need_rebuild);
 
   // If the current position is super far from the previous loading position,
-  // lock and rebuild ndt_ptr_
+  // lock and rebuild the legacy engine
   if (builder_state.need_rebuild) {
     bool updated = false;
-    ndt_ptr_.with([&](auto & ndt_ptr) {
+    legacy_->ndt_ptr.with([&](auto & ndt_ptr) {
       auto param = ndt_ptr->getParams();
 
       ndt_ptr.reset(new NdtType);
@@ -150,15 +165,13 @@ void MapUpdateModule::update_map_internal(
 
     builder_state.need_rebuild = false;
 
-    builder_state.secondary_ndt_ptr.reset(new NdtType);
-    ndt_ptr_.with([&](const auto & ndt_ptr) { *builder_state.secondary_ndt_ptr = *ndt_ptr; });
+    legacy_->secondary_ndt_ptr.reset(new NdtType);
+    legacy_->ndt_ptr.with([&](const auto & ndt_ptr) { *legacy_->secondary_ndt_ptr = *ndt_ptr; });
   } else {
-    // Load map to the secondary_ndt_ptr, which does not require a mutex lock
-    // Since the update of the secondary ndt ptr and the NDT align (done on
-    // the main ndt_ptr_) overlap, the latency of updating/alignment reduces partly.
-    // If the updating is done the main ndt_ptr_, either the update or the NDT
-    // align will be blocked by the other.
-    const bool updated = update_ndt(position, *builder_state.secondary_ndt_ptr, diagnostics_ptr);
+    // Load map to the secondary engine, which does not require the main engine mutex.
+    // Since the secondary update and the NDT align on the main engine can overlap, update/alignment
+    // latency is reduced. If the update runs on the main engine, one operation blocks the other.
+    const bool updated = update_ndt(position, *legacy_->secondary_ndt_ptr, diagnostics_ptr);
 
     // check is_updated_map
     diagnostics_ptr->add_key_value("is_updated_map", updated);
@@ -169,18 +182,18 @@ void MapUpdateModule::update_map_internal(
     }
 
     // Update the NDT map pointer with minimal lock duration to prevent latency spikes.
-    // Heavy memory operations (cloning and destruction) are executed outside the ndt_ptr_'slock,
+    // Heavy memory operations (cloning and destruction) are executed outside the legacy engine lock,
     // while only the fast pointer swap is performed inside the lock scope.
 
-    // 1. Clone the contents of secondary_ndt_ptr to create new_ndt_ptr.
-    auto new_ndt_ptr = std::make_shared<NdtType>(*builder_state.secondary_ndt_ptr);
+    // 1. Clone the contents of the secondary engine to create new_ndt_ptr.
+    auto new_ndt_ptr = std::make_shared<NdtType>(*legacy_->secondary_ndt_ptr);
 
-    // 2. Swap the pointers inside the ndt_ptr_'s lock.
+    // 2. Swap the pointers inside the legacy engine lock.
     // - During the swap, the reference count does not decrease to zero,
     //   so the heavy destructor is not called here.
     // - This prevents the align process of NDTScanMatcher from being
     //   blocked for a long time.
-    ndt_ptr_.with([&](auto & ndt_ptr) { std::swap(ndt_ptr, new_ndt_ptr); });
+    legacy_->ndt_ptr.with([&](auto & ndt_ptr) { std::swap(ndt_ptr, new_ndt_ptr); });
 
     // 3. Handle potential destruction outside the lock.
     // - new_ndt_ptr now holds the old NDT. Even if its heavy destructor
