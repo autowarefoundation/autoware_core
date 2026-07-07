@@ -140,6 +140,21 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
 )
 
+# L3 offline align-replay benchmark (see plan/ndt_bench.md). Opt-in and off by default so it never
+# slows the normal build/CI. Needs NDT_USE_RUST so both engines (C++ multigrid_ndt_omp + the Rust
+# port over the C ABI) are available in one executable. Built standalone (not via ament), run
+# directly; bench/run.sh orchestrates build -> JSON -> HTML.
+option(NDT_BUILD_BENCH "Build the offline NDT replay benchmark (requires NDT_USE_RUST)" OFF)
+if(NDT_BUILD_BENCH)
+  if(NOT NDT_USE_RUST)
+    message(FATAL_ERROR "NDT_BUILD_BENCH requires NDT_USE_RUST=ON (the benchmark drives both engines)")
+  endif()
+  add_executable(ndt_bench_replay bench/ndt_bench_replay.cpp)
+  target_include_directories(ndt_bench_replay PRIVATE include ${PCL_INCLUDE_DIRS})
+  target_link_libraries(ndt_bench_replay
+    multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
+endif()
+
 if(BUILD_TESTING)
   add_launch_test(
     test/test_ndt_scan_matcher_launch.py
