@@ -641,9 +641,6 @@ class ROS2PollingSubscriber : public PollingSubscriber<MessageT, PollingPolicy>
   static constexpr bool default_allow_same_message =
     polling_default_allow_same_message_v<MessageT, PollingPolicy>;
 
-  // autoware_utils_rclcpp's polling policies (Latest/Newest) expose take_data() with no argument;
-  // allow_same_message has no equivalent there, so it is accepted for API parity with the
-  // agnocast-backed subscriber but otherwise ignored.
   AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data_impl(bool allow_same_message)
   {
     (void)allow_same_message;
