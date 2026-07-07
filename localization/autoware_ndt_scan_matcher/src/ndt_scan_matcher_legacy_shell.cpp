@@ -27,12 +27,13 @@ bool NDTScanMatcher::is_node_activated()
 
 void NDTScanMatcher::initialize_mode_specific_state()
 {
-  ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
+  legacy_ndt_.ndt().with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
 
   if (param_.ndt_regularization_enable) {
     const double value_as_unlimited = 1000.0;
     regularization_pose_buffer_ =
-      std::make_unique<autoware::localization_util::SmartPoseBuffer>(this->get_logger(), value_as_unlimited, value_as_unlimited);
+      std::make_unique<autoware::localization_util::SmartPoseBuffer>(
+        this->get_logger(), value_as_unlimited, value_as_unlimited);
   }
 
   initial_pose_buffer_ = std::make_unique<autoware::localization_util::SmartPoseBuffer>(
@@ -43,7 +44,8 @@ void NDTScanMatcher::initialize_mode_specific_state()
 void NDTScanMatcher::create_map_update_module()
 {
   map_update_module_ =
-    std::make_unique<MapUpdateModule>(this, &ndt_ptr_, param_.dynamic_map_loading, nullptr);
+    std::make_unique<MapUpdateModule>(
+      this, &legacy_ndt_.ndt(), param_.dynamic_map_loading, nullptr);
 }
 
 void NDTScanMatcher::callback_timer()

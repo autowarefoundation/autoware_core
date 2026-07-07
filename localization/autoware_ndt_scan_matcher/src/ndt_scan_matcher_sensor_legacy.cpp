@@ -194,9 +194,9 @@ bool NDTScanMatcher::callback_sensor_points_main(
     return false;
   }
 
-  return ndt_ptr_.with([&](const auto & ndt_ptr) {
+  return legacy_ndt_.ndt().with([&](const auto & ndt_ptr) {
     // store sensor points for ndt alignment
-    sensor_points_in_baselink_frame_ = sensor_points_in_baselink_frame;
+    legacy_ndt_.sensor_points_in_baselink_frame() = sensor_points_in_baselink_frame;
 
     // The still-C++ cloud publishers read the aligned pose; the return feeds `skipping_publish_num`.
     pclomp::NdtResult ndt_result;
@@ -271,7 +271,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     const Eigen::Matrix4f initial_pose_matrix =
       pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);
     auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
-    ndt_ptr->align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
+    ndt_ptr->align(
+      *output_cloud, initial_pose_matrix, legacy_ndt_.sensor_points_in_baselink_frame());
 
     ndt_result = ndt_ptr->getResult();
 
@@ -401,7 +402,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
       const Eigen::Matrix2d estimated_covariance_2d =
         estimate_legacy_covariance(
           param_, ndt_result, initial_pose_matrix, sensor_ros_time, *ndt_ptr,
-          sensor_points_in_baselink_frame_, multi_ndt_pose_pub_, multi_initial_pose_pub_);
+          legacy_ndt_.sensor_points_in_baselink_frame(), multi_ndt_pose_pub_,
+          multi_initial_pose_pub_);
       const Eigen::Matrix2d estimated_covariance_2d_scaled =
         estimated_covariance_2d * param_.covariance.covariance_estimation.scale_factor;
       const double default_cov_xx = param_.covariance.output_pose_covariance[0];

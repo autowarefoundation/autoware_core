@@ -73,7 +73,7 @@ void NDTScanMatcher::service_ndt_align_main(
   map_update_module_->update_map(
     initial_pose_msg_in_map_frame.pose.pose.position, diagnostics_ndt_align_);
 
-  ndt_ptr_.with([&](auto & ndt_ptr) {
+  legacy_ndt_.ndt().with([&](auto & ndt_ptr) {
     bool is_set_map_points = ndt_ptr->hasTarget();
     diagnostics_ndt_align_->add_key_value("is_set_map_points", is_set_map_points);
     if (!is_set_map_points) {
@@ -86,7 +86,7 @@ void NDTScanMatcher::service_ndt_align_main(
       return;
     }
 
-    bool is_set_sensor_points = (sensor_points_in_baselink_frame_ != nullptr);
+    bool is_set_sensor_points = (legacy_ndt_.sensor_points_in_baselink_frame() != nullptr);
     diagnostics_ndt_align_->add_key_value("is_set_sensor_points", is_set_sensor_points);
     if (!is_set_sensor_points) {
       std::stringstream message;
@@ -172,7 +172,8 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     initial_pose.orientation = tf2::toMsg(tf_quaternion);
 
     const Eigen::Matrix4f initial_pose_matrix = pose_to_matrix4f(initial_pose);
-    ndt_ref.align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
+    ndt_ref.align(
+      *output_cloud, initial_pose_matrix, legacy_ndt_.sensor_points_in_baselink_frame());
     const pclomp::NdtResult ndt_result = ndt_ref.getResult();
 
     Particle particle(
@@ -201,7 +202,7 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
 
     auto sensor_points_in_map_ptr = std::make_shared<pcl::PointCloud<PointSource>>();
     autoware_utils_pcl::transform_pointcloud(
-      *sensor_points_in_baselink_frame_, *sensor_points_in_map_ptr, ndt_result.pose);
+      *legacy_ndt_.sensor_points_in_baselink_frame(), *sensor_points_in_map_ptr, ndt_result.pose);
     publish_point_cloud(
       initial_pose_with_cov.header.stamp, param_.frame.map_frame, sensor_points_in_map_ptr);
   }

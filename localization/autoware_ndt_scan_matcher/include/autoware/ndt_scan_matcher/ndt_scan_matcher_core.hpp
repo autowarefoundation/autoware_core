@@ -21,6 +21,7 @@
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
 #include "ndt_backend.hpp"
+#include "ndt_legacy_state.hpp"
 #include "ndt_scan_matcher_rs.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 
@@ -215,12 +216,9 @@ private:
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 
-#ifndef NDT_USE_RUST
-  // Legacy C++ engine holder. Under NDT_USE_RUST the live engine is owned by `rs_`.
-  EngineHolder ndt_ptr_{std::make_shared<NormalDistributionsTransform>()};
-
-  pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
-#endif
+  // Legacy C++ engine/sensor-cache state. In Rust builds this is inert; the live engine and
+  // latest validated sensor cloud are owned by `rs_`.
+  NdtLegacyState legacy_ndt_;
 
   // Legacy C++ path state. Under NDT_USE_RUST the equivalent state is Rust-owned on `rs_`;
   // these members are intentionally unused by the Rust-selected translation units.
