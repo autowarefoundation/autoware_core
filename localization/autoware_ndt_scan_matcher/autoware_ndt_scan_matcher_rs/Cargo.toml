@@ -11,14 +11,27 @@ crate-type = ["staticlib", "rlib"]
 [features]
 # `std` is default-on so a plain `cargo build`/`test`/`clippy` has std (test harness + panic
 # handler). The no_std / awkernel build opts out with `--no-default-features`.
+#
+# Engine interior-mutability matrix (see src/engine.rs):
+#   std (default)          -> arc-swap cells + thread_local scratch (stateful align/result API)
+#   no_std (no features)   -> RefCell cells + engine-owned scratch; single-core, engine is !Sync
+#   no_std + `mt`          -> awkernel_sync mutex cells; scratch is caller-owned (`MatchScratch`),
+#                             the stateful align/result API is compiled out; engine is Sync
 default = ["std", "parallel"]
 # `std` also pulls in `arc-swap` (the lock-free engine-state double-buffer). The no_std build
 # (`--no-default-features`, single-threaded) uses a `RefCell` cell instead, so arc-swap stays off.
 std = ["dep:arc-swap"]
+# `mt`: multi-thread-safe no_std build (multi-core kernel). Replaces the single-core `RefCell`
+# cells with `awkernel_sync` mutexes and removes the engine-owned align scratch (callers pass a
+# `&mut MatchScratch`). Ignored when `std` is also on (std keeps arc-swap + thread_local). The
+# FINAL binary must enable exactly one awkernel_sync backend feature (`x86`/`aarch64`/`rv64`/
+# `rv32` on bare metal; `awkernel_sync/std` on host) — awkernel_sync does not compile without one.
+mt = ["dep:awkernel_sync"]
 # `parallel`: the rayon-backed `compute_derivatives` reduction. std-only (rayon needs std), so the
 # no_std rlib (`--no-default-features`) excludes it and uses the serial backend. Bit-for-bit
 # identical to serial (per-point-local contributions reduced in point-index order), so it is a pure
-# performance option — the serial backend stays the predictable WCET baseline.
+# performance option — the serial backend stays the predictable WCET baseline. Note `parallel`
+# implies `std`, so `mt` + `parallel` resolves to the std backend (mt is ignored).
 parallel = ["std", "dep:rayon"]
 # `ros`: build the ROS-message bindings (bindgen over the rosidl C headers) and the Pose-pointer
 # FFI shims. Independent of `std` — the bindgen output is `use_core()` POD, so these work in no_std
@@ -39,6 +52,12 @@ rayon = { version = "1", optional = true }
 # (align) path takes no lock; map-update publishes a fresh state with an atomic store. Replaces
 # the C++ giant `ndt_ptr_` mutex on the ON path. no_std uses a `RefCell` cell instead (single core).
 arc-swap = { version = "1", optional = true }
+# Kernel-grade locks for the `mt` (multi-core no_std) build: `mutex::Mutex` selects its backend by
+# feature (default no_std -> MCS lock; `std` -> parking_lot). The lock guard disables interrupts
+# while held, so the engine only ever wraps short critical sections in it (an `Arc` clone or a
+# pointer swap — never an align). Unpublished on crates.io -> pinned git rev (recorded in
+# Cargo.lock); default-features off so the backend choice stays with the final binary.
+awkernel_sync = { git = "https://github.com/tier4/awkernel_sync.git", rev = "d9ea774eb55fc62a392981dd01945e92fec0f134", default-features = false, optional = true }
 
 [build-dependencies]
 bindgen = { version = "0.69", optional = true }

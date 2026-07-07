@@ -42,7 +42,7 @@ use std::sync::Arc;
 use autoware_ndt_scan_matcher_rs::host::{
     Clock, MapDelta, MapSource, MapTile, MatchResult, OutputSink,
 };
-use autoware_ndt_scan_matcher_rs::scan_matcher::ScanMatcher;
+use autoware_ndt_scan_matcher_rs::scan_matcher::{MatchScratch, ScanMatcher};
 use nalgebra::Matrix4;
 
 /// Poll a future to completion with a no-op waker — the minimal executor a no_std scheduler provides.
@@ -166,8 +166,11 @@ fn main() {
         let matcher = Arc::clone(&matcher);
         let scan = scan.clone();
         handles.push(std::thread::spawn(move || {
+            // One caller-owned scratch per worker, reused across its frames — the `mt`
+            // (multi-core no_std) usage model, demonstrated on std threads.
+            let mut scratch = MatchScratch::new();
             for _ in 0..ALIGNS_PER_WORKER {
-                let r = matcher.match_scan(&guess, &scan);
+                let r = matcher.match_scan(&guess, &scan, &mut scratch);
                 assert!(r.pose[(0, 3)].is_finite(), "align saw an inconsistent map");
             }
         }));
@@ -179,7 +182,8 @@ fn main() {
     }
 
     // Final deterministic check on the quiesced matcher.
-    let r = matcher.match_scan(&guess, &scan);
+    let mut scratch = MatchScratch::new();
+    let r = matcher.match_scan(&guess, &scan, &mut scratch);
     assert!(matcher.has_target() && r.pose[(0, 3)].is_finite());
     assert!(
         r.converged,

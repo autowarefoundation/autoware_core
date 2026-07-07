@@ -21,7 +21,13 @@
 //!   RUSTFLAGS="-Zsanitizer=thread" cargo +nightly test --target x86_64-unknown-linux-gnu \
 //!     --test concurrency
 //! (a plain `cargo test` still exercises it and catches gross races / panics / aborts.)
+//!
+//! Also runs against the `mt` (multi-core `no_std`) lock backend on host:
+//!   `cargo test --no-default-features --features mt,awkernel_sync/std --test concurrency`
+//! The plain `no_std` single-core build (`--no-default-features` alone) keeps the engine `!Sync`
+//! by design, so this test is gated to the two `Sync` configs.
 
+#![cfg(any(feature = "std", feature = "mt"))]
 #![allow(
     clippy::unwrap_used,
     clippy::expect_used,
@@ -35,7 +41,7 @@
 use std::sync::Arc;
 use std::thread;
 
-use autoware_ndt_scan_matcher_rs::engine::NdtEngine;
+use autoware_ndt_scan_matcher_rs::engine::{MatchScratch, NdtEngine};
 use nalgebra::Matrix4;
 
 fn dense_cluster(cx: f32, cy: f32, cz: f32) -> Vec<[f32; 3]> {
@@ -82,9 +88,12 @@ fn concurrent_aligns_and_map_commits_stay_consistent() {
         let e = Arc::clone(&engine);
         let src = source.clone();
         handles.push(thread::spawn(move || {
+            // One caller-owned scratch per reader thread (the `mt` usage model; equivalent to the
+            // std thread-local).
+            let mut scratch = MatchScratch::new();
             for _ in 0..READER_ITERS {
-                e.align(&guess, &src);
-                let r = e.result();
+                e.align_with(&guess, &src, &mut scratch);
+                let r = scratch.result();
                 // A complete map always yields a finite pose; a torn/kd-tree-less map would not.
                 assert!(r.pose[(0, 3)].is_finite(), "align saw an inconsistent map");
                 assert!(e.has_target(), "map vanished mid-run");

@@ -18,9 +18,15 @@
 //! interface, so the same logic runs under ROS, a bare-metal kernel, or the Tokio example. This is the
 //! minimal foundation (map update + single-scan match); it grows as the ROS callbacks are ported.
 //! Map loading is `async` (via the [`MapSource`] port); the align hot path is synchronous.
+//!
+//! The match methods take a caller-owned `&mut MatchScratch` (one per task/thread, reused across
+//! frames): the matcher itself holds no per-align mutable state, so a shared `&ScanMatcher` is
+//! sound across concurrent tasks in the std and `mt` configs (map updates included — `update_map`
+//! publishes atomically), with no scratch lock held across an align anywhere.
 
 use nalgebra::Matrix4;
 
+pub use crate::engine::MatchScratch;
 use crate::engine::NdtEngine;
 use crate::host::{CovarianceResult, MapSource, MatchResult};
 
@@ -28,6 +34,13 @@ use crate::host::{CovarianceResult, MapSource, MatchResult};
 pub struct ScanMatcher {
     engine: NdtEngine,
 }
+
+/// Compile-time proof the matcher is shareable across tasks/threads in the two concurrent configs
+/// (std and `mt`); the plain `no_std` single-core build stays intentionally `!Sync`.
+#[cfg(any(feature = "std", feature = "mt"))]
+const fn assert_send_sync<T: Send + Sync>() {}
+#[cfg(any(feature = "std", feature = "mt"))]
+const _: () = assert_send_sync::<ScanMatcher>();
 
 impl ScanMatcher {
     /// New matcher with an empty map (`resolution` voxel/neighbor size; `min_points`/`eig_mult` the
@@ -107,10 +120,17 @@ impl ScanMatcher {
 
     /// Align `source` (base_link-frame points) from `guess` and return the result + convergence
     /// verdict. Synchronous — this is the WCET hot path (one bounded `Vec` of ≤ `max_iterations + 1`
-    /// iteration positions for the oscillation count; no await).
+    /// iteration positions for the oscillation count; no await). `scratch` is caller-owned — one
+    /// per task/thread, reused across frames (never shared), so concurrent matches on a shared
+    /// `&ScanMatcher` are sound in every build config.
     #[must_use]
-    pub fn match_scan(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) -> MatchResult {
-        let o = self.engine.align_outcome(guess, source);
+    pub fn match_scan(
+        &self,
+        guess: &Matrix4<f32>,
+        source: &[[f32; 3]],
+        scratch: &mut MatchScratch,
+    ) -> MatchResult {
+        let o = self.engine.align_outcome_with(guess, source, scratch);
         MatchResult {
             pose: o.pose,
             transform_probability: o.transform_probability,
@@ -123,24 +143,29 @@ impl ScanMatcher {
 
     /// Align like [`Self::match_scan`], then estimate the pose covariance from that align result using
     /// the configured covariance mode (see [`Self::set_covariance_config`]). Returns both. Mirrors the
-    /// ROS sensor callback's align→covariance order; self-contained (uses the fresh align hessian/pose,
-    /// no hidden ordering dependency). Allocates (candidate poses + the result-trace clone) — use the
-    /// plain [`Self::match_scan`] on the allocation-free hot path when covariance is not needed.
+    /// ROS sensor callback's align→covariance order. The align result (incl. the hessian) is read from
+    /// the caller's `scratch` session before the covariance candidates reuse its workspace, so there is
+    /// no cross-call ordering dependency — safe under concurrent matches in every build config.
+    /// Allocates (candidate poses + the result-trace clone) — use the plain [`Self::match_scan`] on the
+    /// allocation-free hot path when covariance is not needed.
     #[must_use]
     pub fn match_scan_with_covariance(
         &self,
         guess: &Matrix4<f32>,
         source: &[[f32; 3]],
+        scratch: &mut MatchScratch,
     ) -> (MatchResult, CovarianceResult) {
-        let o = self.engine.align_outcome(guess, source);
-        // The full align result (carries the hessian the covariance estimate needs).
-        let r = self.engine.result();
+        let o = self.engine.align_outcome_with(guess, source, scratch);
+        // The full align result (carries the hessian the covariance estimate needs) — read from
+        // THIS scratch session, so it is the hessian of the align above.
+        let r = scratch.result();
         let cov = self.engine.estimate_covariance(
             &r.pose,
             &r.hessian,
             guess,
             source,
             r.nearest_voxel_likelihood,
+            scratch,
         );
         let match_result = MatchResult {
             pose: o.pose,

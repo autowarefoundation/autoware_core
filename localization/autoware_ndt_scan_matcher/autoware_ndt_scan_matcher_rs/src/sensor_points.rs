@@ -561,6 +561,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_matc
             .params
             .converged_param_nearest_voxel_transformation_likelihood,
     };
+    // Cross-call scratch reads (`result`/`score_arrays` after `run_align`) are sound here: this
+    // module is std-only, so all three hit the same thread-local scratch on the calling thread.
     let outcome = run_align(eng, &initial_pose_matrix, source, &convergence_params);
     let result = eng.result();
     let (tp_array, nvtl_array) = eng.score_arrays();
@@ -659,23 +661,26 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_matc
     }
 
     // covariance estimation (rotate + dispatch + scale + adjust, against the live map)
-    let cov = estimate_pose_covariance(
-        eng,
-        &outcome.pose,
-        &matrix6_to_row_major(&result.hessian),
-        &initial_pose_matrix,
-        source,
-        &h.params.initial_pose_offset_model_x,
-        &h.params.initial_pose_offset_model_y,
-        &CovEstimationParams {
-            estimation_type: h.params.covariance_estimation_type,
-            scale_factor: h.params.covariance_scale_factor,
-            temperature: h.params.covariance_temperature,
-            main_nvtl: result.nearest_voxel_likelihood,
-            output_pose_covariance: h.params.output_pose_covariance,
-            map_to_base_link_rot3x3: map_to_base_link_rot3x3(&outcome.pose),
-        },
-    );
+    let cov = eng.with_scratch(|scr| {
+        estimate_pose_covariance(
+            eng,
+            &outcome.pose,
+            &matrix6_to_row_major(&result.hessian),
+            &initial_pose_matrix,
+            source,
+            &h.params.initial_pose_offset_model_x,
+            &h.params.initial_pose_offset_model_y,
+            &CovEstimationParams {
+                estimation_type: h.params.covariance_estimation_type,
+                scale_factor: h.params.covariance_scale_factor,
+                temperature: h.params.covariance_temperature,
+                main_nvtl: result.nearest_voxel_likelihood,
+                output_pose_covariance: h.params.output_pose_covariance,
+                map_to_base_link_rot3x3: map_to_base_link_rot3x3(&outcome.pose),
+            },
+            scr,
+        )
+    });
 
     // check distance_initial_to_result (diagnostic only)
     let dx = interp.position[0] - f64::from(outcome.pose[(0, 3)]);

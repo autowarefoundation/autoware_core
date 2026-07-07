@@ -36,7 +36,7 @@
 use autoware_ndt_scan_matcher_rs::host::{
     Clock, MapDelta, MapSource, MapTile, MatchResult, OutputSink,
 };
-use autoware_ndt_scan_matcher_rs::scan_matcher::ScanMatcher;
+use autoware_ndt_scan_matcher_rs::scan_matcher::{MatchScratch, ScanMatcher};
 use nalgebra::Matrix4;
 
 /// A deterministic dense cluster around `(cx, cy, cz)` (>min_points, non-degenerate covariance, all
@@ -140,7 +140,10 @@ async fn main() {
         }
     }
 
-    let (result, cov) = matcher.match_scan_with_covariance(&Matrix4::<f32>::identity(), &scan);
+    // Caller-owned scratch: one per task, reused across frames (the `mt` usage model).
+    let mut scratch = MatchScratch::new();
+    let (result, cov) =
+        matcher.match_scan_with_covariance(&Matrix4::<f32>::identity(), &scan, &mut scratch);
     host.publish_result(&result);
     println!(
         "covariance xy block: [{:.5}, {:.5}; {:.5}, {:.5}]",

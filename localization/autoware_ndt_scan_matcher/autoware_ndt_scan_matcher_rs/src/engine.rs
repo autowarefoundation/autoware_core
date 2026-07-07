@@ -15,15 +15,25 @@
 //! Persistent NDT engine handle (E6a). Wraps the target map + params over a stable C ABI (an opaque
 //! `AwNdtEngine*`), so C++ callers can drive incremental map updates, alignment, and scoring.
 //!
-//! Concurrency (engine concurrency refactor): the engine exposes **`&self`-only** methods and is
-//! `Sync` (std). The mutable state lives behind lock-free interior mutability — the target map +
-//! params in an `ArcSwap<EngineState>` (the read/align path loads an immutable snapshot lock-free;
-//! map-update publishes a fresh state with an atomic store), the optional regularization in a tiny
-//! `ArcSwap<Option<Regularization>>`, and the per-align scratch (workspace + last result) in a
-//! **thread-local** (reused across frames; at most one align per thread, no shared mutable scratch).
-//! So a shared `&NdtEngine` is sound across concurrent ROS callbacks **without** an external mutex,
-//! and every FFI forms only `&*engine` (never `&mut *engine`). `no_std` (single-core) uses `RefCell`
-//! cells instead of `ArcSwap` and keeps the scratch in the engine.
+//! Concurrency (engine concurrency refactor): the engine exposes **`&self`-only** methods, and its
+//! mutable state lives behind interior mutability in one of three configs:
+//!
+//! - **std** (default): target map + params in an `ArcSwap<EngineState>` (the read/align path loads
+//!   an immutable snapshot lock-free; map-update publishes a fresh state with an atomic store), the
+//!   optional regularization in a tiny `ArcSwap<Option<Regularization>>`, and the per-align scratch
+//!   (workspace + last result) in a **thread-local** (at most one align per thread, no shared
+//!   mutable scratch). `Sync`: a shared `&NdtEngine` is sound across concurrent ROS callbacks
+//!   **without** an external mutex, and every FFI forms only `&*engine` (never `&mut *engine`).
+//! - **`no_std` single-core** (no features): `RefCell` cells instead of `ArcSwap`, scratch in the
+//!   engine. Intentionally `!Sync` — the compiler rejects sharing across threads.
+//! - **`no_std` `mt`** (multi-core kernel): the cells are `awkernel_sync` mutexes whose guards
+//!   disable interrupts, so every critical section is a few instructions — an `Arc` refcount bump
+//!   (load) or a pointer swap (store); rcu builds the next state OUTSIDE the lock and publishes
+//!   with an optimistic `Arc::ptr_eq` retry; old snapshots drop outside the lock. There is **no
+//!   engine-owned scratch**: callers own a [`MatchScratch`] per task/thread and use the `_with`
+//!   methods (the implicit-scratch stateful API — `align`/`result`/`score_arrays`/… — is compiled
+//!   out, so a cross-call scratch dependency cannot even compile). `Sync`, like std.
+//!
 //! Control-plane: the WCET-bounded path is the inner [`crate::ndt::align`], not this wrapper.
 
 use alloc::boxed::Box;
@@ -31,64 +41,115 @@ use alloc::sync::Arc;
 
 use nalgebra::{Matrix4, Matrix6};
 
+#[cfg(any(feature = "std", not(feature = "mt")))]
+use crate::ndt::AwNdtAlignOutput;
 use crate::ndt::{
-    AlignResult, AlignWorkspace, AwNdtAlignOutput, NdtParams, Regularization, align,
-    nearest_voxel_score_each_point, nearest_voxel_transformation_likelihood,
-    transformation_probability,
+    AlignResult, AlignWorkspace, NdtParams, Regularization, align, nearest_voxel_score_each_point,
+    nearest_voxel_transformation_likelihood, transformation_probability,
 };
 use crate::transform::gauss_constants;
 use crate::voxel_grid::VoxelGridMap;
 
-// ---- lock-free interior-mutability cell (std: arc-swap; no_std single-core: RefCell<Arc<…>>) ----
+// ---- interior-mutability cell (std: lock-free arc-swap; no_std single-core: RefCell<Arc<…>>;
+// no_std `mt`: awkernel_sync mutex around the Arc) ----
 // `Swap<T>` aliases the backing cell; the `swap_*` free fns give a uniform load/store/rcu API. `load`
 // returns an owned `Arc<T>` snapshot (lock-free under std), so callers hold a stable view while a
 // concurrent `store`/`rcu` publishes a new version (the old `Arc` lives until its last reader drops).
+// Under `mt` the cell is an interrupt-disabling kernel mutex, so every critical section is a few
+// instructions (an `Arc` refcount bump or a pointer swap) — never an align, never a deep clone, and
+// never the drop of an old snapshot (a last-reference drop deallocates a whole map; all `mt` paths
+// drop old `Arc`s after the guard is released, with interrupts re-enabled).
 
 #[cfg(feature = "std")]
 type Swap<T> = arc_swap::ArcSwap<T>;
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "mt")))]
 type Swap<T> = core::cell::RefCell<Arc<T>>;
+#[cfg(all(feature = "mt", not(feature = "std")))]
+type Swap<T> = awkernel_sync::mutex::Mutex<Arc<T>>;
 
 #[cfg(feature = "std")]
 fn swap_new<T>(v: T) -> Swap<T> {
     arc_swap::ArcSwap::from_pointee(v)
 }
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "mt")))]
 fn swap_new<T>(v: T) -> Swap<T> {
     core::cell::RefCell::new(Arc::new(v))
+}
+#[cfg(all(feature = "mt", not(feature = "std")))]
+fn swap_new<T: Send + Sync>(v: T) -> Swap<T> {
+    awkernel_sync::mutex::Mutex::new(Arc::new(v))
 }
 
 #[cfg(feature = "std")]
 fn swap_load<T>(c: &Swap<T>) -> Arc<T> {
     c.load_full()
 }
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "mt")))]
 fn swap_load<T>(c: &Swap<T>) -> Arc<T> {
     c.borrow().clone()
+}
+#[cfg(all(feature = "mt", not(feature = "std")))]
+fn swap_load<T: Send + Sync>(c: &Swap<T>) -> Arc<T> {
+    let mut node = awkernel_sync::mcs::MCSNode::new();
+    // Critical section: one Arc refcount increment.
+    Arc::clone(&c.lock(&mut node))
 }
 
 #[cfg(feature = "std")]
 fn swap_store<T>(c: &Swap<T>, v: T) {
     c.store(Arc::new(v));
 }
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "mt")))]
 fn swap_store<T>(c: &Swap<T>, v: T) {
     *c.borrow_mut() = Arc::new(v);
 }
+#[cfg(all(feature = "mt", not(feature = "std")))]
+fn swap_store<T: Send + Sync>(c: &Swap<T>, v: T) {
+    swap_store_arc(c, Arc::new(v));
+}
 
 /// Read-copy-update: build the next value from the current one and publish it atomically. The
-/// closure may run more than once under contention (std/arc-swap), so it must be pure.
+/// closure may run more than once under contention (std/arc-swap CAS retry and the `mt` optimistic
+/// retry), so it must be pure.
 #[cfg(feature = "std")]
 fn swap_rcu<T>(c: &Swap<T>, f: impl Fn(&T) -> T) {
     c.rcu(|cur| Arc::new(f(cur)));
 }
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "mt")))]
 fn swap_rcu<T>(c: &Swap<T>, f: impl Fn(&T) -> T) {
     let next = {
         let cur = c.borrow();
         Arc::new(f(&cur))
     };
     *c.borrow_mut() = next;
+}
+/// `mt`: optimistic retry — `f` runs OUTSIDE the lock (it may deep-clone a whole map, which must
+/// never happen with interrupts disabled); the short re-lock publishes only if the snapshot is
+/// still current (`Arc::ptr_eq`), else it retries against the fresh one. Writers here are rare
+/// (params setup / map-update commit), so the loop converges immediately in practice.
+#[cfg(all(feature = "mt", not(feature = "std")))]
+fn swap_rcu<T: Send + Sync>(c: &Swap<T>, f: impl Fn(&T) -> T) {
+    let mut cur = swap_load(c);
+    loop {
+        let next = Arc::new(f(&cur));
+        let published = {
+            // The MCS node lives one iteration — the guard borrows it.
+            let mut node = awkernel_sync::mcs::MCSNode::new();
+            let mut guard = c.lock(&mut node);
+            if Arc::ptr_eq(&guard, &cur) {
+                // Critical section: one pointer swap; the previous Arc is handed out first.
+                Some(core::mem::replace(&mut *guard, next))
+            } else {
+                cur = Arc::clone(&guard);
+                None
+            }
+        };
+        if let Some(old) = published {
+            drop(old); // outside the lock — may deallocate the previous state
+            return;
+        }
+        // A stale `next` also drops here, outside the lock.
+    }
 }
 
 /// Publish an already-built `Arc<T>` snapshot (no deep copy) — the map-update commit shares the
@@ -97,9 +158,19 @@ fn swap_rcu<T>(c: &Swap<T>, f: impl Fn(&T) -> T) {
 fn swap_store_arc<T>(c: &Swap<T>, v: Arc<T>) {
     c.store(v);
 }
-#[cfg(not(feature = "std"))]
+#[cfg(all(not(feature = "std"), not(feature = "mt")))]
 fn swap_store_arc<T>(c: &Swap<T>, v: Arc<T>) {
     *c.borrow_mut() = v;
+}
+#[cfg(all(feature = "mt", not(feature = "std")))]
+fn swap_store_arc<T: Send + Sync>(c: &Swap<T>, v: Arc<T>) {
+    let old = {
+        let mut node = awkernel_sync::mcs::MCSNode::new();
+        let mut guard = c.lock(&mut node);
+        // Critical section: one pointer swap; the old Arc drops after the guard is released.
+        core::mem::replace(&mut *guard, v)
+    };
+    drop(old);
 }
 
 /// The `covariance` hyper-params that drive [`NdtEngine::estimate_covariance`]: the estimation mode +
@@ -147,19 +218,46 @@ struct EngineState {
     next_id: u64,
 }
 
-/// Per-align scratch: the reused workspace + the last align result. Lives in a thread-local (std) or
-/// in the engine (`no_std`, single-core) — never shared mutable state across threads.
-struct AlignScratch {
+/// Per-align scratch: the reused workspace + the last align result. Never shared mutable state
+/// across threads — std keeps one per executor thread (the `SCRATCH` thread-local), the plain
+/// `no_std` single-core build keeps one in the engine, and the `mt` build has each task/thread own
+/// one and pass it to the engine's `_with` methods explicitly (reused across frames so the align
+/// stays allocation-free after warmup).
+pub struct MatchScratch {
     workspace: AlignWorkspace,
     last: AlignResult,
 }
 
-impl AlignScratch {
-    fn new() -> Self {
+impl MatchScratch {
+    /// Fresh scratch (buffers warm up on the first align).
+    #[must_use]
+    pub fn new() -> Self {
         Self {
             workspace: AlignWorkspace::new(),
             last: AlignResult::default(),
         }
+    }
+
+    /// Owned copy of the last align result run through this scratch (the C++ `getResult`).
+    #[must_use]
+    pub fn result(&self) -> AlignResult {
+        self.last.clone()
+    }
+
+    /// The per-iteration score traces of the last align run through this scratch
+    /// (`transform_probability_array` / `nearest_voxel_likelihood_array` of the C++ `NdtResult`).
+    #[must_use]
+    pub fn score_arrays(&self) -> (alloc::vec::Vec<f32>, alloc::vec::Vec<f32>) {
+        (
+            self.last.transform_probability_array.clone(),
+            self.last.nearest_voxel_likelihood_array.clone(),
+        )
+    }
+}
+
+impl Default for MatchScratch {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
@@ -167,11 +265,12 @@ impl AlignScratch {
 std::thread_local! {
     /// One reused scratch per executor thread. At most one align runs per thread at a time, so this
     /// is exclusive without a lock; reused buffers keep the align frame allocation-free after warmup.
-    static SCRATCH: core::cell::RefCell<AlignScratch> = core::cell::RefCell::new(AlignScratch::new());
+    static SCRATCH: core::cell::RefCell<MatchScratch> = core::cell::RefCell::new(MatchScratch::new());
 }
 
-/// Persistent NDT engine: an `ArcSwap` of the target map + params (+ id mapping), the optional
-/// regularization, and the per-align scratch. `&self`-only + `Sync` (std) — see the module docs.
+/// Persistent NDT engine: a [`Swap`] cell of the target map + params (+ id mapping) and the
+/// optional regularization. `&self`-only + `Sync` (std and `mt`; the plain `no_std` single-core
+/// build is `!Sync` and additionally keeps the align scratch here) — see the module docs.
 pub struct NdtEngine {
     state: Swap<EngineState>,
     /// Optional longitudinal regularization, swapped lock-free (set per sensor frame before align,
@@ -181,9 +280,17 @@ pub struct NdtEngine {
     min_points: i32,
     eig_mult: f64,
     /// `no_std` (single-core) keeps the scratch here; std uses the thread-local `SCRATCH`.
-    #[cfg(not(feature = "std"))]
-    scratch: core::cell::RefCell<AlignScratch>,
+    #[cfg(all(not(feature = "std"), not(feature = "mt")))]
+    scratch: core::cell::RefCell<MatchScratch>,
 }
+
+/// Compile-time proof that the engine is shareable across threads in the two concurrent configs
+/// (std: arc-swap + thread-local scratch; `mt`: `awkernel_sync` cells + caller-owned scratch). The
+/// plain `no_std` single-core engine stays intentionally `!Sync` (`RefCell`), so it is excluded.
+#[cfg(any(feature = "std", feature = "mt"))]
+const fn assert_send_sync<T: Send + Sync>() {}
+#[cfg(any(feature = "std", feature = "mt"))]
+const _: () = assert_send_sync::<NdtEngine>();
 
 impl Clone for NdtEngine {
     fn clone(&self) -> Self {
@@ -195,8 +302,8 @@ impl Clone for NdtEngine {
             reg: swap_new(*swap_load(&self.reg)),
             min_points: self.min_points,
             eig_mult: self.eig_mult,
-            #[cfg(not(feature = "std"))]
-            scratch: core::cell::RefCell::new(AlignScratch::new()),
+            #[cfg(all(not(feature = "std"), not(feature = "mt")))]
+            scratch: core::cell::RefCell::new(MatchScratch::new()),
         }
     }
 }
@@ -221,8 +328,8 @@ impl NdtEngine {
             reg: swap_new(*swap_load(&self.reg)),
             min_points: self.min_points,
             eig_mult: self.eig_mult,
-            #[cfg(not(feature = "std"))]
-            scratch: core::cell::RefCell::new(AlignScratch::new()),
+            #[cfg(all(not(feature = "std"), not(feature = "mt")))]
+            scratch: core::cell::RefCell::new(MatchScratch::new()),
         }
     }
 
@@ -245,8 +352,8 @@ impl NdtEngine {
             reg: swap_new(None),
             min_points,
             eig_mult,
-            #[cfg(not(feature = "std"))]
-            scratch: core::cell::RefCell::new(AlignScratch::new()),
+            #[cfg(all(not(feature = "std"), not(feature = "mt")))]
+            scratch: core::cell::RefCell::new(MatchScratch::new()),
         }
     }
 
@@ -261,11 +368,11 @@ impl NdtEngine {
         clippy::unused_self,
         reason = "the std scratch is a thread-local; &self is unused here but keeps a uniform API with the no_std variant (which borrows self.scratch)"
     )]
-    fn with_scratch<R>(&self, f: impl FnOnce(&mut AlignScratch) -> R) -> R {
+    pub(crate) fn with_scratch<R>(&self, f: impl FnOnce(&mut MatchScratch) -> R) -> R {
         SCRATCH.with(|s| f(&mut s.borrow_mut()))
     }
-    #[cfg(not(feature = "std"))]
-    fn with_scratch<R>(&self, f: impl FnOnce(&mut AlignScratch) -> R) -> R {
+    #[cfg(all(not(feature = "std"), not(feature = "mt")))]
+    pub(crate) fn with_scratch<R>(&self, f: impl FnOnce(&mut MatchScratch) -> R) -> R {
         f(&mut self.scratch.borrow_mut())
     }
 
@@ -318,11 +425,25 @@ impl NdtEngine {
 
     /// Align from `guess` and derive the full [`AlignOutcome`] (oscillation + convergence verdict),
     /// reading the engine's own [`ConvergenceParams`]. The self-contained counterpart of [`run_align`]
-    /// (which takes the params explicitly for the C++ FFI) — what the portable `ScanMatcher` calls.
+    /// (which takes the params explicitly for the C++ FFI). Uses the implicit per-thread/engine
+    /// scratch; absent under `mt`, where callers use [`Self::align_outcome_with`].
+    #[cfg(any(feature = "std", not(feature = "mt")))]
     #[must_use]
     pub fn align_outcome(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) -> AlignOutcome {
+        self.with_scratch(|scr| self.align_outcome_with(guess, source, scr))
+    }
+
+    /// [`Self::align_outcome`] with an explicit caller-owned scratch — what the portable
+    /// `ScanMatcher` calls; the only align entry point under `mt`.
+    #[must_use]
+    pub fn align_outcome_with(
+        &self,
+        guess: &Matrix4<f32>,
+        source: &[[f32; 3]],
+        scratch: &mut MatchScratch,
+    ) -> AlignOutcome {
         let conv = self.load_state().conv;
-        run_align(self, guess, source, &conv)
+        run_align_with(self, guess, source, &conv, scratch)
     }
 
     /// Set the `covariance` hyper-params read on [`Self::estimate_covariance`] (estimation mode +
@@ -355,7 +476,7 @@ impl NdtEngine {
     /// [`CovarianceConfig`]. The self-contained counterpart of [`estimate_pose_covariance`] (which takes
     /// the params explicitly for the C++ FFI) — what the portable `ScanMatcher` calls after a match.
     /// `map_to_base_link_rot3x3` is derived from `result_pose`'s rotation block (the C++ builds the same
-    /// from the result quaternion).
+    /// from the result quaternion). `scratch` backs the `MULTI_NDT*` candidate re-aligns/scores.
     #[must_use]
     pub fn estimate_covariance(
         &self,
@@ -364,6 +485,7 @@ impl NdtEngine {
         initial_pose: &Matrix4<f32>,
         source: &[[f32; 3]],
         main_nvtl: f32,
+        scratch: &mut MatchScratch,
     ) -> CovEstimationResult {
         let cfg = self.load_state().cov_config.clone();
         // Hessian → row-major [f64; 36]. nalgebra stores column-major, so the transpose's slice is the
@@ -400,6 +522,7 @@ impl NdtEngine {
             &cfg.offset_x,
             &cfg.offset_y,
             &params,
+            scratch,
         )
     }
 
@@ -495,9 +618,14 @@ impl NdtEngine {
         !self.load_state().map.is_empty()
     }
 
-    /// Align `source` from `guess`, storing the result in the thread-local scratch (the C++
-    /// `align(out, guess, source)`; retrieve via [`Self::result`]).
-    pub fn align(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) {
+    /// Align `source` from `guess` into the caller-owned `scratch` (result lands in
+    /// [`MatchScratch::result`]) — the core align entry point, and the only one under `mt`.
+    pub fn align_with(
+        &self,
+        guess: &Matrix4<f32>,
+        source: &[[f32; 3]],
+        scratch: &mut MatchScratch,
+    ) {
         let st = self.load_state();
         // Fold the per-call regularization into a local params copy (the free `align` reads
         // `params.regularization`); the engine's stored params keep `regularization: None`.
@@ -505,75 +633,109 @@ impl NdtEngine {
             regularization: *swap_load(&self.reg),
             ..st.params
         };
-        self.with_scratch(|scr| {
-            align(
-                &st.map,
-                source,
-                guess,
-                &params,
-                &mut scr.workspace,
-                &mut scr.last,
-            );
-        });
+        align(
+            &st.map,
+            source,
+            guess,
+            &params,
+            &mut scratch.workspace,
+            &mut scratch.last,
+        );
     }
 
-    /// The most recent align result (the C++ `getResult`); an owned copy of the thread-local scratch.
+    /// Align `source` from `guess`, storing the result in the implicit per-thread/engine scratch
+    /// (the C++ `align(out, guess, source)`; retrieve via [`Self::result`]). Absent under `mt` —
+    /// use [`Self::align_with`].
+    #[cfg(any(feature = "std", not(feature = "mt")))]
+    pub fn align(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) {
+        self.with_scratch(|scr| self.align_with(guess, source, scr));
+    }
+
+    /// The most recent align result (the C++ `getResult`); an owned copy of the implicit scratch.
+    /// Absent under `mt` — read [`MatchScratch::result`] from the scratch you aligned with.
+    #[cfg(any(feature = "std", not(feature = "mt")))]
     #[must_use]
     pub fn result(&self) -> AlignResult {
-        self.with_scratch(|scr| scr.last.clone())
+        self.with_scratch(|scr| scr.result())
     }
 
-    /// Score `cloud` (already in the target frame) without aligning — the C++
-    /// `calculateTransformationProbability`.
+    /// Score `cloud` (already in the target frame) without aligning, using the caller-owned
+    /// `scratch` workspace — the C++ `calculateTransformationProbability`.
+    pub fn calc_transformation_probability_with(
+        &self,
+        cloud: &[[f32; 3]],
+        scratch: &mut MatchScratch,
+    ) -> f64 {
+        let st = self.load_state();
+        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
+        transformation_probability(
+            &st.map,
+            cloud,
+            st.params.resolution,
+            &gauss,
+            &mut scratch.workspace,
+        )
+    }
+
+    /// [`Self::calc_transformation_probability_with`] on the implicit scratch (absent under `mt`).
+    #[cfg(any(feature = "std", not(feature = "mt")))]
     pub fn calc_transformation_probability(&self, cloud: &[[f32; 3]]) -> f64 {
-        let st = self.load_state();
-        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
-        self.with_scratch(|scr| {
-            transformation_probability(
-                &st.map,
-                cloud,
-                st.params.resolution,
-                &gauss,
-                &mut scr.workspace,
-            )
-        })
+        self.with_scratch(|scr| self.calc_transformation_probability_with(cloud, scr))
     }
 
-    /// Nearest-voxel likelihood of `cloud` without aligning — the C++
-    /// `calculateNearestVoxelTransformationLikelihood`.
+    /// Nearest-voxel likelihood of `cloud` without aligning, using the caller-owned `scratch`
+    /// workspace — the C++ `calculateNearestVoxelTransformationLikelihood`.
+    pub fn calc_nearest_voxel_likelihood_with(
+        &self,
+        cloud: &[[f32; 3]],
+        scratch: &mut MatchScratch,
+    ) -> f64 {
+        let st = self.load_state();
+        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
+        nearest_voxel_transformation_likelihood(
+            &st.map,
+            cloud,
+            st.params.resolution,
+            &gauss,
+            &mut scratch.workspace,
+        )
+    }
+
+    /// [`Self::calc_nearest_voxel_likelihood_with`] on the implicit scratch (absent under `mt`).
+    #[cfg(any(feature = "std", not(feature = "mt")))]
     pub fn calc_nearest_voxel_likelihood(&self, cloud: &[[f32; 3]]) -> f64 {
-        let st = self.load_state();
-        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
-        self.with_scratch(|scr| {
-            nearest_voxel_transformation_likelihood(
-                &st.map,
-                cloud,
-                st.params.resolution,
-                &gauss,
-                &mut scr.workspace,
-            )
-        })
+        self.with_scratch(|scr| self.calc_nearest_voxel_likelihood_with(cloud, scr))
     }
 
-    /// Per-point nearest-voxel score (the C++ `calculateNearestVoxelScoreEachPoint`); `out[i] > 0`
-    /// iff point `i` found a neighbor. `out` is filled to `cloud.len()`.
+    /// Per-point nearest-voxel score (the C++ `calculateNearestVoxelScoreEachPoint`) using the
+    /// caller-owned `scratch` workspace; `out[i] > 0` iff point `i` found a neighbor. `out` is
+    /// filled to `cloud.len()`.
+    pub fn nearest_voxel_score_each_point_with(
+        &self,
+        cloud: &[[f32; 3]],
+        out: &mut alloc::vec::Vec<f32>,
+        scratch: &mut MatchScratch,
+    ) {
+        let st = self.load_state();
+        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
+        nearest_voxel_score_each_point(
+            &st.map,
+            cloud,
+            st.params.resolution,
+            &gauss,
+            &mut scratch.workspace,
+            out,
+        );
+    }
+
+    /// [`Self::nearest_voxel_score_each_point_with`] on the implicit scratch (absent under `mt`).
+    #[cfg(any(feature = "std", not(feature = "mt")))]
     pub fn nearest_voxel_score_each_point(
         &self,
         cloud: &[[f32; 3]],
         out: &mut alloc::vec::Vec<f32>,
     ) {
-        let st = self.load_state();
-        let gauss = gauss_constants(st.params.outlier_ratio, st.params.resolution);
-        self.with_scratch(|scr| {
-            nearest_voxel_score_each_point(
-                &st.map,
-                cloud,
-                st.params.resolution,
-                &gauss,
-                &mut scr.workspace,
-                out,
-            );
-        });
+        self.with_scratch(|scr| self.nearest_voxel_score_each_point_with(cloud, out, scr));
     }
 
     /// The configured iteration cap (the C++ `getMaximumIterations`).
@@ -583,23 +745,22 @@ impl NdtEngine {
     }
 
     /// The per-iteration score traces from the last align (`transform_probability_array` /
-    /// `nearest_voxel_likelihood_array` of the C++ `NdtResult`); owned copies of the thread-local
-    /// scratch.
+    /// `nearest_voxel_likelihood_array` of the C++ `NdtResult`); owned copies of the implicit
+    /// scratch. Absent under `mt` — read [`MatchScratch::score_arrays`] instead.
+    #[cfg(any(feature = "std", not(feature = "mt")))]
     #[must_use]
     pub fn score_arrays(&self) -> (alloc::vec::Vec<f32>, alloc::vec::Vec<f32>) {
-        self.with_scratch(|scr| {
-            (
-                scr.last.transform_probability_array.clone(),
-                scr.last.nearest_voxel_likelihood_array.clone(),
-            )
-        })
+        self.with_scratch(|scr| scr.score_arrays())
     }
 }
 
 // ---- C ABI shims (opaque `*const NdtEngine` handle; pointers validated per rust-c-ffi-safety) ----
-// The engine is `Sync` and exposes `&self`-only methods, so every shim forms only `&*engine` (never
-// `&mut *engine`): concurrent calls on a shared `const AwNdtEngine*` are sound without an external
-// lock. The lifecycle shims (`new`/`free`/`clone`) own/reclaim the `Box`.
+// The engine is `Sync` (std/`mt`; the plain no_std single-core engine is `!Sync`) and exposes
+// `&self`-only methods, so every shim forms only `&*engine` (never `&mut *engine`): concurrent
+// calls on a shared `const AwNdtEngine*` are sound without an external lock. The lifecycle shims
+// (`new`/`free`/`clone`) own/reclaim the `Box`. The scratch-dependent shims (`align`/`get_result`/
+// `calc_*`/`get_score_arrays`) need the implicit scratch, so they are compiled out under `mt` —
+// the `mt` consumer is Rust (kernel) code using the `_with` methods + `MatchScratch` directly.
 
 #[allow(
     clippy::arithmetic_side_effects,
@@ -607,6 +768,7 @@ impl NdtEngine {
     clippy::allow_attributes,
     reason = "r/c in 0..4 index a fixed 16-element slice and a fixed-size Matrix4"
 )]
+#[cfg(any(feature = "std", not(feature = "mt")))]
 fn matrix4_from_row_major(buf: &[f32]) -> Matrix4<f32> {
     let mut m = Matrix4::<f32>::zeros();
     for r in 0..4 {
@@ -944,6 +1106,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(
     unsafe_code,
     reason = "C ABI boundary; reads caller-owned guess + cloud"
 )]
+#[cfg(any(feature = "std", not(feature = "mt")))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_align(
     engine: *const NdtEngine,
@@ -969,6 +1132,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_align(
 /// # Safety
 /// `engine` is a valid handle (or null → returns 0); `cloud` addresses `3 * n` readable `f32`.
 #[expect(unsafe_code, reason = "C ABI boundary; reads a caller-owned cloud")]
+#[cfg(any(feature = "std", not(feature = "mt")))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_transformation_probability(
     engine: *const NdtEngine,
@@ -992,6 +1156,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_transforma
 /// # Safety
 /// `engine` is a valid handle (or null → returns 0); `cloud` addresses `3 * n` readable `f32`.
 #[expect(unsafe_code, reason = "C ABI boundary; reads a caller-owned cloud")]
+#[cfg(any(feature = "std", not(feature = "mt")))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_likelihood(
     engine: *const NdtEngine,
@@ -1028,6 +1193,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_vo
     clippy::allow_attributes,
     reason = "fixed-size matrix marshaling (r/c in 0..4 / 0..6); bounded transform-array copy"
 )]
+#[cfg(any(feature = "std", not(feature = "mt")))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
     engine: *const NdtEngine,
@@ -1089,6 +1255,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_result(
     unsafe_code,
     reason = "C ABI boundary; reads a cloud, writes per-point scores"
 )]
+#[cfg(any(feature = "std", not(feature = "mt")))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
     engine: *const NdtEngine,
@@ -1128,6 +1295,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_vo
     clippy::allow_attributes,
     reason = "trace length crosses the C ABI as u32; k = min(len, cap) bounds the slicing"
 )]
+#[cfg(any(feature = "std", not(feature = "mt")))]
 #[unsafe(no_mangle)]
 pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_score_arrays(
     engine: *const NdtEngine,
@@ -1185,7 +1353,9 @@ pub struct AlignOutcome {
 
 /// Align the live engine from `guess`, then derive the oscillation count (from the iteration
 /// trajectory translations, matching the C++ `count_oscillation(transformation_msg_array)`) and the
-/// convergence verdict. Pure orchestration over existing ports — no new math.
+/// convergence verdict. Pure orchestration over existing ports — no new math. Runs on the implicit
+/// per-thread/engine scratch; absent under `mt` (use [`run_align_with`]).
+#[cfg(any(feature = "std", not(feature = "mt")))]
 #[must_use]
 pub fn run_align(
     engine: &NdtEngine,
@@ -1193,9 +1363,24 @@ pub fn run_align(
     source: &[[f32; 3]],
     conv: &ConvergenceParams,
 ) -> AlignOutcome {
-    engine.align(guess, source);
+    engine.with_scratch(|scr| run_align_with(engine, guess, source, conv, scr))
+}
+
+/// [`run_align`] with an explicit caller-owned scratch — the whole align + verdict reads one
+/// scratch session, so it is safe under concurrent aligns in every config (the only variant
+/// available under `mt`). The full [`AlignResult`] (e.g. the hessian) stays readable from
+/// `scratch` afterwards via [`MatchScratch::result`].
+#[must_use]
+pub fn run_align_with(
+    engine: &NdtEngine,
+    guess: &Matrix4<f32>,
+    source: &[[f32; 3]],
+    conv: &ConvergenceParams,
+    scratch: &mut MatchScratch,
+) -> AlignOutcome {
+    engine.align_with(guess, source, scratch);
     let max_iterations = engine.max_iterations();
-    let result = engine.result();
+    let result = &scratch.last;
     let positions: alloc::vec::Vec<[f64; 3]> = result
         .transformation_array
         .iter()
@@ -1260,7 +1445,8 @@ pub struct AwAlignOutcome {
 ///
 /// # Safety
 /// `engine` is a valid live handle (or null → no-op). It is reborrowed as `&NdtEngine` (the engine is
-/// `Sync`, so concurrent `&self` calls on a shared `const AwNdtEngine*` are sound — no external lock
+/// `Sync` in this std build — as under `mt`; only the plain `no_std` single-core engine is not — so
+/// concurrent `&self` calls on a shared `const AwNdtEngine*` are sound — no external lock
 /// required). Rust does not retain the pointer past the call. `guess` addresses 16 `f32`, `source`
 /// `3 * n` `f32`, `params` a valid [`AwAlignParams`], `out` a writable [`AwAlignOutcome`].
 #[cfg(feature = "std")]
@@ -1380,9 +1566,11 @@ pub struct CovEstimationResult {
 /// Pure covariance orchestrator, ported verbatim from `callback_sensor_points_main`'s covariance block
 /// and the `estimate_covariance` method. Runs the `MULTI_NDT`/`MULTI_NDT_SCORE` re-align/score against
 /// the live engine map (a loaded snapshot) — never a rebuilt one-tile map. No new math (wires ports).
+/// `scratch` backs the candidate re-aligns/scores (caller-owned; the std FFI supplies its
+/// thread-local one).
 #[expect(
     clippy::too_many_arguments,
-    reason = "covariance orchestrator wires the engine + result/initial poses + hessian + source + offsets + params; grouping would only relocate the same inputs"
+    reason = "covariance orchestrator wires the engine + result/initial poses + hessian + source + offsets + params + scratch; grouping would only relocate the same inputs"
 )]
 #[must_use]
 pub fn estimate_pose_covariance(
@@ -1394,6 +1582,7 @@ pub fn estimate_pose_covariance(
     offset_x: &[f64],
     offset_y: &[f64],
     params: &CovEstimationParams,
+    scratch: &mut MatchScratch,
 ) -> CovEstimationResult {
     use alloc::vec::Vec;
 
@@ -1429,16 +1618,14 @@ pub fn estimate_pose_covariance(
         2 => {
             let poses =
                 crate::cov_estimate::propose_poses_to_search(result_pose, offset_x, offset_y);
-            let r = engine.with_scratch(|scr| {
-                crate::cov_estimate::estimate_xy_covariance_by_multi_ndt(
-                    &main_ndt,
-                    &poses,
-                    &st.map,
-                    source,
-                    &st.params,
-                    &mut scr.workspace,
-                )
-            });
+            let r = crate::cov_estimate::estimate_xy_covariance_by_multi_ndt(
+                &main_ndt,
+                &poses,
+                &st.map,
+                source,
+                &st.params,
+                &mut scratch.workspace,
+            );
             publish_kind = 1;
             multi_ndt_result_poses.push(*result_pose);
             multi_ndt_result_poses.extend_from_slice(&r.candidate_result_poses);
@@ -1450,17 +1637,15 @@ pub fn estimate_pose_covariance(
         3 => {
             let poses =
                 crate::cov_estimate::propose_poses_to_search(result_pose, offset_x, offset_y);
-            let r = engine.with_scratch(|scr| {
-                crate::cov_estimate::estimate_xy_covariance_by_multi_ndt_score(
-                    &main_ndt,
-                    &poses,
-                    &st.map,
-                    source,
-                    &st.params,
-                    params.temperature,
-                    &mut scr.workspace,
-                )
-            });
+            let r = crate::cov_estimate::estimate_xy_covariance_by_multi_ndt_score(
+                &main_ndt,
+                &poses,
+                &st.map,
+                source,
+                &st.params,
+                params.temperature,
+                &mut scratch.workspace,
+            );
             publish_kind = 2;
             multi_initial_poses.push(*initial_pose);
             multi_initial_poses.extend_from_slice(&poses);
@@ -1549,7 +1734,8 @@ pub struct AwCovEstimationOutput {
 ///
 /// # Safety
 /// `engine` is a valid live handle (or null → no-op), reborrowed `&NdtEngine` for the call (the engine
-/// is `Sync`; concurrent `&self` calls are sound — no external lock required). `input` is a valid
+/// is `Sync` in this std build — as under `mt`; only the plain `no_std` single-core engine is not —
+/// so concurrent `&self` calls are sound, no external lock required). `input` is a valid
 /// [`AwCovEstimationInput`] whose `source` (`3*n_source` f32) and `offset_x`/`offset_y` (`n_offsets`
 /// f64) are readable. `output` is a writable [`AwCovEstimationOutput`] whose pose buffers each address
 /// `pose_cap * 16` writable f32 (or are null to skip). Nothing retained.
@@ -1588,23 +1774,26 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_estimate_pose_covaria
             core::slice::from_raw_parts(inp.offset_y, inp.n_offsets),
         )
     };
-    let result = estimate_pose_covariance(
-        eng,
-        &matrix4_from_row_major(&inp.result_pose),
-        &inp.hessian,
-        &matrix4_from_row_major(&inp.initial_pose),
-        source,
-        ox,
-        oy,
-        &CovEstimationParams {
-            estimation_type: inp.estimation_type,
-            scale_factor: inp.scale_factor,
-            temperature: inp.temperature,
-            main_nvtl: inp.main_nvtl,
-            output_pose_covariance: inp.output_pose_covariance,
-            map_to_base_link_rot3x3: inp.map_to_base_link_rot3x3,
-        },
-    );
+    let result = eng.with_scratch(|scr| {
+        estimate_pose_covariance(
+            eng,
+            &matrix4_from_row_major(&inp.result_pose),
+            &inp.hessian,
+            &matrix4_from_row_major(&inp.initial_pose),
+            source,
+            ox,
+            oy,
+            &CovEstimationParams {
+                estimation_type: inp.estimation_type,
+                scale_factor: inp.scale_factor,
+                temperature: inp.temperature,
+                main_nvtl: inp.main_nvtl,
+                output_pose_covariance: inp.output_pose_covariance,
+                map_to_base_link_rot3x3: inp.map_to_base_link_rot3x3,
+            },
+            scr,
+        )
+    });
     // SAFETY: `output` is non-null per the check and a writable AwCovEstimationOutput per the contract.
     let out = unsafe { &mut *output };
     out.ndt_covariance = result.ndt_covariance;
@@ -1707,8 +1896,9 @@ mod tests {
         engine.add_target(&tile_b, 1);
         engine.create_kdtree();
         assert!(engine.has_target());
-        engine.align(&guess, &source);
-        let got = engine.result().clone();
+        let mut scratch = MatchScratch::new();
+        engine.align_with(&guess, &source, &mut scratch);
+        let got = scratch.result();
 
         let mut map = VoxelGridMap::new([1.0; 3], 6, 0.01);
         map.add_target(&tile_a, 0);
@@ -1762,13 +1952,20 @@ mod tests {
     fn run_align_matches_manual_composition() {
         let (engine, source) = two_tile_engine();
         let guess = Matrix4::<f32>::identity();
-        let outcome = run_align(&engine, &guess, &source, &TP_PARAMS);
+        let outcome = run_align_with(
+            &engine,
+            &guess,
+            &source,
+            &TP_PARAMS,
+            &mut MatchScratch::new(),
+        );
 
         // Manual reference on a fresh, identically-built engine.
         let (ref_engine, ref_source) = two_tile_engine();
-        ref_engine.align(&guess, &ref_source);
+        let mut ref_scratch = MatchScratch::new();
+        ref_engine.align_with(&guess, &ref_source, &mut ref_scratch);
         let max_it = ref_engine.max_iterations();
-        let r = ref_engine.result();
+        let r = ref_scratch.result();
         let positions: Vec<[f64; 3]> = r
             .transformation_array
             .iter()
@@ -1803,6 +2000,7 @@ mod tests {
     }
 
     // The FFI shim writes exactly what the pure run_align computes.
+    #[cfg(feature = "std")]
     #[test]
     fn ffi_run_align_matches_pure() {
         let (engine, source) = two_tile_engine();
@@ -1843,6 +2041,7 @@ mod tests {
     }
 
     // Null pointers are a no-op (no write, no panic).
+    #[cfg(feature = "std")]
     #[test]
     fn ffi_run_align_null_is_noop() {
         let mut out = AwAlignOutcome {
@@ -1900,8 +2099,9 @@ mod tests {
     // Align an engine once and return (engine, source, result_pose) for the cov tests.
     fn aligned_engine() -> (NdtEngine, Vec<[f32; 3]>, Matrix4<f32>) {
         let (engine, source) = two_tile_engine();
-        engine.align(&Matrix4::<f32>::identity(), &source);
-        let pose = engine.result().pose;
+        let mut scratch = MatchScratch::new();
+        engine.align_with(&Matrix4::<f32>::identity(), &source, &mut scratch);
+        let pose = scratch.result().pose;
         (engine, source, pose)
     }
 
@@ -1926,6 +2126,7 @@ mod tests {
             &COV_OX,
             &COV_OY,
             &cov_params(0, 1.0),
+            &mut MatchScratch::new(),
         );
         assert_eq!(r.publish_kind, 0);
         assert!(r.multi_ndt_result_poses.is_empty() && r.multi_initial_poses.is_empty());
@@ -1948,6 +2149,7 @@ mod tests {
             &COV_OX,
             &COV_OY,
             &cov_params(2, 2.0),
+            &mut MatchScratch::new(),
         );
 
         // Manual reference on a fresh identical engine.
@@ -2006,12 +2208,14 @@ mod tests {
             &COV_OX,
             &COV_OY,
             &cov_params(3, 1.0),
+            &mut MatchScratch::new(),
         );
         assert_eq!(r.publish_kind, 2);
         assert!(r.multi_ndt_result_poses.is_empty());
         assert_eq!(r.multi_initial_poses.len(), COV_OX.len() + 1);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn ffi_estimate_cov_matches_pure() {
         let (engine, source, result_pose) = aligned_engine();
@@ -2024,6 +2228,7 @@ mod tests {
             &COV_OX,
             &COV_OY,
             &cov_params(2, 2.0),
+            &mut MatchScratch::new(),
         );
 
         let (ffi_engine, ffi_source) = two_tile_engine();
@@ -2088,6 +2293,7 @@ mod tests {
         assert_eq!(res_buf[3], pure.multi_ndt_result_poses[0][(0, 3)]);
     }
 
+    #[cfg(feature = "std")]
     #[test]
     fn ffi_estimate_cov_null_is_noop() {
         let mut out = AwCovEstimationOutput {
@@ -2125,18 +2331,19 @@ mod tests {
         original.add_target(&tile_b, 1);
         original.create_kdtree();
 
+        let mut scratch = MatchScratch::new();
         let clone = original.clone();
-        clone.align(&guess, &source);
-        let clone_before = clone.result().pose;
+        clone.align_with(&guess, &source, &mut scratch);
+        let clone_before = scratch.result().pose;
 
         // Mutate the original after the clone; the clone must be unaffected.
         original.remove_target(1);
         original.create_kdtree();
-        original.align(&guess, &source);
+        original.align_with(&guess, &source, &mut scratch);
 
-        clone.align(&guess, &source);
+        clone.align_with(&guess, &source, &mut scratch);
         assert_eq!(
-            clone.result().pose,
+            scratch.result().pose,
             clone_before,
             "clone shares state with original"
         );
@@ -2155,6 +2362,7 @@ mod tests {
     }
 
     // FFI handle round-trip == the pure engine API (marshaling check).
+    #[cfg(any(feature = "std", not(feature = "mt")))]
     #[test]
     fn ffi_engine_matches_pure() {
         let tile = dense_cluster(0.5, 0.5, 0.5);

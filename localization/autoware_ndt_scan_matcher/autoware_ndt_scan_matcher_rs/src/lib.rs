@@ -12,7 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// no_std for the awkernel/Track B build; `std` (default) for dev and the ROS-node build.
+// no_std for the awkernel/Track B build; `std` (default) for dev and the ROS-node build. The
+// `mt` feature makes the no_std engine multi-core-safe (awkernel_sync cells + caller-owned
+// `MatchScratch`); without it the no_std build is single-core (`RefCell`, `!Sync`).
 // Test builds always use std (the test harness + `Vec`/etc. need it), regardless of features.
 #![cfg_attr(not(any(test, feature = "std")), no_std)]
 
