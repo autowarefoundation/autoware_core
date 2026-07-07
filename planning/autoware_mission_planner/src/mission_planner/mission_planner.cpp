@@ -15,10 +15,10 @@
 #include "mission_planner.hpp"
 
 #include "reroute_safety.hpp"
-#include "service_utils.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 
+#include <autoware_common_msgs/msg/response_status.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
@@ -240,7 +240,7 @@ void MissionPlanner::on_set_lanelet_route(
     route = create_route(*req);
   } catch (const tf2::TransformException & error) {
     res->status.success = false;
-    res->status.code = service_utils::ResponseStatus::TRANSFORM_ERROR;
+    res->status.code = autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR;
     res->status.message = error.what();
     publish_processing_time(stop_watch);
     return;
@@ -315,7 +315,7 @@ void MissionPlanner::on_set_waypoint_route(
     route = create_route(*req);
   } catch (const tf2::TransformException & error) {
     res->status.success = false;
-    res->status.code = service_utils::ResponseStatus::TRANSFORM_ERROR;
+    res->status.code = autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR;
     res->status.message = error.what();
     publish_processing_time(stop_watch);
     return;
