@@ -13,16 +13,15 @@
 // limitations under the License.
 
 // Test (node port N4b): the covariance orchestrator FFI
-// (autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance) assembles rotate + dispatch + scale +
-// adjust against the live engine map. It is checked against a hand-composition built from the same
-// (still-compiled) pieces on the same NdtRustAdapter: pclomp::estimate_xy_covariance_by_multi_ndt +
-// adjust_diagonal_covariance + the Rust rotate_covariance FFI. This pins the C++ marshaling
-// (pose/hessian/offsets/output_cov → FFI) and the publish-kind asymmetry. The cov math itself is
+// (autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance) assembles rotate + dispatch +
+// scale + adjust against the live engine map. It is checked against a hand-composition built from
+// the same map/source setup: pclomp::estimate_xy_covariance_by_multi_ndt +
+// adjust_diagonal_covariance + the
+// Rust rotate_covariance FFI. This pins the C++ marshaling
+// (pose/hessian/offsets/output_cov -> FFI) and the publish-kind asymmetry. The cov math itself is
 // differential-tested vs pure C++ in test_estimate_covariance_multi (E5).
 
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
-#include <autoware/ndt_scan_matcher/ndt_rust_adapter.hpp>
-
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
@@ -31,14 +30,15 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <random>
+#include <string>
 #include <vector>
 
 namespace
 {
-using Adapter = autoware::ndt_scan_matcher::NdtRustAdapter;
 using Cpp = pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ>;
 
 void make_tile(float cx, float cy, float cz, std::mt19937 & rng, pcl::PointCloud<pcl::PointXYZ> & c)
@@ -64,10 +64,59 @@ pclomp::NdtParams make_params()
   return p;
 }
 
-// Build a driven 2-tile Rust engine (the adapter, for the FFI under test via raw_handle) + an
-// identically-built C++ pclomp engine (for the main align result + the templated reference, since the
-// slimmed adapter no longer has align/getResult) + the source cloud (shifted by a known translation).
-Adapter make_driven(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out, Cpp & cpp_out)
+class RustEngine
+{
+public:
+  RustEngine() : handle_(autoware_ndt_scan_matcher_rs_ndt_engine_new(2.0, 6, 0.01)) {}
+
+  ~RustEngine() { autoware_ndt_scan_matcher_rs_ndt_engine_free(handle_); }
+
+  RustEngine(const RustEngine &) = delete;
+  RustEngine & operator=(const RustEngine &) = delete;
+
+  RustEngine(RustEngine && other) noexcept : handle_(other.handle_) { other.handle_ = nullptr; }
+
+  RustEngine & operator=(RustEngine && other) noexcept
+  {
+    if (this != &other) {
+      autoware_ndt_scan_matcher_rs_ndt_engine_free(handle_);
+      handle_ = other.handle_;
+      other.handle_ = nullptr;
+    }
+    return *this;
+  }
+
+  [[nodiscard]] const AwNdtEngine * raw() const { return handle_; }
+
+private:
+  AwNdtEngine * handle_{nullptr};
+};
+
+std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
+{
+  std::vector<float> flat;
+  flat.reserve(cloud.size() * 3);
+  for (const auto & p : cloud.points) {
+    flat.push_back(p.x);
+    flat.push_back(p.y);
+    flat.push_back(p.z);
+  }
+  return flat;
+}
+
+void add_target(
+  const RustEngine & engine, const pcl::PointCloud<pcl::PointXYZ> & tile, const std::string & id)
+{
+  const std::vector<float> flat = flatten(tile);
+  autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
+    engine.raw(), flat.data(), tile.size(), reinterpret_cast<const std::uint8_t *>(id.data()),
+    id.size());
+}
+
+// Build a driven 2-tile Rust engine handle (for the FFI under test) + an identically-built C++
+// pclomp engine (for the main align result + the templated reference) + the source cloud (shifted
+// by a known translation).
+RustEngine make_driven(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out, Cpp & cpp_out)
 {
   std::mt19937 rng(13);
   auto tile0 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
@@ -81,16 +130,19 @@ Adapter make_driven(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out, Cpp & cpp_
       source_out->push_back(pcl::PointXYZ(p.x + t_true[0], p.y + t_true[1], p.z + t_true[2]));
     }
   }
-  cpp_out.setParams(make_params());
+  const pclomp::NdtParams params = make_params();
+  cpp_out.setParams(params);
   cpp_out.addTarget(tile0, "0");
   cpp_out.addTarget(tile1, "1");
   cpp_out.createVoxelKdtree();
-  Adapter rs;
-  rs.setParams(make_params());
-  rs.addTarget(tile0, "0");
-  rs.addTarget(tile1, "1");
-  rs.createVoxelKdtree();
-  return rs;
+  RustEngine engine;
+  autoware_ndt_scan_matcher_rs_ndt_engine_set_params(
+    engine.raw(), params.trans_epsilon, params.step_size, params.resolution, params.max_iterations,
+    0.55, params.num_threads);
+  add_target(engine, *tile0, "0");
+  add_target(engine, *tile1, "1");
+  autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(engine.raw());
+  return engine;
 }
 
 std::array<double, 36> make_output_cov()
@@ -109,7 +161,7 @@ const std::vector<double> kOffsetX = {0.3, -0.3, 0.0, 0.0};
 const std::vector<double> kOffsetY = {0.0, 0.0, 0.3, -0.3};
 const std::array<double, 9> kRotId = {1, 0, 0, 0, 1, 0, 0, 0, 1};
 
-// Fill an AwCovEstimationInput from a driven adapter's result + the given estimation type.
+// Fill an AwCovEstimationInput from a driven C++ result + the given estimation type.
 AwCovEstimationInput make_input(
   const pclomp::NdtResult & ndt_result, const std::vector<float> & source_flat, int32_t type,
   const std::array<double, 36> & output_cov, double scale)
@@ -140,22 +192,10 @@ AwCovEstimationInput make_input(
   return in;
 }
 
-std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
-{
-  std::vector<float> flat;
-  flat.reserve(cloud.size() * 3);
-  for (const auto & p : cloud.points) {
-    flat.push_back(p.x);
-    flat.push_back(p.y);
-    flat.push_back(p.z);
-  }
-  return flat;
-}
-
 // Run the FFI; returns the 36 covariance + fills the publish-kind/counts via out-params.
 std::array<double, 36> run_ffi(
-  Adapter & rs, const AwCovEstimationInput & in, int32_t & publish_kind, uint32_t & result_count,
-  uint32_t & initial_count)
+  const AwNdtEngine * engine, const AwCovEstimationInput & in, int32_t & publish_kind,
+  uint32_t & result_count, uint32_t & initial_count)
 {
   const auto cap = static_cast<uint32_t>(in.n_offsets + 1);
   std::vector<float> res_buf(static_cast<size_t>(cap) * 16);
@@ -164,7 +204,7 @@ std::array<double, 36> run_ffi(
   out.multi_ndt_result_poses = res_buf.data();
   out.multi_initial_poses = init_buf.data();
   out.pose_cap = cap;
-  autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(rs.raw_handle(), &in, &out);
+  autoware_ndt_scan_matcher_rs_node_estimate_pose_covariance(engine, &in, &out);
   publish_kind = out.publish_kind;
   result_count = out.multi_ndt_result_count;
   initial_count = out.multi_initial_count;
@@ -174,12 +214,13 @@ std::array<double, 36> run_ffi(
 }
 }  // namespace
 
-// FIXED_VALUE: just the rotated configured covariance (identity rotation → unchanged), no publish.
+// FIXED_VALUE: just the rotated configured covariance (identity rotation → unchanged), no
+// publish.
 TEST(EstimatePoseCovariance, FixedValueJustRotates)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
   Cpp cpp;
-  Adapter rs = make_driven(source, cpp);
+  RustEngine engine = make_driven(source, cpp);
   auto out_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   cpp.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
   const pclomp::NdtResult ndt_result = cpp.getResult();
@@ -189,7 +230,7 @@ TEST(EstimatePoseCovariance, FixedValueJustRotates)  // NOLINT
   int32_t kind = -1;
   uint32_t rc = 99;
   uint32_t ic = 99;
-  const auto cov = run_ffi(rs, in, kind, rc, ic);
+  const auto cov = run_ffi(engine.raw(), in, kind, rc, ic);
 
   EXPECT_EQ(kind, 0);
   // Identity rotation leaves the configured covariance unchanged.
@@ -199,12 +240,13 @@ TEST(EstimatePoseCovariance, FixedValueJustRotates)  // NOLINT
 }
 
 // MULTI_NDT: the FFI's ndt_covariance matches rotate(config) with the 2x2 block replaced by
-// adjust(scale * estimate), where the estimate is the C++ templated estimator on the same adapter.
+// adjust(scale * estimate), where the estimate is the C++ templated estimator on the same
+// map/source setup.
 TEST(EstimatePoseCovariance, MultiNdtMatchesComposition)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
   Cpp cpp;
-  Adapter rs = make_driven(source, cpp);
+  RustEngine engine = make_driven(source, cpp);
   auto out_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   cpp.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
   const pclomp::NdtResult ndt_result = cpp.getResult();
@@ -216,16 +258,16 @@ TEST(EstimatePoseCovariance, MultiNdtMatchesComposition)  // NOLINT
   int32_t kind = -1;
   uint32_t rc = 0;
   uint32_t ic = 0;
-  const auto cov = run_ffi(rs, in, kind, rc, ic);
+  const auto cov = run_ffi(engine.raw(), in, kind, rc, ic);
 
-  // Reference 2x2 via the templated estimator on the C++ pclomp engine (the slimmed adapter no longer
-  // has align/getResult). This is the engine-vs-engine multi-NDT differential (Rust FFI vs C++).
+  // Reference 2x2 via the templated estimator on the C++ pclomp engine. This is the
+  // engine-vs-engine multi-NDT differential (Rust FFI vs C++).
   const std::vector<Eigen::Matrix4f> poses =
     pclomp::propose_poses_to_search(ndt_result, kOffsetX, kOffsetY);
   const pclomp::ResultOfMultiNdtCovarianceEstimation ref =
     pclomp::estimate_xy_covariance_by_multi_ndt(ndt_result, cpp, poses, source);
-  const Eigen::Matrix2d adj =
-    pclomp::adjust_diagonal_covariance(ref.covariance * scale, ndt_result.pose, output_cov[0], output_cov[7]);
+  const Eigen::Matrix2d adj = pclomp::adjust_diagonal_covariance(
+    ref.covariance * scale, ndt_result.pose, output_cov[0], output_cov[7]);
   std::array<double, 36> expected{};
   autoware_ndt_scan_matcher_rs_rotate_covariance(output_cov.data(), kRotId.data(), expected.data());
   expected[0] = adj(0, 0);
@@ -236,9 +278,10 @@ TEST(EstimatePoseCovariance, MultiNdtMatchesComposition)  // NOLINT
   EXPECT_EQ(kind, 1);
   EXPECT_EQ(rc, kOffsetX.size() + 1);  // main + per-candidate result poses
   EXPECT_EQ(ic, kOffsetX.size() + 1);  // main + per-candidate initial poses
-  // The non-2x2 entries are the rotated configured covariance (identity rotation → exact). The 2x2
-  // block matches within the established multi-NDT cov tolerance (test_estimate_covariance_multi,
-  // E5): abs(diff) <= 5e-2 + 0.2*abs(expected). The two estimators are not bit-identical.
+  // The non-2x2 entries are the rotated configured covariance (identity rotation → exact). The
+  // 2x2 block matches within the established multi-NDT cov tolerance
+  // (test_estimate_covariance_multi, E5): abs(diff) <= 5e-2 + 0.2*abs(expected). The two
+  // estimators are not bit-identical.
   for (int i = 0; i < 36; ++i) {
     const bool in_xy_block = (i == 0 || i == 1 || i == 6 || i == 7);
     if (in_xy_block) {
@@ -254,7 +297,7 @@ TEST(EstimatePoseCovariance, MultiNdtScorePublishesInitialOnly)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
   Cpp cpp;
-  Adapter rs = make_driven(source, cpp);
+  RustEngine engine = make_driven(source, cpp);
   auto out_cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   cpp.align(*out_cloud, Eigen::Matrix4f::Identity(), source);
   const pclomp::NdtResult ndt_result = cpp.getResult();
@@ -263,7 +306,7 @@ TEST(EstimatePoseCovariance, MultiNdtScorePublishesInitialOnly)  // NOLINT
   int32_t kind = -1;
   uint32_t rc = 99;
   uint32_t ic = 0;
-  run_ffi(rs, in, kind, rc, ic);
+  run_ffi(engine.raw(), in, kind, rc, ic);
 
   EXPECT_EQ(kind, 2);
   EXPECT_EQ(rc, 0u);
