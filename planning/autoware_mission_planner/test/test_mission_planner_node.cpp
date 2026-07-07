@@ -52,19 +52,18 @@ using nav_msgs::msg::Odometry;
 namespace
 {
 
-// IDs of the three colinear road lanelets making up the test map (see create_map()).
+// IDs of the two colinear road lanelets making up the test map (see create_map()).
 constexpr lanelet::Id FIRST_LANELET_ID = 1000;
 constexpr lanelet::Id SECOND_LANELET_ID = 1001;
-constexpr lanelet::Id THIRD_LANELET_ID = 1002;
 
-/// @brief Create a lanelet map with three colinear straight road lanelets.
+/// @brief Create a lanelet map with two colinear straight road lanelets.
 ///
 ///   y
-///   2 +----------------+----------------+----------------+   <- left bound
-///     |   FIRST_LANELET|SECOND_LANELET  |  THIRD_LANELET |
-///  -2 +----------------+----------------+----------------+   <- right bound
-///     +----------------+----------------+----------------+--> x
-///     0               50              100              150
+///   2 +----------------+----------------+   <- left bound
+///     |   FIRST_LANELET|SECOND_LANELET  |
+///  -2 +----------------+----------------+   <- right bound
+///     +----------------+----------------+--> x
+///     0               50              100
 ///
 /// Lanelet boundaries at a shared x reuse the same Point3d instances (not just equal
 /// coordinates) so that lanelet2's routing graph recognizes the lanelets as consecutive:
@@ -80,11 +79,9 @@ LaneletMapBin create_map()
   const Point3d left_0(lanelet::utils::getId(), 0.0, 2.0);
   const Point3d left_50(lanelet::utils::getId(), 50.0, 2.0);
   const Point3d left_100(lanelet::utils::getId(), 100.0, 2.0);
-  const Point3d left_150(lanelet::utils::getId(), 150.0, 2.0);
   const Point3d right_0(lanelet::utils::getId(), 0.0, -2.0);
   const Point3d right_50(lanelet::utils::getId(), 50.0, -2.0);
   const Point3d right_100(lanelet::utils::getId(), 100.0, -2.0);
-  const Point3d right_150(lanelet::utils::getId(), 150.0, -2.0);
 
   auto make_road_lanelet = [](
                              const lanelet::Id id, const Point3d & left_from,
@@ -100,13 +97,10 @@ LaneletMapBin create_map()
   auto first_lanelet = make_road_lanelet(FIRST_LANELET_ID, left_0, left_50, right_0, right_50);
   auto second_lanelet =
     make_road_lanelet(SECOND_LANELET_ID, left_50, left_100, right_50, right_100);
-  auto third_lanelet =
-    make_road_lanelet(THIRD_LANELET_ID, left_100, left_150, right_100, right_150);
 
   auto lanelet_map = std::make_shared<lanelet::LaneletMap>();
   lanelet_map->add(first_lanelet);
   lanelet_map->add(second_lanelet);
-  lanelet_map->add(third_lanelet);
 
   auto map_bin = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(lanelet_map);
   map_bin.header.frame_id = "map";
@@ -408,7 +402,7 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetWaypointRouteRequestSucceeds)
   publish_map(create_map());
   publish_odometry(make_odometry(make_pose(10.0, 0.0), 0.0));
   spin_for(std::chrono::milliseconds(300));
-  const auto request = make_set_waypoint_route_request(make_pose(140.0, 0.0));
+  const auto request = make_set_waypoint_route_request(make_pose(90.0, 0.0));
 
   // Act
   const auto response = call_set_waypoint_route(request);
@@ -416,7 +410,7 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetWaypointRouteRequestSucceeds)
   // Assert
   EXPECT_TRUE(response->status.success);
   expect_route_state(RouteState::SET);
-  expect_route_ends_with_segment(THIRD_LANELET_ID);
+  expect_route_ends_with_segment(SECOND_LANELET_ID);
 }
 
 TEST_F(MissionPlannerIntegrationTest, SecondWaypointRequestAsSafeRerouteWhileStoppedSucceeds)
