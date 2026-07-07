@@ -7,10 +7,7 @@
   <arg name="stop_filter_param_path" default="$(find-pkg-share autoware_stop_filter)/config/stop_filter.param.yaml"/>
   <arg name="twist2accel_param_path" default="$(find-pkg-share autoware_twist2accel)/config/twist2accel.param.yaml"/>
   <arg name="pose_initializer_param_path" default="$(find-pkg-share autoware_pose_initializer)/config/pose_initializer.param.yaml"/>
-<<<<<<< HEAD
-=======
   <arg name="initial_pose" default="[]" description="initial pose (x, y, z, quat_x, quat_y, quat_z, quat_w)"/>
->>>>>>> 61757f387a2696555657d4f06c517e8f719d3480
   <arg name="voxel_grid_downsample_filter_param_file" default="$(find-pkg-share autoware_downsample_filters)/config/voxel_grid_downsample_filter_node.param.yaml"/>
   <arg name="ndt_scan_matcher_param_path" default="$(find-pkg-share autoware_ndt_scan_matcher)/config/ndt_scan_matcher.param.yaml"/>
 
