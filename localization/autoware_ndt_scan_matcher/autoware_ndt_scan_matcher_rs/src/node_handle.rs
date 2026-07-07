@@ -100,6 +100,9 @@ pub struct NdtScanMatcherRs {
     regularization_buffer: Option<Mutex<PoseBuffer>>,
     /// Map-update decision state (Phase 6): last-update position + need-rebuild policy.
     map_update_state: Mutex<MapUpdateState>,
+    /// Latest sensor cloud transformed into `base_link` by the Rust sensor callback. The align service
+    /// snapshots this without holding the lock across NDT alignment or C++ host calls.
+    latest_sensor_points_base_link: Mutex<Vec<[f32; 3]>>,
 }
 
 impl NdtScanMatcherRs {
@@ -123,6 +126,7 @@ impl NdtScanMatcherRs {
             initial_pose_buffer,
             regularization_buffer,
             map_update_state: Mutex::new(MapUpdateState::default()),
+            latest_sensor_points_base_link: Mutex::new(Vec::new()),
         }
     }
 
@@ -276,6 +280,32 @@ impl NdtScanMatcherRs {
         let result = b.interpolate(target_ns)?;
         b.pop_old(target_ns);
         Some(result)
+    }
+
+    /// Replace the latest base-link sensor cloud. Called only after the Rust sensor prologue has
+    /// successfully decoded, transformed, and validated the incoming cloud.
+    pub(crate) fn store_latest_sensor_points(&self, points: &[[f32; 3]]) {
+        if let Ok(mut latest) = self.latest_sensor_points_base_link.lock() {
+            latest.clear();
+            latest.extend_from_slice(points);
+        }
+    }
+
+    /// Number of points in the latest base-link sensor cloud, or zero if none is available.
+    #[must_use]
+    pub(crate) fn latest_sensor_points_count(&self) -> usize {
+        self.latest_sensor_points_base_link
+            .lock()
+            .map_or(0, |points| points.len())
+    }
+
+    /// Snapshot the latest base-link sensor cloud so no node-state lock is held across alignment.
+    pub(crate) fn latest_sensor_points_snapshot(&self) -> Option<Vec<[f32; 3]>> {
+        let points = self.latest_sensor_points_base_link.lock().ok()?;
+        if points.is_empty() {
+            return None;
+        }
+        Some(points.clone())
     }
 }
 
@@ -512,6 +542,67 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_free(ptr: *mut NdtScanMatc
         // SAFETY: non-null and produced by `_new` (Box::into_raw) per the contract; freed once.
         drop(unsafe { Box::from_raw(ptr) });
     }
+}
+
+/// Return the number of points in the latest Rust-owned base-link sensor cloud. Zero means that the
+/// Rust-enabled align service should take the missing-sensor branch.
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null -> zero.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; pointer validated per rust-c-ffi-safety"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_sensor_points_count(
+    handle: *const NdtScanMatcherRs,
+) -> usize {
+    if handle.is_null() {
+        return 0;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    unsafe { &*handle }.latest_sensor_points_count()
+}
+
+/// Copy the latest Rust-owned base-link sensor cloud into a caller-owned flat xyz buffer. Returns the
+/// number of copied points, or zero on null pointers, no latest cloud, or insufficient capacity.
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new` (or null -> zero). `out_xyz` must
+/// address `3 * out_points_capacity` writable, aligned `f32` values when capacity is nonzero.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; writes caller-owned flat xyz buffer after pointer/capacity checks"
+)]
+#[expect(
+    clippy::indexing_slicing,
+    reason = "chunks_exact_mut(3) yields fixed three-element chunks for xyz writes"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_sensor_points_copy(
+    handle: *const NdtScanMatcherRs,
+    out_xyz: *mut f32,
+    out_points_capacity: usize,
+) -> usize {
+    if handle.is_null() || out_xyz.is_null() {
+        return 0;
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    let Some(points) = (unsafe { &*handle }).latest_sensor_points_snapshot() else {
+        return 0;
+    };
+    if out_points_capacity < points.len() {
+        return 0;
+    }
+    let flat_len = out_points_capacity.saturating_mul(3);
+    // SAFETY: `out_xyz` addresses `3 * out_points_capacity` writable f32 values per the contract.
+    let out = unsafe { core::slice::from_raw_parts_mut(out_xyz, flat_len) };
+    for (dst, point) in out.chunks_exact_mut(3).zip(points.iter()) {
+        dst[0] = point[0];
+        dst[1] = point[1];
+        dst[2] = point[2];
+    }
+    points.len()
 }
 
 /// Interpolate the regularization pose at `stamp_ns` from the handle's Rust-owned buffer, writing the
@@ -825,6 +916,8 @@ mod tests {
         // Node state starts empty (inactive, no EKF position yet).
         assert!(!m.is_activated());
         assert!(m.latest_ekf_position().is_none());
+        assert_eq!(m.latest_sensor_points_count(), 0);
+        assert!(m.latest_sensor_points_snapshot().is_none());
         assert!(
             m.map_update_state
                 .lock()
@@ -868,6 +961,72 @@ mod tests {
     fn free_null_is_noop() {
         // SAFETY: null is explicitly handled as a no-op.
         unsafe { autoware_ndt_scan_matcher_rs_free(core::ptr::null_mut()) };
+    }
+
+    #[test]
+    fn latest_sensor_points_store_replaces_and_snapshots() {
+        let ox: [f64; 0] = [];
+        let oy: [f64; 0] = [];
+        let p = sample_params(&ox, &oy);
+        // SAFETY: valid params.
+        let handle = unsafe { autoware_ndt_scan_matcher_rs_new(&raw const p) };
+        // SAFETY: live handle.
+        let h = unsafe { &*handle };
+        assert_eq!(h.latest_sensor_points_count(), 0);
+        assert!(h.latest_sensor_points_snapshot().is_none());
+
+        h.store_latest_sensor_points(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
+        assert_eq!(h.latest_sensor_points_count(), 2);
+        let first = h.latest_sensor_points_snapshot().unwrap();
+        assert_eq!(first, vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
+
+        h.store_latest_sensor_points(&[[7.0, 8.0, 9.0]]);
+        assert_eq!(h.latest_sensor_points_count(), 1);
+        assert_eq!(first, vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
+        assert_eq!(
+            h.latest_sensor_points_snapshot().unwrap(),
+            vec![[7.0, 8.0, 9.0]]
+        );
+
+        h.store_latest_sensor_points(&[]);
+        assert_eq!(h.latest_sensor_points_count(), 0);
+        assert!(h.latest_sensor_points_snapshot().is_none());
+        // SAFETY: freed once.
+        unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
+    }
+
+    #[test]
+    fn latest_sensor_points_copy_checks_capacity() {
+        let ox: [f64; 0] = [];
+        let oy: [f64; 0] = [];
+        let p = sample_params(&ox, &oy);
+        // SAFETY: valid params.
+        let handle = unsafe { autoware_ndt_scan_matcher_rs_new(&raw const p) };
+        // SAFETY: live handle.
+        let h = unsafe { &*handle };
+        h.store_latest_sensor_points(&[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]]);
+
+        let mut too_small = [0.0_f32; 3];
+        // SAFETY: output buffer is valid for one point, which is intentionally insufficient.
+        let copied = unsafe {
+            autoware_ndt_scan_matcher_rs_latest_sensor_points_copy(
+                handle,
+                too_small.as_mut_ptr(),
+                1,
+            )
+        };
+        assert_eq!(copied, 0);
+        assert_eq!(too_small, [0.0, 0.0, 0.0]);
+
+        let mut flat = [0.0_f32; 6];
+        // SAFETY: output buffer is valid for two points.
+        let copied = unsafe {
+            autoware_ndt_scan_matcher_rs_latest_sensor_points_copy(handle, flat.as_mut_ptr(), 2)
+        };
+        assert_eq!(copied, 2);
+        assert_eq!(flat, [1.0, 2.0, 3.0, 4.0, 5.0, 6.0]);
+        // SAFETY: freed once.
+        unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
     }
 
     #[test]

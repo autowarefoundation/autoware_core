@@ -192,7 +192,6 @@ extern "C" void h_pub_itr(
 {
   static_cast<Captured *>(ctx)->itr_called = true;
 }
-extern "C" void h_store_base_link(void *, AwPoint3fSlice) {}
 extern "C" bool h_pc_has(void * ctx, AwPointCloudTopic topic)
 {
   const auto * c = static_cast<Captured *>(ctx);
@@ -227,7 +226,7 @@ AwHost recording_host(Captured & c)
 {
   return AwHost{
     &c,           h_now,        h_log,         h_lookup,   h_pub_pose, h_pub_pose_array,
-    h_pub_marker, h_pub_float32, h_pub_int32, h_pub_tf,    h_pub_itr,  h_store_base_link, h_pc_has,
+    h_pub_marker, h_pub_float32, h_pub_int32, h_pub_tf,    h_pub_itr,  h_pc_has,
     h_pub_cloud,  h_pub_score_cloud};
 }
 

@@ -53,7 +53,6 @@ struct NdtRustHostAccess
   static void host_publish_initial_to_result(
     void * ctx, int64_t stamp_ns, const AwPose * result, const AwPose * initial,
     const double * old_pos, const double * new_pos);
-  static void host_store_sensor_points_base_link(void * ctx, AwPoint3fSlice points);
   static bool host_pointcloud_has_subscribers(void * ctx, AwPointCloudTopic topic);
   static void host_publish_pointcloud_xyz(
     void * ctx, AwPointCloudTopic topic, int64_t stamp_ns, AwPoint3fSlice points);
@@ -248,21 +247,6 @@ void NdtRustHostAccess::host_publish_initial_to_result(
   }
 }
 
-static pcl::PointCloud<pcl::PointXYZ> aw_xyz_slice_to_cloud(AwPoint3fSlice points);
-
-void NdtRustHostAccess::host_store_sensor_points_base_link(void * ctx, AwPoint3fSlice points)
-{
-  auto * self = static_cast<NDTScanMatcher *>(ctx);
-  try {
-    auto cloud = pcl::make_shared<pcl::PointCloud<NDTScanMatcher::PointSource>>(
-      aw_xyz_slice_to_cloud(points));
-    self->sensor_points_in_baselink_frame_ = cloud;
-  } catch (...) {
-    RCLCPP_ERROR_STREAM_THROTTLE(
-      self->get_logger(), *self->get_clock(), 1000, "store_sensor_points_base_link failed");
-  }
-}
-
 bool NdtRustHostAccess::host_pointcloud_has_subscribers(void * ctx, AwPointCloudTopic topic)
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
@@ -362,7 +346,6 @@ AwHost NDTScanMatcher::make_host()
     &NdtRustHostAccess::host_publish_int32,
     &NdtRustHostAccess::host_publish_tf,
     &NdtRustHostAccess::host_publish_initial_to_result,
-    &NdtRustHostAccess::host_store_sensor_points_base_link,
     &NdtRustHostAccess::host_pointcloud_has_subscribers,
     &NdtRustHostAccess::host_publish_pointcloud_xyz,
     &NdtRustHostAccess::host_publish_voxel_score_points};

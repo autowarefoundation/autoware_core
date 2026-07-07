@@ -179,9 +179,6 @@ pub struct AwHost {
         old_pos: *const f64,
         new_pos: *const f64,
     ),
-    /// Transitional until the align service moves to Rust: store the prepared `base_link` cloud in the
-    /// C++ shell for `service_ndt_align`'s legacy `sensor_points_in_baselink_frame_` dependency.
-    store_sensor_points_base_link: extern "C" fn(*mut c_void, points: AwPoint3fSlice),
     /// Whether a point-cloud publisher currently has subscribers. Used to avoid expensive optional
     /// score-cloud generation.
     pointcloud_has_subscribers: extern "C" fn(*mut c_void, topic: AwPointCloudTopic) -> bool,
@@ -289,17 +286,6 @@ impl AwHost {
             initial,
             old_pos.as_ptr(),
             new_pos.as_ptr(),
-        );
-    }
-
-    /// Store the prepared `base_link` cloud in the C++ shell for the deferred align-service path.
-    pub fn store_sensor_points_base_link(&self, points: &[[f32; 3]]) {
-        (self.store_sensor_points_base_link)(
-            self.ctx,
-            AwPoint3fSlice {
-                ptr: points.as_ptr().cast::<f32>(),
-                len: points.len(),
-            },
         );
     }
 

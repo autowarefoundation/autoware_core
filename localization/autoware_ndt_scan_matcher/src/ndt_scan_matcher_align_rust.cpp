@@ -41,16 +41,19 @@ namespace autoware::ndt_scan_matcher
 using autoware::localization_util::pose_to_matrix4f;
 namespace
 {
-std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
+pcl::PointCloud<pcl::PointXYZ> flat_xyz_to_cloud(
+  const std::vector<float> & points, const std::size_t point_count)
 {
-  std::vector<float> f;
-  f.reserve(cloud.size() * 3);
-  for (const auto & p : cloud) {
-    f.push_back(p.x);
-    f.push_back(p.y);
-    f.push_back(p.z);
+  pcl::PointCloud<pcl::PointXYZ> cloud;
+  cloud.points.reserve(point_count);
+  for (std::size_t i = 0; i < point_count; ++i) {
+    const std::size_t base = i * 3U;
+    cloud.points.emplace_back(points[base], points[base + 1U], points[base + 2U]);
   }
-  return f;
+  cloud.width = static_cast<std::uint32_t>(cloud.points.size());
+  cloud.height = 1U;
+  cloud.is_dense = true;
+  return cloud;
 }
 
 geometry_msgs::msg::Pose aw_pose_to_msg(const AwPose & pose)
@@ -236,7 +239,8 @@ void NDTScanMatcher::service_ndt_align_main(
       return;
     }
 
-    bool is_set_sensor_points = (sensor_points_in_baselink_frame_ != nullptr);
+    const bool is_set_sensor_points =
+      autoware_ndt_scan_matcher_rs_latest_sensor_points_count(rs_.raw()) > 0U;
     diagnostics_ndt_align_->add_key_value("is_set_sensor_points", is_set_sensor_points);
     if (!is_set_sensor_points) {
       const AwNdtAlignServiceGateAction action =
@@ -289,7 +293,6 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     initial_pose_with_cov.pose.covariance.data(), 6, 6};
 
   std::vector<Particle> particle_array;
-  const std::vector<float> source_flat = cloud_to_flat(*sensor_points_in_baselink_frame_);
 
   visualization_msgs::msg::MarkerArray marker_array;
   constexpr int64_t publish_num = 20;
@@ -331,8 +334,10 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   search_input.n_startup_trials = param_.initial_pose_estimation.n_startup_trials;
   search_input.reliable_score_threshold =
     param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
-  search_input.source_points = source_flat.data();
-  search_input.source_points_len = sensor_points_in_baselink_frame_->size();
+
+  const std::size_t source_points_capacity =
+    autoware_ndt_scan_matcher_rs_latest_sensor_points_count(rs_.raw());
+  std::vector<float> source_flat(source_points_capacity * 3U);
 
   AwNdtAlignServiceSearchOutput search_output{};
   search_output.particles_capacity = particles_capacity;
@@ -340,13 +345,19 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   search_output.result_poses = result_poses.data();
   search_output.scores = scores.data();
   search_output.iterations = iterations.data();
+  search_output.source_points = source_flat.data();
+  search_output.source_points_capacity = source_points_capacity;
 
-  const std::int32_t search_status = autoware_ndt_scan_matcher_rs_node_run_align_service_search(
-    ndt_ref.raw_handle(), &search_input, &search_output);
+  const std::int32_t search_status =
+    autoware_ndt_scan_matcher_rs_node_run_align_service_search_latest(
+      rs_.raw(), ndt_ref.raw_handle(), &search_input, &search_output);
   if (search_status != NDT_ALIGN_SERVICE_STATUS_ALIGNED || search_output.valid == 0U) {
     return return_search_failure(
       "Rust align-service search failed with status " + std::to_string(search_status));
   }
+
+  const auto source_cloud = std::make_shared<pcl::PointCloud<PointSource>>(
+    flat_xyz_to_cloud(source_flat, search_output.source_points_len));
 
   for (std::size_t i = 0; i < search_output.particles_len; ++i) {
     Particle particle(
@@ -362,8 +373,7 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
 
     auto sensor_points_in_map_ptr = std::make_shared<pcl::PointCloud<PointSource>>();
     autoware_utils_pcl::transform_pointcloud(
-      *sensor_points_in_baselink_frame_, *sensor_points_in_map_ptr,
-      pose_to_matrix4f(particle.result_pose));
+      *source_cloud, *sensor_points_in_map_ptr, pose_to_matrix4f(particle.result_pose));
     publish_point_cloud(
       initial_pose_with_cov.header.stamp, param_.frame.map_frame, sensor_points_in_map_ptr);
   }

@@ -25,6 +25,8 @@ use crate::engine::{NdtEngine, run_align};
 #[cfg(feature = "std")]
 use crate::ffi_host::AwPose;
 #[cfg(feature = "std")]
+use crate::node_handle::NdtScanMatcherRs;
+#[cfg(feature = "std")]
 use crate::tpe::{Direction, TreeStructuredParzenEstimator, Trial};
 
 /// Initial pose TF lookup failed.
@@ -242,6 +244,9 @@ pub struct AwNdtAlignServiceSearchOutput {
     pub result_poses: *mut AwPose,
     pub scores: *mut f64,
     pub iterations: *mut i32,
+    pub source_points: *mut f32,
+    pub source_points_capacity: usize,
+    pub source_points_len: usize,
     pub best_pose: AwPose,
     pub best_score: f64,
     pub best_iteration: i32,
@@ -696,6 +701,7 @@ fn set_search_invalid(out: &mut AwNdtAlignServiceSearchOutput) {
     out.particles_len = 0;
     out.best_score = f64::NEG_INFINITY;
     out.best_iteration = -1;
+    out.source_points_len = 0;
     out.particles_requested = 0;
     out.particles_evaluated = 0;
     out.marker_publish_count = 0;
@@ -707,19 +713,16 @@ fn set_search_invalid(out: &mut AwNdtAlignServiceSearchOutput) {
     clippy::indexing_slicing,
     reason = "fixed ABI covariance diagonals and caller-sized output buffers are validated before use"
 )]
-#[expect(
-    unsafe_code,
-    reason = "C ABI helper converts a validated source pointer and point count to a slice"
-)]
 fn run_align_service_search_impl(
     engine: &NdtEngine,
     input: &AwNdtAlignServiceSearchInput,
+    source: &[[f32; 3]],
     initial_poses: &mut [AwPose],
     result_poses: &mut [AwPose],
     scores: &mut [f64],
     iterations: &mut [i32],
 ) -> Option<AwNdtAlignServiceSearchOutput> {
-    if input.particles_num <= 0 || !search_input_is_finite(input) || input.source_points.is_null() {
+    if input.particles_num <= 0 || !search_input_is_finite(input) || source.is_empty() {
         return None;
     }
     let particles_num = usize::try_from(input.particles_num).ok()?;
@@ -757,13 +760,6 @@ fn run_align_service_search_impl(
     )
     .ok()?;
 
-    // SAFETY: caller validated `input.source_points` + `source_points_len` before this helper is used.
-    let source = unsafe {
-        core::slice::from_raw_parts(
-            input.source_points.cast::<[f32; 3]>(),
-            input.source_points_len,
-        )
-    };
     let conv = crate::engine::ConvergenceParams {
         converged_param_type: 1,
         converged_param_transform_probability: 0.0,
@@ -811,6 +807,9 @@ fn run_align_service_search_impl(
         result_poses: result_poses.as_mut_ptr(),
         scores: scores.as_mut_ptr(),
         iterations: iterations.as_mut_ptr(),
+        source_points: core::ptr::null_mut(),
+        source_points_capacity: 0,
+        source_points_len: 0,
         best_pose,
         best_score,
         best_iteration,
@@ -856,6 +855,16 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align_service_sea
     {
         return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
     }
+    if input_ref.source_points.is_null() {
+        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
+    }
+    // SAFETY: `input_ref.source_points` addresses `source_points_len` readable xyz triples by the C ABI contract.
+    let source = unsafe {
+        core::slice::from_raw_parts(
+            input_ref.source_points.cast::<[f32; 3]>(),
+            input_ref.source_points_len,
+        )
+    };
     // SAFETY: output pointers each address `cap` writable elements by the C ABI contract.
     let (initial_poses, result_poses, scores, iterations) = unsafe {
         (
@@ -868,11 +877,120 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align_service_sea
     let Some(result) = run_align_service_search_impl(
         engine_ref,
         input_ref,
+        source,
         initial_poses,
         result_poses,
         scores,
         iterations,
     ) else {
+        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
+    };
+    out_ref.status = result.status;
+    out_ref.valid = result.valid;
+    out_ref.particles_len = result.particles_len;
+    out_ref.best_pose = result.best_pose;
+    out_ref.best_score = result.best_score;
+    out_ref.best_iteration = result.best_iteration;
+    out_ref.particles_requested = result.particles_requested;
+    out_ref.particles_evaluated = result.particles_evaluated;
+    out_ref.marker_publish_count = result.marker_publish_count;
+    out_ref.cloud_publish_count = result.cloud_publish_count;
+    NDT_ALIGN_SERVICE_STATUS_ALIGNED
+}
+
+#[cfg(feature = "std")]
+#[expect(
+    clippy::indexing_slicing,
+    reason = "chunks_exact_mut(3) yields fixed three-element chunks for xyz writes"
+)]
+#[expect(
+    unsafe_code,
+    reason = "C ABI helper writes caller-owned source snapshot buffer after capacity checks"
+)]
+fn copy_source_points_to_output(
+    source: &[[f32; 3]],
+    out: &mut AwNdtAlignServiceSearchOutput,
+) -> bool {
+    if out.source_points_capacity == 0 {
+        return true;
+    }
+    if out.source_points.is_null() || out.source_points_capacity < source.len() {
+        return false;
+    }
+    let flat_len = out.source_points_capacity.saturating_mul(3);
+    // SAFETY: caller provided `source_points_capacity` writable xyz slots.
+    let out_flat = unsafe { core::slice::from_raw_parts_mut(out.source_points, flat_len) };
+    for (dst, point) in out_flat.chunks_exact_mut(3).zip(source.iter()) {
+        dst[0] = point[0];
+        dst[1] = point[1];
+        dst[2] = point[2];
+    }
+    out.source_points_len = source.len();
+    true
+}
+
+/// Run the Rust-owned align-service search using the latest base-link sensor cloud stored on the
+/// Rust node handle. The source cloud is snapshotted before alignment, so no node-state lock is held
+/// across the NDT search or C++ publication work.
+///
+/// # Safety
+/// `handle`, `engine`, `input`, and `out` must be valid live pointers. Output arrays inside `out`
+/// must each address `out.particles_capacity` writable elements and must not overlap mutably. If
+/// `out.source_points_capacity > 0`, `out.source_points` must address `3 * capacity` writable `f32`
+/// values for the optional caller-owned source snapshot copy.
+#[cfg(feature = "std")]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; snapshots Rust node state and writes caller-owned buffers"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_run_align_service_search_latest(
+    handle: *const NdtScanMatcherRs,
+    engine: *const NdtEngine,
+    input: *const AwNdtAlignServiceSearchInput,
+    out: *mut AwNdtAlignServiceSearchOutput,
+) -> i32 {
+    if handle.is_null() || engine.is_null() || input.is_null() || out.is_null() {
+        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
+    }
+    // SAFETY: non-null per the check; caller guarantees valid, live structs for the call.
+    let (handle_ref, engine_ref, input_ref, out_ref) =
+        unsafe { (&*handle, &*engine, &*input, &mut *out) };
+    set_search_invalid(out_ref);
+    let Some(source) = handle_ref.latest_sensor_points_snapshot() else {
+        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
+    };
+    if !copy_source_points_to_output(&source, out_ref) {
+        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
+    }
+    let cap = out_ref.particles_capacity;
+    if out_ref.initial_poses.is_null()
+        || out_ref.result_poses.is_null()
+        || out_ref.scores.is_null()
+        || out_ref.iterations.is_null()
+    {
+        set_search_invalid(out_ref);
+        return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
+    }
+    // SAFETY: output pointers each address `cap` writable elements by the C ABI contract.
+    let (initial_poses, result_poses, scores, iterations) = unsafe {
+        (
+            core::slice::from_raw_parts_mut(out_ref.initial_poses, cap),
+            core::slice::from_raw_parts_mut(out_ref.result_poses, cap),
+            core::slice::from_raw_parts_mut(out_ref.scores, cap),
+            core::slice::from_raw_parts_mut(out_ref.iterations, cap),
+        )
+    };
+    let Some(result) = run_align_service_search_impl(
+        engine_ref,
+        input_ref,
+        &source,
+        initial_poses,
+        result_poses,
+        scores,
+        iterations,
+    ) else {
+        set_search_invalid(out_ref);
         return NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT;
     };
     out_ref.status = result.status;

@@ -231,7 +231,7 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_node_on_sensor_points_prep
         // SAFETY: `out` contains at least `3 * count` initialized f32 values written above.
         unsafe { core::slice::from_raw_parts(out.as_ptr().cast::<[f32; 3]>(), count) }
     };
-    ho.store_sensor_points_base_link(prepared);
+    h.store_latest_sensor_points(prepared);
     SP_PREPARED
 }
 
