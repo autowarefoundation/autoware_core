@@ -5,6 +5,40 @@ Changelog for package autoware_planning_factor_interface
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_planning_factor_interface): add gtest suite and apply move-based perf wins (`#1152 <https://github.com/autowarefoundation/autoware_core/issues/1152>`_)
+  * test(autoware_planning_factor_interface): add gtest suite and apply move-based perf wins
+  Add the package's first gtest suite, wiring the missing BUILD_TESTING /
+  ament_auto_add_gtest block in CMakeLists. The suite pins:
+  - single- and two-control-point add() ControlPoint/PlanningFactor field
+  construction (pose, velocity, shift_length, distance, module name,
+  behavior, detail, driving direction, safety factors),
+  - the templated add() overloads forwarding calcSignedArcLength results
+  into ControlPoint.distance,
+  - factor accumulation across multiple add() calls in insertion order,
+  - the publish() contract: header.frame_id == 'map', factors forwarded
+  into the PlanningFactorArray (verified via a test subscription), and
+  factors\_ cleared afterwards so the next cycle starts empty.
+  Apply the low-risk, behavior-preserving perf wins flagged for this
+  package: move the locally-built PlanningFactor into factors\_ in both
+  add() overloads, move factors\_ into msg.factors in publish() (the buffer
+  is cleared immediately after), and return factors\_ by const reference
+  from get_factors() to drop a deep copy per call. The publish() console
+  gate now checks msg.factors (which holds the moved-from factors) so the
+  output behavior is unchanged.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * style(pre-commit): autofix
+  * fix(autoware_planning_factor_interface): make factor non-const for real move
+  A const-qualified factor caused std::move to bind to the copy constructor,
+  silently degrading the intended move into factors\_ to a copy. Drop the const
+  qualifier on both add() overloads so push_back uses the move constructor.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 

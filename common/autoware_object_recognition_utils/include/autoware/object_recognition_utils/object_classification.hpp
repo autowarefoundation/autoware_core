@@ -17,6 +17,7 @@
 
 #include <autoware_perception_msgs/msg/object_classification.hpp>
 
+#include <algorithm>
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -93,28 +94,31 @@ inline bool isLargeVehicle(const std::vector<ObjectClassification> & object_clas
 
 inline uint8_t toLabel(const std::string & class_name)
 {
-  if (class_name == "UNKNOWN") {
+  std::string uppercase(class_name);
+  std::transform(uppercase.begin(), uppercase.end(), uppercase.begin(), ::toupper);
+
+  if (uppercase == "UNKNOWN") {
     return ObjectClassification::UNKNOWN;
-  } else if (class_name == "CAR") {
+  } else if (uppercase == "CAR") {
     return ObjectClassification::CAR;
-  } else if (class_name == "TRUCK") {
+  } else if (uppercase == "TRUCK") {
     return ObjectClassification::TRUCK;
-  } else if (class_name == "BUS") {
+  } else if (uppercase == "BUS") {
     return ObjectClassification::BUS;
-  } else if (class_name == "TRAILER") {
+  } else if (uppercase == "TRAILER") {
     return ObjectClassification::TRAILER;
-  } else if (class_name == "MOTORCYCLE") {
+  } else if (uppercase == "MOTORCYCLE") {
     return ObjectClassification::MOTORCYCLE;
-  } else if (class_name == "BICYCLE") {
+  } else if (uppercase == "BICYCLE") {
     return ObjectClassification::BICYCLE;
-  } else if (class_name == "PEDESTRIAN") {
+  } else if (uppercase == "PEDESTRIAN") {
     return ObjectClassification::PEDESTRIAN;
-  } else if (class_name == "ANIMAL") {
+  } else if (uppercase == "ANIMAL") {
     return ObjectClassification::ANIMAL;
-  } else if (class_name == "HAZARD") {
+  } else if (uppercase == "HAZARD") {
     return ObjectClassification::HAZARD;
   } else {
-    throw std::runtime_error("Invalid Classification label.");
+    throw std::runtime_error("Invalid Classification label: " + class_name);
   }
 }
 
