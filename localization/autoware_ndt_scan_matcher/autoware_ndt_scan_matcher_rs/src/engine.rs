@@ -13,7 +13,7 @@
 // limitations under the License.
 
 //! Persistent NDT engine handle (E6a). Wraps the target map + params over a stable C ABI (an opaque
-//! `AwNdtEngine*`), so the C++ node adapter can drive incremental map updates, alignment, and scoring.
+//! `AwNdtEngine*`), so C++ callers can drive incremental map updates, alignment, and scoring.
 //!
 //! Concurrency (engine concurrency refactor): the engine exposes **`&self`-only** methods and is
 //! `Sync` (std). The mutable state lives behind lock-free interior mutability — the target map +
@@ -141,8 +141,8 @@ struct EngineState {
     conv: ConvergenceParams,
     /// The `covariance` hyper-params read on `estimate_covariance` (swapped like `conv`).
     cov_config: CovarianceConfig,
-    /// Cell-id bytes → tile `u64` (the engine owns the mapping the C++ adapter's `id_map_` used to
-    /// hold; keys are the raw `std::string` cell-id bytes — not validated UTF-8). N4d.
+    /// Cell-id bytes → tile `u64` (the engine owns the legacy string-id mapping; keys are the
+    /// raw `std::string` cell-id bytes — not validated UTF-8). N4d.
     id_map: alloc::collections::BTreeMap<alloc::vec::Vec<u8>, u64>,
     next_id: u64,
 }
@@ -421,8 +421,8 @@ impl NdtEngine {
         swap_store(&self.reg, reg);
     }
 
-    /// Add a target map tile keyed by `id` (the C++ `addTarget(cloud, cell_id)`; the adapter maps the
-    /// node's string `cell_id` to a `u64`). Needs a following [`Self::create_kdtree`].
+    /// Add a target map tile keyed by `id` (C++ callers may also register a string `cell_id`,
+    /// which this engine maps to a `u64`). Needs a following [`Self::create_kdtree`].
     pub fn add_target(&self, points: &[[f32; 3]], id: u64) {
         swap_rcu(&self.state, |s| {
             let mut n = s.clone();
@@ -1157,8 +1157,8 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_ndt_engine_get_score_array
 
 // --- Phase N4a: sensor-callback align orchestrator (std-gated node glue) ---
 // Folds align + oscillation count + the convergence verdict into one Rust call against the live
-// engine, so the C++ sensor callback no longer drives align via the adapter + the C++
-// `count_oscillation` + the separate `evaluate_convergence` FFI. Reuses the existing engine align,
+// engine, so the C++ sensor callback no longer drives align through separate C++ glue plus the
+// C++ `count_oscillation` and `evaluate_convergence` FFI. Reuses the existing engine align,
 // `helper::count_oscillation`, and `convergence::evaluate_convergence` — all no_std, so this is part
 // of the no_std rlib (the C-ABI `extern "C"` wrapper below stays `std`-gated).
 

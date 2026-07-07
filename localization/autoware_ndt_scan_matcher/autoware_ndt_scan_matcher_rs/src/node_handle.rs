@@ -18,9 +18,9 @@
 //! Foundation slice (roadmap `plan/ndt_in_rust_next.md` → Phase 0/1): this introduced the opaque
 //! handle plus a single validated [`Params`] conversion replacing piecemeal scalar-by-scalar engine
 //! configuration. The handle now owns the migrated node state (activation, pose buffers, latest EKF,
-//! and map-update policy state) and drives the Rust callback bodies. It still does **not** own the
-//! engine; that remains in the C++ `NdtRustAdapter` until the Phase 8/align-service transition is
-//! complete. std-only: it is the ROS-node shell, excluded from the `no_std` kernel build.
+//! and map-update policy state) and drives the Rust callback bodies. It also owns the live Rust
+//! engine used by Rust-mode callbacks and map updates. std-only: it is the ROS-node shell, excluded
+//! from the `no_std` kernel build.
 
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -113,8 +113,7 @@ pub struct MapUpdateState {
 }
 
 /// The opaque node object C++ holds (as `AwNdtScanMatcher *`). Owns the validated params, node-state
-/// scaffolding, and (Phase 1 slice A) the Rust-owned regularization pose buffer; the engine is still
-/// owned by the C++ `NdtRustAdapter` this slice. Accessed through a shared `*const` from concurrent
+/// scaffolding, and the live Rust NDT engine. Accessed through a shared `*const` from concurrent
 /// ROS callbacks, so mutable node state uses interior locking (`Mutex`) — separate from, and finer
 /// than, the lock-free engine.
 pub struct NdtScanMatcherRs {

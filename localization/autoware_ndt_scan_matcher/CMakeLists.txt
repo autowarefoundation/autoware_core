@@ -129,9 +129,8 @@ target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES} multigrid_ndt_omp)
 
 if(NDT_USE_RUST)
   target_link_libraries(${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
-  # Drive the conditional NDT typedef in the node headers (core / map_update) to the Rust adapter.
   # PUBLIC so the generated node executable and the launch/sequence tests that link this lib also
-  # compile against the adapter.
+  # compile with Rust-mode declarations.
   target_compile_definitions(${PROJECT_NAME} PUBLIC NDT_USE_RUST)
 endif()
 
@@ -224,68 +223,61 @@ if(BUILD_TESTING)
     target_link_libraries(test_ndt_engine
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
 
-    # 6. Differential test: the drop-in NdtRustAdapter vs the C++ NDT engine (engine port E6b).
-    ament_auto_add_gtest(test_ndt_rust_adapter
-      test/test_ndt_rust_adapter.cpp
-    )
-    target_link_libraries(test_ndt_rust_adapter
-      multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
-
-    # 7. Test: the Rust TPE core's C ABI surface before production align-service wiring.
+    # 6. Test: the Rust TPE core's C ABI surface before production align-service wiring.
     ament_auto_add_gtest(test_tpe_ffi
       test/test_tpe_ffi.cpp
     )
     target_link_libraries(test_tpe_ffi autoware_ndt_scan_matcher_rs)
 
-    # 8. Differential test: the convergence decision migrated to Rust (FFI) vs the C++ gate logic
+    # 7. Differential test: the convergence decision migrated to Rust (FFI) vs the C++ gate logic
     #    from callback_sensor_points_main (node port N1).
     ament_auto_add_gtest(test_convergence_verdict
       test/test_convergence_verdict.cpp
     )
     target_link_libraries(test_convergence_verdict autoware_ndt_scan_matcher_rs)
 
-    # 9. Test: the thin pose callbacks migrated to Rust (FFI) drive a mock host vtable (node port N2).
+    # 8. Test: the thin pose callbacks migrated to Rust (FFI) drive a mock host vtable (node port N2).
     ament_auto_add_gtest(test_node_pose_callbacks
       test/test_node_pose_callbacks.cpp
     )
     target_link_libraries(test_node_pose_callbacks autoware_ndt_scan_matcher_rs)
 
-    # 10. Differential test: the map-update distance decision migrated to Rust (FFI) vs the C++
+    # 9. Differential test: the map-update distance decision migrated to Rust (FFI) vs the C++
     #    MapUpdateModule should_update_map / out_of_map_range math (node port N3).
     ament_auto_add_gtest(test_map_update_verdict
       test/test_map_update_verdict.cpp
     )
     target_link_libraries(test_map_update_verdict autoware_ndt_scan_matcher_rs)
 
-    # 11. Test: the sensor-callback align orchestrator (run_align, FFI) drives the live engine handle
-    #     and matches the adapter's own align (node port N4a).
+    # 10. Test: the sensor-callback align orchestrator (run_align, FFI) drives the live engine handle
+    #     and matches the direct engine FFI path (node port N4a).
     ament_auto_add_gtest(test_node_run_align
       test/test_node_run_align.cpp
     )
     target_link_libraries(test_node_run_align
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
 
-    # 12. Test: the covariance orchestrator (FFI) vs a hand-composition on the same adapter (N4b).
+    # 11. Test: the covariance orchestrator (FFI) vs a direct-engine hand-composition (N4b).
     ament_auto_add_gtest(test_estimate_pose_covariance
       test/test_estimate_pose_covariance.cpp
     )
     target_link_libraries(test_estimate_pose_covariance
       multigrid_ndt_omp ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
 
-    # 13. Test: the align-service deterministic gate/response decision migrated to Rust (Phase 7A).
+    # 12. Test: the align-service deterministic gate/response decision migrated to Rust (Phase 7A).
     ament_auto_add_gtest(test_ndt_align_service_decision
       test/test_ndt_align_service_decision.cpp
     )
     target_link_libraries(test_ndt_align_service_decision autoware_ndt_scan_matcher_rs)
 
-    # 14. Test: the opaque NdtScanMatcherRs node handle + C++ RAII wrapper (roadmap foundation).
+    # 13. Test: the opaque NdtScanMatcherRs node handle + C++ RAII wrapper (roadmap foundation).
     ament_auto_add_gtest(test_ndt_scan_matcher_rs_handle
       test/test_ndt_scan_matcher_rs_handle.cpp
     )
     target_link_libraries(test_ndt_scan_matcher_rs_handle
       ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
 
-    # 15. Differential test: the Rust-owned regularization pose buffer (FFI) vs the C++ SmartPoseBuffer
+    # 14. Differential test: the Rust-owned regularization pose buffer (FFI) vs the C++ SmartPoseBuffer
     #     interpolation (node port: Phase 1 slice A).
     ament_auto_add_gtest(test_regularization_buffer
       test/test_regularization_buffer.cpp
@@ -293,7 +285,7 @@ if(BUILD_TESTING)
     target_link_libraries(test_regularization_buffer
       ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
 
-    # 16. Differential test: the Rust-owned initial-pose buffer (FFI) vs the C++ SmartPoseBuffer +
+    # 15. Differential test: the Rust-owned initial-pose buffer (FFI) vs the C++ SmartPoseBuffer +
     #     activation gating (node port: Phase 1 slice B).
     ament_auto_add_gtest(test_initial_pose_buffer
       test/test_initial_pose_buffer.cpp
@@ -301,14 +293,14 @@ if(BUILD_TESTING)
     target_link_libraries(test_initial_pose_buffer
       ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
 
-    # 17. Test: the Rust-owned map-update decision state machine (FFI) — node port Phase 6.
+    # 16. Test: the Rust-owned map-update decision state machine (FFI) — node port Phase 6.
     ament_auto_add_gtest(test_map_update_state
       test/test_map_update_state.cpp
     )
     target_link_libraries(test_map_update_state
       ${PROJECT_NAME} autoware_ndt_scan_matcher_rs)
 
-    # 18. Differential test: the Rust sensor-callback prologue (decode/TF/transform via AwHost) vs the
+    # 17. Differential test: the Rust sensor-callback prologue (decode/TF/transform via AwHost) vs the
     #     C++ pcl path + the validation gates (node port: Phase 5 sub-slice 1).
     ament_auto_add_gtest(test_sensor_points_prepare
       test/test_sensor_points_prepare.cpp
@@ -316,7 +308,7 @@ if(BUILD_TESTING)
     target_link_libraries(test_sensor_points_prepare
       ${PROJECT_NAME} ${PCL_LIBRARIES} autoware_ndt_scan_matcher_rs)
 
-    # 19. Differential test: the Rust sensor-callback middle orchestrator (gates → align → convergence
+    # 18. Differential test: the Rust sensor-callback middle orchestrator (gates → align → convergence
     #     → covariance) vs the decomposed FFI path it replaces (node port: Phase 5 sub-slice 2).
     ament_auto_add_gtest(test_sensor_points_match
       test/test_sensor_points_match.cpp

@@ -40,7 +40,7 @@ namespace autoware::ndt_scan_matcher
 /// Build the FFI param struct from the node's `HyperParameters`. The covariance offset-model vectors
 /// are borrowed by pointer for the duration of the `_new` call only (Rust copies them), so the
 /// referenced `HyperParameters` must outlive that call. The fixed `min_points` / `eig_mult` /
-/// `outlier_ratio` mirror the values `NdtRustAdapter` configures the engine with.
+/// `outlier_ratio` mirror the legacy C++ engine constants used by the Rust-owned engine.
 inline AwNdtParams make_aw_ndt_params(const HyperParameters & p)
 {
   AwNdtParams out{};

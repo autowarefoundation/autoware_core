@@ -180,8 +180,8 @@ TEST(NodeRunAlign, MatchesEngineAlignAndVerdictIsConsistent)  // NOLINT
   const std::vector<float> src = flatten(*source);
 
   // Reference: align the same Rust engine via the bare engine FFI + read its result (the slimmed
-  // adapter has no align/getResult). run_align below re-aligns the same engine from the same guess,
-  // so the align outputs match exactly (deterministic).
+  // direct Rust engine exposes no C++ getResult wrapper). run_align below re-aligns the same
+  // engine from the same guess, so the align outputs match exactly (deterministic).
   autoware_ndt_scan_matcher_rs_ndt_engine_align(
     engine.raw(), guess16.data(), src.data(), source->size());
   std::array<float, 16> ref_pose{};
