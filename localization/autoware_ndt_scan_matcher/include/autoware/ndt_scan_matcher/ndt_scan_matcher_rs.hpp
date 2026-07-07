@@ -14,8 +14,8 @@
 
 // Roadmap foundation (plan/ndt_in_rust_next.md → Phase 0/1): the opaque Rust node handle
 // (`AwNdtScanMatcher`) + its RAII C++ owner, plus the param conversion that crosses the FFI once at
-// construction. Built only under NDT_USE_RUST. The handle now owns migrated node state and drives the
-// Rust callback bodies; C++ keeps ROS runtime objects and side-effect publication.
+// construction. In legacy builds this header provides an empty owner so the core node layout can
+// name the Rust handle unconditionally without linking to FFI symbols.
 
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_RS_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_RS_HPP_
@@ -171,6 +171,27 @@ public:
 
 private:
   AwNdtScanMatcher * handle_{nullptr};
+};
+
+}  // namespace autoware::ndt_scan_matcher
+
+#else  // NDT_USE_RUST
+
+namespace autoware::ndt_scan_matcher
+{
+
+// Empty legacy-build owner. The Rust-selected translation units provide the real FFI-backed
+// implementation above; OFF builds keep this as inert node layout state only.
+class NDTScanMatcherRS
+{
+public:
+  NDTScanMatcherRS() = default;
+  ~NDTScanMatcherRS() = default;
+
+  NDTScanMatcherRS(const NDTScanMatcherRS &) = delete;
+  NDTScanMatcherRS & operator=(const NDTScanMatcherRS &) = delete;
+  NDTScanMatcherRS(NDTScanMatcherRS &&) = delete;
+  NDTScanMatcherRS & operator=(NDTScanMatcherRS &&) = delete;
 };
 
 }  // namespace autoware::ndt_scan_matcher

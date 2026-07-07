@@ -68,6 +68,7 @@
 #include <tuple>
 #include <vector>
 
+struct AwHost;
 struct AwNdtAlignServiceTrace;
 
 namespace autoware::ndt_scan_matcher
@@ -155,9 +156,7 @@ private:
 
   // Rust host vtable trampolines live in ndt_scan_matcher_rust_host.cpp.
   friend struct NdtRustHostAccess;
-#ifdef NDT_USE_RUST
   AwHost make_host();
-#endif
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
@@ -242,11 +241,9 @@ private:
   HyperParameters param_;
   AwNdtAlignServiceTrace * align_service_trace_{nullptr};
 
-#ifdef NDT_USE_RUST
-  // Opaque Rust node handle. It owns migrated node state and drives Rust callback bodies; declared
-  // last so it is constructed after `param_` (its ctor reads `param_`).
+  // Opaque Rust node handle in Rust builds; inert layout state in legacy builds. Declared last so
+  // the Rust build constructs it after `param_` (its initializer reads `param_`).
   NDTScanMatcherRS rs_;
-#endif
 };
 
 }  // namespace autoware::ndt_scan_matcher
