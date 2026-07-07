@@ -80,6 +80,43 @@ fi
 echo "[bench] running: $EXE $ITERS $WARMUP $JSON $INTERVAL"
 ${TASKSET:-} "$EXE" "$ITERS" "$WARMUP" "$JSON" "$INTERVAL"
 
+# Capture the execution environment AT RUN TIME (this machine, right now) and merge it into the
+# bench JSON under "env". run.sh does the build itself just above, so `c++`/`rustc` in PATH are the
+# very compilers used. Values are passed via the environment (not string-interpolated) so quotes /
+# backslashes in them can't corrupt the JSON.
+CPU_MODEL="$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+if [[ -z "$CPU_MODEL" ]]; then
+  CPU_MODEL="$(lscpu 2>/dev/null | grep -m1 'Model name' | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+fi
+CPU_CORES="$(nproc 2>/dev/null || echo '?')"
+CPU_GOV="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo 'n/a')"
+KERNEL="$(uname -sr 2>/dev/null || echo '?')"
+CXX_VER="$(${CXX:-c++} --version 2>/dev/null | head -n1 || echo '?')"
+RUSTC_VER="$(rustc --version 2>/dev/null | head -n1 || echo '?')"
+STAMP="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo '?')"
+
+echo "[bench] capturing environment (CPU / compilers / kernel) ..."
+BENCH_CPU="$CPU_MODEL" BENCH_CORES="$CPU_CORES" BENCH_GOV="$CPU_GOV" BENCH_KERNEL="$KERNEL" \
+BENCH_CXX="$CXX_VER" BENCH_RUSTC="$RUSTC_VER" BENCH_STAMP="$STAMP" BENCH_TASKSET="${TASKSET:-none}" \
+python3 - "$JSON" <<'PYEOF'
+import json, os, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as fh:
+    data = json.load(fh)
+data["env"] = {
+    "CPU": os.environ.get("BENCH_CPU") or "unknown",
+    "Logical cores": os.environ.get("BENCH_CORES", "?"),
+    "CPU governor": os.environ.get("BENCH_GOV", "n/a"),
+    "Kernel": os.environ.get("BENCH_KERNEL", "?"),
+    "C++ compiler": os.environ.get("BENCH_CXX", "?"),
+    "Rust compiler": os.environ.get("BENCH_RUSTC", "?"),
+    "CPU pinning": os.environ.get("BENCH_TASKSET", "none"),
+    "Captured (UTC)": os.environ.get("BENCH_STAMP", "?"),
+}
+with open(path, "w", encoding="utf-8") as fh:
+    json.dump(data, fh, indent=2)
+PYEOF
+
 echo "[bench] rendering HTML ..."
 python3 "$BENCH_DIR/gen_report.py" "$JSON" "$HTML"
 

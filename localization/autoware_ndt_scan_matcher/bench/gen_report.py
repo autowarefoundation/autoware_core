@@ -73,34 +73,70 @@ def histogram(samples, bins, lo, hi):
     return counts
 
 
-def svg_histogram(samples, lo, hi, color, bins=40, w=520, h=140):
-    """Inline-SVG histogram bars over a shared [lo, hi] x-range."""
-    counts = histogram(samples, bins, lo, hi)
-    peak = max(counts) if counts and max(counts) > 0 else 1
+def svg_overlay_histogram(series, hi, bins=50, w=760, h=240):
+    """One inline-SVG chart overlaying every engine's latency histogram on a shared, 0-origin x-axis.
+
+    `series` is a list of (label, css_color, samples). All series share the x-range [0, hi] and a
+    single y-peak (max count across series) so bar heights are comparable. Bars are semi-transparent
+    so overlap reads; each series also gets a p50 marker line. Includes x-axis ticks (0..hi) and a
+    legend.
+    """
+    pad_l, pad_b, pad_t = 4, 22, 24  # axis label / legend gutters
+    plot_h = h - pad_b - pad_t
+    lo = 0.0
+    if hi <= lo:
+        hi = lo + 1.0
     bw = w / bins
-    bars = []
-    for i, c in enumerate(counts):
-        bh = (c / peak) * (h - 18)
-        x = i * bw
-        y = (h - 18) - bh
-        bars.append(
-            f'<rect x="{x:.2f}" y="{y:.2f}" width="{bw - 1:.2f}" height="{bh:.2f}" '
-            f'fill="{color}" rx="1"/>'
+
+    per = [(label, color, histogram(samples, bins, lo, hi), samples) for label, color, samples in series]
+    peak = max((max(counts) for _, _, counts, _ in per), default=0) or 1
+
+    def x_of(val):
+        return (val - lo) / (hi - lo) * w
+
+    body = []
+    # bars (drawn first, semi-transparent so overlaps blend)
+    for _, color, counts, _ in per:
+        for i, c in enumerate(counts):
+            if c == 0:
+                continue
+            bh = (c / peak) * plot_h
+            body.append(
+                f'<rect x="{i * bw:.2f}" y="{pad_t + plot_h - bh:.2f}" width="{bw - 1:.2f}" '
+                f'height="{bh:.2f}" fill="{color}" fill-opacity="0.55" rx="1"/>'
+            )
+    # p50 marker lines (drawn on top, solid)
+    for _, color, _, samples in per:
+        s = sorted(samples)
+        p50 = percentile(s, 0.50)
+        mx = x_of(p50)
+        body.append(
+            f'<line x1="{mx:.2f}" y1="{pad_t}" x2="{mx:.2f}" y2="{pad_t + plot_h}" '
+            f'stroke="{color}" stroke-width="1.5" stroke-dasharray="3,2"/>'
         )
-    # x-axis ticks (lo, mid, hi in ms)
-    mid = (lo + hi) / 2.0
-    ticks = "".join(
-        f'<text x="{tx:.1f}" y="{h - 4}" font-size="10" fill="currentColor" '
-        f'opacity="0.6" text-anchor="{anchor}">{val:.3f}</text>'
-        for tx, anchor, val in (
-            (2, "start", lo),
-            (w / 2, "middle", mid),
-            (w - 2, "end", hi),
-        )
+    # x-axis baseline + ticks at 0, 1/4, 1/2, 3/4, hi
+    body.append(
+        f'<line x1="0" y1="{pad_t + plot_h:.2f}" x2="{w}" y2="{pad_t + plot_h:.2f}" '
+        f'stroke="currentColor" stroke-opacity="0.25"/>'
     )
+    for frac in (0.0, 0.25, 0.5, 0.75, 1.0):
+        tx = frac * w
+        anchor = "start" if frac == 0.0 else ("end" if frac == 1.0 else "middle")
+        body.append(
+            f'<text x="{tx:.1f}" y="{h - 6}" font-size="11" fill="currentColor" opacity="0.6" '
+            f'text-anchor="{anchor}">{lo + frac * (hi - lo):.2f}</text>'
+        )
+    # legend (top-left, inside the top gutter)
+    lx = 2
+    for label, color, _, _ in per:
+        body.append(
+            f'<rect x="{lx}" y="4" width="11" height="11" fill="{color}" fill-opacity="0.55" rx="2"/>'
+            f'<text x="{lx + 16}" y="13" font-size="11" fill="currentColor">{label}</text>'
+        )
+        lx += 22 + 7 * len(label)  # advance past swatch + text (approx char width)
     return (
-        f'<svg viewBox="0 0 {w} {h}" width="100%" preserveAspectRatio="none" '
-        f'role="img">{"".join(bars)}{ticks}</svg>'
+        f'<svg viewBox="0 0 {w} {h}" width="100%" role="img" '
+        f'aria-label="latency histogram, C++ vs Rust">{"".join(body)}</svg>'
     )
 
 
@@ -128,11 +164,12 @@ thead th { font-size:12px; text-transform:uppercase; letter-spacing:.04em; color
 .bg-cpp { background:var(--cpp); } .bg-rust { background:var(--rust); }
 .speedup { font-size:15px; margin:6px 0 0; }
 .speedup b { font-size:19px; color:var(--good); }
-.charts { display:grid; grid-template-columns:repeat(auto-fit,minmax(320px,1fr)); gap:20px;
-          max-width:1100px; }
-.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px; }
-.card h3 { margin:0 0 2px; font-size:14px; } .card .cap { color:var(--muted); font-size:12px;
-          margin:0 0 10px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:14px 16px;
+        max-width:820px; }
+.card .cap { color:var(--muted); font-size:12px; margin:0 0 10px; }
+.env td { text-align:left; }
+.env td:first-child { color:var(--muted); width:160px; white-space:nowrap; }
+.env td:last-child { font-family:ui-monospace,SFMono-Regular,Menlo,monospace; font-size:13px; }
 .foot { color:var(--muted); font-size:12px; margin-top:28px; }
 """
 
@@ -156,12 +193,11 @@ def main():
     ]
     st = {k: stats(engines[k]["samples_ms"]) for k in order}
 
-    # shared x-range for comparable histograms
+    # shared, 0-origin x-range for the combined chart (small headroom above the global max).
     all_s = [x for k in order for x in engines[k]["samples_ms"]]
-    lo, hi = (min(all_s), max(all_s)) if all_s else (0.0, 1.0)
-    if hi <= lo:
-        hi = lo + 1.0
+    hi = (max(all_s) * 1.02) if all_s else 1.0
     colorvar = {"cpp": "var(--cpp)", "rust": "var(--rust)"}
+    default_colors = ["var(--cpp)", "var(--rust)", "gray"]
 
     rows = []
     for k in order:
@@ -195,21 +231,21 @@ def main():
             f"Rust p50 {fmt(st['rust']['p50'])} ms).</p>"
         )
 
-    charts = []
-    for k in order:
-        s = st[k]
-        charts.append(
-            '<div class="card"><h3 class="{c}">{name}</h3>'
-            '<p class="cap">per-align latency (ms) · p50 {p50} · p99 {p99} · max {mx}</p>'
-            "{svg}</div>".format(
-                c=k,
-                name=html.escape(engines[k].get("label", k)),
-                p50=fmt(s["p50"]),
-                p99=fmt(s["p99"]),
-                mx=fmt(s["max"]),
-                svg=svg_histogram(engines[k]["samples_ms"], lo, hi, colorvar.get(k, "gray")),
-            )
+    # One combined chart overlaying every engine on a shared, 0-origin x-axis.
+    series = [
+        (
+            html.escape(engines[k].get("label", k)),
+            colorvar.get(k, default_colors[i % len(default_colors)]),
+            engines[k]["samples_ms"],
         )
+        for i, k in enumerate(order)
+    ]
+    chart_html = (
+        '<div class="card"><p class="cap">per-align latency (ms), 0-origin · dashed line = p50 per '
+        "engine · bars are semi-transparent so overlap reads</p>{svg}</div>".format(
+            svg=svg_overlay_histogram(series, hi)
+        )
+    )
 
     meta_items = [
         ("Benchmark", data.get("benchmark", "NDT align replay")),
@@ -227,6 +263,19 @@ def main():
         if v is not None
     )
 
+    # Execution environment (captured by run.sh at run time and merged into the JSON under "env").
+    env = data.get("env", {})
+    env_html = ""
+    if env:
+        env_rows = "".join(
+            f"<tr><td>{html.escape(str(k))}</td><td>{html.escape(str(v))}</td></tr>"
+            for k, v in env.items()
+        )
+        env_html = (
+            "<h2>Execution environment</h2>"
+            f'<table class="env"><tbody>{env_rows}</tbody></table>'
+        )
+
     doc = f"""<!doctype html>
 <html lang="en"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -239,9 +288,10 @@ def main():
 <table><thead><tr><th>Engine</th><th>N</th><th>p50</th><th>p95</th><th>p99</th><th>max</th>
 <th>mean</th><th>stddev</th><th>iters</th></tr></thead>
 <tbody>{''.join(rows)}</tbody></table>
-<h2>Per-align latency histograms</h2>
-<div class="charts">{''.join(charts)}</div>
-<p class="foot">Lower is better. Histograms share the x-range [{fmt(lo)}, {fmt(hi)}] ms.
+<h2>Per-align latency distribution</h2>
+{chart_html}
+{env_html}
+<p class="foot">Lower is better. Both engines share a 0-origin x-axis [0, {fmt(hi)}] ms.
 Generated by bench/gen_report.py from {html.escape(src)}.</p>
 </body></html>
 """
