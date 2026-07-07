@@ -475,6 +475,13 @@ fn append_trace_event(
     write_trace_event(trace, &make_trace_event(input, decision));
 }
 
+/// Deterministic align-service decision: map the availability flags + align score to a status and the
+/// `success`/`reliable`/`should_align`/`valid` outcome flags. Pure — the C++-facing FFI and the
+/// Rust-owned search loop both gate on this.
+///
+/// # Arguments
+/// * `input` — the availability flags (`*_ok`, as `0`/`1`; any other value ⇒ invalid), the align
+///   score, and the reliability threshold.
 #[must_use]
 pub fn decide_align_service(input: &AwNdtAlignServiceInput) -> AwNdtAlignServiceDecision {
     let Some(transform_ok) = flag(input.transform_initial_pose_ok) else {
@@ -526,6 +533,12 @@ pub fn decide_align_service(input: &AwNdtAlignServiceInput) -> AwNdtAlignService
     )
 }
 
+/// Build the service response for a completed align: run [`decide_align_service`] on the aligned
+/// score, then carry the result pose/covariance/stamp through into the response struct.
+///
+/// # Arguments
+/// * `input` — the aligned result (pose, covariance, stamp) plus the align score + reliability
+///   threshold used for the decision.
 #[must_use]
 pub fn assemble_aligned_response(
     input: &AwNdtAlignServiceAlignedInput,
@@ -551,6 +564,11 @@ pub fn assemble_aligned_response(
     }
 }
 
+/// Extend a [`decide_align_service`] decision with the diagnostic level + message the node should
+/// emit for that status (the ERROR/WARN/OK mapping). Pure.
+///
+/// # Arguments
+/// * `decision` — the outcome from [`decide_align_service`] to annotate with a diagnostic.
 #[must_use]
 pub fn gate_action_from_decision(
     decision: AwNdtAlignServiceDecision,
@@ -584,11 +602,21 @@ pub fn gate_action_from_decision(
     }
 }
 
+/// Convenience: [`decide_align_service`] followed by [`gate_action_from_decision`] — the full
+/// decision + diagnostic in one call.
+///
+/// # Arguments
+/// * `input` — same availability flags + score/threshold as [`decide_align_service`].
 #[must_use]
 pub fn evaluate_align_service_gate(input: &AwNdtAlignServiceInput) -> AwNdtAlignServiceGateAction {
     gate_action_from_decision(decide_align_service(input))
 }
 
+/// Append a search-summary event (best score, trial count, …) to the bounded trace ring buffer.
+///
+/// # Arguments
+/// * `input` — the search summary to record.
+/// * `trace` — target trace buffer; a null pointer is a no-op (guarded in `write_trace_event`).
 pub fn append_search_summary_trace(
     input: &AwNdtAlignServiceSearchSummaryInput,
     trace: *mut AwNdtAlignServiceTrace,
@@ -596,6 +624,11 @@ pub fn append_search_summary_trace(
     write_trace_event(trace, &make_search_summary_trace_event(input));
 }
 
+/// Append a response event (the emitted status + pose) to the bounded trace ring buffer.
+///
+/// # Arguments
+/// * `input` — the assembled service response to record.
+/// * `trace` — target trace buffer; a null pointer is a no-op (guarded in `write_trace_event`).
 pub fn append_response_trace(
     input: &AwNdtAlignServiceResponse,
     trace: *mut AwNdtAlignServiceTrace,

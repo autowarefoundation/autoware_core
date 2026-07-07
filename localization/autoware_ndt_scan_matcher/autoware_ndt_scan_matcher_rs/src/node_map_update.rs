@@ -17,7 +17,7 @@
 //! Rust and the C++ side only supplies the tiles.
 //!
 //! The C++ map-update timer calls [`autoware_ndt_scan_matcher_rs_ndt_engine_update_map`] with an
-//! [`AwMapSource`] vtable; [`FfiHost`] implements [`MapSource`] by calling back into C++ (`fill`), which
+//! [`AwMapSource`] vtable; `FfiHost` implements [`MapSource`] by calling back into C++ (`fill`), which
 //! runs the pcd-loader service (already synchronous on the C++ side) and **pushes** the resulting tiles
 //! into a Rust-owned `MapDelta` via [`autoware_ndt_scan_matcher_rs_map_delta_add`] /
 //! `..._map_delta_remove`. The `async` `load` is therefore ready after one poll, so the FFI drives it

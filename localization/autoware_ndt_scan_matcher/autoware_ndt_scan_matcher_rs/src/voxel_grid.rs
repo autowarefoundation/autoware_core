@@ -387,6 +387,12 @@ pub struct VoxelGridMap {
 }
 
 impl VoxelGridMap {
+    /// A map with no tiles.
+    ///
+    /// # Arguments
+    /// * `leaf_size` — voxel edge lengths `[x, y, z]` in metres (usually the same value on all axes).
+    /// * `min_points` — minimum points per voxel for it to contribute a Gaussian (C++ default 6).
+    /// * `eig_mult` — eigenvalue-inflation multiplier conditioning each voxel covariance (C++ 0.01).
     #[must_use]
     pub fn new(leaf_size: [f64; 3], min_points: i32, eig_mult: f64) -> Self {
         Self {
@@ -399,13 +405,20 @@ impl VoxelGridMap {
         }
     }
 
-    /// Build a grid from `points` and register it under `id` (replacing any existing one).
+    /// Build a grid from `points` and register it under `id` (replacing any existing one). Invalidates
+    /// the kd-tree — call [`Self::create_kdtree`] before searching again.
+    ///
+    /// # Arguments
+    /// * `points` — the tile's map points (`[x, y, z]`, metres).
+    /// * `id` — tile key; re-adding the same `id` replaces that tile.
     pub fn add_target(&mut self, points: &[[f32; 3]], id: u64) {
         let grid = VoxelGrid::build(points, self.leaf_size, self.min_points, self.eig_mult);
         self.grids.insert(id, grid);
         self.invalidate();
     }
 
+    /// Remove the tile registered under `id` (no-op if absent). Invalidates the kd-tree — call
+    /// [`Self::create_kdtree`] before searching again.
     pub fn remove_target(&mut self, id: u64) {
         self.grids.remove(&id);
         self.invalidate();
@@ -437,12 +450,21 @@ impl VoxelGridMap {
     }
 
     /// Flat indices of leaves whose centroid is within `radius` of `point` (needs `create_kdtree`).
+    ///
+    /// # Arguments
+    /// * `point` — query point (`[x, y, z]`, metres).
+    /// * `radius` — search radius in metres.
+    /// * `max_nn` — cap on the number of neighbors returned.
+    /// * `out` — cleared and filled with the matching flat leaf indices (index into [`Self::leaf`]);
+    ///   reuse the buffer across calls to avoid reallocation. No-op if the kd-tree is not built.
     pub fn radius_search(&self, point: [f32; 3], radius: f64, max_nn: usize, out: &mut Vec<usize>) {
         if let Some(kt) = &self.kdtree {
             kt.radius_search(&point, radius, max_nn, out);
         }
     }
 
+    /// The leaf at flat index `idx` (as returned by [`Self::radius_search`]), or `None` if out of
+    /// range. Indices are only valid until the next [`Self::create_kdtree`].
     #[must_use]
     pub fn leaf(&self, idx: usize) -> Option<&Leaf> {
         self.flat_leaves.get(idx)

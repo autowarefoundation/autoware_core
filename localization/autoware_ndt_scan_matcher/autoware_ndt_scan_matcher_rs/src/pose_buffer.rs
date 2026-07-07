@@ -63,6 +63,13 @@ pub struct PoseBuffer {
 }
 
 impl PoseBuffer {
+    /// An empty buffer with the two `SmartPoseBuffer` validation tolerances.
+    ///
+    /// # Arguments
+    /// * `timeout_sec` — max `|stamp - target|` (seconds) for a bracket end to be usable in
+    ///   [`Self::interpolate`] (strict `<`).
+    /// * `distance_tol_m` — max Euclidean distance (metres) between the two bracket poses for the
+    ///   interpolation to be accepted.
     #[must_use]
     pub fn new(timeout_sec: f64, distance_tol_m: f64) -> Self {
         Self {
@@ -78,11 +85,13 @@ impl PoseBuffer {
         self.entries.len()
     }
 
+    /// Whether the buffer holds no entries.
     #[must_use]
     pub fn is_empty(&self) -> bool {
         self.entries.is_empty()
     }
 
+    /// Drop all buffered entries.
     pub fn clear(&mut self) {
         self.entries.clear();
     }
@@ -99,6 +108,9 @@ impl PoseBuffer {
     }
 
     /// Drop every entry with `stamp_ns < target_ns` (front-to-back), mirroring `pop_old`.
+    ///
+    /// # Arguments
+    /// * `target_ns` — cutoff timestamp (nanoseconds); entries strictly older than this are removed.
     pub fn pop_old(&mut self, target_ns: i64) {
         while let Some(front) = self.entries.front() {
             if front.stamp_ns >= target_ns {
@@ -111,6 +123,10 @@ impl PoseBuffer {
     /// Interpolate the pose at `target_ns`. Returns `None` (mirroring the C++ `std::nullopt`) when:
     /// fewer than 2 entries; `target_ns` precedes the oldest entry; or either bracket end fails the
     /// time-tolerance, or the bracket pair fails the distance-tolerance.
+    ///
+    /// # Arguments
+    /// * `target_ns` — query timestamp (nanoseconds); must fall within the buffered span and pass the
+    ///   tolerances configured in [`Self::new`].
     #[must_use]
     pub fn interpolate(&self, target_ns: i64) -> Option<InterpolateResult> {
         if self.entries.len() < 2 {

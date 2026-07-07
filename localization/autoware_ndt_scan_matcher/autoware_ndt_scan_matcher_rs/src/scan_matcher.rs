@@ -31,6 +31,38 @@ use crate::engine::NdtEngine;
 use crate::host::{CovarianceResult, MapSource, MatchResult};
 
 /// A scan matcher: the persistent NDT engine + the portable orchestration over it.
+///
+/// # Examples
+///
+/// Load a map through a [`MapSource`], then match a scan. The map load is `async`; the match is the
+/// synchronous WCET hot path. (`no_run`: driving the future needs an async runtime — ROS, a kernel,
+/// or the Tokio example.)
+///
+/// ```no_run
+/// use autoware_ndt_scan_matcher_rs::host::{MapDelta, MapSource, MapTile};
+/// use autoware_ndt_scan_matcher_rs::scan_matcher::{MatchScratch, ScanMatcher};
+/// use autoware_ndt_scan_matcher_rs::nalgebra::Matrix4;
+///
+/// // A trivial map source (ROS backs this with the `pcd_loader` service).
+/// struct Synthetic;
+/// impl MapSource for Synthetic {
+///     async fn load(&self, _center: [f64; 2], _radius: f64) -> MapDelta {
+///         let points = (0u8..64).map(|i| [f32::from(i) * 0.05, 0.0, 0.0]).collect();
+///         MapDelta { add: vec![MapTile { id: b"tile-0".to_vec(), points }], remove: vec![] }
+///     }
+/// }
+///
+/// async fn run() {
+///     let matcher = ScanMatcher::new(2.0, 6, 0.01);
+///     matcher.set_params(0.01, 0.1, 2.0, 30, 0.55, 1);
+///     matcher.update_map(&Synthetic, [0.0, 0.0], 100.0).await;
+///
+///     let source: Vec<[f32; 3]> = (0u8..64).map(|i| [f32::from(i) * 0.05, 0.0, 0.0]).collect();
+///     let mut scratch = MatchScratch::new();
+///     let result = matcher.match_scan(&Matrix4::identity(), &source, &mut scratch);
+///     println!("converged: {}", result.converged);
+/// }
+/// ```
 pub struct ScanMatcher {
     engine: NdtEngine,
 }
@@ -53,6 +85,15 @@ impl ScanMatcher {
     }
 
     /// Set the alignment params (the C++ `setParams`).
+    ///
+    /// # Arguments
+    /// * `trans_epsilon` — translation convergence tolerance.
+    /// * `step_size` — More-Thuente line-search step size.
+    /// * `resolution` — voxel/leaf size in metres.
+    /// * `max_iterations` — optimizer iteration cap.
+    /// * `outlier_ratio` — Gaussian mixture outlier ratio (default 0.55).
+    /// * `num_threads` — derivative-reduction worker count (`> 1` uses rayon under the `parallel`
+    ///   feature; bit-identical to serial).
     pub fn set_params(
         &self,
         trans_epsilon: f64,
@@ -123,6 +164,11 @@ impl ScanMatcher {
     /// iteration positions for the oscillation count; no await). `scratch` is caller-owned — one
     /// per task/thread, reused across frames (never shared), so concurrent matches on a shared
     /// `&ScanMatcher` are sound in every build config.
+    ///
+    /// # Arguments
+    /// * `guess` — initial pose estimate as a 4×4 homogeneous transform.
+    /// * `source` — the sensor cloud to align, in the `base_link` frame (`[x, y, z]`, metres).
+    /// * `scratch` — caller-owned per-align workspace; reuse it across frames, never share it.
     #[must_use]
     pub fn match_scan(
         &self,
@@ -148,6 +194,11 @@ impl ScanMatcher {
     /// no cross-call ordering dependency — safe under concurrent matches in every build config.
     /// Allocates (candidate poses + the result-trace clone) — use the plain [`Self::match_scan`] on the
     /// allocation-free hot path when covariance is not needed.
+    ///
+    /// # Arguments
+    /// * `guess` — initial pose estimate as a 4×4 homogeneous transform.
+    /// * `source` — the sensor cloud to align, in the `base_link` frame (`[x, y, z]`, metres).
+    /// * `scratch` — caller-owned workspace; the align result read from it seeds the covariance.
     #[must_use]
     pub fn match_scan_with_covariance(
         &self,

@@ -73,6 +73,29 @@ const OSCILLATION_NUM_THRESHOLD: i32 = 10;
 
 /// Pure NDT convergence decision, ported verbatim from `callback_sensor_points_main`. No allocation,
 /// no panic (matches on the `i32` discriminant, no indexing/slicing) and O(1) — RT-clean.
+///
+/// # Arguments
+/// * `input` — one align result's relevant scalars plus the `score_estimation` params; every field
+///   is documented on [`ConvergenceInput`].
+///
+/// # Examples
+///
+/// ```
+/// use autoware_ndt_scan_matcher_rs::convergence::{evaluate_convergence, ConvergenceInput};
+///
+/// let verdict = evaluate_convergence(&ConvergenceInput {
+///     iteration_num: 5,
+///     max_iterations: 30,
+///     oscillation_num: 0,
+///     transform_probability: 3.0,
+///     nearest_voxel_transformation_likelihood: 5.0,
+///     converged_param_type: 0, // gate on transform probability
+///     converged_param_transform_probability: 2.0,
+///     converged_param_nearest_voxel_transformation_likelihood: 4.0,
+/// });
+/// // Stopped before the iteration cap and 3.0 > 2.0 → converged.
+/// assert!(verdict.is_converged);
+/// ```
 #[must_use]
 pub fn evaluate_convergence(input: &ConvergenceInput) -> ConvergenceVerdict {
     let is_ok_iteration_num = input.iteration_num < input.max_iterations;

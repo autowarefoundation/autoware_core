@@ -65,6 +65,8 @@ pub struct AlignWorkspace {
 }
 
 impl AlignWorkspace {
+    /// An empty workspace. Its buffers grow on the first [`align`] and are reused thereafter, so keep
+    /// one per align session and pass it back in to stay allocation-free after warmup.
     #[must_use]
     pub const fn new() -> Self {
         Self {
@@ -502,6 +504,21 @@ pub fn nearest_voxel_score_each_point(
 }
 
 /// NDT parameters (`NdtParams` + the `outlier_ratio_` member, default 0.55).
+///
+/// # Examples
+///
+/// Start from [`Default`] and override only what you need (struct-update syntax):
+///
+/// ```
+/// use autoware_ndt_scan_matcher_rs::ndt::NdtParams;
+///
+/// let params = NdtParams {
+///     resolution: 2.0,
+///     max_iterations: 30,
+///     ..NdtParams::default()
+/// };
+/// assert_eq!(params.outlier_ratio, 0.55); // untouched default
+/// ```
 #[derive(Clone, Copy, Debug)]
 pub struct NdtParams {
     pub trans_epsilon: f64,
@@ -530,7 +547,19 @@ impl Default for NdtParams {
     }
 }
 
-/// Result of `align` (`NdtResult`). The `Vec`s are reused across calls (`align` clears them).
+/// Result of [`align`] (`NdtResult`). The `Vec`s are reused across calls ([`align`] clears them).
+///
+/// # Examples
+///
+/// Construct an empty slot with [`Default`], hand it to [`align`], then read the fields:
+///
+/// ```
+/// use autoware_ndt_scan_matcher_rs::ndt::AlignResult;
+///
+/// let out = AlignResult::default();
+/// assert_eq!(out.iteration_num, 0);
+/// assert!(out.transform_probability_array.is_empty());
+/// ```
 #[derive(Clone, Debug, Default)]
 pub struct AlignResult {
     pub pose: Matrix4<f32>,
@@ -598,6 +627,33 @@ fn derivatives_at(
 ///   `neighbor_idx` bounded by `MAX_NEIGHBORS`) are pre-reserved + reused, and the fixed-size 6×6 SVD
 ///   is stack-only (measured: `tests/zero_alloc.rs`).
 /// - rt-core (this runtime path) vs control-plane (map build/update) — the map is read-only here.
+///
+/// # Arguments
+/// * `map` — the target voxel-grid map with its kd-tree already built ([`VoxelGridMap::create_kdtree`]).
+/// * `source` — the sensor cloud to align, in the `base_link` frame (`[x, y, z]`, metres).
+/// * `guess` — initial pose estimate as a 4×4 homogeneous transform (the C++ `Matrix4f` guess).
+/// * `params` — alignment parameters (resolution, epsilon, step size, iteration cap, …).
+/// * `ws` — reused per-align workspace (see [`AlignWorkspace::new`]).
+/// * `out` — result slot; its `Vec` fields are cleared and refilled each call.
+///
+/// # Examples
+///
+/// ```
+/// use autoware_ndt_scan_matcher_rs::ndt::{align, AlignResult, AlignWorkspace, NdtParams};
+/// use autoware_ndt_scan_matcher_rs::voxel_grid::VoxelGridMap;
+/// use autoware_ndt_scan_matcher_rs::nalgebra::Matrix4;
+///
+/// let mut map = VoxelGridMap::new([2.0; 3], 6, 0.01);
+/// let target: Vec<[f32; 3]> = (0u8..64).map(|i| [f32::from(i) * 0.05, 0.0, 0.0]).collect();
+/// map.add_target(&target, 0);
+/// map.create_kdtree();
+///
+/// let params = NdtParams { resolution: 2.0, ..NdtParams::default() };
+/// let mut ws = AlignWorkspace::new();
+/// let mut out = AlignResult::default();
+/// align(&map, &target, &Matrix4::identity(), &params, &mut ws, &mut out);
+/// assert!(out.iteration_num >= 0);
+/// ```
 #[allow(
     clippy::arithmetic_side_effects,
     clippy::indexing_slicing,

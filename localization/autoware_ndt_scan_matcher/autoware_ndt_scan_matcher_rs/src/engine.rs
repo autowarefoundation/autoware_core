@@ -224,6 +224,26 @@ struct EngineState {
 /// `no_std` single-core build keeps one in the engine, and the `mt` build has each task/thread own
 /// one and pass it to the engine's `_with` methods explicitly (reused across frames so the align
 /// stays allocation-free after warmup).
+///
+/// # Examples
+///
+/// Own one scratch per task/thread and reuse it across frames (the only align path under `mt`):
+///
+/// ```
+/// use autoware_ndt_scan_matcher_rs::engine::{MatchScratch, NdtEngine};
+/// use autoware_ndt_scan_matcher_rs::nalgebra::Matrix4;
+///
+/// let engine = NdtEngine::new(2.0, 6, 0.01);
+/// let target: Vec<[f32; 3]> = (0u8..64).map(|i| [f32::from(i) * 0.05, 0.0, 0.0]).collect();
+/// engine.add_target(&target, 0);
+/// engine.create_kdtree();
+///
+/// let mut scratch = MatchScratch::new();
+/// // Frame 1, then frame 2 — the same scratch is reused (allocation-free after warmup).
+/// engine.align_with(&Matrix4::identity(), &target, &mut scratch);
+/// engine.align_with(&scratch.result().pose, &target, &mut scratch);
+/// assert!(scratch.result().iteration_num >= 0);
+/// ```
 pub struct MatchScratch {
     workspace: AlignWorkspace,
     last: AlignResult,
@@ -269,9 +289,31 @@ std::thread_local! {
     static SCRATCH: core::cell::RefCell<MatchScratch> = core::cell::RefCell::new(MatchScratch::new());
 }
 
-/// Persistent NDT engine: a [`Swap`] cell of the target map + params (+ id mapping) and the
+/// Persistent NDT engine: a `Swap` cell of the target map + params (+ id mapping) and the
 /// optional regularization. `&self`-only + `Sync` (std and `mt`; the plain `no_std` single-core
 /// build is `!Sync` and additionally keeps the align scratch here) — see the module docs.
+///
+/// # Examples
+///
+/// Configure, load a target map, and align via a caller-owned [`MatchScratch`] (the universal path,
+/// available in every build config):
+///
+/// ```
+/// use autoware_ndt_scan_matcher_rs::engine::{MatchScratch, NdtEngine};
+/// use autoware_ndt_scan_matcher_rs::nalgebra::Matrix4;
+///
+/// let engine = NdtEngine::new(2.0, 6, 0.01);
+/// // trans_epsilon, step_size, resolution, max_iterations, outlier_ratio, num_threads
+/// engine.set_params(0.01, 0.1, 2.0, 30, 0.55, 1);
+///
+/// let target: Vec<[f32; 3]> = (0u8..64).map(|i| [f32::from(i) * 0.05, 0.0, 0.0]).collect();
+/// engine.add_target(&target, 0);
+/// engine.create_kdtree();
+///
+/// let mut scratch = MatchScratch::new();
+/// engine.align_with(&Matrix4::identity(), &target, &mut scratch);
+/// assert!(scratch.result().iteration_num >= 0);
+/// ```
 pub struct NdtEngine {
     state: Swap<EngineState>,
     /// Optional longitudinal regularization, swapped lock-free (set per sensor frame before align,
@@ -334,8 +376,14 @@ impl NdtEngine {
         }
     }
 
-    /// New engine with an empty map. `resolution` is the voxel/leaf size and the neighbor radius;
-    /// `min_points`/`eig_mult` match the C++ `MultiVoxelGridCovariance` defaults (6, 0.01).
+    /// New engine with an empty map.
+    ///
+    /// # Arguments
+    /// * `resolution` — voxel/leaf size in metres; also the neighbor search radius.
+    /// * `min_points` — minimum points per voxel for it to contribute a Gaussian (C++
+    ///   `MultiVoxelGridCovariance` default: 6).
+    /// * `eig_mult` — eigenvalue-inflation multiplier conditioning each voxel covariance (C++
+    ///   default: 0.01).
     #[must_use]
     pub fn new(resolution: f64, min_points: i32, eig_mult: f64) -> Self {
         Self {
@@ -381,6 +429,15 @@ impl NdtEngine {
     /// set separately via [`Self::set_regularization`], mirroring `setRegularizationPose`. Mirroring
     /// the C++ (which applies `resolution` as the leaf size at `addTarget`), the empty map is rebuilt
     /// at the new resolution — the node always calls `set_params` before `add_target`.
+    ///
+    /// # Arguments
+    /// * `trans_epsilon` — translation convergence tolerance (`setTransformationEpsilon`).
+    /// * `step_size` — More-Thuente line-search step size (`setStepSize`).
+    /// * `resolution` — voxel/leaf size in metres (`setResolution`); rebuilds the map if still empty.
+    /// * `max_iterations` — optimizer iteration cap (`setMaximumIterations`).
+    /// * `outlier_ratio` — Gaussian mixture outlier ratio (default 0.55).
+    /// * `num_threads` — derivative-reduction worker count; `> 1` uses the rayon backend when the
+    ///   `parallel` feature is on (bit-identical to serial).
     pub fn set_params(
         &self,
         trans_epsilon: f64,
@@ -474,10 +531,18 @@ impl NdtEngine {
     }
 
     /// Estimate the 6x6 pose covariance from an align result, reading the engine's own
-    /// [`CovarianceConfig`]. The self-contained counterpart of [`estimate_pose_covariance`] (which takes
+    /// `CovarianceConfig`. The self-contained counterpart of [`estimate_pose_covariance`] (which takes
     /// the params explicitly for the C++ FFI) — what the portable `ScanMatcher` calls after a match.
     /// `map_to_base_link_rot3x3` is derived from `result_pose`'s rotation block (the C++ builds the same
     /// from the result quaternion). `scratch` backs the `MULTI_NDT*` candidate re-aligns/scores.
+    ///
+    /// # Arguments
+    /// * `result_pose` — the converged align pose; its rotation block seeds the covariance rotation.
+    /// * `hessian` — the align's 6×6 Hessian (from [`MatchScratch::result`]'s `AlignResult`).
+    /// * `initial_pose` — the initial guess the align started from (the candidate-search origin).
+    /// * `source` — the same sensor cloud that was aligned (`base_link` frame).
+    /// * `main_nvtl` — the main result's nearest-voxel transformation likelihood (softmax reference).
+    /// * `scratch` — caller-owned workspace reused for the covariance candidate re-aligns/scores.
     #[must_use]
     pub fn estimate_covariance(
         &self,
@@ -547,6 +612,10 @@ impl NdtEngine {
 
     /// Add a target map tile keyed by `id` (C++ callers may also register a string `cell_id`,
     /// which this engine maps to a `u64`). Needs a following [`Self::create_kdtree`].
+    ///
+    /// # Arguments
+    /// * `points` — the tile's map points in the map frame (`[x, y, z]`, metres).
+    /// * `id` — tile key; re-adding the same `id` replaces that tile.
     pub fn add_target(&self, points: &[[f32; 3]], id: u64) {
         swap_rcu(&self.state, |s| {
             let mut n = s.clone();
@@ -621,6 +690,11 @@ impl NdtEngine {
 
     /// Align `source` from `guess` into the caller-owned `scratch` (result lands in
     /// [`MatchScratch::result`]) — the core align entry point, and the only one under `mt`.
+    ///
+    /// # Arguments
+    /// * `guess` — initial pose estimate as a 4×4 homogeneous transform (the C++ `Matrix4f` guess).
+    /// * `source` — the sensor cloud to align, in the `base_link` frame (`[x, y, z]`, metres).
+    /// * `scratch` — caller-owned per-align workspace + result slot; reuse it across frames.
     pub fn align_with(
         &self,
         guess: &Matrix4<f32>,
@@ -647,6 +721,10 @@ impl NdtEngine {
     /// Align `source` from `guess`, storing the result in the implicit per-thread/engine scratch
     /// (the C++ `align(out, guess, source)`; retrieve via [`Self::result`]). Absent under `mt` —
     /// use [`Self::align_with`].
+    ///
+    /// # Arguments
+    /// * `guess` — initial pose estimate as a 4×4 homogeneous transform.
+    /// * `source` — the sensor cloud to align, in the `base_link` frame (`[x, y, z]`, metres).
     #[cfg(any(feature = "std", not(feature = "mt")))]
     pub fn align(&self, guess: &Matrix4<f32>, source: &[[f32; 3]]) {
         self.with_scratch(|scr| self.align_with(guess, source, scr));

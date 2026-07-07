@@ -12,6 +12,65 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//! Rust port of the Autoware `autoware_ndt_scan_matcher` NDT (Normal Distributions Transform)
+//! localization core.
+//!
+//! The crate is `no_std`-capable (heap only, via `alloc`) and is linked into the C++
+//! `autoware_ndt_scan_matcher` package over a C ABI, while remaining usable as a plain Rust library
+//! (`cargo test`, downstream `rlib` consumers). Its numeric kernels mirror the C++ `Matrix4f` /
+//! `MultiVoxelGridCovariance` pipeline.
+//!
+//! # Entry points
+//!
+//! - [`engine::NdtEngine`] — the persistent, `&self`-only NDT handle: load a target map, build the
+//!   kd-tree, then align sensor clouds. This is the primary API.
+//! - [`scan_matcher::ScanMatcher`] — portable node orchestration over [`engine::NdtEngine`] and the
+//!   [`host`] ports (map update + single-scan match); reusable under ROS, a bare-metal kernel, or an
+//!   async runtime.
+//! - [`ndt::align`] — the RT-critical, WCET-bounded alignment kernel the engine drives.
+//! - [`tpe::TreeStructuredParzenEstimator`] — the align-service pose-search sampler.
+//!
+//! Pose guesses and result matrices use [`nalgebra`] types (`Matrix4<f32>`, `Matrix6<f64>`). The
+//! exact `nalgebra` version this crate is built against is re-exported as [`nalgebra`] so callers can
+//! construct those matrices without independently pinning a (possibly mismatched) version.
+//!
+//! # Cargo features
+//!
+//! | Feature | Default | Effect |
+//! |---|---|---|
+//! | `std` | yes | Host/ROS build: lock-free `ArcSwap` engine state + thread-local align scratch; the engine is `Sync`. |
+//! | `parallel` | yes | rayon-backed derivative reduction (implies `std`); bit-identical to serial, a pure throughput option. |
+//! | `mt` | no | Multi-core `no_std` (kernel): `awkernel_sync` mutex cells + **caller-owned** [`engine::MatchScratch`] (the implicit-scratch align API is compiled out); engine is `Sync`. Ignored when `std` is on. |
+//! | `ros` | no | rosidl bindgen bindings + `Pose`-pointer FFI shims. Independent of `std`. |
+//!
+//! With **no** features (`--no-default-features`) the engine is a single-core `no_std` build
+//! (`RefCell` cells, engine-owned scratch, intentionally `!Sync`). See the [`engine`] module docs for
+//! the full interior-mutability matrix.
+//!
+//! # Example
+//!
+//! Load a one-tile target map, build the kd-tree, and align a source cloud from an identity guess:
+//!
+//! ```
+//! use autoware_ndt_scan_matcher_rs::engine::NdtEngine;
+//! use autoware_ndt_scan_matcher_rs::nalgebra::Matrix4;
+//!
+//! // Empty engine: 2.0 m voxels; `MultiVoxelGridCovariance` defaults (min 6 points / eig 0.01).
+//! let engine = NdtEngine::new(2.0, 6, 0.01);
+//!
+//! // Register a target map tile (id 0) and build the kd-tree over the voxel centroids.
+//! let target: Vec<[f32; 3]> = (0u8..64).map(|i| [f32::from(i) * 0.05, 0.0, 0.0]).collect();
+//! engine.add_target(&target, 0);
+//! engine.create_kdtree();
+//! assert!(engine.has_target());
+//!
+//! // Align a source cloud from an identity initial guess, then read the result back.
+//! let source = target.clone();
+//! engine.align(&Matrix4::identity(), &source);
+//! let result = engine.result();
+//! assert!(result.iteration_num >= 0);
+//! ```
+
 // no_std for the Track B build; `std` (default) for dev and the ROS-node build. The
 // `mt` feature makes the no_std engine multi-core-safe (awkernel_sync cells + caller-owned
 // `MatchScratch`); without it the no_std build is single-core (`RefCell`, `!Sync`).
@@ -95,6 +154,19 @@ mod ros_msgs {
 
 use crate::ffi_ptr::ffi_ref;
 
+/// Re-export of the exact [`nalgebra`] version this crate is built against.
+///
+/// The engine's pose API is expressed in `nalgebra` matrices (`Matrix4<f32>` guesses/results,
+/// `Matrix6<f64>` Hessians/covariances). Construct and read them through this re-export so the type
+/// identities match the engine's — a locally pinned `nalgebra` of a different version would be a
+/// distinct, incompatible type.
+pub use nalgebra;
+
+/// Saturating `left + right` — a trivial build/link smoke test mirrored by the
+/// [`autoware_ndt_scan_matcher_rs_add`] C ABI shim (used to confirm the staticlib links).
+///
+/// # Arguments
+/// * `left`, `right` — the addends; the sum saturates at [`u64::MAX`] instead of overflowing.
 #[must_use]
 pub fn add(left: u64, right: u64) -> u64 {
     left.saturating_add(right)

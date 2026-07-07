@@ -86,7 +86,7 @@ impl Diagnostics {
 /// The whole body of `service_trigger_node` (callback-level): build the diagnostics (clear +
 /// `service_call_time_stamp`), set the activation flag on the handle (and on enable clear the
 /// initial-pose buffer so stale poses don't survive a re-activation — done inside
-/// [`NdtScanMatcherRs::set_activated`]), emit the `is_activated` / `is_succeed_service` key-values, and
+/// `NdtScanMatcherRs::set_activated`), emit the `is_activated` / `is_succeed_service` key-values, and
 /// publish. Returns `res->success` (the C++ wrapper just assigns it). `now_ns` is
 /// `this->now().nanoseconds()` (the call timestamp + publish stamp). Mirrors the C++ key order/values.
 ///

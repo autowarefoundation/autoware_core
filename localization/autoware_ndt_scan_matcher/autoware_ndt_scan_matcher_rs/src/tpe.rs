@@ -42,30 +42,50 @@ const BASE_STDDEV: Input = [
     2.5 / 180.0 * PI,
 ];
 
+/// A sampled candidate pose: `[x, y, z, roll, pitch, yaw]` (metres / radians). The first five
+/// dimensions are drawn from the priors; `yaw` is sampled uniformly over `[-π, π)`.
 pub type Input = [f64; INPUT_DIMENSION];
 
+/// Whether [`TreeStructuredParzenEstimator`] treats a lower or a higher trial score as better.
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Direction {
+    /// Lower score is better (e.g. a cost/error to minimize).
     Minimize,
+    /// Higher score is better (e.g. a likelihood to maximize).
     Maximize,
 }
 
+/// Why a [`TreeStructuredParzenEstimator`] call failed. Construction/prior errors come from
+/// [`TreeStructuredParzenEstimator::new`]/[`with_seed`](TreeStructuredParzenEstimator::with_seed);
+/// the rest from [`add_trial`](TreeStructuredParzenEstimator::add_trial)/[`get_next_input`](TreeStructuredParzenEstimator::get_next_input).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum Error {
+    /// `sample_mean` was not exactly `PRIOR_DIMENSION` (5) long.
     InvalidMeanLen,
+    /// `sample_stddev` was not exactly `PRIOR_DIMENSION` (5) long.
     InvalidStddevLen,
+    /// `n_startup_trials` was negative.
     InvalidStartupTrials,
+    /// A `sample_mean` value was non-finite.
     InvalidMean,
+    /// A `sample_stddev` (or base stddev) value was non-finite or non-positive.
     InvalidStddev,
+    /// A trial `input` value was non-finite.
     InvalidTrialInput,
+    /// A trial `score` was non-finite.
     InvalidTrialScore,
+    /// The good/bad KDE partition was empty or inconsistent when sampling.
     InvalidKdeState,
+    /// An integer↔float conversion overflowed its target range.
     ConversionFailed,
 }
 
+/// One evaluated candidate: the sampled [`Input`] and the objective `score` observed for it.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Trial {
+    /// The candidate pose that was evaluated.
     pub input: Input,
+    /// The objective value at `input` (interpreted per the estimator's [`Direction`]).
     pub score: f64,
 }
 
@@ -119,6 +139,30 @@ impl SplitMix64 {
     }
 }
 
+/// Tree-Structured Parzen Estimator over a 6-D pose (`[x, y, z, roll, pitch, yaw]`).
+///
+/// The align-service pose search drives it as a propose/evaluate loop: draw a candidate with
+/// [`get_next_input`](Self::get_next_input), evaluate your objective, then feed the outcome back with
+/// [`add_trial`](Self::add_trial). Until `n_startup_trials` trials accumulate it samples the prior;
+/// after that it uses above/below Gaussian KDEs for expected-improvement selection. Deterministic for
+/// a fixed seed (see [`with_seed`](Self::with_seed)).
+///
+/// # Examples
+///
+/// ```
+/// use autoware_ndt_scan_matcher_rs::tpe::{Direction, TreeStructuredParzenEstimator, Trial};
+///
+/// // 5 prior dims (x, y, z, roll, pitch); yaw is sampled uniformly.
+/// let mean = [0.0; 5];
+/// let stddev = [0.25, 0.25, 0.25, 0.1, 0.1];
+/// let mut tpe = TreeStructuredParzenEstimator::new(Direction::Maximize, 5, &mean, &stddev)?;
+///
+/// // Propose a candidate, evaluate it (here a stub score), and feed the result back.
+/// let candidate = tpe.get_next_input()?;
+/// tpe.add_trial(Trial { input: candidate, score: 1.5 })?;
+/// assert_eq!(tpe.trials_len(), 1);
+/// # Ok::<(), autoware_ndt_scan_matcher_rs::tpe::Error>(())
+/// ```
 #[derive(Clone, Debug)]
 pub struct TreeStructuredParzenEstimator {
     direction: Direction,
@@ -189,11 +233,13 @@ impl TreeStructuredParzenEstimator {
         })
     }
 
+    /// Number of trials recorded so far (via [`add_trial`](Self::add_trial)).
     #[must_use]
     pub fn trials_len(&self) -> usize {
         self.trials.len()
     }
 
+    /// Size of the "above" (better) partition currently used for the KDE — `min(10, trials / 10)`.
     #[must_use]
     pub fn above_num(&self) -> usize {
         self.above_num
@@ -371,23 +417,33 @@ fn normalize_radian(mut rad: f64) -> f64 {
     rad
 }
 
+/// C ABI status: success.
 #[cfg(feature = "std")]
 pub const AW_TPE_STATUS_OK: i32 = 0;
+/// C ABI status: a required pointer argument was null.
 #[cfg(feature = "std")]
 pub const AW_TPE_STATUS_NULL_POINTER: i32 = 1;
+/// C ABI status: a prior/input array had the wrong length.
 #[cfg(feature = "std")]
 pub const AW_TPE_STATUS_INVALID_LENGTH: i32 = 2;
+/// C ABI status: the direction code was neither `MINIMIZE` nor `MAXIMIZE`.
 #[cfg(feature = "std")]
 pub const AW_TPE_STATUS_INVALID_DIRECTION: i32 = 3;
+/// C ABI status: a trial input/score was invalid (e.g. non-finite).
 #[cfg(feature = "std")]
 pub const AW_TPE_STATUS_INVALID_INPUT: i32 = 4;
+/// C ABI status: an internal error (e.g. invalid KDE state, conversion failure).
 #[cfg(feature = "std")]
 pub const AW_TPE_STATUS_INTERNAL_ERROR: i32 = 5;
+/// C ABI direction code for [`Direction::Minimize`].
 #[cfg(feature = "std")]
 pub const AW_TPE_DIRECTION_MINIMIZE: i32 = 0;
+/// C ABI direction code for [`Direction::Maximize`].
 #[cfg(feature = "std")]
 pub const AW_TPE_DIRECTION_MAXIMIZE: i32 = 1;
 
+/// Opaque handle wrapping a [`TreeStructuredParzenEstimator`] for the C ABI (an `AwTpe*` on the C++
+/// side). Created/driven through the `autoware_ndt_scan_matcher_rs_tpe_*` `extern "C"` shims.
 #[cfg(feature = "std")]
 pub struct AwTpe {
     inner: TreeStructuredParzenEstimator,
