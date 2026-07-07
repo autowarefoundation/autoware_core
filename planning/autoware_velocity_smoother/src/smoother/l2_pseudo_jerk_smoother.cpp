@@ -312,7 +312,7 @@ bool L2PseudoJerkSmoother::apply(
   }
 
   for (unsigned int i = 0; i < N; ++i) {
-    const int j = 2 * N + i;
+    const unsigned int j = 2 * N + i;
     A(i, i) = 1.0;
     A(i, j) = -1.0;
     upper_bound[i] = v_max[i] * v_max[i];
@@ -320,7 +320,7 @@ bool L2PseudoJerkSmoother::apply(
   }
 
   for (unsigned int i = N; i < 2 * N; ++i) {
-    const int j = 2 * N + i;
+    const unsigned int j = 2 * N + i;
     A(i, i) = 1.0;
     A(i, j) = -1.0;
     if (i != N && v_max[i - N] < std::numeric_limits<double>::epsilon()) {
@@ -337,7 +337,7 @@ bool L2PseudoJerkSmoother::apply(
     const double ds_inv = 1.0 / std::max(interval_dist_arr.at(j), 0.0001);
     A(i, j) = -ds_inv;
     A(i, j + 1) = ds_inv;
-    A(i, j + N) = -2.0;
+    A(i, static_cast<unsigned int>(j + N)) = -2.0;
     upper_bound[i] = 0.0;
     lower_bound[i] = 0.0;
   }
@@ -348,7 +348,7 @@ bool L2PseudoJerkSmoother::apply(
     upper_bound[i] = initial_vel * initial_vel;
     lower_bound[i] = initial_vel * initial_vel;
 
-    A(i + 1, N) = 1.0;
+    A(i + 1, static_cast<unsigned int>(N)) = 1.0;
     upper_bound[i + 1] = initial_acc;
     lower_bound[i + 1] = initial_acc;
   }

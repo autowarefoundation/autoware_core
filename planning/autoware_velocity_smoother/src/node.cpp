@@ -809,7 +809,8 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
   // Clip trajectory from closest point
   TrajectoryPoints clipped;
   clipped.insert(
-    clipped.end(), traj_resampled.begin() + traj_resampled_closest, traj_resampled.end());
+    clipped.end(), traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest),
+    traj_resampled.end());
 
   if (clipped.empty()) {
     return false;
@@ -847,7 +848,8 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
   traj_smoothed = traj_smoothed_.restore();
 
   traj_smoothed.insert(
-    traj_smoothed.begin(), traj_resampled.begin(), traj_resampled.begin() + traj_resampled_closest);
+    traj_smoothed.begin(), traj_resampled.begin(),
+    traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest));
 
   // For the endpoint of the trajectory
   if (!traj_smoothed.empty()) {
@@ -886,7 +888,7 @@ bool VelocitySmootherNode::smoothVelocityContinuous(
     for (auto & debug_trajectory : debug_trajectories_discrete) {
       debug_trajectory.insert(
         debug_trajectory.begin(), traj_resampled.begin(),
-        traj_resampled.begin() + traj_resampled_closest);
+        traj_resampled.begin() + static_cast<std::ptrdiff_t>(traj_resampled_closest));
       for (size_t i = 0; i < traj_resampled_closest; ++i) {
         debug_trajectory.at(i).longitudinal_velocity_mps =
           debug_trajectory.at(traj_resampled_closest).longitudinal_velocity_mps;

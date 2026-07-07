@@ -288,8 +288,9 @@ bool LinfPseudoJerkSmoother::apply(
   std::vector<double> v_max = velocities;
 
   // Setup QP problem
-  const size_t l_variables{4 * N + 1};
-  const size_t l_constraints{3 * N + 1 + 2 * (N - 1)};
+  const Eigen::Index l_variables{4 * static_cast<Eigen::Index>(N) + 1};
+  const Eigen::Index l_constraints{
+    3 * static_cast<Eigen::Index>(N) + 1 + 2 * (static_cast<Eigen::Index>(N) - 1)};
 
   Eigen::MatrixXd A = Eigen::MatrixXd::Zero(l_constraints, l_variables);
   std::vector<double> lower_bound(l_constraints, 0.0);
@@ -319,7 +320,7 @@ bool LinfPseudoJerkSmoother::apply(
   q[4 * N] = smooth_weight;
 
   for (unsigned int i = 0; i < N; ++i) {
-    const int j = 2 * N + i;
+    const unsigned int j = 2 * N + i;
     A(i, i) = 1.0;
     A(i, j) = -1.0;
     upper_bound[i] = v_max[i] * v_max[i];
@@ -328,7 +329,7 @@ bool LinfPseudoJerkSmoother::apply(
 
   // a_min < a - sigma < a_max
   for (unsigned int i = N; i < 2 * N; ++i) {
-    const int j = 2 * N + i;
+    const unsigned int j = 2 * N + i;
     A(i, i) = 1.0;
     A(i, j) = -1.0;
     if (i != N && v_max[i - N] < std::numeric_limits<double>::epsilon()) {
@@ -346,7 +347,7 @@ bool LinfPseudoJerkSmoother::apply(
     const double ds_inv = 1.0 / std::max(interval_dist_arr.at(j), 0.0001);
     A(i, j) = -ds_inv;
     A(i, j + 1) = ds_inv;
-    A(i, j + N) = -2.0;
+    A(i, static_cast<unsigned int>(j + N)) = -2.0;
     upper_bound[i] = 0.0;
     lower_bound[i] = 0.0;
   }
@@ -357,7 +358,7 @@ bool LinfPseudoJerkSmoother::apply(
     upper_bound[i] = initial_vel * initial_vel;
     lower_bound[i] = initial_vel * initial_vel;
 
-    A(i + 1, N) = 1.0;
+    A(i + 1, static_cast<unsigned int>(N)) = 1.0;
     upper_bound[i + 1] = initial_acc;
     lower_bound[i + 1] = initial_acc;
   }
@@ -374,11 +375,13 @@ bool LinfPseudoJerkSmoother::apply(
     lower_bound[i] = -OSQP_INFTY;
     upper_bound[i] = 0;
 
-    A(i + N - 1, ia) = ds_inv;
-    A(i + N - 1, ia + 1) = -ds_inv;
-    A(i + N - 1, ip) = -1;
-    lower_bound[i + N - 1] = -OSQP_INFTY;
-    upper_bound[i + N - 1] = 0;
+    const unsigned int in_idx = i + N - 1;
+
+    A(in_idx, ia) = ds_inv;
+    A(in_idx, ia + 1) = -ds_inv;
+    A(in_idx, ip) = -1;
+    lower_bound[in_idx] = -OSQP_INFTY;
+    upper_bound[in_idx] = 0;
   }
 
   const auto result = qp_solver_.optimize(P, A, q, lower_bound, upper_bound);

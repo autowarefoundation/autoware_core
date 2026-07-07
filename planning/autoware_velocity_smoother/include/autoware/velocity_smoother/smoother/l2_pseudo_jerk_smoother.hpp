@@ -55,7 +55,7 @@ public:
   bool apply(
     const double initial_vel, const double initial_acc, const TrajectoryExperimental & input,
     TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
-    const bool publish_debug_trajs);
+    const bool publish_debug_trajs) override;
 
   TrajectoryPoints resampleTrajectory(
     const TrajectoryPoints & input, const double v0, const geometry_msgs::msg::Pose & current_pose,

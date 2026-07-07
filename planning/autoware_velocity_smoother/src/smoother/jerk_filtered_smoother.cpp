@@ -502,7 +502,7 @@ bool JerkFilteredSmoother::apply(
 
   time_keeper_->start_track("initOptimization");
   const double smooth_weight = smoother_param_.jerk_weight;
-  for (size_t i = 0; i < N - 1; ++i) {
+  for (uint32_t i = 0; i < N - 1; ++i) {
     const double ref_vel = 0.5 * (v_max_arr.at(i) + v_max_arr.at(i + 1));
     const double interval_dist = std::max(interval_dist_arr.at(i), 0.0001);
     const double w_x_ds_inv = (1.0 / interval_dist) * ref_vel;
@@ -512,7 +512,7 @@ bool JerkFilteredSmoother::apply(
     P(IDX_A0 + i + 1, IDX_A0 + i + 1) += smooth_weight * w_x_ds_inv * w_x_ds_inv * interval_dist;
   }
 
-  for (size_t i = 0; i < N; ++i) {
+  for (uint32_t i = 0; i < N; ++i) {
     if (v_max_arr.at(i) > 0.01) {
       double v_weight_term = -1.0 / (v_max_arr.at(i) * v_max_arr.at(i));
       if (i < N - 1) {
@@ -525,16 +525,16 @@ bool JerkFilteredSmoother::apply(
     P(IDX_GAMMA0 + i, IDX_GAMMA0 + i) += over_j_weight;
   }
 
-  size_t constr_idx = 0;
+  uint32_t constr_idx = 0;
 
-  for (size_t i = 0; i < N; ++i, ++constr_idx) {
+  for (uint32_t i = 0; i < N; ++i, ++constr_idx) {
     A(constr_idx, IDX_B0 + i) = 1.0;
     A(constr_idx, IDX_DELTA0 + i) = -1.0;
     upper_bound[constr_idx] = v_max_arr.at(i) * v_max_arr.at(i);
     lower_bound[constr_idx] = 0.0;
   }
 
-  for (size_t i = 0; i < N; ++i, ++constr_idx) {
+  for (uint32_t i = 0; i < N; ++i, ++constr_idx) {
     A(constr_idx, IDX_A0 + i) = 1.0;
     A(constr_idx, IDX_SIGMA0 + i) = -1.0;
 
@@ -548,7 +548,7 @@ bool JerkFilteredSmoother::apply(
     }
   }
 
-  for (size_t i = 0; i < N - 1; ++i, ++constr_idx) {
+  for (uint32_t i = 0; i < N - 1; ++i, ++constr_idx) {
     const double ref_vel = 0.5 * (v_max_arr.at(i) + v_max_arr.at(i + 1));
     const double ds = interval_dist_arr.at(i);
     A(constr_idx, IDX_A0 + i) = -ref_vel;
@@ -558,7 +558,7 @@ bool JerkFilteredSmoother::apply(
     lower_bound[constr_idx] = j_min * ds;
   }
 
-  for (size_t i = 0; i < N - 1; ++i, ++constr_idx) {
+  for (uint32_t i = 0; i < N - 1; ++i, ++constr_idx) {
     A(constr_idx, IDX_B0 + i) = -1.0;
     A(constr_idx, IDX_B0 + i + 1) = 1.0;
     A(constr_idx, IDX_A0 + i) = -2.0 * interval_dist_arr.at(i);
@@ -596,8 +596,8 @@ bool JerkFilteredSmoother::apply(
   }
 
   const auto tf1 = std::chrono::system_clock::now();
-  const double dt_ms1 =
-    std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count() * 1.0e-6;
+  const double dt_ms1 = static_cast<double>(
+    std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count() * 1.0e-6);
   RCLCPP_DEBUG(logger_, "optimization time = %f [ms]", dt_ms1);
 
   output = merged_resampled;
@@ -680,7 +680,7 @@ TrajectoryPoints JerkFilteredSmoother::mergeFilteredTrajectory(
   TrajectoryPoints merged;
   merged = forward_filtered;
 
-  auto getVx = [](const TrajectoryPoints & trajectory, int i) {
+  auto getVx = [](const TrajectoryPoints & trajectory, size_t i) {
     return trajectory.at(i).longitudinal_velocity_mps;
   };
 
@@ -690,8 +690,8 @@ TrajectoryPoints JerkFilteredSmoother::mergeFilteredTrajectory(
     double current_vel = v0;
     double current_acc = a0;
     while (getVx(backward_filtered, i) < current_vel && i < merged.size() - 1) {
-      merged.at(i).longitudinal_velocity_mps = current_vel;
-      merged.at(i).acceleration_mps2 = current_acc;
+      merged.at(i).longitudinal_velocity_mps = static_cast<float>(current_vel);
+      merged.at(i).acceleration_mps2 = static_cast<float>(current_acc);
 
       const double ds = autoware_utils_geometry::calc_distance2d(
         forward_filtered.at(i + 1), forward_filtered.at(i));
@@ -785,7 +785,10 @@ TrajectoryExperimental JerkFilteredSmoother::forwardJerkFilter(
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
   auto output = input;
-  const auto [bases, velocities] = input.longitudinal_velocity_mps().get_data();
+  const auto data = input.longitudinal_velocity_mps().get_data();
+
+  const auto & bases = data.first;
+  const auto & velocities = data.second;
 
   if (bases.empty()) {
     return output;
