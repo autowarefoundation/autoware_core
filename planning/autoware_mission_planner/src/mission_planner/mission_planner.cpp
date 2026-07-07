@@ -29,6 +29,27 @@
 namespace autoware::mission_planner
 {
 
+namespace
+{
+void set_fail_response(
+  const SetLaneletRoute::Response::SharedPtr & res, const uint16_t code,
+  const std::string & message)
+{
+  res->status.success = false;
+  res->status.code = code;
+  res->status.message = message;
+}
+
+void set_fail_response(
+  const SetWaypointRoute::Response::SharedPtr & res, const uint16_t code,
+  const std::string & message)
+{
+  res->status.success = false;
+  res->status.code = code;
+  res->status.message = message;
+}
+}  // namespace
+
 MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
 : Node("mission_planner", options),
   arrival_checker_(this),
@@ -197,21 +218,18 @@ void MissionPlanner::on_set_lanelet_route(
   const auto is_reroute = state_.state == RouteState::SET;
 
   if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_INVALID_STATE;
-    res->status.message = "The route cannot be set in the current state.";
+    set_fail_response(
+      res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
     return;
   }
   if (!is_mission_planner_ready_) {
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
-    res->status.message = "The mission planner is not ready.";
+    set_fail_response(
+      res, ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
     return;
   }
   if (is_reroute && !operation_mode_state_) {
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
-    res->status.message = "Operation mode state is not received.";
+    set_fail_response(
+      res, ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
     return;
   }
 
@@ -221,9 +239,8 @@ void MissionPlanner::on_set_lanelet_route(
                           : false;
 
   if (is_reroute && !allow_reroute_in_autonomous_mode_ && is_autonomous_driving) {
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_INVALID_STATE;
-    res->status.message = "Reroute is not allowed in autonomous mode.";
+    set_fail_response(
+      res, ResponseCode::ERROR_INVALID_STATE, "Reroute is not allowed in autonomous mode.");
     return;
   }
 
@@ -232,27 +249,23 @@ void MissionPlanner::on_set_lanelet_route(
   try {
     route = create_route(*req);
   } catch (const tf2::TransformException & error) {
-    res->status.success = false;
-    res->status.code = autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR;
-    res->status.message = error.what();
+    set_fail_response(
+      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR, error.what());
     return;
   }
 
   if (route.segments.empty()) {
     cancel_route();
     change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_PLANNER_FAILED;
-    res->status.message = "The planned route is empty.";
+    set_fail_response(res, ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
     return;
   }
 
   if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
     cancel_route();
     change_state(RouteState::SET);
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_REROUTE_FAILED;
-    res->status.message = "New route is not safe. Reroute failed.";
+    set_fail_response(
+      res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
     return;
   }
 
@@ -272,21 +285,18 @@ void MissionPlanner::on_set_waypoint_route(
   const auto is_reroute = state_.state == RouteState::SET;
 
   if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_INVALID_STATE;
-    res->status.message = "The route cannot be set in the current state.";
+    set_fail_response(
+      res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
     return;
   }
   if (!is_mission_planner_ready_) {
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
-    res->status.message = "The mission planner is not ready.";
+    set_fail_response(
+      res, ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
     return;
   }
   if (is_reroute && !operation_mode_state_) {
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
-    res->status.message = "Operation mode state is not received.";
+    set_fail_response(
+      res, ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
     return;
   }
 
@@ -300,27 +310,23 @@ void MissionPlanner::on_set_waypoint_route(
   try {
     route = create_route(*req);
   } catch (const tf2::TransformException & error) {
-    res->status.success = false;
-    res->status.code = autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR;
-    res->status.message = error.what();
+    set_fail_response(
+      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR, error.what());
     return;
   }
 
   if (route.segments.empty()) {
     cancel_route();
     change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_PLANNER_FAILED;
-    res->status.message = "The planned route is empty.";
+    set_fail_response(res, ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
     return;
   }
 
   if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
     cancel_route();
     change_state(RouteState::SET);
-    res->status.success = false;
-    res->status.code = ResponseCode::ERROR_REROUTE_FAILED;
-    res->status.message = "New route is not safe. Reroute failed.";
+    set_fail_response(
+      res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
     return;
   }
 
