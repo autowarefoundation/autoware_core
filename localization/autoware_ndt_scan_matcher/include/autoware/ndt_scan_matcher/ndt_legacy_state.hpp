@@ -25,6 +25,9 @@
 namespace autoware::ndt_scan_matcher
 {
 
+// Build-selected storage for the legacy C++ NDT path. Rust builds keep this wrapper in the node
+// layout, but it intentionally carries no engine or sensor-cloud storage there; the live engine and
+// latest validated source cloud are owned by NDTScanMatcherRS.
 class NdtLegacyState
 {
   using PointSource = pcl::PointXYZ;

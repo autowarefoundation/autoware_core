@@ -126,6 +126,8 @@ private:
       req,
     autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Response::SharedPtr res);
 
+  // These helpers are implemented by build-selected translation units. The optional legacy engine
+  // pointer preserves the OFF-build lock scope; Rust-selected implementations ignore it.
   std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
     AwNdtAlignServiceTrace * trace = nullptr,
@@ -159,6 +161,8 @@ private:
   friend struct NdtRustHostAccess;
   AwHost make_host();
 
+  // Runtime helper implementations are build-selected with the sensor/align shells. The legacy
+  // pointer is meaningful only for the OFF-build pclomp path.
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
     const float & lower_nvs, const float & upper_nvs,
