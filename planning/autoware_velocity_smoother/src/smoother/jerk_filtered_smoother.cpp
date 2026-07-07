@@ -597,8 +597,9 @@ bool JerkFilteredSmoother::apply(
   }
 
   const auto tf1 = std::chrono::system_clock::now();
-  const double dt_ms1 = static_cast<double>(
-    std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count() * 1.0e-6);
+  const double dt_ms1 =
+    static_cast<double>(std::chrono::duration_cast<std::chrono::nanoseconds>(tf1 - ts).count()) *
+    1.0e-6;
   RCLCPP_DEBUG(logger_, "optimization time = %f [ms]", dt_ms1);
 
   output = merged_resampled;
