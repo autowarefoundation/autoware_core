@@ -30,6 +30,7 @@
 #include <pcl/point_types.h>
 
 #include <array>
+#include <cmath>
 #include <random>
 #include <vector>
 
@@ -95,6 +96,44 @@ std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
     flat.push_back(p.z);
   }
   return flat;
+}
+
+AwNdtAlignServiceSearchInput make_search_input(
+  const pcl::PointCloud<pcl::PointXYZ> & source, const std::vector<float> & flat,
+  const int64_t particles_num, const int64_t startup_trials)
+{
+  AwNdtAlignServiceSearchInput input{};
+  input.position[0] = 0.0;
+  input.position[1] = 0.0;
+  input.position[2] = 0.0;
+  input.orientation[0] = 0.0;
+  input.orientation[1] = 0.0;
+  input.orientation[2] = 0.0;
+  input.orientation[3] = 1.0;
+  input.covariance[0] = 0.25;
+  input.covariance[7] = 0.25;
+  input.covariance[14] = 0.01;
+  input.covariance[21] = 0.01;
+  input.covariance[28] = 0.01;
+  input.particles_num = particles_num;
+  input.n_startup_trials = startup_trials;
+  input.reliable_score_threshold = 0.0;
+  input.source_points = flat.data();
+  input.source_points_len = source.size();
+  return input;
+}
+
+AwNdtAlignServiceSearchOutput make_search_output(
+  std::vector<AwPose> & initial_poses, std::vector<AwPose> & result_poses,
+  std::vector<double> & scores, std::vector<std::int32_t> & iterations)
+{
+  AwNdtAlignServiceSearchOutput output{};
+  output.particles_capacity = initial_poses.size();
+  output.initial_poses = initial_poses.data();
+  output.result_poses = result_poses.data();
+  output.scores = scores.data();
+  output.iterations = iterations.data();
+  return output;
 }
 }  // namespace
 
@@ -174,4 +213,65 @@ TEST(NodeRunAlign, NullEngineIsNoop)  // NOLINT
   autoware_ndt_scan_matcher_rs_node_run_align(
     nullptr, guess16.data(), pt.data(), 1, &params, &outcome);
   EXPECT_EQ(outcome.iteration_num, 123);
+}
+
+TEST(NodeRunAlign, AlignServiceSearchWritesParticlesAndBestPose)  // NOLINT
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
+  Adapter rs = make_driven_adapter(source);
+  const std::vector<float> flat = flatten(*source);
+  constexpr std::size_t kParticles = 6U;
+  std::vector<AwPose> initial_poses(kParticles);
+  std::vector<AwPose> result_poses(kParticles);
+  std::vector<double> scores(kParticles);
+  std::vector<std::int32_t> iterations(kParticles);
+  AwNdtAlignServiceSearchInput input =
+    make_search_input(*source, flat, static_cast<int64_t>(kParticles), 3);
+  AwNdtAlignServiceSearchOutput output =
+    make_search_output(initial_poses, result_poses, scores, iterations);
+
+  const std::int32_t status = autoware_ndt_scan_matcher_rs_node_run_align_service_search(
+    rs.raw_handle(), &input, &output);
+
+  EXPECT_EQ(status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
+  EXPECT_EQ(output.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
+  EXPECT_EQ(output.valid, 1U);
+  EXPECT_EQ(output.particles_len, kParticles);
+  EXPECT_EQ(output.particles_requested, static_cast<int64_t>(kParticles));
+  EXPECT_EQ(output.particles_evaluated, static_cast<int64_t>(kParticles));
+  EXPECT_EQ(output.cloud_publish_count, static_cast<int64_t>(kParticles));
+  EXPECT_GE(output.marker_publish_count, 1);
+  EXPECT_TRUE(std::isfinite(output.best_score));
+  EXPECT_GE(output.best_iteration, 0);
+  for (std::size_t i = 0; i < kParticles; ++i) {
+    EXPECT_TRUE(std::isfinite(initial_poses[i].position[0]));
+    EXPECT_TRUE(std::isfinite(result_poses[i].position[0]));
+    EXPECT_TRUE(std::isfinite(scores[i]));
+    EXPECT_GE(iterations[i], 0);
+  }
+}
+
+TEST(NodeRunAlign, AlignServiceSearchRejectsTooSmallOutputCapacity)  // NOLINT
+{
+  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
+  Adapter rs = make_driven_adapter(source);
+  const std::vector<float> flat = flatten(*source);
+  constexpr std::size_t kCapacity = 2U;
+  std::vector<AwPose> initial_poses(kCapacity);
+  std::vector<AwPose> result_poses(kCapacity);
+  std::vector<double> scores(kCapacity, 42.0);
+  std::vector<std::int32_t> iterations(kCapacity, 7);
+  AwNdtAlignServiceSearchInput input = make_search_input(*source, flat, 3, 1);
+  AwNdtAlignServiceSearchOutput output =
+    make_search_output(initial_poses, result_poses, scores, iterations);
+
+  const std::int32_t status = autoware_ndt_scan_matcher_rs_node_run_align_service_search(
+    rs.raw_handle(), &input, &output);
+
+  EXPECT_EQ(status, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+  EXPECT_EQ(output.status, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
+  EXPECT_EQ(output.valid, 0U);
+  EXPECT_EQ(output.particles_len, 0U);
+  EXPECT_EQ(scores[0], 42.0);
+  EXPECT_EQ(iterations[0], 7);
 }

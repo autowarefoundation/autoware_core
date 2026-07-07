@@ -21,7 +21,6 @@
 #include <autoware_utils_pcl/transforms.hpp>
 
 #include <algorithm>
-#include <array>
 #include <cmath>
 #include <cstdint>
 #include <limits>
@@ -39,41 +38,9 @@
 
 namespace autoware::ndt_scan_matcher
 {
-using autoware::localization_util::matrix4f_to_pose;
 using autoware::localization_util::pose_to_matrix4f;
 namespace
 {
-constexpr std::size_t kTpePriorDimension = 5U;
-constexpr std::size_t kTpeInputDimension = 6U;
-constexpr std::uint64_t kAlignServiceTpeSeed = 0U;
-
-class TpeHandle
-{
-public:
-  explicit TpeHandle(AwTpe * ptr) : ptr_(ptr) {}
-  ~TpeHandle() { autoware_ndt_scan_matcher_rs_tpe_free(ptr_); }
-
-  TpeHandle(const TpeHandle &) = delete;
-  TpeHandle & operator=(const TpeHandle &) = delete;
-
-  TpeHandle(TpeHandle && other) noexcept : ptr_(other.ptr_) { other.ptr_ = nullptr; }
-  TpeHandle & operator=(TpeHandle && other) noexcept
-  {
-    if (this != &other) {
-      autoware_ndt_scan_matcher_rs_tpe_free(ptr_);
-      ptr_ = other.ptr_;
-      other.ptr_ = nullptr;
-    }
-    return *this;
-  }
-
-  [[nodiscard]] AwTpe * get() const { return ptr_; }
-  [[nodiscard]] bool valid() const { return ptr_ != nullptr; }
-
-private:
-  AwTpe * ptr_{nullptr};
-};
-
 std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 {
   std::vector<float> f;
@@ -84,6 +51,19 @@ std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
     f.push_back(p.z);
   }
   return f;
+}
+
+geometry_msgs::msg::Pose aw_pose_to_msg(const AwPose & pose)
+{
+  geometry_msgs::msg::Pose msg;
+  msg.position.x = pose.position[0];
+  msg.position.y = pose.position[1];
+  msg.position.z = pose.position[2];
+  msg.orientation.x = pose.orientation[0];
+  msg.orientation.y = pose.orientation[1];
+  msg.orientation.z = pose.orientation[2];
+  msg.orientation.w = pose.orientation[3];
+  return msg;
 }
 
 AwNdtAlignServiceInput make_align_service_input(
@@ -205,63 +185,6 @@ void apply_align_service_response(
     res.pose_with_covariance.pose.covariance.begin());
 }
 
-pclomp::NdtResult ndt_result_from_engine(const AwNdtEngine * handle)
-{
-  pclomp::NdtResult r;
-  std::array<float, 16> pose{};
-  std::int32_t iter = 0;
-  float tp = 0.0F;
-  float nvl = 0.0F;
-  std::array<double, 36> hess{};
-  constexpr std::uint32_t kCap = 256;
-  std::vector<float> ta(static_cast<size_t>(kCap) * 16);
-  std::uint32_t count = 0;
-  AwNdtAlignOutput out{};
-  out.pose = pose.data();
-  out.iteration_num = &iter;
-  out.transform_probability = &tp;
-  out.nearest_voxel_likelihood = &nvl;
-  out.hessian = hess.data();
-  out.transformation_array = ta.data();
-  out.transforms_cap = kCap;
-  out.transforms_count = &count;
-  autoware_ndt_scan_matcher_rs_ndt_engine_get_result(handle, &out);
-
-  for (int rr = 0; rr < 4; ++rr) {
-    for (int cc = 0; cc < 4; ++cc) {
-      r.pose(rr, cc) = pose[(rr * 4) + cc];
-    }
-  }
-  r.iteration_num = iter;
-  r.transform_probability = tp;
-  r.nearest_voxel_transformation_likelihood = nvl;
-  for (int rr = 0; rr < 6; ++rr) {
-    for (int cc = 0; cc < 6; ++cc) {
-      r.hessian(rr, cc) = hess[(rr * 6) + cc];
-    }
-  }
-  const std::uint32_t n = std::min(count, kCap);
-  r.transformation_array.resize(n);
-  for (std::uint32_t k = 0; k < n; ++k) {
-    Eigen::Matrix4f m;
-    for (int rr = 0; rr < 4; ++rr) {
-      for (int cc = 0; cc < 4; ++cc) {
-        m(rr, cc) = ta[(static_cast<size_t>(k) * 16) + (rr * 4) + cc];
-      }
-    }
-    r.transformation_array[k] = m;
-  }
-
-  std::vector<float> tps(kCap);
-  std::vector<float> nvls(kCap);
-  std::uint32_t scount = 0;
-  autoware_ndt_scan_matcher_rs_ndt_engine_get_score_arrays(
-    handle, tps.data(), nvls.data(), kCap, &scount);
-  const std::uint32_t sn = std::min(scount, kCap);
-  r.transform_probability_array.assign(tps.begin(), tps.begin() + sn);
-  r.nearest_voxel_transformation_likelihood_array.assign(nvls.begin(), nvls.begin() + sn);
-  return r;
-}
 }  // namespace
 
 void NDTScanMatcher::service_ndt_align_main(
@@ -362,119 +285,87 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
 
-  const auto base_rpy = autoware::localization_util::get_rpy(initial_pose_with_cov);
   const Eigen::Map<const autoware::localization_util::RowMatrixXd> covariance = {
     initial_pose_with_cov.pose.covariance.data(), 6, 6};
-  const double stddev_x = std::sqrt(covariance(0, 0));
-  const double stddev_y = std::sqrt(covariance(1, 1));
-  const double stddev_z = std::sqrt(covariance(2, 2));
-  const double stddev_roll = std::sqrt(covariance(3, 3));
-  const double stddev_pitch = std::sqrt(covariance(4, 4));
-
-  const std::array<double, kTpePriorDimension> sample_mean{
-    initial_pose_with_cov.pose.pose.position.x,
-    initial_pose_with_cov.pose.pose.position.y,
-    initial_pose_with_cov.pose.pose.position.z,
-    base_rpy.x,
-    base_rpy.y};
-  const std::array<double, kTpePriorDimension> sample_stddev{
-    stddev_x, stddev_y, stddev_z, stddev_roll, stddev_pitch};
-
-  TpeHandle tpe{autoware_ndt_scan_matcher_rs_tpe_new(
-    AW_TPE_DIRECTION_MAXIMIZE, param_.initial_pose_estimation.n_startup_trials, sample_mean.data(),
-    sample_mean.size(), sample_stddev.data(), sample_stddev.size(), kAlignServiceTpeSeed)};
 
   std::vector<Particle> particle_array;
   const std::vector<float> source_flat = cloud_to_flat(*sensor_points_in_baselink_frame_);
 
   visualization_msgs::msg::MarkerArray marker_array;
-  std::int64_t marker_publish_count = 0;
-  std::int64_t cloud_publish_count = 0;
   constexpr int64_t publish_num = 20;
   const int64_t publish_interval =
     std::max<int64_t>(param_.initial_pose_estimation.particles_num / publish_num, 1);
 
-  auto return_tpe_failure = [&](const std::string & message) {
+  auto return_search_failure = [&](const std::string & message) {
     RCLCPP_ERROR_STREAM(get_logger(), message);
     geometry_msgs::msg::PoseWithCovarianceStamped failure_pose = initial_pose_with_cov;
     failure_pose.header.frame_id = param_.frame.map_frame;
     append_align_search_summary_trace(
       param_.initial_pose_estimation.particles_num, static_cast<std::int64_t>(particle_array.size()),
-      marker_publish_count, cloud_publish_count, -1, -std::numeric_limits<double>::infinity(),
+      0, 0, -1, -std::numeric_limits<double>::infinity(),
       param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood, trace);
     return std::make_tuple(failure_pose, -std::numeric_limits<double>::infinity());
   };
 
-  if (!tpe.valid()) {
-    return return_tpe_failure("Rust TPE construction failed in align service");
+  const std::size_t particles_capacity =
+    static_cast<std::size_t>(std::max<int64_t>(param_.initial_pose_estimation.particles_num, 0));
+  std::vector<AwPose> initial_poses(particles_capacity);
+  std::vector<AwPose> result_poses(particles_capacity);
+  std::vector<double> scores(particles_capacity);
+  std::vector<std::int32_t> iterations(particles_capacity);
+
+  AwNdtAlignServiceSearchInput search_input{};
+  search_input.position[0] = initial_pose_with_cov.pose.pose.position.x;
+  search_input.position[1] = initial_pose_with_cov.pose.pose.position.y;
+  search_input.position[2] = initial_pose_with_cov.pose.pose.position.z;
+  search_input.orientation[0] = initial_pose_with_cov.pose.pose.orientation.x;
+  search_input.orientation[1] = initial_pose_with_cov.pose.pose.orientation.y;
+  search_input.orientation[2] = initial_pose_with_cov.pose.pose.orientation.z;
+  search_input.orientation[3] = initial_pose_with_cov.pose.pose.orientation.w;
+  for (int r = 0; r < 6; ++r) {
+    for (int c = 0; c < 6; ++c) {
+      search_input.covariance[(r * 6) + c] = covariance(r, c);
+    }
+  }
+  search_input.particles_num = param_.initial_pose_estimation.particles_num;
+  search_input.n_startup_trials = param_.initial_pose_estimation.n_startup_trials;
+  search_input.reliable_score_threshold =
+    param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
+  search_input.source_points = source_flat.data();
+  search_input.source_points_len = sensor_points_in_baselink_frame_->size();
+
+  AwNdtAlignServiceSearchOutput search_output{};
+  search_output.particles_capacity = particles_capacity;
+  search_output.initial_poses = initial_poses.data();
+  search_output.result_poses = result_poses.data();
+  search_output.scores = scores.data();
+  search_output.iterations = iterations.data();
+
+  const std::int32_t search_status = autoware_ndt_scan_matcher_rs_node_run_align_service_search(
+    ndt_ref.raw_handle(), &search_input, &search_output);
+  if (search_status != NDT_ALIGN_SERVICE_STATUS_ALIGNED || search_output.valid == 0U) {
+    return return_search_failure(
+      "Rust align-service search failed with status " + std::to_string(search_status));
   }
 
-  for (int64_t i = 0; i < param_.initial_pose_estimation.particles_num; i++) {
-    std::array<double, kTpeInputDimension> input{};
-    const std::int32_t input_status = autoware_ndt_scan_matcher_rs_tpe_get_next_input(
-      tpe.get(), input.data(), input.size());
-    if (input_status != AW_TPE_STATUS_OK) {
-      return return_tpe_failure(
-        "Rust TPE candidate generation failed in align service with status " +
-        std::to_string(input_status));
-    }
-
-    geometry_msgs::msg::Pose initial_pose;
-    initial_pose.position.x = input[0];
-    initial_pose.position.y = input[1];
-    initial_pose.position.z = input[2];
-    geometry_msgs::msg::Vector3 init_rpy;
-    init_rpy.x = input[3];
-    init_rpy.y = input[4];
-    init_rpy.z = input[5];
-    tf2::Quaternion tf_quaternion;
-    tf_quaternion.setRPY(init_rpy.x, init_rpy.y, init_rpy.z);
-    initial_pose.orientation = tf2::toMsg(tf_quaternion);
-
-    const Eigen::Matrix4f initial_pose_matrix = pose_to_matrix4f(initial_pose);
-    std::array<float, 16> guess16{};
-    for (int r = 0; r < 4; ++r) {
-      for (int c = 0; c < 4; ++c) {
-        guess16[(r * 4) + c] = initial_pose_matrix(r, c);
-      }
-    }
-    autoware_ndt_scan_matcher_rs_ndt_engine_align(
-      ndt_ref.raw_handle(), guess16.data(), source_flat.data(),
-      sensor_points_in_baselink_frame_->size());
-    const pclomp::NdtResult ndt_result = ndt_result_from_engine(ndt_ref.raw_handle());
-
+  for (std::size_t i = 0; i < search_output.particles_len; ++i) {
     Particle particle(
-      initial_pose, matrix4f_to_pose(ndt_result.pose),
-      ndt_result.nearest_voxel_transformation_likelihood, ndt_result.iteration_num);
+      aw_pose_to_msg(initial_poses[i]), aw_pose_to_msg(result_poses[i]), scores[i], iterations[i]);
     particle_array.push_back(particle);
     push_debug_markers(marker_array, get_clock()->now(), param_.frame.map_frame, particle, i);
 
-    if (
-      (i + 1) % publish_interval == 0 || (i + 1) == param_.initial_pose_estimation.particles_num) {
+    const int64_t one_based = static_cast<int64_t>(i) + 1;
+    if (one_based % publish_interval == 0 || one_based == search_output.particles_requested) {
       ndt_monte_carlo_initial_pose_marker_pub_->publish(marker_array);
-      ++marker_publish_count;
       marker_array.markers.clear();
-    }
-
-    const geometry_msgs::msg::Pose pose = matrix4f_to_pose(ndt_result.pose);
-    const geometry_msgs::msg::Vector3 rpy = autoware::localization_util::get_rpy(pose);
-
-    const std::array<double, kTpeInputDimension> result{
-      pose.position.x, pose.position.y, pose.position.z, rpy.x, rpy.y, rpy.z};
-    const std::int32_t add_trial_status = autoware_ndt_scan_matcher_rs_tpe_add_trial(
-      tpe.get(), result.data(), result.size(), ndt_result.transform_probability);
-    if (add_trial_status != AW_TPE_STATUS_OK) {
-      return return_tpe_failure(
-        "Rust TPE trial update failed in align service with status " +
-        std::to_string(add_trial_status));
     }
 
     auto sensor_points_in_map_ptr = std::make_shared<pcl::PointCloud<PointSource>>();
     autoware_utils_pcl::transform_pointcloud(
-      *sensor_points_in_baselink_frame_, *sensor_points_in_map_ptr, ndt_result.pose);
+      *sensor_points_in_baselink_frame_, *sensor_points_in_map_ptr,
+      pose_to_matrix4f(particle.result_pose));
     publish_point_cloud(
       initial_pose_with_cov.header.stamp, param_.frame.map_frame, sensor_points_in_map_ptr);
-    ++cloud_publish_count;
   }
 
   auto best_particle_ptr = std::max_element(
@@ -490,8 +381,8 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     get_logger(), "align_pose_output", result_pose_with_cov_msg);
   diagnostics_ndt_align_->add_key_value("best_particle_score", best_particle_ptr->score);
   append_align_search_summary_trace(
-    param_.initial_pose_estimation.particles_num, static_cast<std::int64_t>(particle_array.size()),
-    marker_publish_count, cloud_publish_count,
+    search_output.particles_requested, search_output.particles_evaluated,
+    search_output.marker_publish_count, search_output.cloud_publish_count,
     static_cast<std::int32_t>(best_particle_ptr->iteration), best_particle_ptr->score,
     param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood, trace);
 
