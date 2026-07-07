@@ -157,15 +157,11 @@ void MissionPlanner::on_map(const LaneletMapBin::ConstSharedPtr msg)
 
 Pose MissionPlanner::transform_pose(const Pose & pose, const Header & header)
 {
-  geometry_msgs::msg::TransformStamped transform;
+  const auto transform =
+    tf_buffer_.lookupTransform(map_frame_, header.frame_id, tf2::TimePointZero);
   geometry_msgs::msg::Pose result;
-  try {
-    transform = tf_buffer_.lookupTransform(map_frame_, header.frame_id, tf2::TimePointZero);
-    tf2::doTransform(pose, result, transform);
-    return result;
-  } catch (tf2::TransformException & error) {
-    throw service_utils::TransformError(error.what());
-  }
+  tf2::doTransform(pose, result, transform);
+  return result;
 }
 
 void MissionPlanner::change_state(RouteState::_state_type state)
@@ -252,6 +248,9 @@ void MissionPlanner::on_set_lanelet_route(
     publish_pose_log(req->goal_pose, "goal");
   } catch (const service_utils::ServiceException & error) {
     error.set(res->status);
+  } catch (const tf2::TransformException & error) {
+    service_utils::ServiceException(service_utils::ResponseStatus::TRANSFORM_ERROR, error.what())
+      .set(res->status);
   }
   publish_processing_time(stop_watch);
 }
@@ -307,6 +306,9 @@ void MissionPlanner::on_set_waypoint_route(
     publish_pose_log(req->goal_pose, "goal");
   } catch (const service_utils::ServiceException & error) {
     error.set(res->status);
+  } catch (const tf2::TransformException & error) {
+    service_utils::ServiceException(service_utils::ResponseStatus::TRANSFORM_ERROR, error.what())
+      .set(res->status);
   }
   publish_processing_time(stop_watch);
 }

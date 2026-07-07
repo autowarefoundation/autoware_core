@@ -48,8 +48,6 @@ private:
   std::string message_;
 };
 
-ServiceException TransformError(const std::string & message);
-
 }  // namespace service_utils
 
 #endif  // MISSION_PLANNER__SERVICE_UTILS_HPP_
