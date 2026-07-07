@@ -394,16 +394,15 @@ TEST_F(MissionPlannerIntegrationTest, SecondRequestAsSafeRerouteWhileStoppedSucc
   initialize_mission_planner_node();
   publish_map(create_map());
   publish_odometry(make_odometry(make_pose(10.0, 0.0), 0.0));
-  spin_for(std::chrono::milliseconds(300));
-  const auto first_request = make_set_lanelet_route_request(FIRST_LANELET_ID, make_pose(40.0, 0.0));
-  ASSERT_TRUE(call_set_lanelet_route(first_request)->status.success);
   publish_operation_mode_state(make_operation_mode_state(
     OperationModeState::AUTONOMOUS, /*is_autoware_control_enabled=*/true));
-  spin_for(std::chrono::milliseconds(100));
+  spin_for(std::chrono::milliseconds(300));
+  const auto first_request = make_set_lanelet_route_request(FIRST_LANELET_ID, make_pose(40.0, 0.0));
   const auto reroute_request =
     make_set_lanelet_route_request(SECOND_LANELET_ID, make_pose(90.0, 0.0));
 
   // Act
+  call_set_lanelet_route(first_request);
   const auto response = call_set_lanelet_route(reroute_request);
 
   // Assert
@@ -449,15 +448,14 @@ TEST_F(MissionPlannerIntegrationTest, SecondWaypointRequestAsSafeRerouteWhileSto
   initialize_mission_planner_node();
   publish_map(create_map());
   publish_odometry(make_odometry(waypoint_route_start_pose(), 0.0));
-  spin_for(std::chrono::milliseconds(300));
-  const auto first_request = make_set_waypoint_route_request(waypoint_route_goal_pose());
-  ASSERT_TRUE(call_set_waypoint_route(first_request)->status.success);
   publish_operation_mode_state(make_operation_mode_state(
     OperationModeState::AUTONOMOUS, /*is_autoware_control_enabled=*/true));
-  spin_for(std::chrono::milliseconds(100));
+  spin_for(std::chrono::milliseconds(300));
+  const auto first_request = make_set_waypoint_route_request(waypoint_route_goal_pose());
   const auto reroute_request = make_set_waypoint_route_request(waypoint_reroute_goal_pose());
 
   // Act
+  call_set_waypoint_route(first_request);
   const auto response = call_set_waypoint_route(reroute_request);
 
   // Assert
