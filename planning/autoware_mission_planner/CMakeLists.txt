@@ -49,6 +49,16 @@ if(BUILD_TESTING)
   target_link_libraries(test_${PROJECT_NAME}_reroute_safety
     ${PROJECT_NAME}_component
   )
+
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node
+  test/test_mission_planner_node.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_node
+    ${PROJECT_NAME}_component
+  )
+  ament_target_dependencies(test_${PROJECT_NAME}_node
+    autoware_test_utils
+  )
 endif()
 
 autoware_ament_auto_package(
