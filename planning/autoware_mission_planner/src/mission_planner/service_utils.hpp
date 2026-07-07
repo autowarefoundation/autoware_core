@@ -51,7 +51,6 @@ private:
   std::string message_;
 };
 
-ServiceException ServiceUnready(const std::string & message);
 ServiceException TransformError(const std::string & message);
 
 template <class T, class Req, class Res>
@@ -66,16 +65,6 @@ std::function<void(Req, Res)> handle_exception(void (T::*callback)(Req, Res), T 
     }
     instance->publish_processing_time(stop_watch);
   };
-}
-
-template <class T, class Req>
-ResponseStatus sync_call(T & client, Req req)
-{
-  if (!client->service_is_ready()) {
-    throw ServiceUnready(client->get_service_name());
-  }
-  auto future = client->async_send_request(req);
-  return future.get()->status;
 }
 
 }  // namespace service_utils

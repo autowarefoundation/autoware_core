@@ -19,11 +19,6 @@
 namespace service_utils
 {
 
-ServiceException ServiceUnready(const std::string & message)
-{
-  return ServiceException(ResponseStatus::SERVICE_UNREADY, message, false);
-}
-
 ServiceException TransformError(const std::string & message)
 {
   return ServiceException(ResponseStatus::TRANSFORM_ERROR, message, false);
