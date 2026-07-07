@@ -24,17 +24,12 @@ using autoware::localization_util::exchange_color_crc;
 using autoware::localization_util::pose_to_matrix4f;
 using autoware::localization_util::SmartPoseBuffer;
 
-pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
-  const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-  const float & lower_nvs, const float & upper_nvs,
-  NormalDistributionsTransform * legacy_ndt_ref)
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_legacy_point_score(
+  const pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> & sensor_points_in_map_ptr,
+  const float & lower_nvs, const float & upper_nvs, NdtBackend & ndt_ref)
 {
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
     new pcl::PointCloud<pcl::PointXYZRGB>};
-  if (legacy_ndt_ref == nullptr) {
-    return nvs_points_in_map_ptr_rgb;
-  }
-  NormalDistributionsTransform & ndt_ref = *legacy_ndt_ref;
 
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i =
     ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
@@ -54,21 +49,17 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   return nvs_points_in_map_ptr_rgb;
 }
 
-void NDTScanMatcher::add_regularization_pose(
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform * legacy_ndt_ref)
+void add_legacy_regularization_pose(
+  const rclcpp::Time & sensor_ros_time, SmartPoseBuffer & regularization_pose_buffer,
+  NdtBackend & ndt_ref)
 {
-  if (legacy_ndt_ref == nullptr) {
-    return;
-  }
-  NormalDistributionsTransform & ndt_ref = *legacy_ndt_ref;
-
   ndt_ref.unsetRegularizationPose();
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
-    regularization_pose_buffer_->interpolate(sensor_ros_time);
+    regularization_pose_buffer.interpolate(sensor_ros_time);
   if (!interpolation_result_opt) {
     return;
   }
-  regularization_pose_buffer_->pop_old(sensor_ros_time);
+  regularization_pose_buffer.pop_old(sensor_ros_time);
   const SmartPoseBuffer::InterpolateResult & interpolation_result =
     interpolation_result_opt.value();
   const Eigen::Matrix4f pose = pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);

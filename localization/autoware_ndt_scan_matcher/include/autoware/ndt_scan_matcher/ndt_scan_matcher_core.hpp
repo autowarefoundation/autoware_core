@@ -161,17 +161,6 @@ private:
   friend struct NdtRustHostAccess;
   AwHost make_host();
 
-  // Runtime helper implementations are build-selected with the sensor/align shells. The legacy
-  // pointer is meaningful only for the OFF-build pclomp path.
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
-    const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-    const float & lower_nvs, const float & upper_nvs,
-    NormalDistributionsTransform * legacy_ndt_ref = nullptr);
-
-  void add_regularization_pose(
-    const rclcpp::Time & sensor_ros_time,
-    NormalDistributionsTransform * legacy_ndt_ref = nullptr);
-
   rclcpp::TimerBase::SharedPtr map_update_timer_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sensor_points_sub_;

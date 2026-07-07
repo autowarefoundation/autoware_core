@@ -105,7 +105,6 @@ if(NDT_USE_RUST)
     src/ndt_scan_matcher_rust_shell.cpp
     src/ndt_scan_matcher_sensor_rust.cpp
     src/ndt_scan_matcher_rust_host.cpp
-    src/ndt_scan_matcher_runtime_rust.cpp
     src/ndt_scan_matcher_align_rust.cpp
   )
 else()

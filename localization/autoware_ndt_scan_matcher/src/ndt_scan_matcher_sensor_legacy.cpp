@@ -42,6 +42,13 @@ autoware_internal_debug_msgs::msg::Float32Stamped make_float32_stamped(
 autoware_internal_debug_msgs::msg::Int32Stamped make_int32_stamped(
   const builtin_interfaces::msg::Time & stamp, int32_t data);
 
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_legacy_point_score(
+  const pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> & sensor_points_in_map_ptr,
+  const float & lower_nvs, const float & upper_nvs, NdtBackend & ndt_ref);
+void add_legacy_regularization_pose(
+  const rclcpp::Time & sensor_ros_time,
+  autoware::localization_util::SmartPoseBuffer & regularization_pose_buffer, NdtBackend & ndt_ref);
+
 namespace
 {
 Eigen::Matrix2d estimate_legacy_covariance(
@@ -241,7 +248,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     // if regularization is enabled and available, set pose to NDT for regularization
     if (param_.ndt_regularization_enable) {
-      add_regularization_pose(sensor_ros_time, ndt_ptr.get());
+      add_legacy_regularization_pose(sensor_ros_time, *regularization_pose_buffer_, *ndt_ptr);
     }
 
     // Warn if the lidar has gone out of the map range
@@ -470,7 +477,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
       pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
         new pcl::PointCloud<pcl::PointXYZRGB>};
       nvs_points_in_map_ptr_rgb =
-        visualize_point_score(sensor_points_in_map_ptr, lower_nvs, upper_nvs, ndt_ptr.get());
+        visualize_legacy_point_score(
+          sensor_points_in_map_ptr, lower_nvs, upper_nvs, *ndt_ptr);
       sensor_msgs::msg::PointCloud2 nvs_points_msg_in_map;
       pcl::toROSMsg(*nvs_points_in_map_ptr_rgb, nvs_points_msg_in_map);
       nvs_points_msg_in_map.header.stamp = sensor_ros_time;
