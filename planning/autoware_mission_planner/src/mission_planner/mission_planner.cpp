@@ -174,28 +174,25 @@ void MissionPlanner::change_state(RouteState::_state_type state)
 void MissionPlanner::on_clear_route(
   const ClearRoute::Request::SharedPtr, const ClearRoute::Response::SharedPtr res)
 {
-  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
+  ScopedProcessingTimePublisher processing_time_publisher(*this);
 
   if (!is_mission_planner_ready_) {
     using ResponseCode = autoware_adapi_v1_msgs::msg::ResponseStatus;
     res->status.success = true;
     res->status.code = ResponseCode::NO_EFFECT;
     res->status.message = "The mission planner is not ready.";
-    publish_processing_time(stop_watch);
     return;
   }
 
   change_route();
   change_state(RouteState::UNSET);
   res->status.success = true;
-
-  publish_processing_time(stop_watch);
 }
 
 void MissionPlanner::on_set_lanelet_route(
   const SetLaneletRoute::Request::SharedPtr req, const SetLaneletRoute::Response::SharedPtr res)
 {
-  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
+  ScopedProcessingTimePublisher processing_time_publisher(*this);
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
   const auto is_reroute = state_.state == RouteState::SET;
 
@@ -203,21 +200,18 @@ void MissionPlanner::on_set_lanelet_route(
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_INVALID_STATE;
     res->status.message = "The route cannot be set in the current state.";
-    publish_processing_time(stop_watch);
     return;
   }
   if (!is_mission_planner_ready_) {
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
     res->status.message = "The mission planner is not ready.";
-    publish_processing_time(stop_watch);
     return;
   }
   if (is_reroute && !operation_mode_state_) {
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
     res->status.message = "Operation mode state is not received.";
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -230,7 +224,6 @@ void MissionPlanner::on_set_lanelet_route(
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_INVALID_STATE;
     res->status.message = "Reroute is not allowed in autonomous mode.";
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -242,7 +235,6 @@ void MissionPlanner::on_set_lanelet_route(
     res->status.success = false;
     res->status.code = autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR;
     res->status.message = error.what();
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -252,7 +244,6 @@ void MissionPlanner::on_set_lanelet_route(
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_PLANNER_FAILED;
     res->status.message = "The planned route is empty.";
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -262,7 +253,6 @@ void MissionPlanner::on_set_lanelet_route(
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_REROUTE_FAILED;
     res->status.message = "New route is not safe. Reroute failed.";
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -272,13 +262,12 @@ void MissionPlanner::on_set_lanelet_route(
 
   publish_pose_log(odometry_->pose.pose, "initial");
   publish_pose_log(req->goal_pose, "goal");
-  publish_processing_time(stop_watch);
 }
 
 void MissionPlanner::on_set_waypoint_route(
   const SetWaypointRoute::Request::SharedPtr req, const SetWaypointRoute::Response::SharedPtr res)
 {
-  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch;
+  ScopedProcessingTimePublisher processing_time_publisher(*this);
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
   const auto is_reroute = state_.state == RouteState::SET;
 
@@ -286,21 +275,18 @@ void MissionPlanner::on_set_waypoint_route(
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_INVALID_STATE;
     res->status.message = "The route cannot be set in the current state.";
-    publish_processing_time(stop_watch);
     return;
   }
   if (!is_mission_planner_ready_) {
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
     res->status.message = "The mission planner is not ready.";
-    publish_processing_time(stop_watch);
     return;
   }
   if (is_reroute && !operation_mode_state_) {
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_PLANNER_UNREADY;
     res->status.message = "Operation mode state is not received.";
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -317,7 +303,6 @@ void MissionPlanner::on_set_waypoint_route(
     res->status.success = false;
     res->status.code = autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR;
     res->status.message = error.what();
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -327,7 +312,6 @@ void MissionPlanner::on_set_waypoint_route(
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_PLANNER_FAILED;
     res->status.message = "The planned route is empty.";
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -337,7 +321,6 @@ void MissionPlanner::on_set_waypoint_route(
     res->status.success = false;
     res->status.code = ResponseCode::ERROR_REROUTE_FAILED;
     res->status.message = "New route is not safe. Reroute failed.";
-    publish_processing_time(stop_watch);
     return;
   }
 
@@ -347,7 +330,6 @@ void MissionPlanner::on_set_waypoint_route(
 
   publish_pose_log(odometry_->pose.pose, "initial");
   publish_pose_log(req->goal_pose, "goal");
-  publish_processing_time(stop_watch);
 }
 
 void MissionPlanner::change_route()
