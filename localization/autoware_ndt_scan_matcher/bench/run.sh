@@ -59,8 +59,12 @@ if [[ ! -d "$WS_ROOT/src" ]]; then
 fi
 cd "$WS_ROOT"
 
+# The ROS setup scripts reference unset vars (e.g. AMENT_TRACE_SETUP_FILES), which trip `set -u`.
+# Disable nounset only while sourcing them, then restore it.
+set +u
 # shellcheck disable=SC1091
 source /opt/ros/humble/setup.bash
+set -u
 
 echo "[bench] building $PKG (Release, NDT_USE_RUST=ON, NDT_BUILD_BENCH=ON) ..."
 colcon build --packages-select "$PKG" \
