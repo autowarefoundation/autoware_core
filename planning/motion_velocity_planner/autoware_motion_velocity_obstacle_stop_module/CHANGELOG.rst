@@ -5,6 +5,41 @@ Changelog for package autoware_motion_velocity_obstacle_stop_module
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_motion_velocity_obstacle_stop_module): unit-test stop-decision helpers and PathLengthBuffer (`#1117 <https://github.com/autowarefoundation/autoware_core/issues/1117>`_)
+  Extract the pure stop-decision helpers (calc_minimum_distance_to_stop,
+  calc_estimation_time, calc_x_offset_to_bumper, calc_time_to_reach_collision_point,
+  calc_braking_dist_along_trajectory, create_polygon_param) out of the anonymous
+  namespace in obstacle_stop_module.cpp into a named internal namespace header
+  (decision_helpers.hpp, namespace obstacle_stop_internal) so the gtest binary can
+  link against them, and add value-asserting unit tests for every branch.
+  Also add unit tests for the header-only PathLengthBuffer state machine
+  (activation timing, active/inactive eviction, nearest-active comparator, and the
+  positive-relative-distance update path), and make path_length_buffer.hpp
+  self-contained by including the headers it relies on (types.hpp, rclcpp/time,
+  geometry_msgs/point, <algorithm>) instead of leaning on transitive includes.
+  The plugin's public API/ABI is unchanged: the helpers are not part of
+  PluginModuleInterface, and the existing unqualified call sites keep working via
+  using-declarations. No behavior change.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* feat(motion_velocity_planner): support ANIMAL and HAZARD labels (`#1089 <https://github.com/autowarefoundation/autoware_core/issues/1089>`_)
+* Contributors: Yoshi Ri, Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(motion_velocity_planner): fix Unnecessary Copy Assignment Movable (`#813 <https://github.com/mitsudome-r/autoware_core/issues/813>`_)
+* fix(autoware_motion_velocity_obstacle_stop_module): fix bugprone-unchecked-optional-access warnings (`#899 <https://github.com/mitsudome-r/autoware_core/issues/899>`_)
+* fix(autoware_motion_velocity_obstacle_stop_module): fix bugprone-narrowing-conversions warnings (`#927 <https://github.com/mitsudome-r/autoware_core/issues/927>`_)
+  * fix(autoware_motion_velocity_obstacle_stop_module): fix bugprone-narrowing-conversions warnings
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(autoware_motion_velocity_obstacle_stop_module): fix bugprone-optional-value-conversion warnings (`#907 <https://github.com/mitsudome-r/autoware_core/issues/907>`_)
+* Contributors: NorahXiong, Ryuta Kambe, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

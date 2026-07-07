@@ -2,6 +2,32 @@
 Changelog for package autoware_perception_objects_converter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_perception_objects_converter): extract pure convert() and reuse autoware_utils_uuid (`#1133 <https://github.com/autowarefoundation/autoware_core/issues/1133>`_)
+  Extract the DetectedObject->PredictedObject mapping into a pure, ROS-free
+  convert() / convert_object() seam in an internal conversion.hpp so the field
+  mapping (header, classification, shape, kinematics, has_twist branch) is unit
+  testable without spinning a node. The subscription callback now just
+  take-converts-and-publishes.
+  Replace the bespoke generateUUIDMsg() (boost random_generator + std::copy,
+  external-linkage free function) with autoware_utils_uuid::generate_uuid(),
+  drop the three boost/uuid includes, swap the 'boost' dependency for
+  'autoware_utils_uuid' in package.xml, and make the UUID source injectable so
+  tests can assert id assignment deterministically.
+  Reserve the output objects vector and emplace converted objects to avoid
+  per-object reallocations and the intermediate kinematics copy; publish via
+  std::move(unique_ptr) for zero-copy intra-process delivery. Behavior preserving.
+  Add a gtest covering header propagation, exact field mapping, both has_twist
+  branches, distinct-UUID-per-object, and the production default generator
+  (non-zero, distinct UUIDs).
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+
 1.7.0 (2026-02-14)
 ------------------
 

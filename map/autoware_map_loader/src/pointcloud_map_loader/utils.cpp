@@ -14,7 +14,13 @@
 
 #include "utils.hpp"
 
+#include <rclcpp/logging.hpp>
+
+#include <sensor_msgs/msg/point_cloud2.hpp>
+
 #include <fmt/format.h>
+#include <pcl/io/pcd_io.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <map>
 #include <set>
@@ -109,5 +115,23 @@ bool is_grid_within_queried_area(
   bool res =
     cylinder_and_box_overlap_exists(center_x, center_y, radius, metadata.min, metadata.max);
   return res;
+}
+
+autoware_map_msgs::msg::PointCloudMapCellWithID load_point_cloud_map_cell_with_id(
+  const rclcpp::Logger & logger, const std::string & path, const std::string & map_id,
+  const PCDFileMetadata & metadata)
+{
+  sensor_msgs::msg::PointCloud2 pcd;
+  if (pcl::io::loadPCDFile(path, pcd) == -1) {
+    RCLCPP_ERROR_STREAM(logger, "PCD load failed: " << path);
+  }
+  autoware_map_msgs::msg::PointCloudMapCellWithID pointcloud_map_cell_with_id;
+  pointcloud_map_cell_with_id.pointcloud = pcd;
+  pointcloud_map_cell_with_id.cell_id = map_id;
+  pointcloud_map_cell_with_id.metadata.min_x = metadata.min.x;
+  pointcloud_map_cell_with_id.metadata.min_y = metadata.min.y;
+  pointcloud_map_cell_with_id.metadata.max_x = metadata.max.x;
+  pointcloud_map_cell_with_id.metadata.max_y = metadata.max.y;
+  return pointcloud_map_cell_with_id;
 }
 }  // namespace autoware::map_loader

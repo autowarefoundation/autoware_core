@@ -26,3 +26,5 @@ ignore:
   - "**/test/**/*"
   - "**/debug.*"
   - tools/**
+  - "**/examples/*"
+  - "**/examples/**/*"

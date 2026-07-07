@@ -16,11 +16,13 @@
 #include "autoware/trajectory/utils/closest.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/curvature_utils.hpp"
+#include "autoware/trajectory/utils/max.hpp"
 #include "autoware_utils_geometry/geometry.hpp"
 #include "lanelet2_core/primitives/LineString.h"
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <vector>
 
 using Trajectory =
@@ -31,6 +33,14 @@ autoware_planning_msgs::msg::TrajectoryPoint trajectory_point(double x, double y
   autoware_planning_msgs::msg::TrajectoryPoint point;
   point.pose.position.x = x;
   point.pose.position.y = y;
+  return point;
+}
+
+autoware_planning_msgs::msg::TrajectoryPoint trajectory_point(
+  double x, double y, float longitudinal_velocity)
+{
+  auto point = trajectory_point(x, y);
+  point.longitudinal_velocity_mps = longitudinal_velocity;
   return point;
 }
 
@@ -274,6 +284,52 @@ TEST_F(TrajectoryTestForTrajectoryPoint, Closest)
     closest_pose.pose.position.x - pose.position.x, closest_pose.pose.position.y - pose.position.y);
 
   EXPECT_LT(distance, 3.0);
+}
+
+TEST(TrajectoryUtilsMax, ReturnsMaxValueAndArcLength)
+{
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
+    trajectory_point(0.0, 0.0, 1.0F), trajectory_point(1.0, 0.0, 3.0F),
+    trajectory_point(2.0, 0.0, 2.0F)};
+  const auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory.has_value());
+
+  const auto result = autoware::experimental::trajectory::max(
+    trajectory.value(), [](autoware_planning_msgs::msg::TrajectoryPoint point) {
+      return point.longitudinal_velocity_mps;
+    });
+
+  EXPECT_NEAR(result.point, 1.0, 1e-6);
+  EXPECT_FLOAT_EQ(result.value, 3.0F);
+}
+
+TEST(TrajectoryUtilsMax, AcceptsArcLengthEvaluator)
+{
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
+    trajectory_point(0.0, 0.0), trajectory_point(1.0, 0.0), trajectory_point(2.0, 0.0)};
+  const auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory.has_value());
+
+  const auto result =
+    autoware::experimental::trajectory::max(trajectory.value(), [](const double s) { return s; });
+
+  EXPECT_NEAR(result.point, 2.0, 1e-6);
+  EXPECT_NEAR(result.value, 2.0, 1e-6);
+}
+
+TEST(TrajectoryUtilsMax, SupportsFixedIntervalSearch)
+{
+  const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> points{
+    trajectory_point(0.0, 0.0), trajectory_point(2.0, 0.0)};
+  const auto trajectory = Trajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory.has_value());
+
+  const auto result = autoware::experimental::trajectory::max<
+    autoware::experimental::trajectory::MaxSearchMethod::FixedInterval>(
+    trajectory.value(), [](const double s) { return -std::abs(s - 0.5); }, 0.1);
+
+  EXPECT_NEAR(result.point, 0.5, 1e-6);
+  EXPECT_NEAR(result.value, 0.0, 1e-6);
 }
 
 TEST_F(TrajectoryTestForTrajectoryPoint, Crop)

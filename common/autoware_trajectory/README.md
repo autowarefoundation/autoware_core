@@ -345,6 +345,15 @@ common/autoware_trajectory/examples/example_temporal_crop.cpp:117:121
 | `find_intervals(trajectory, constraint)`          | Find contiguous arc-length intervals on a spatial `Trajectory` where `constraint(point)` or `constraint(s)` is true. Returns `vector<Interval>`.                                                               |
 | `find_intervals(temporal_trajectory, constraint)` | Find contiguous time intervals on a `TemporalTrajectory` where `constraint(point)` or `constraint(t)` is true. Returns `vector<TemporalInterval>` (each entry contains both `TimeDistancePair` start and end). |
 
+#### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/max.hpp>`</span>
+
+| Function                                                                        | Description                                                                                                                                                                 |
+| ------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `max(trajectory, evaluator)`                                                    | Find the underlying arc length `s` where `evaluator(point)` or `evaluator(s)` is maximized on a spatial `Trajectory`. Returns `MaxResult<double, ValueType>`.               |
+| `max<MaxSearchMethod::FixedInterval>(trajectory, evaluator, interval)`          | Find the arc length `s` where `evaluator(point)` or `evaluator(s)` is maximized by searching with a fixed arc-length interval.                                              |
+| `max(temporal_trajectory, evaluator)`                                           | Find the underlying time-distance pair where `evaluator(point)` or `evaluator(t)` is maximized on a `TemporalTrajectory`. Returns `MaxResult<TimeDistancePair, ValueType>`. |
+| `max<MaxSearchMethod::FixedInterval>(temporal_trajectory, evaluator, interval)` | Find the time-distance pair where `evaluator(point)` or `evaluator(t)` is maximized by searching with a fixed time interval.                                                |
+
 #### <span style="font-size: 1.2em;">`<autoware/trajectory/utils/reference_path.hpp>`</span>
 
 | Function                                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Detail                                                                                                                                                                |

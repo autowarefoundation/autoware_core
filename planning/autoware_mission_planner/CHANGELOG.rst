@@ -5,6 +5,51 @@ Changelog for package autoware_mission_planner
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_mission_planner): extract pure check_reroute_safety free function (`#1113 <https://github.com/autowarefoundation/autoware_core/issues/1113>`_)
+  * refactor(autoware_mission_planner): extract pure check_reroute_safety free function
+  Extract the reroute-safety algorithm out of the MissionPlanner node method into a
+  pure, dependency-injected free function declared in reroute_safety.hpp (route + lanelet
+  map + scalars in, bool out). The node method now forwards to it after validating its own
+  odometry / map members, so there is no public-API change (the method stays private).
+  The two byte-for-byte identical start-segment distance branches (start_idx_target != 0 &&
+  start_idx_original > 1 vs else) are collapsed into a single arc_length_to_lanelet_end
+  helper that is parameterized only by which original-route segment supplies the primitives.
+  Add table-driven unit tests over synthetic routes / lanelets covering every early-return
+  branch (empty routes, null map, stopped-vehicle short-circuit, no common segment, ego not
+  on first target section) and the final velocity-scaled safety-length comparison (safe /
+  unsafe / velocity dependence). This is a behavior-preserving, ABI-neutral testability win
+  on the package's most complex previously untested algorithm.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_mission_planner): pin start-segment -1 branch and empty-segment break (`#69 <https://github.com/autowarefoundation/autoware_core/issues/69>`_)
+  Add a fixture case where the target route starts mid-original-route so start_idx_target != 0 && start_idx_original > 1, exercising the previously-unhit start_idx_original - 1 selector branch of check_reroute_safety; verified RED against a regression that drops the -1. Also pin the empty-primitives accumulation break.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* feat(autoware_vehicle_info_utils): add base_pose to createFootprint (`#1072 <https://github.com/autowarefoundation/autoware_core/issues/1072>`_)
+* Contributors: Sarun MUKDAPITAK, Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(mission_planner): unused using-declaration with GCC 15 (`#1000 <https://github.com/mitsudome-r/autoware_core/issues/1000>`_)
+* chore(planning, bvp): remove unused lanelet2_extension header (`#902 <https://github.com/mitsudome-r/autoware_core/issues/902>`_)
+  * remove unused lanelet2_extension in bvp modules
+  * remove unused lanelet2_extension in planning components
+  ---------
+* feat(autoware_mission_planner): remove glog component (`#879 <https://github.com/mitsudome-r/autoware_core/issues/879>`_)
+  feat: remove glog component
+* fix(lanelet2_utils): change is_in_lanelet argument order (`#890 <https://github.com/mitsudome-r/autoware_core/issues/890>`_)
+* feat(lanelet2_extension): port lanelet2_extension utilities functions (final)  (`#838 <https://github.com/mitsudome-r/autoware_core/issues/838>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* chore: organize maintainer (`#860 <https://github.com/mitsudome-r/autoware_core/issues/860>`_)
+  * chore: organize maintainer
+  * chore: organize maintainer
+  ---------
+* Contributors: Guilhem Saurel, Sarun MUKDAPITAK, Satoshi OTA, Tetsuhiro Kawaguchi, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

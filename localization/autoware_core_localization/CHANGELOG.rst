@@ -5,6 +5,36 @@ Changelog for package autoware_core_localization
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_core_localization): sync ekf_localizer param (`#1093 <https://github.com/autowarefoundation/autoware_core/issues/1093>`_)
+* feat(autoware_ndt_scan_matcher): publish all map points if publisher has subscribers (`#995 <https://github.com/autowarefoundation/autoware_core/issues/995>`_)
+  * publish all map points if publisher has subscribers
+  * style(pre-commit): autofix
+  * fix error
+  * add parameter
+  * fix param name and add json
+  * add loaded map clear on ndt ptr reset
+  * reserve before adding points
+  * add new param to autoware_core_lozalization
+  * Update localization/autoware_ndt_scan_matcher/include/autoware/ndt_scan_matcher/map_update_module.hpp
+  Co-authored-by: Mete Fatih Cırıt <mfc@autoware.org>
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Mete Fatih Cırıt <mfc@autoware.org>
+* Contributors: Kazusa Hashimoto, Takagi, Isamu, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_core): add USE_SCOPED_HEADER_INSTALL_DIR to localization packages (`#984 <https://github.com/mitsudome-r/autoware_core/issues/984>`_)
+  Co-authored-by: github-actions <github-actions@github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* fix: launch params (`#975 <https://github.com/mitsudome-r/autoware_core/issues/975>`_)
+* fix(autoware_core_localization): add missing dependency (`#872 <https://github.com/mitsudome-r/autoware_core/issues/872>`_)
+* Contributors: Mete Fatih Cırıt, Takagi, Isamu, Vishal Chauhan, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 

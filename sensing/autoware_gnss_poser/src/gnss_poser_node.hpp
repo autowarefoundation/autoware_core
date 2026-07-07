@@ -31,6 +31,10 @@
 
 #include <string>
 
+// Forward declaration so the unit-test fixture (defined at global scope) can be granted access to
+// the pure static helpers below without spinning up a node.
+class GNSSPoserHelpersTest;
+
 namespace autoware::gnss_poser
 {
 class GNSSPoser : public rclcpp::Node
@@ -39,6 +43,9 @@ public:
   explicit GNSSPoser(const rclcpp::NodeOptions & node_options);
 
 private:
+  // Allow unit tests to exercise the pure static helpers directly.
+  friend class ::GNSSPoserHelpersTest;
+
   void callback_map_projector_info(
     const autoware_map_msgs::msg::MapProjectorInfo::ConstSharedPtr msg);
   void callback_nav_sat_fix(const sensor_msgs::msg::NavSatFix::ConstSharedPtr nav_sat_fix_msg_ptr);
@@ -51,13 +58,9 @@ private:
     const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer);
   static geometry_msgs::msg::Point get_average_position(
     const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer);
-  static geometry_msgs::msg::Quaternion get_quaternion_by_heading(const int heading);
   static geometry_msgs::msg::Quaternion get_quaternion_by_position_difference(
     const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point);
 
-  bool get_transform(
-    const std::string & target_frame, const std::string & source_frame,
-    const geometry_msgs::msg::TransformStamped::SharedPtr transform_stamped_ptr);
   bool get_static_transform(
     const std::string & target_frame, const std::string & source_frame,
     const geometry_msgs::msg::TransformStamped::SharedPtr transform_stamped_ptr,
@@ -87,6 +90,11 @@ private:
   bool use_gnss_ins_orientation_;
 
   boost::circular_buffer<geometry_msgs::msg::Point> position_buffer_;
+
+  // Previous antenna position used to derive orientation from motion. Owned per instance so the
+  // orientation-from-motion path is deterministic and reset on construction.
+  geometry_msgs::msg::Point prev_position_;
+  bool has_prev_position_ = false;
 
   autoware_sensing_msgs::msg::GnssInsOrientationStamped::SharedPtr
     msg_gnss_ins_orientation_stamped_;

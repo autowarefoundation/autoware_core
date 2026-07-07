@@ -5,6 +5,21 @@ Changelog for package autoware_point_types
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_point_types): cover memory.hpp layout helpers and mark them inline (`#1131 <https://github.com/autowarefoundation/autoware_core/issues/1131>`_)
+  memory.hpp had zero test coverage for its eight is_data_layout_compatible_with_point\_* overloads and four create_fields_point\_* factories, and the free functions were defined non-inline in a header (an ODR hazard if the header is included in more than one translation unit).
+  - Mark all memory.hpp free functions inline (additive, ODR-safe; existing signatures unchanged).
+  - Add test/test_memory.cpp with round-trip (create -> is_compatible) checks for all four point types, exact create_fields\_* content assertions, PointCloud2-overload forwarding, cross-type mismatch, and negative cases (wrong name/offset/datatype/count).
+  - Pin the existing field-count guard contract: xyzi/xyzirc/xyziradrt use a 'size() < N' guard (extra trailing fields ignored, still accepted) while xyzircaedt uses a strict 'size() != 10' guard (extra fields rejected). Behavior is preserved; the test characterizes the current divergence.
+  - Add sensor_msgs as a direct dependency (memory.hpp includes sensor_msgs headers directly) and register the new gtest in CMakeLists.txt.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+
 1.7.0 (2026-02-14)
 ------------------
 

@@ -5,6 +5,167 @@ Changelog for package autoware_ekf_localizer
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_ekf_localizer): add EKFModule unit tests via non-ROS seam (`#1098 <https://github.com/autowarefoundation/autoware_core/issues/1098>`_)
+  * test(autoware_ekf_localizer): add EKFModule unit tests via non-ROS seam
+  Add a non-ROS test seam so EKFModule can be constructed in a gtest
+  without a live rclcpp::Node:
+  - HyperParameters gains an additive default constructor and its members
+  are made settable so a test can populate them by hand. The existing
+  node-based constructor still initializes every field unchanged.
+  - Warning gains an additive no-op constructor (null node); warn and
+  warn_throttle become null-guarded, so behavior is byte-identical when
+  a real node is present.
+  Add test/test_ekf_module.cpp covering the previously-untested core
+  algorithm branches: find_closest_delay_time_index (begin/end bounds,
+  target-beyond-last, closest-of-two), accumulate_delay_time shift and
+  accumulation, Simple1DFilter init and update, compensate_rph_with_delay
+  zero vs non-zero angular-velocity branches, and the safety-critical
+  rejection paths of measurement_update_pose/twist (delay gate, NaN/Inf
+  ignore, Mahalanobis gate), asserting both the boolean return and the
+  EKFDiagnosticInfo flags.
+  Also drop the unused full-covariance copy in predict_with_delay and
+  declare x_curr as Vector6d to avoid a dynamic-to-fixed Eigen copy.
+  * fix(autoware_ekf_localizer): guard empty delay-time table in find_closest_delay_time_index (`#65 <https://github.com/autowarefoundation/autoware_core/issues/65>`_)
+  Reject the extend_state_step==0 degenerate by returning a safe index from the empty accumulated_delay_times\_ table instead of dereferencing .back() (UB). Add a RED test for the empty-table case and pin the accept-path update postconditions via the pose/twist getters.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * refactor(autoware_ekf_localizer): split parameter parsing from HyperParameters data (`#87 <https://github.com/autowarefoundation/autoware_core/issues/87>`_)
+  Revert the unit-test-only default-value seam on HyperParameters. The struct
+  is now plain data with no rclcpp dependency and no production-looking default
+  member values that could silently diverge from the YAML source of truth.
+  All declare_parameter calls are mechanically moved into a free function
+  load_hyper_parameters(rclcpp::Node * node) that returns a fully-populated
+  instance. Production keeps a single construction path
+  (params\_(load_hyper_parameters(this))) and params\_ stays const HyperParameters,
+  so the production instance remains immutable. The EKFModule unit test builds the
+  struct directly by hand-setting fields, with no special default constructor.
+  Behavior is identical: same parameter names and defaults as the YAML.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_ekf_localizer): cover Warning nullptr no-op construction
+  Add a direct Warning{nullptr} test asserting warn() and warn_throttle() are no-ops when constructed without a node, covering the warning.hpp partial branch flagged by Codecov, per review.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(ekf_localizer): initialize diagnostics information before publishing them (`#680 <https://github.com/mitsudome-r/autoware_core/issues/680>`_)
+  * fix: initialize diagnostics information
+  before publishing them
+  * chore: add comments and remove unnecessary code
+  * test: reset measurement diag fields on timer early return
+  * style(pre-commit): autofix
+  * test(ekf_localizer): stabilize diagnostics period gtest timing
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* fix(ekf_localizer): ekf localizer diagnostics name (`#1028 <https://github.com/mitsudome-r/autoware_core/issues/1028>`_)
+  * test: add diagnostics topic test and log message names
+  * fix: diagnostic task names and timer-driven publish
+  * feat: mirror diagnostics on diagnostics_manual alongside updater
+  * refactor: drop diagnostic_updater; publish /diagnostics manually
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* refactor(autoware_core): add USE_SCOPED_HEADER_INSTALL_DIR to localization packages (`#984 <https://github.com/mitsudome-r/autoware_core/issues/984>`_)
+  Co-authored-by: github-actions <github-actions@github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* fix(ekf_localizer): change diagnostic severity (`#829 <https://github.com/mitsudome-r/autoware_core/issues/829>`_)
+  * change(ekf_localizer): change diagnostic severity for initialpose reception
+  * feat(autoware_ekf_localizer): update README
+  * chore(autoware_ekf_localizer): updated test code
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* feat(ekf_localizer): add adjustable publishing ekf_localizaer diagnostics  (`#826 <https://github.com/mitsudome-r/autoware_core/issues/826>`_)
+  * feat: adjustable publishing of diagnostics
+  * test: add test for should_publish_diagnostics function
+  * style(pre-commit): autofix
+  * fix: cpp lint error
+  * docs: update schema.json
+  * test: fix parameter undefined
+  * feat: latch ekf diagnostics info when error or warn occurs
+  * test: latch ekf diagnostics info when error or warn occurs
+  * style(pre-commit): autofix
+  * feat: use diagnostic_updater
+  publish on relative periodic timer
+  * refactor: Add the corresponding diagnostics immediately after each process
+  * refactor: remove unused includes
+  * feat: publish callback_pose/callback_twist by period
+  - When diagnostics_publish_period <= 0 (default): keep original behavior.
+  - Timer_callback calls force_update() every tick so the latched
+  ekf_localizer diagnostic is published at EKF rate.
+  - Pose/twist callbacks publish callback_pose and callback_twist via
+  publish_callback_return_diagnostics() and pub_diag\_.
+  - Updater internal timer is disabled (setPeriod(1e9)).
+  - When diagnostics_publish_period > 0: use updater for all diagnostics.
+  - Latched diagnostic is published at the configured period.
+  - callback_pose and callback_twist are updated in callbacks
+  (last_pose_callback_time\_ / last_twist_callback_time\_) and
+  published at the same period via diagnose_callback_pose and
+  diagnose_callback_twist; per-callback publish is not used.
+  * test: add diagnostics publish tests for period and callbacks
+  Add tests that verify /diagnostics publish behavior by diagnostics_publish_period:
+  - diagnostics_published_at_specified_period: when period > 0, at least one
+  message is published within 250 ms at the configured rate.
+  - callback_pose_and_twist_published_at_period_when_period_positive: when
+  period > 0, callback_pose and callback_twist appear on /diagnostics at
+  the updater period after pose and twist are published.
+  - diagnostics_published_from_timer_callback_when_period_zero: when period <= 0,
+  the latched ekf_localizer diagnostic is published from timer_callback
+  (force_update) at EKF rate.
+  - diagnostics_published_from_pose_callback_when_period_zero: when period <= 0,
+  publishing pose yields callback_pose on /diagnostics.
+  - diagnostics_published_from_twist_callback_when_period_zero: when period <= 0,
+  publishing twist yields callback_twist on /diagnostics.
+  Add get_last_diagnostics_publish_time() helper for test access.
+  * style(pre-commit): autofix
+  * fix: initialize diagnostic timestamps in ctor initializer list
+  * feat: require positive diag rate and publish only via updater
+  * test: add diagnostics period and force_update-on-ERROR tests
+  * fix: stop resetting main diagnostic to OK after publish
+  - Overwrite merged_diagnostic_status\_ from merge_diagnostic_status every EKF tick
+  - Record merged_diagnostic_last_transition_time\_ on any merged level change; append
+  error_occurrence_timestamp when non-OK
+  - Call diagnostics\_.force_update() only when merged severity increases vs previous tick
+  - Remove reset_diagnostics_latch_if_published and publish marker (no longer reset to OK
+  after publish)
+  - Use DiagnosticStatusWrapper::summary(snapshot) in diagnose()
+  - Refresh test_diagnostics (helpers, expectations, slow EKF for force_update test)
+  * doc: update schema.json
+  * style(pre-commit): autofix
+  * refactor: rename diagnostic key to last_level_transition_timestamp
+  * feat: keep last_level_transition_timestamp after recovery to OK
+  * style(pre-commit): autofix
+  * test: rename diagnostics tests and clarify merged-status wording
+  Align test naming with current behavior: merged diagnostic state is updated every
+  EKF tick, not a separate latch.
+  - Rename fixture to EKFLocalizerDiagnosticsTest and update friend declaration
+  - Move merge_diagnostic_status test under TestEkfDiagnostics
+  - Rename tests and locals from latch* to merged*
+  - Rename update_diagnostics_activation_and_initialpose_only (formerly merge_ok_minimal)
+  - Drop unused node_name argument from create_ekf_localizer
+  - Fix comment typo: "not effect" -> "no effect"
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(autoware_ekf_localizer): adopt cie (`#962 <https://github.com/mitsudome-r/autoware_core/issues/962>`_)
+* refactor(ekf_localizer): move header files of ekf_localizer (`#726 <https://github.com/mitsudome-r/autoware_core/issues/726>`_)
+  * refactor: move diagnostics.hpp to source folder
+  * refactor: move aged_object_queue.hpp to source folder
+  * refactor: move headers of ekf_localizer to source folder
+  * refactor: fix include paths due to moving headers
+  * style(pre-commit): autofix
+  * refactor: fix cppcheck error
+  * fix: typo
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Motz, Takayuki AKAMINE, Tetsuhiro Kawaguchi, Vishal Chauhan, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

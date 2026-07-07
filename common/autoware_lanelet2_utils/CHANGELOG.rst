@@ -18,6 +18,116 @@ Changelog for package autoware_lanelet2_utils
   ---------
 * Contributors: Mamoru Sobue, Yutaka Kondo
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(direction_change): add  support for reverse goal poses in direction_change lanes on overlapped lanes (`#1158 <https://github.com/autowarefoundation/autoware_core/issues/1158>`_)
+  * feat: resolve the goal lanelet for reverse goal poses with direction_change lane on overlapped lanes
+  * feat: add test cases
+  * style(pre-commit): autofix
+  * fix: build errors and pre-commit issues
+  * style(pre-commit): autofix
+  * fix(autoware_lanelet2_utils): repair nn_search test merge corruption; address build fail issue
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* refactor(autoware_lanelet2_utils): reuse geometry helpers, fix int-narrowing, dedup offset-bound builders (`#1128 <https://github.com/autowarefoundation/autoware_core/issues/1128>`_)
+  * refactor(autoware_lanelet2_utils): reuse geometry helpers, fix int-narrowing, dedup offset-bound builders
+  Internal-only cleanup of src/geometry.cpp plus a coverage test for nn_search:
+  - get_pose_from_2d_arc_length: replace the hand-rolled half-yaw quaternion
+  and field-by-field point assignment with
+  autoware_utils_geometry::create_quaternion_from_yaw / create_point.
+  - get_closest_center_pose: use create_quaternion(0,0,0,1) for the identity
+  orientation fallback instead of a hand-written literal.
+  - compute_num_segments: compute the segment count directly in size_t
+  (std::ceil + std::max<size_t>) to avoid the prior int narrowing.
+  - Factor the four near-identical offset-bound builders (get_fine_centerline,
+  get_centerline_with_offset, get_right_bound_with_offset,
+  get_left_bound_with_offset) into a single anonymous-namespace helper
+  build_offset_linestring that takes the per-point formula, the point-id
+  policy, and a diagnostic context string. The left-bound builder keeps its
+  unique-id behavior; the other three keep InvalId.
+  - Add TestNNSearchZRange covering find_nearest's previously untested z-range
+  filtering branch (above-range, below-range, in-range, filter-disabled) and
+  the early-return guards (count==0, r_range<0, z_range<0, no candidate).
+  All public signatures are unchanged. The only observable difference is the
+  text of one RCLCPP_ERROR diagnostic in get_centerline_with_offset, which now
+  matches the shared helper's message; the returned value (empty linestring) is
+  unchanged.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * style(autoware_lanelet2_utils): add <vector> include to satisfy cpplint
+  ---------
+* feat: add support for area for route planning (`#993 <https://github.com/autowarefoundation/autoware_core/issues/993>`_)
+  * feat: add support for area for route planning
+  * style(pre-commit): autofix
+  * feat(route_handler): publish mixed lanelet/area routes in LaneletRoute segments
+  * style(pre-commit): autofix
+  * feat(map): visualize LaneletMap areaLayer in vector map RViz markers
+  * style(pre-commit): autofix
+  * revert: remove area visualization commit (ebbc254d80df34dded119e7a6ecb716ebe4d620c) to split into two PRs
+  ---------
+  Co-authored-by: Ryohsuke Mitsudome <ryohsuke.mitsudome@tier4.jp>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Yutaka Kondo, emmeyteja, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* chore: sync files (`#845 <https://github.com/mitsudome-r/autoware_core/issues/845>`_)
+  * chore: sync files
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: github-actions <github-actions@github.com>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(autoware_lanelet2_utils): fix bugprone-unchecked-optional-access warnings (`#897 <https://github.com/mitsudome-r/autoware_core/issues/897>`_)
+* fix: fix bugprone-exception-escape errors in autoware lanelet2 utils (`#882 <https://github.com/mitsudome-r/autoware_core/issues/882>`_)
+  fix(autoware_lanelet2_utils): fix bugprone-exception-escape errors of clang-tidy check
+* fix(autoware_lanelet2_utils): fix bugprone-narrowing-conversions warnings (`#931 <https://github.com/mitsudome-r/autoware_core/issues/931>`_)
+  * fix(autoware_lanelet2_utils): fix bugprone-narrowing-conversions warnings
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* chore(common, map): remove unused lanelet2_extension header (`#903 <https://github.com/mitsudome-r/autoware_core/issues/903>`_)
+  * remove unused lanelet2_extension in map component
+  * remove unused lanelet2_extension in common component
+  ---------
+* docs(lanelet2_utils): simplify API table title for utils (`#851 <https://github.com/mitsudome-r/autoware_core/issues/851>`_)
+  * change API table title to filename instead of raw path
+  * fix typo
+  ---------
+* fix(lanelet2_utils): add invalid bound size handler in combine_lanelets_shape (`#878 <https://github.com/mitsudome-r/autoware_core/issues/878>`_)
+  add invalid bound handler
+* fix(lanelet2_utils): change is_in_lanelet argument order (`#890 <https://github.com/mitsudome-r/autoware_core/issues/890>`_)
+* feat(lanelet2_extension): port lanelet2_extension utilities functions (final)  (`#838 <https://github.com/mitsudome-r/autoware_core/issues/838>`_)
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* feat(path_generator): use `route_manager` to handle route data (`#803 <https://github.com/mitsudome-r/autoware_core/issues/803>`_)
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+  Co-authored-by: Mamoru Sobue <mamoru.sobue@tier4.jp>
+* feat(lanelet2_utils): define create ConstLanelet from ConstLineString3d  (`#868 <https://github.com/mitsudome-r/autoware_core/issues/868>`_)
+  * define create_safe_lanelet for ConstLineString3d
+  * Update common/autoware_lanelet2_utils/src/conversion.cpp
+  * remove unused definition
+  * remove unused comment
+  ---------
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* feat(autoware_lanelet2_utils): add a custom find-nearest function (`#839 <https://github.com/mitsudome-r/autoware_core/issues/839>`_)
+  * feat: add a custom find-nearest function
+  * test: add unit testings
+  * style: update docstrings
+  * refactor: minor fixes
+  * refactor: update boolean condition
+  * refactor: replace zero to epsilon
+  * docs: update API references for find_nearest
+  ---------
+* feat(autoware_lanelet2_extension): replace remaining lanelet2_extension utilities functions (`#842 <https://github.com/mitsudome-r/autoware_core/issues/842>`_)
+  * replace getArcCoordinates usage
+  * replace combineLaneletsShape
+  * remove null return for get_dirty_expanded_lanelet
+  * change get_dirty_expanded_lanelet(s) positive right_offset (and negative left_offset) handler
+  ---------
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+* Contributors: Kotaro Uetake, Mitsuhiro Sakamoto, NorahXiong, Sarun MUKDAPITAK, awf-autoware-bot[bot], github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

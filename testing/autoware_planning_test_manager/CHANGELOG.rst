@@ -5,6 +5,50 @@ Changelog for package autoware_planning_test_manager
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* perf(autoware_planning_test_manager): harden planning_test_manager_utils (`#1150 <https://github.com/autowarefoundation/autoware_core/issues/1150>`_)
+  * perf(autoware_planning_test_manager): harden planning_test_manager_utils
+  Refactor the header-only utils module so the lanelet map / RouteHandler is
+  loaded once per makeBehaviorRouteFromLaneId call instead of three times, and
+  make the pose construction safe and testable.
+  - Add a createPoseFromLaneID(const RouteHandler &, lanelet::Id) overload so a
+  single already-loaded RouteHandler can be reused for start- and goal-pose
+  extraction and route planning (map loads cut from 3 to 1). The existing
+  file-loading overload is kept and now delegates to it (additive, ABI-safe).
+  - Guard the centerline access: return an identity-orientation pose for
+  centerlines with fewer than two points instead of reading center_line[idx+1]
+  out of bounds; return early for empty centerlines.
+  - Remove the std::cerr primitive/preferred_primitive debug loop that printed on
+  every call on the production path.
+  - Switch the geometry include/namespace to autoware_utils_geometry and declare
+  the previously-transitive autoware_route_handler and autoware_utils_geometry
+  dependencies in package.xml.
+  - Add test_planning_test_manager_utils.cpp covering the previously-untested
+  utils functions: pose-on-centerline, overload equivalence, the route happy
+  path (non-empty segments) and the planning-failure path (empty route), and
+  makeInitialPoseFromLaneId.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * fix(autoware_planning_test_manager): include <cmath> in utils test
+  The test uses std::isfinite and std::sqrt but relied on a transitive
+  include from the header under test. Include <cmath> directly so the
+  test no longer depends on the header's include set.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_planning_test_manager): extract poseFromCenterline and pin degenerate-centerline branches (`#77 <https://github.com/autowarefoundation/autoware_core/issues/77>`_)
+  Extract the centerline->Pose computation into a pure ROS/map-free poseFromCenterline() that createPoseFromLaneID delegates to, and add direct unit tests pinning the empty / single-point / two-point / multi-point branch postconditions (the OOB guard added by this PR).
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_core): add USE_SCOPED_HEADER_INSTALL_DIR to common and testing packages (`#967 <https://github.com/mitsudome-r/autoware_core/issues/967>`_)
+  Co-authored-by: github-actions <github-actions@github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Vishal Chauhan, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 

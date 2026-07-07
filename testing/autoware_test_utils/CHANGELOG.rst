@@ -27,6 +27,45 @@ Changelog for package autoware_test_utils
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mitsuhiro Sakamoto, Tim Clephas
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_test_utils): cover pure factory functions and parser nullopt branches (`#1149 <https://github.com/autowarefoundation/autoware_core/issues/1149>`_)
+  * test(autoware_test_utils): cover pure factory functions and parser nullopt branches
+  Add a unit-test suite (test/test_autoware_test_utils.cpp) for the previously
+  untested pure factory functions: createLaneletSegment, makeCostMapMsg,
+  makeOdometry, makeInitialPose, combineConsecutiveRouteSections, the
+  generateTrajectory overlap-insertion branch (both Trajectory and the
+  PathWithLaneId specialization), and resolve_pkg_share_uri (no-match,
+  match-and-exists, match-but-missing).
+  Add negative-path cases to test_mock_data_parser.cpp for the
+  std::optional<LaneletRoute> / std::optional<PathWithLaneId> nullopt returns on
+  missing required keys and the std::vector<PathPointWithLaneId> empty-point
+  early-return branch.
+  As part of the same change, make makeCostMapMsg fill the grid with a single
+  assign() instead of a per-cell push_back loop, and switch publishToTargetNode
+  to take its message by const reference. Both are ABI-preserving (the template
+  signature still accepts the same arguments) and behavior-preserving.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_test_utils): fail loudly and unlink temp file on write_temp_yaml failure
+  Make write_temp_yaml throw std::runtime_error instead of silently
+  returning an empty string, so a test-setup failure is reported at its
+  source rather than as a confusing downstream assertion. Unlink the
+  mkstemp()-created file before throwing so it is not leaked into /tmp.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* feat: remove rviz plugin that no longer exists (`#1052 <https://github.com/autowarefoundation/autoware_core/issues/1052>`_)
+* Contributors: Ryohsuke Mitsudome, Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(path_generator): use `route_manager` to handle route data (`#803 <https://github.com/mitsudome-r/autoware_core/issues/803>`_)
+  Co-authored-by: Mamoru Sobue <hilo.soblin@gmail.com>
+  Co-authored-by: Mamoru Sobue <mamoru.sobue@tier4.jp>
+* chore(planning, misc): remove unused header includes (`#840 <https://github.com/mitsudome-r/autoware_core/issues/840>`_)
+* Contributors: Mamoru Sobue, Mitsuhiro Sakamoto, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

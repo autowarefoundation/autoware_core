@@ -15,6 +15,7 @@
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <autoware/lanelet2_utils/route_manager.hpp>
+#include <autoware_lanelet2_extension/traffic_rules/autoware_traffic_rules.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/Lanelet.h>
@@ -40,7 +41,7 @@ std::optional<RouteManager> RouteManager::create(
     return std::nullopt;
   }
   const auto [routing_graph, traffic_rules] =
-    instantiate_routing_graph_and_traffic_rules(lanelet_map);
+    instantiate_routing_graph_and_traffic_rules(lanelet_map, lanelet::autoware::DefaultLocation);
 
   lanelet::ConstLanelets all_route_lanelets;
   lanelet::ConstLanelets preferred_lanelets;

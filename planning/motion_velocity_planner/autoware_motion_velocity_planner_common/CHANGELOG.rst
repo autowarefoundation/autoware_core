@@ -5,6 +5,39 @@ Changelog for package autoware_motion_velocity_planner_common
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_motion_velocity_planner_common): cover utils pure logic and CollisionChecker (`#1116 <https://github.com/autowarefoundation/autoware_core/issues/1116>`_)
+  Add unit tests for the ROS-free helpers in utils.cpp -- calc_object_possible_max_dist_from_center
+  (incl. the std::logic_error path), get_index_with_longitudinal_offset edge cases,
+  get_extended_trajectory_points, calc_distance_to_front_object, and concat_vectors -- and re-enable
+  the CollisionChecker::get_collisions tests (point / line / empty / no-collision) with real
+  assertions.
+  Also guard get_extended_trajectory_points against dereferencing back() on an empty trajectory (a
+  latent crash when extend_distance >= min_step_length), pinned by
+  EmptyInputReturnsEmptyWithoutDereferencingBack.
+  Rebased onto main; the get_target_object_type refactor from the original revision is dropped because
+  upstream `#1089 <https://github.com/autowarefoundation/autoware_core/issues/1089>`_ (ANIMAL/HAZARD support) already reworked that function and added its own test_utils.cpp
+  tests -- those two tests are retained.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* feat(motion_velocity_planner): support ANIMAL and HAZARD labels (`#1089 <https://github.com/autowarefoundation/autoware_core/issues/1089>`_)
+* Contributors: Yoshi Ri, Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(motion_velocity_planner): fix Unnecessary Copy Assignment Movable (`#813 <https://github.com/mitsudome-r/autoware_core/issues/813>`_)
+* fix(autoware_motion_velocity_planner_common): fix bugprone-unchecked-optional-access warnings (`#895 <https://github.com/mitsudome-r/autoware_core/issues/895>`_)
+* fix(autoware_motion_velocity_planner_common): fix bugprone-narrowing-conversions warnings (`#928 <https://github.com/mitsudome-r/autoware_core/issues/928>`_)
+  * fix(autoware_motion_velocity_planner_common): fix bugprone-narrowing-conversions warnings
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(autoware_motion_velocity_planner_common): avoid -Wmaybe-uninitialized warning on arm64 with ROS Jazzy (`#948 <https://github.com/mitsudome-r/autoware_core/issues/948>`_)
+* fix(motion_velocity_planner_common): suppress maybe-uninitialized warning on NVIDIA DRIVE AGX Thor (`#877 <https://github.com/mitsudome-r/autoware_core/issues/877>`_)
+* Contributors: Esteve Fernandez, NorahXiong, Ryuta Kambe, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

@@ -2,6 +2,38 @@
 Changelog for package autoware_pose_initializer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix: correct message package name in autoware_pose_initializer README (`#1185 <https://github.com/autowarefoundation/autoware_core/issues/1185>`_)
+  fix message type
+* fix(autoware_pose_initializer): reject stale GNSS poses and deduplicate trigger modules (`#1095 <https://github.com/autowarefoundation/autoware_core/issues/1095>`_)
+  The GNSS staleness check computed the elapsed time as stamp - now(), which
+  is negative for any past message, so the guard timeout < elapsed.seconds()
+  was never satisfied and stale GNSS poses were never rejected. Compute the
+  elapsed time as now() - stamp via a new pure is_pose_stale() helper so the
+  timeout actually takes effect.
+  Consolidate the byte-identical EkfLocalizationTriggerModule and
+  NdtLocalizationTriggerModule into a single parameterized
+  LocalizationTriggerModule(node, service_name, label), removing the
+  duplicated logic while keeping the external ROS service interface
+  (ekf_trigger_node / ndt_trigger_node) and response handling identical.
+  Extract the 2D pose-error comparison into a pure check_pose_error() helper
+  backed by autoware_utils_geometry::calc_distance2d() instead of the
+  hand-rolled sqrt(pow + pow), and keep the existing PoseErrorCheckModule
+  node-based API as a thin wrapper.
+  Add unit tests for is_pose_stale (fresh/stale/at-timeout) and
+  check_pose_error (small/large/coincident/at-threshold).
+* Contributors: Kazusa Hashimoto, Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_core): add USE_SCOPED_HEADER_INSTALL_DIR to localization packages (`#984 <https://github.com/mitsudome-r/autoware_core/issues/984>`_)
+  Co-authored-by: github-actions <github-actions@github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Vishal Chauhan, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 

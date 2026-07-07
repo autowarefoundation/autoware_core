@@ -2,6 +2,37 @@
 Changelog for package autoware_default_adapi
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_default_adapi): add gtest suite for pure conversion functions (`#1141 <https://github.com/autowarefoundation/autoware_core/issues/1141>`_)
+  The package previously had only a launch test asserting the interface
+  version. The message-conversion translation units (route_conversion.cpp,
+  localization_conversion.cpp) hold the real, pure logic yet were exercised
+  only via service round-trips.
+  Add an ament_auto_add_gtest suite that links against the package library
+  and covers the already-pure conversion functions with value-asserting,
+  table-driven cases:
+  - convert_state: exhaustive internal RouteState -> external mapping,
+  including the non-obvious collapses (INITIALIZING/UNSET/ROUTING->UNSET,
+  REROUTING->CHANGING, ABORTED/INTERRUPTED->SET) and the default->UNKNOWN
+  branch, plus stamp pass-through.
+  - convert_route / RouteSegment round-trips: preferred-primitive extraction
+  from alternatives, the missing-preferred branch (preferred left
+  default-constructed, no erase), empty segments, and the
+  RoutePrimitive.type <-> LaneletPrimitive.primitive_type field rename.
+  - route convert_request overloads (lanelet, waypoint, clear) and
+  convert_response field mappings.
+  - localization convert_request (method=AUTO + pose copy) and
+  convert_response field mappings.
+  No production code changes; the functions were already pure and need no
+  refactor to test.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+
 1.7.0 (2026-02-14)
 ------------------
 

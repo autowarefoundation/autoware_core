@@ -2,6 +2,12 @@
 Changelog for package autoware_awsim_sensor_kit_description
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+
+1.8.0 (2026-05-01)
+------------------
+
 1.7.0 (2026-02-14)
 ------------------
 * chore: match all package versions and remove old CHANGELOG.rst

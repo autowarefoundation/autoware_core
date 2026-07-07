@@ -5,6 +5,16 @@ Changelog for package autoware_core_control
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_core_control): fix unknown substitution (`#1092 <https://github.com/autowarefoundation/autoware_core/issues/1092>`_)
+* feat: add `autoware_command_gate` and its tests (`#1012 <https://github.com/autowarefoundation/autoware_core/issues/1012>`_)
+* Contributors: Junya Sasaki, Takagi, Isamu, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+
 1.7.0 (2026-02-14)
 ------------------
 

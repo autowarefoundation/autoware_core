@@ -16,6 +16,7 @@
 #include "autoware/trajectory/utils/crop.hpp"
 #include "autoware/trajectory/utils/crossed.hpp"
 #include "autoware/trajectory/utils/find_intervals.hpp"
+#include "autoware/trajectory/utils/max.hpp"
 #include "autoware/trajectory/utils/set_stopline.hpp"
 #include "autoware/trajectory/utils/set_time_offset.hpp"
 
@@ -269,6 +270,65 @@ TEST(FindIntervalsTemporal, FindsHighCurvatureInterval)
   EXPECT_LT(std::abs(trajectory.curvature_from_time(2.0)), curvature_threshold);
   EXPECT_LT(
     std::abs(trajectory.curvature_from_time(expected_curve_end_time + 2.0)), curvature_threshold);
+}
+
+TEST(MaxTemporal, ReturnsMaxValueAndTimeDistancePair)
+{
+  const auto points = make_points({
+    {0.0, 0.0, 1.0F},
+    {1.0, 1.0, 4.0F},
+    {2.0, 2.0, 2.0F},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto result = autoware::experimental::trajectory::max(
+    trajectory_result.value(), [](autoware_planning_msgs::msg::TrajectoryPoint point) {
+      return point.longitudinal_velocity_mps;
+    });
+
+  EXPECT_NEAR(result.point.time, 1.0, 1e-6);
+  EXPECT_NEAR(result.point.distance, 1.0, 1e-6);
+  EXPECT_FLOAT_EQ(result.value, 4.0F);
+}
+
+TEST(MaxTemporal, AcceptsTimeEvaluator)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {1.0, 1.0},
+    {2.0, 2.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto result = autoware::experimental::trajectory::max(
+    trajectory_result.value(), [](const double t) { return t; });
+
+  EXPECT_NEAR(result.point.time, 2.0, 1e-6);
+  EXPECT_NEAR(result.point.distance, 2.0, 1e-6);
+  EXPECT_NEAR(result.value, 2.0, 1e-6);
+}
+
+TEST(MaxTemporal, SupportsFixedIntervalSearch)
+{
+  const auto points = make_points({
+    {0.0, 0.0},
+    {2.0, 2.0},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto result = autoware::experimental::trajectory::max<
+    autoware::experimental::trajectory::MaxSearchMethod::FixedInterval>(
+    trajectory_result.value(), [](const double t) { return -std::abs(t - 0.5); }, 0.1);
+
+  EXPECT_NEAR(result.point.time, 0.5, 1e-6);
+  EXPECT_NEAR(result.point.distance, 0.5, 1e-6);
+  EXPECT_NEAR(result.value, 0.0, 1e-6);
 }
 
 TEST(CropTemporal, CropTimeRebases)

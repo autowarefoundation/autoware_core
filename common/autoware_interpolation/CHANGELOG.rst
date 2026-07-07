@@ -14,6 +14,56 @@ Changelog for package autoware_interpolation
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Arjun Jagdish Ram, Takagi, Isamu
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* perf(autoware_interpolation): scalar spline-eval overloads remove per-knot vector allocations (`#1127 <https://github.com/autowarefoundation/autoware_core/issues/1127>`_)
+  * perf(autoware_interpolation): scalar spline-eval overloads remove per-knot vector allocations
+  Add scalar getSplineInterpolatedValue / getSplineInterpolatedDiffValue /
+  getSplineInterpolatedQuadDiffValue overloads to SplineInterpolation and route the
+  per-knot loops in SplineInterpolationPoints2d (point, yaw, curvature,
+  updateCurvatureSpline, extendLinearlyForward, projectPointOntoSpline) through them.
+  Previously each per-knot evaluation built a freshly heap-allocated single-element
+  std::vector ({s}) and received another single-element std::vector back, costing O(N)
+  allocations to evaluate an N-knot spline. The new scalar overloads evaluate a single
+  key in place with no allocation; the existing vector overloads now delegate to them,
+  removing the duplicated Horner/derivative arithmetic.
+  Also drop the dead validated_query_keys copies in the three vector getters: the
+  cropped result of validateKeys() was never read (the loops iterate the original
+  query_keys), so the call is kept only for its throwing precondition side effect and
+  the unused full-length copy of query_keys is no longer allocated. Add reserve() to
+  getSplineInterpolatedYaws and the extendLinearlyForward extension vectors.
+  Behavior-preserving: the scalar overloads reproduce the exact per-key arithmetic
+  (get_index + Horner) of the vector loop bodies, and all per-knot call sites already
+  clamp the key into the knot range before evaluating, so dropping the per-call
+  validateKeys() (which never threw for in-range keys) changes nothing. The public
+  getSplineInterpolatedPointAt entry point keeps the vector overload to preserve its
+  validateKeys() out-of-range precondition. Public API change is additive only.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * perf(autoware_interpolation): address review feedback
+  - Guard scalar spline-eval overloads against un-built (default-constructed)
+  splines: get_index() now throws std::runtime_error when base_keys\_ has
+  fewer than 2 knots, preventing std::clamp(lo>hi) UB and out-of-bounds
+  reads. Add a unit test covering the un-built-spline path.
+  - Restore validateKeys() endpoint cropping in the vector getters: iterate
+  the validated (cropped) query keys instead of the raw query_keys, so
+  near-boundary floating-point queries are clamped as before the refactor.
+  - Reserve extended_s to target_n_knots in extendLinearlyForward() to avoid
+  reallocations while appending extended knots.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_core): add USE_SCOPED_HEADER_INSTALL_DIR to common and testing packages (`#967 <https://github.com/mitsudome-r/autoware_core/issues/967>`_)
+  Co-authored-by: github-actions <github-actions@github.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* fix(autoware_interpolation): fix bugprone-narrowing-conversions warnings (`#935 <https://github.com/mitsudome-r/autoware_core/issues/935>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: NorahXiong, Vishal Chauhan, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 * Merge remote-tracking branch 'origin/main' into humble

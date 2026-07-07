@@ -5,6 +5,34 @@ Changelog for package autoware_osqp_interface
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_osqp_interface): cover uncovered branches and extract status-message builder (`#1110 <https://github.com/autowarefoundation/autoware_core/issues/1110>`_)
+  test(autoware_osqp_interface): cover uncovered branches
+  Add unit tests for previously-uncovered branches:
+  - The five dimension-mismatch std::invalid_argument throws in
+  initializeProblem(Eigen, ...) (P non-square, P.rows != q.size,
+  P.rows != A.cols, A.rows != l.size, A.rows != u.size).
+  - Warm-start setters (setPrimalVariables / setDualVariables /
+  setWarmStart) returning false when called before the workspace is
+  initialized.
+  - logUnsolvedStatus is a no-op and does not throw after a solved problem.
+  - calCSCMatrix / calCSCMatrixTrapezoidal near-zero pruning threshold
+  (|val| < 1e-9 dropped, >= 1e-9 kept) including negative magnitudes.
+  Tests assert only on observable behavior, not on human-facing log
+  string content, so no source is extracted solely to make a log string
+  assertable.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_osqp_interface): fix bugprone-narrowing-conversions warnings (`#926 <https://github.com/mitsudome-r/autoware_core/issues/926>`_)
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: NorahXiong, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 

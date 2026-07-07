@@ -29,8 +29,10 @@
 #include <lanelet2_core/primitives/Point.h>
 
 #include <algorithm>
+#include <cmath>
 #include <iostream>
 #include <limits>
+#include <string>
 #include <vector>
 
 namespace autoware::experimental::lanelet2_utils
@@ -45,7 +47,8 @@ size_t compute_num_segments(const lanelet::ConstLanelet & lanelet, const double 
   const double left_length = static_cast<double>(lanelet::geometry::length(lanelet.leftBound()));
   const double right_length = static_cast<double>(lanelet::geometry::length(lanelet.rightBound()));
   const double longer_distance = (left_length > right_length) ? left_length : right_length;
-  const size_t num_segments = std::max(static_cast<int>(ceil(longer_distance / resolution)), 1);
+  const size_t num_segments =
+    static_cast<size_t>(std::max(std::ceil(longer_distance / resolution), 1.0));
   return num_segments;
 }
 
@@ -100,6 +103,55 @@ lanelet::BasicPoints3d resample_points(
     resampled_points.push_back(target_point);
   }
   return resampled_points;
+}
+
+/**
+ * @brief Build an offset linestring by resampling a lanelet's left/right bounds and applying a
+ * per-point formula.
+ *
+ * This factors out the shared scaffolding of get_fine_centerline / get_centerline_with_offset /
+ * get_right_bound_with_offset / get_left_bound_with_offset, which only differ in the per-point
+ * formula, the id assigned to each generated point, and the diagnostic message on failure.
+ *
+ * @param lanelet_obj Source lanelet whose bounds are resampled.
+ * @param resolution Resampling resolution forwarded to compute_num_segments.
+ * @param use_unique_id If true, each generated point gets a fresh id via lanelet::utils::getId();
+ * otherwise lanelet::InvalId is used.
+ * @param error_context Substring inserted into the diagnostic message when fewer than two points
+ * are produced.
+ * @param point_fn Formula mapping the resampled left/right points at an index to a 3d point.
+ * @return The assembled linestring, or an empty linestring if fewer than two points are produced.
+ */
+template <typename PointFn>
+lanelet::ConstLineString3d build_offset_linestring(
+  const lanelet::ConstLanelet & lanelet_obj, const double resolution, const bool use_unique_id,
+  const std::string & error_context, PointFn && point_fn)
+{
+  // get number of segments from resolution and longer bound
+  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
+
+  // Resample points
+  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
+  const auto right_points =
+    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
+
+  lanelet::ConstPoints3d points;
+  points.reserve(num_segments + 1);
+  for (size_t i = 0; i < num_segments + 1; i++) {
+    const lanelet::BasicPoint3d basic_point = point_fn(left_points.at(i), right_points.at(i));
+    const lanelet::Id id = use_unique_id ? lanelet::utils::getId() : lanelet::InvalId;
+    points.emplace_back(id, basic_point.x(), basic_point.y(), basic_point.z());
+  }
+
+  const auto linestring_opt = create_safe_linestring(points);
+  if (!linestring_opt.has_value()) {
+    RCLCPP_ERROR(
+      rclcpp::get_logger("autoware_lanelet2_utility"),
+      "%s has less than two points. Returning empty linestring.", error_context.c_str());
+    return lanelet::ConstLineString3d();
+  }
+
+  return *linestring_opt;
 }
 }  // namespace
 
@@ -268,18 +320,13 @@ std::optional<geometry_msgs::msg::Pose> get_pose_from_2d_arc_length(
         if (!const_pt.has_value()) {
           return std::nullopt;
         }
-        auto P = const_pt.value().basicPoint();
+        const auto P = const_pt.value().basicPoint();
 
-        double half_yaw = std::atan2(next_pt.y() - pt.y(), next_pt.x() - pt.x()) * 0.5;
+        const double yaw = std::atan2(next_pt.y() - pt.y(), next_pt.x() - pt.x());
 
         geometry_msgs::msg::Pose pose;
-        pose.position.x = P.x();
-        pose.position.y = P.y();
-        pose.position.z = P.z();
-        pose.orientation.x = 0.0;
-        pose.orientation.y = 0.0;
-        pose.orientation.z = std::sin(half_yaw);
-        pose.orientation.w = std::cos(half_yaw);
+        pose.position = autoware_utils_geometry::create_point(P.x(), P.y(), P.z());
+        pose.orientation = autoware_utils_geometry::create_quaternion_from_yaw(yaw);
 
         return pose;
       }
@@ -370,10 +417,7 @@ geometry_msgs::msg::Pose get_closest_center_pose(
   if (segment.empty()) {
     geometry_msgs::msg::Pose closest_pose;
     closest_pose.position = to_ros(lanelet.centerline().front(), search_pt.z());
-    closest_pose.orientation.x = 0.0;
-    closest_pose.orientation.y = 0.0;
-    closest_pose.orientation.z = 0.0;
-    closest_pose.orientation.w = 1.0;
+    closest_pose.orientation = autoware_utils_geometry::create_quaternion(0.0, 0.0, 0.0, 1.0);
     return closest_pose;
   }
 
@@ -626,136 +670,47 @@ std::optional<lanelet::ConstLanelets> get_dirty_expanded_lanelets(
 lanelet::ConstLineString3d get_fine_centerline(
   const lanelet::ConstLanelet & lanelet_obj, const double resolution)
 {
-  // get number of segments from resolution and longer bound
-  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
-
-  // Resample points
-  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
-  const auto right_points =
-    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
-
-  lanelet::ConstPoints3d center_points;
-  for (size_t i = 0; i < num_segments + 1; i++) {
-    const auto center_basic_point = (right_points.at(i) + left_points.at(i)) / 2;
-
-    const lanelet::ConstPoint3d center_point(
-      lanelet::InvalId, center_basic_point.x(), center_basic_point.y(), center_basic_point.z());
-    center_points.push_back(center_point);
-  }
-
-  const auto centerline_opt = create_safe_linestring(center_points);
-  if (!centerline_opt.has_value()) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("autoware_lanelet2_utility"),
-      "center_points has less than two points. Returning empty linestring.");
-    return lanelet::ConstLineString3d();
-  }
-
-  return *centerline_opt;
+  return build_offset_linestring(
+    lanelet_obj, resolution, /*use_unique_id=*/false, "center_points",
+    [](const lanelet::BasicPoint3d & left, const lanelet::BasicPoint3d & right)
+      -> lanelet::BasicPoint3d { return (right + left) / 2; });
 }
 
 lanelet::ConstLineString3d get_centerline_with_offset(
   const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution)
 {
-  // get number of segments from resolution and longer bound
-  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
-
-  // Resample points
-  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
-  const auto right_points =
-    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
-
-  lanelet::ConstPoints3d center_points;
-  for (size_t i = 0; i < num_segments + 1; i++) {
-    const auto center_basic_point = (right_points.at(i) + left_points.at(i)) / 2;
-
-    const auto vec_right_2_left = (left_points.at(i) - right_points.at(i)).normalized();
-
-    const auto offset_center_basic_point = center_basic_point + vec_right_2_left * offset;
-
-    const lanelet::ConstPoint3d center_point(
-      lanelet::InvalId, offset_center_basic_point.x(), offset_center_basic_point.y(),
-      offset_center_basic_point.z());
-    center_points.push_back(center_point);
-  }
-
-  const auto centerline_opt = create_safe_linestring(center_points);
-  if (!centerline_opt.has_value()) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("autoware_lanelet2_utility"),
-      "center_points has less than two points in get_centerline_with_offset. "
-      "Returning empty linestring.");
-    return lanelet::ConstLineString3d();
-  }
-
-  return *centerline_opt;
+  return build_offset_linestring(
+    lanelet_obj, resolution, /*use_unique_id=*/false, "center_points",
+    [offset](const lanelet::BasicPoint3d & left, const lanelet::BasicPoint3d & right)
+      -> lanelet::BasicPoint3d {
+      const auto center_basic_point = (right + left) / 2;
+      const auto vec_right_2_left = (left - right).normalized();
+      return center_basic_point + vec_right_2_left * offset;
+    });
 }
 
 lanelet::ConstLineString3d get_right_bound_with_offset(
   const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution)
 {
-  // get number of segments from resolution and longer bound
-  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
-
-  // Resample points
-  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
-  const auto right_points =
-    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
-
-  lanelet::ConstPoints3d right_bound_points;
-  for (size_t i = 0; i < num_segments + 1; i++) {
-    const auto vec_left_2_right = (right_points.at(i) - left_points.at(i)).normalized();
-
-    const auto offset_right_basic_point = right_points.at(i) + vec_left_2_right * offset;
-
-    const lanelet::ConstPoint3d right_bound_point(
-      lanelet::InvalId, offset_right_basic_point.x(), offset_right_basic_point.y(),
-      offset_right_basic_point.z());
-    right_bound_points.push_back(right_bound_point);
-  }
-  const auto right_bound_opt = create_safe_linestring(right_bound_points);
-  if (!right_bound_opt.has_value()) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("autoware_lanelet2_utility"),
-      "right_bound_points has less than two points. Returning empty linestring.");
-    return lanelet::ConstLineString3d();
-  }
-
-  return *right_bound_opt;
+  return build_offset_linestring(
+    lanelet_obj, resolution, /*use_unique_id=*/false, "right_bound_points",
+    [offset](const lanelet::BasicPoint3d & left, const lanelet::BasicPoint3d & right)
+      -> lanelet::BasicPoint3d {
+      const auto vec_left_2_right = (right - left).normalized();
+      return right + vec_left_2_right * offset;
+    });
 }
 
 lanelet::ConstLineString3d get_left_bound_with_offset(
   const lanelet::ConstLanelet & lanelet_obj, const double offset, const double resolution)
 {
-  // get number of segments from resolution and longer bound
-  const auto num_segments = compute_num_segments(lanelet_obj, resolution);
-
-  // Resample points
-  const auto left_points = resample_points(lanelet_obj.leftBound().basicLineString(), num_segments);
-  const auto right_points =
-    resample_points(lanelet_obj.rightBound().basicLineString(), num_segments);
-
-  lanelet::ConstPoints3d left_bound_points;
-  for (size_t i = 0; i < num_segments + 1; i++) {
-    const auto vec_right_2_left = (left_points.at(i) - right_points.at(i)).normalized();
-
-    const auto offset_left_basic_point = left_points.at(i) + vec_right_2_left * offset;
-
-    const lanelet::ConstPoint3d left_bound_point(
-      lanelet::utils::getId(), offset_left_basic_point.x(), offset_left_basic_point.y(),
-      offset_left_basic_point.z());
-    left_bound_points.push_back(left_bound_point);
-  }
-
-  const auto left_bound_opt = create_safe_linestring(left_bound_points);
-  if (!left_bound_opt.has_value()) {
-    RCLCPP_ERROR(
-      rclcpp::get_logger("autoware_lanelet2_utility"),
-      "left_bound_points has less than two points. Returning empty linestring.");
-    return lanelet::ConstLineString3d();
-  }
-
-  return *left_bound_opt;
+  return build_offset_linestring(
+    lanelet_obj, resolution, /*use_unique_id=*/true, "left_bound_points",
+    [offset](const lanelet::BasicPoint3d & left, const lanelet::BasicPoint3d & right)
+      -> lanelet::BasicPoint3d {
+      const auto vec_right_2_left = (left - right).normalized();
+      return left + vec_right_2_left * offset;
+    });
 }
 
 bool is_in_lanelet(

@@ -5,6 +5,47 @@ Changelog for package autoware_qp_interface
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_qp_interface): report real OSQP solver status and drop redundant vector copies (`#1100 <https://github.com/autowarefoundation/autoware_core/issues/1100>`_)
+  * fix(autoware_qp_interface): report real OSQP solver status and drop redundant vector copies
+  OSQPInterface::getStatus() was hardcoded to always return "OSQP_SOLVED",
+  masking max-iteration/infeasible/unsolved outcomes; only isSolved()
+  discriminated. Extract a pure status_to_string(c_int) helper (internal,
+  non-installed header) that maps the OSQP\_* status codes to their string
+  names, and have getStatus() report latest_work_info\_.status_val.
+  Also remove the needless per-call std::vector copies in updateQ/L/U/Bounds
+  (the OSQP C API takes const c_float*, so the vector data is passed directly)
+  and replace the q/l/u copies in the ProxQP path with
+  Eigen::Map<const Eigen::VectorXd> over the const data pointers.
+  Add unit tests for status_to_string across status values and a
+  primal-infeasible problem asserting isSolved()==false and a non-solved
+  status. Update the existing UpdateSettingsAfterInitialization test, which
+  only passed due to the hardcoded status, to assert the true outcome
+  (OSQP_PRIMAL_INFEASIBLE).
+  Public headers and the node interface are unchanged.
+  * refactor(autoware_qp_interface): keep status_to_string internal-linkage and fold status tests
+  Address review: move status_to_string() into an anonymous namespace in
+  osqp_interface.cpp (no exported symbol), drop the internal
+  src/osqp_interface_status.hpp and its PRIVATE include dir, remove the
+  change-detector StatusToString test, and fold the two behavioral tests
+  (InfeasibleProblemReportsNotSolved, FreshlyConstructedIsNotSolved) into
+  test_osqp_interface.cpp. The bug fix (getStatus() reporting the real solver
+  status) stays covered by behavioral tests through the public API.
+  ---------
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_qp_interface): fix bugprone-narrowing-conversions warnings (`#922 <https://github.com/mitsudome-r/autoware_core/issues/922>`_)
+  * fix(autoware_qp_interface): fix bugprone-narrowing-conversions warnings
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: NorahXiong, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 

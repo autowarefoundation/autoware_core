@@ -30,10 +30,13 @@
 #include <lanelet2_core/Forward.h>
 #include <lanelet2_core/LaneletMap.h>
 #include <lanelet2_core/geometry/BoundingBox.h>
+#include <lanelet2_core/primitives/Area.h>
 #include <lanelet2_core/primitives/BoundingBox.h>
 #include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/primitives/LaneletOrArea.h>
 #include <lanelet2_core/primitives/Polygon.h>
 #include <lanelet2_routing/Forward.h>
+#include <lanelet2_routing/LaneletPath.h>
 #include <lanelet2_routing/RoutingCost.h>
 #include <lanelet2_traffic_rules/TrafficRules.h>
 
@@ -88,6 +91,8 @@ public:
   void setRoute(const LaneletRoute & route_msg);
   void setRouteLanelets(const lanelet::ConstLanelets & path_lanelets);
   void clearRoute();
+  void setAllowArea(const bool allow_area);
+  bool allowArea() const;
 
   // const methods
 
@@ -110,7 +115,17 @@ public:
   bool planPathLaneletsBetweenCheckpoints(
     const Pose & start_checkpoint, const Pose & goal_checkpoint,
     lanelet::ConstLanelets * path_lanelets, const bool consider_no_drivable_lanes = false) const;
+  bool planPathLaneletsBetweenCheckpoints(
+    const Pose & start_checkpoint, const Pose & goal_checkpoint,
+    lanelet::ConstLaneletOrAreas * path_lanelets_or_areas,
+    const bool consider_no_drivable_lanes = false) const;
   std::vector<LaneletSegment> createMapSegments(const lanelet::ConstLanelets & path_lanelets) const;
+  /**
+   * @brief Build route segments from a planned path that may include drivable Areas.
+   * @note When the path contains no Areas, behavior matches createMapSegments(lane-only path).
+   */
+  std::vector<LaneletSegment> createMapSegmentsFromLaneletOrAreaPath(
+    const lanelet::ConstLaneletOrAreas & path) const;
   static bool isRouteLooped(const RouteSections & route_sections);
 
   // for goal
@@ -281,6 +296,7 @@ public:
     const double yaw_threshold) const;
 
   lanelet::ConstLanelet getLaneletsFromId(const lanelet::Id id) const;
+  lanelet::ConstArea getAreaFromId(const lanelet::Id id) const;
   lanelet::ConstLanelets getLaneletsFromIds(const lanelet::Ids & ids) const;
   lanelet::ConstLanelets getLaneletSequence(
     const lanelet::ConstLanelet & lanelet, const Pose & current_pose,
@@ -357,6 +373,7 @@ private:
   std::shared_ptr<const lanelet::routing::RoutingGraphContainer> overall_graphs_ptr_;
   lanelet::LaneletMapPtr lanelet_map_ptr_;
   lanelet::ConstLanelets route_lanelets_;
+  std::vector<lanelet::ConstArea> route_areas_;
   RouteRtree route_lanelets_rtree_;
   lanelet::ConstLanelets preferred_lanelets_;
   lanelet::ConstLanelets start_lanelets_;
@@ -367,6 +384,7 @@ private:
 
   bool is_map_msg_ready_{false};
   bool is_handler_ready_{false};
+  bool allow_area_{false};
 
   // save original(not modified) route start pose for start planer execution
   Pose original_start_pose_;
@@ -377,6 +395,7 @@ private:
 
   // const methods
   // for routing
+  LaneletSegment makeLaneSegmentFromMainLanelet(const lanelet::ConstLanelet & main_llt) const;
   lanelet::ConstLanelets getMainLanelets(const lanelet::ConstLanelets & path_lanelets) const;
 
   // for lanelet
@@ -401,6 +420,17 @@ private:
     const lanelet::ConstLanelets & lanelet_sequence) const;
   lanelet::ConstLanelets getNeighborsWithinRoute(const lanelet::ConstLanelet & lanelet) const;
 
+  // Experimental / debug for direction_change: walk mission route segment order when
+  // RoutingGraph::following() cannot cross route areas (allow_area routes).
+  std::optional<size_t> findRouteSegmentIndexForLanelet(int64_t lanelet_id) const;
+  std::optional<size_t> findNextLaneSegmentIndex(size_t from_index) const;
+  std::optional<size_t> findPreviousLaneSegmentIndex(size_t from_index) const;
+  lanelet::ConstLanelets laneletsFromRouteSegment(size_t segment_index) const;
+  bool getNextLaneletsFromRouteOrder(
+    const lanelet::ConstLanelet & lanelet, lanelet::ConstLanelets * next_lanelets) const;
+  bool getPreviousLaneletsFromRouteOrder(
+    const lanelet::ConstLanelet & lanelet, lanelet::ConstLanelets * prev_lanelets) const;
+
   // for path
 
   /**
@@ -410,6 +440,7 @@ private:
    * include any.
    */
   bool hasNoDrivableLaneInPath(const lanelet::routing::LaneletPath & path) const;
+  bool hasNoDrivableLaneInPath(const lanelet::routing::LaneletOrAreaPath & path) const;
   /**
    * @brief Searches for the shortest path between start and goal lanelets that does not include any
    * no_drivable_lane.
@@ -419,6 +450,21 @@ private:
    */
   std::optional<lanelet::routing::LaneletPath> findDrivableLanePath(
     const lanelet::ConstLanelet & start_lanelet, const lanelet::ConstLanelet & goal_lanelet) const;
+  std::optional<lanelet::routing::LaneletOrAreaPath> findDrivableLanePathIncludingAreas(
+    const lanelet::ConstLanelet & start_lanelet, const lanelet::ConstLanelet & goal_lanelet) const;
+
+  lanelet::ConstLanelets getStartRoadLaneletsForCheckpoint(const Pose & start_checkpoint) const;
+  std::optional<lanelet::ConstLanelet> getGoalRoadLaneletForCheckpoint(
+    const Pose & goal_checkpoint) const;
+  bool planLaneletPathBetweenResolvedEndpoints(
+    const Pose & start_checkpoint, const Pose & goal_checkpoint,
+    const lanelet::ConstLanelets & start_lanelets, const lanelet::ConstLanelet & goal_lanelet,
+    const bool consider_no_drivable_lanes, lanelet::ConstLanelets * path_lanelets) const;
+  bool planLaneletOrAreaPathBetweenResolvedEndpoints(
+    const Pose & start_checkpoint, const Pose & goal_checkpoint,
+    const lanelet::ConstLanelets & start_lanelets, const lanelet::ConstLanelet & goal_lanelet,
+    const bool consider_no_drivable_lanes,
+    lanelet::ConstLaneletOrAreas * path_lanelets_or_areas) const;
 };
 
 /// @brief custom routing cost with infinity cost for no drivable lanes

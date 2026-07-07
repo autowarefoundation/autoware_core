@@ -8,6 +8,52 @@ Changelog for package autoware_behavior_velocity_stop_line_module
   refactor(autoware_trajectory)!: move everything to namespace experimental
 * Contributors: Mamoru Sobue
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_behavior_velocity_stop_line_module): share stop-line state machine and stop-point logic (`#1155 <https://github.com/autowarefoundation/autoware_core/issues/1155>`_)
+  Extract the duplicated stop-line state machine and stop-point geometry
+  computation into pure free functions in a new internal stop_line_util
+  translation unit, reused by both the legacy and experimental
+  StopLineModule.
+  - Replace the two verbatim copies of hasIntersection with a single
+  has_intersection that scans the per-point lane ids against the
+  (loop-invariant) connected lanelet ids, removing the per-call
+  std::set construction inside the crossed_with_constraint lambda.
+  - Add compute_ego_and_stop_point and advance_state free functions
+  taking plain inputs (trajectory, bounds, params, state); the two
+  modules now delegate to them. advance_state returns a transition
+  result so each module reproduces its exact log output.
+  - Add unit tests for the shared functions covering the experimental
+  path plus the previously untested no-intersection, negative
+  stop-point, START, and STOPPED no-stopped_time branches.
+  Behavior-preserving: public override signatures and existing log
+  messages are unchanged.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Yutaka Kondo, github-actions
+
+1.8.0 (2026-05-01)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_behavior_velocity_stop_line_module): fix bugprone-unchecked-optional-access (`#900 <https://github.com/mitsudome-r/autoware_core/issues/900>`_)
+  * fix(autoware_behavior_velocity_stop_line_module): fix bugprone-unchecked-optional-access warnings
+  * feat(autoware_behavior_velocity_stop_line_module): improve code robustness
+  Co-authored-by: Ryohsuke Mitsudome <43976834+mitsudome-r@users.noreply.github.com>
+  * feat(autoware_behavior_velocity_stop_line_module): improve code robustness by optional value check and setting
+  Co-authored-by: Ryohsuke Mitsudome <43976834+mitsudome-r@users.noreply.github.com>
+  * fix(autoware_behavior_velocity_stop_line_module): fix wrong variable name
+  Co-authored-by: Mete Fatih Cırıt <mfc@autoware.org>
+  ---------
+* test(autoware_behavior_velocity_stop_line_module): add test cases (`#486 <https://github.com/mitsudome-r/autoware_core/issues/486>`_)
+* chore(planning, bvp): remove unused lanelet2_extension header (`#902 <https://github.com/mitsudome-r/autoware_core/issues/902>`_)
+  * remove unused lanelet2_extension in bvp modules
+  * remove unused lanelet2_extension in planning components
+  ---------
+* feat(autoware_trajectory): define set stopline in Trajectory class (`#806 <https://github.com/mitsudome-r/autoware_core/issues/806>`_)
+* chore: organize maintainer (`#858 <https://github.com/mitsudome-r/autoware_core/issues/858>`_)
+* Contributors: NorahXiong, Sarun MUKDAPITAK, Satoshi OTA, github-actions
+
 1.7.0 (2026-02-14)
 ------------------
 
