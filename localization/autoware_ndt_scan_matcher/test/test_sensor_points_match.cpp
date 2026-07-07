@@ -23,8 +23,6 @@
 #include "../src/ndt_scan_matcher_helper.hpp"
 
 #include <autoware/localization_util/util_func.hpp>
-#include <autoware/ndt_scan_matcher/ndt_rust_adapter.hpp>
-
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
@@ -46,8 +44,6 @@ namespace autoware::ndt_scan_matcher
 {
 namespace
 {
-using Adapter = autoware::ndt_scan_matcher::NdtRustAdapter;
-
 constexpr int kTp = 0;  // ConvergedParamType::TRANSFORM_PROBABILITY
 // A distinct diagonal 6x6 (row-major) so the covariance rotation is observable.
 constexpr std::array<double, 36> kOutputCov = {
@@ -55,7 +51,7 @@ constexpr std::array<double, 36> kOutputCov = {
   0.0, 0.0, 16.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.1, 0.0, 0.0,
   0.0, 0.0, 0.0, 0.0, 0.2, 0.0,   0.0, 0.0, 0.0, 0.0, 0.0, 0.3};
 
-// --- engine (adapter) + source, mirroring test_node_run_align ------------------------------------
+// --- Rust engine fixture + source, mirroring test_node_run_align -------------------------------
 void make_tile(float cx, float cy, float cz, std::mt19937 & rng, pcl::PointCloud<pcl::PointXYZ> & c)
 {
   std::normal_distribution<float> jitter(0.0F, 0.3F);
@@ -65,40 +61,29 @@ void make_tile(float cx, float cy, float cz, std::mt19937 & rng, pcl::PointCloud
   c.is_dense = true;
 }
 
-pclomp::NdtParams make_ndt_params()
+struct DrivenFixture
 {
-  pclomp::NdtParams p{};
-  p.trans_epsilon = 0.01;
-  p.step_size = 0.1;
-  p.resolution = 2.0F;
-  p.max_iterations = 30;
-  p.search_method = pclomp::KDTREE;
-  p.num_threads = 1;
-  p.regularization_scale_factor = 0.0F;
-  p.use_line_search = false;
-  return p;
-}
+  pcl::PointCloud<pcl::PointXYZ>::Ptr tile0;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr tile1;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
+};
 
-Adapter make_driven_adapter(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out)
+DrivenFixture make_driven_fixture()
 {
   std::mt19937 rng(13);
-  auto tile0 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  auto tile1 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  make_tile(0.0F, 0.0F, 0.0F, rng, *tile0);
-  make_tile(8.0F, 4.0F, 0.0F, rng, *tile1);
+  DrivenFixture fixture{};
+  fixture.tile0 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  fixture.tile1 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  make_tile(0.0F, 0.0F, 0.0F, rng, *fixture.tile0);
+  make_tile(8.0F, 4.0F, 0.0F, rng, *fixture.tile1);
   const std::array<float, 3> t_true = {0.2F, -0.15F, 0.1F};
-  source_out = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-  for (const auto & tile : {tile0, tile1}) {
+  fixture.source = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  for (const auto & tile : {fixture.tile0, fixture.tile1}) {
     for (const auto & p : *tile) {
-      source_out->push_back(pcl::PointXYZ(p.x + t_true[0], p.y + t_true[1], p.z + t_true[2]));
+      fixture.source->push_back(pcl::PointXYZ(p.x + t_true[0], p.y + t_true[1], p.z + t_true[2]));
     }
   }
-  Adapter rs;
-  rs.setParams(make_ndt_params());
-  rs.addTarget(tile0, "0");
-  rs.addTarget(tile1, "1");
-  rs.createVoxelKdtree();
-  return rs;
+  return fixture;
 }
 
 std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
@@ -111,6 +96,25 @@ std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
     flat.push_back(p.z);
   }
   return flat;
+}
+
+void add_target(
+  const AwNdtEngine * engine, const pcl::PointCloud<pcl::PointXYZ> & tile,
+  const std::string & id)
+{
+  const std::vector<float> flat = flatten(tile);
+  autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
+    engine, flat.data(), tile.size(), reinterpret_cast<const std::uint8_t *>(id.data()),
+    id.size());
+}
+
+const AwNdtEngine * load_driven_map(AwNdtScanMatcher * handle, const DrivenFixture & fixture)
+{
+  const AwNdtEngine * engine = autoware_ndt_scan_matcher_rs_engine(handle);
+  add_target(engine, *fixture.tile0, "0");
+  add_target(engine, *fixture.tile1, "1");
+  autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(engine);
+  return engine;
 }
 
 // --- recording mock AwHost: capture every publish op ---------------------------------------------
@@ -250,6 +254,11 @@ AwNdtScanMatcher * make_handle(
   AwNdtParams p{};
   p.resolution = 2.0;
   p.min_points = 6;
+  p.eig_mult = 0.01;
+  p.trans_epsilon = 0.01;
+  p.step_size = 0.1;
+  p.max_iterations = 30;
+  p.outlier_ratio = 0.55;
   p.num_threads = 1;
   p.converged_param_type = kTp;
   p.converged_param_transform_probability = converged_tp;
@@ -303,8 +312,8 @@ Eigen::Matrix4f to_eigen(const float * m)
 // covariance rotated from the result pose (tolerance), and fires ndt_pose only on convergence.
 TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
 {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  const DrivenFixture fixture = make_driven_fixture();
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr source = fixture.source;
   const std::vector<float> src = flatten(*source);
   const std::int64_t stamp = 1'000'000'000;
   const std::string map_frame = "map";
@@ -312,6 +321,7 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
   AwNdtScanMatcher * h = make_handle(map_frame, "base_link", 0.0);
   ASSERT_NE(h, nullptr);
   activate_and_seed(h, stamp, map_frame);
+  const AwNdtEngine * engine = load_driven_map(h, fixture);
 
   Captured cap;
   const AwHost host = recording_host(cap);
@@ -320,7 +330,7 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
   AwSensorPointsMatchOutput out{};
 
   const std::int32_t status = autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
-    h, rs.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out);
+    h, engine, &host, &diag, &mp, stamp, src.data(), source->size(), &out);
   ASSERT_EQ(status, 0);  // SM_MATCHED
   ASSERT_TRUE(out.is_converged);
 
@@ -329,7 +339,7 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
   const AwAlignParams align_params{kTp, 0.0, 0.0};
   AwAlignOutcome ref{};
   autoware_ndt_scan_matcher_rs_node_run_align(
-    rs.raw_handle(), guess16.data(), src.data(), source->size(), &align_params, &ref);
+    engine, guess16.data(), src.data(), source->size(), &align_params, &ref);
 
   // scalars published (exact vs the decomposed align).
   ASSERT_EQ(cap.float32s.size(), 2U);
@@ -362,7 +372,8 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
   EXPECT_TRUE(cap.itr_called);
   EXPECT_TRUE(cap.marker_called);
   EXPECT_GT(cap.marker_count, 0U);
-  EXPECT_EQ(cap.marker_max_iterations, rs.getMaximumIterations());
+  EXPECT_EQ(
+    cap.marker_max_iterations, autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(engine));
 
   // pose publishes: InitialPoseWithCovariance always; NdtPose + NdtPoseWithCovariance on convergence.
   EXPECT_EQ(cap.count_pose_topic(2), 1);  // InitialPoseWithCovariance
@@ -402,14 +413,15 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
 // A below-threshold score → not converged → ndt_pose / ndt_pose_with_covariance are NOT published.
 TEST(SensorPointsMatch, NotConvergedSkipsNdtPose)  // NOLINT
 {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  const DrivenFixture fixture = make_driven_fixture();
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr source = fixture.source;
   const std::vector<float> src = flatten(*source);
   const std::int64_t stamp = 1'000'000'000;
   const std::string map_frame = "map";
 
   AwNdtScanMatcher * h = make_handle(map_frame, "base_link", 1e9);  // impossible TP threshold
   activate_and_seed(h, stamp, map_frame);
+  const AwNdtEngine * engine = load_driven_map(h, fixture);
   Captured cap;
   const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
@@ -418,7 +430,7 @@ TEST(SensorPointsMatch, NotConvergedSkipsNdtPose)  // NOLINT
 
   ASSERT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
-      h, rs.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out),
+      h, engine, &host, &diag, &mp, stamp, src.data(), source->size(), &out),
     0);  // SM_MATCHED (a below-threshold score still matches; it just isn't converged)
   EXPECT_FALSE(out.is_converged);
   EXPECT_EQ(cap.count_pose_topic(0), 0);  // no NdtPose
@@ -430,10 +442,11 @@ TEST(SensorPointsMatch, NotConvergedSkipsNdtPose)  // NOLINT
 // Gate: an inactive node returns SM_NOT_ACTIVATED and publishes nothing.
 TEST(SensorPointsMatch, NotActivatedGate)  // NOLINT
 {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  const DrivenFixture fixture = make_driven_fixture();
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr source = fixture.source;
   const std::vector<float> src = flatten(*source);
   AwNdtScanMatcher * h = make_handle("map", "base_link", 0.0);  // never activated
+  const AwNdtEngine * engine = load_driven_map(h, fixture);
   Captured cap;
   const AwHost host = recording_host(cap);
   const AwDiagnostics diag = noop_diag();
@@ -441,7 +454,7 @@ TEST(SensorPointsMatch, NotActivatedGate)  // NOLINT
   AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
-      h, rs.raw_handle(), &host, &diag, &mp, 1'000'000'000, src.data(), source->size(), &out),
+      h, engine, &host, &diag, &mp, 1'000'000'000, src.data(), source->size(), &out),
     1);  // SM_NOT_ACTIVATED
   EXPECT_TRUE(cap.poses.empty());
   EXPECT_TRUE(cap.float32s.empty());
@@ -451,19 +464,20 @@ TEST(SensorPointsMatch, NotActivatedGate)  // NOLINT
 // Gate: activated but no initial poses to interpolate returns SM_INTERPOLATE_FAILED.
 TEST(SensorPointsMatch, InterpolateFailedGate)  // NOLINT
 {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  const DrivenFixture fixture = make_driven_fixture();
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr source = fixture.source;
   const std::vector<float> src = flatten(*source);
   AwNdtScanMatcher * h = make_handle("map", "base_link", 0.0);
   const AwDiagnostics d = noop_diag();
   autoware_ndt_scan_matcher_rs_node_on_trigger(h, &d, true, 0);  // activate, seed nothing
+  const AwNdtEngine * engine = load_driven_map(h, fixture);
   Captured cap;
   const AwHost host = recording_host(cap);
   const AwSensorPointsMatchParams mp{50.0, 1e9, 1e9, 0.0, false, 0.0};
   AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
-      h, rs.raw_handle(), &host, &d, &mp, 1'000'000'000, src.data(), source->size(), &out),
+      h, engine, &host, &d, &mp, 1'000'000'000, src.data(), source->size(), &out),
     2);  // SM_INTERPOLATE_FAILED
   autoware_ndt_scan_matcher_rs_free(h);
 }
@@ -471,11 +485,9 @@ TEST(SensorPointsMatch, InterpolateFailedGate)  // NOLINT
 // Gate: an engine with no loaded map returns SM_MAP_NOT_SET (after a successful interpolation).
 TEST(SensorPointsMatch, MapNotSetGate)  // NOLINT
 {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter driven = make_driven_adapter(source);  // only for a non-empty source cloud
+  const DrivenFixture fixture = make_driven_fixture();  // only for a non-empty source cloud
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr source = fixture.source;
   const std::vector<float> src = flatten(*source);
-  Adapter empty;
-  empty.setParams(make_ndt_params());  // no addTarget → hasTarget() == false
 
   const std::int64_t stamp = 1'000'000'000;
   const std::string map_frame = "map";
@@ -488,7 +500,8 @@ TEST(SensorPointsMatch, MapNotSetGate)  // NOLINT
   AwSensorPointsMatchOutput out{};
   EXPECT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
-      h, empty.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out),
+      h, autoware_ndt_scan_matcher_rs_engine(h), &host, &diag, &mp, stamp, src.data(),
+      source->size(), &out),
     3);  // SM_MAP_NOT_SET
   autoware_ndt_scan_matcher_rs_free(h);
 }
@@ -496,14 +509,15 @@ TEST(SensorPointsMatch, MapNotSetGate)  // NOLINT
 
 TEST(SensorPointsMatch, NoGroundPublishesCloudAndScores)  // NOLINT
 {
-  pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  const DrivenFixture fixture = make_driven_fixture();
+  const pcl::PointCloud<pcl::PointXYZ>::Ptr source = fixture.source;
   const std::vector<float> src = flatten(*source);
   const std::int64_t stamp = 1'000'000'000;
   const std::string map_frame = "map";
 
   AwNdtScanMatcher * h = make_handle(map_frame, "base_link", 0.0);
   activate_and_seed(h, stamp, map_frame);
+  const AwNdtEngine * engine = load_driven_map(h, fixture);
   Captured cap;
   cap.voxel_score_has_subscribers = false;
   const AwHost host = recording_host(cap);
@@ -513,7 +527,7 @@ TEST(SensorPointsMatch, NoGroundPublishesCloudAndScores)  // NOLINT
 
   ASSERT_EQ(
     autoware_ndt_scan_matcher_rs_node_on_sensor_points_match(
-      h, rs.raw_handle(), &host, &diag, &mp, stamp, src.data(), source->size(), &out),
+      h, engine, &host, &diag, &mp, stamp, src.data(), source->size(), &out),
     0);
 
   ASSERT_EQ(cap.xyz_clouds.size(), 2U);

@@ -13,13 +13,13 @@
 // limitations under the License.
 
 // Test (node port N4a): the sensor-callback align orchestrator
-// (autoware_ndt_scan_matcher_rs_node_run_align) drives the live Rust engine via the adapter's
-// raw_handle. It must align EXACTLY like the adapter's own align(...) (same deterministic Rust
-// engine, same guess) and return a self-consistent convergence verdict. This pins the raw_handle +
-// orchestrator wiring; engine-vs-pclomp accuracy is already covered by test_ndt_rust_adapter, and
-// the convergence-formula vs C++ by test_convergence_verdict.
+// (autoware_ndt_scan_matcher_rs_node_run_align) drives a live Rust engine directly through the C
+// ABI. It must align EXACTLY like the bare engine align FFI on the same deterministic Rust engine +
+// guess and return a self-consistent convergence verdict. This pins the engine-handle + orchestrator
+// wiring; engine-vs-pclomp accuracy is already covered by test_ndt_engine/test_align, and the
+// convergence-formula vs C++ by test_convergence_verdict.
 
-#include <autoware/ndt_scan_matcher/ndt_rust_adapter.hpp>
+#include <autoware/ndt_scan_matcher/ndt_omp/ndt_struct.hpp>
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
@@ -36,8 +36,6 @@
 
 namespace
 {
-using Adapter = autoware::ndt_scan_matcher::NdtRustAdapter;
-
 void make_tile(float cx, float cy, float cz, std::mt19937 & rng, pcl::PointCloud<pcl::PointXYZ> & c)
 {
   std::normal_distribution<float> jitter(0.0F, 0.3F);
@@ -63,8 +61,52 @@ pclomp::NdtParams make_params()
 
 constexpr int kTp = 0;  // ConvergedParamType::TRANSFORM_PROBABILITY
 
-// Build a 2-tile adapter + a source cloud shifted by a small known translation.
-Adapter make_driven_adapter(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out)
+class RustEngine
+{
+public:
+  RustEngine() : handle_(autoware_ndt_scan_matcher_rs_ndt_engine_new(2.0, 6, 0.01)) {}
+  ~RustEngine() { autoware_ndt_scan_matcher_rs_ndt_engine_free(handle_); }
+
+  RustEngine(const RustEngine &) = delete;
+  RustEngine & operator=(const RustEngine &) = delete;
+
+  RustEngine(RustEngine && other) noexcept : handle_(other.handle_) { other.handle_ = nullptr; }
+  RustEngine & operator=(RustEngine && other) noexcept
+  {
+    if (this != &other) {
+      autoware_ndt_scan_matcher_rs_ndt_engine_free(handle_);
+      handle_ = other.handle_;
+      other.handle_ = nullptr;
+    }
+    return *this;
+  }
+
+  [[nodiscard]] const AwNdtEngine * raw() const { return handle_; }
+
+private:
+  AwNdtEngine * handle_{nullptr};
+};
+
+std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
+{
+  std::vector<float> flat;
+  flat.reserve(cloud.size() * 3);
+  for (const auto & p : cloud.points) {
+    flat.push_back(p.x);
+    flat.push_back(p.y);
+    flat.push_back(p.z);
+  }
+  return flat;
+}
+
+void add_target(const RustEngine & engine, const pcl::PointCloud<pcl::PointXYZ> & tile, uint64_t id)
+{
+  const std::vector<float> flat = flatten(tile);
+  autoware_ndt_scan_matcher_rs_ndt_engine_add_target(engine.raw(), flat.data(), tile.size(), id);
+}
+
+// Build a 2-tile Rust engine + a source cloud shifted by a small known translation.
+RustEngine make_driven_engine(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out)
 {
   std::mt19937 rng(13);
   auto tile0 = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
@@ -78,24 +120,15 @@ Adapter make_driven_adapter(pcl::PointCloud<pcl::PointXYZ>::Ptr & source_out)
       source_out->push_back(pcl::PointXYZ(p.x + t_true[0], p.y + t_true[1], p.z + t_true[2]));
     }
   }
-  Adapter rs;
-  rs.setParams(make_params());
-  rs.addTarget(tile0, "0");
-  rs.addTarget(tile1, "1");
-  rs.createVoxelKdtree();
-  return rs;
-}
-
-std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
-{
-  std::vector<float> flat;
-  flat.reserve(cloud.size() * 3);
-  for (const auto & p : cloud.points) {
-    flat.push_back(p.x);
-    flat.push_back(p.y);
-    flat.push_back(p.z);
-  }
-  return flat;
+  RustEngine engine;
+  const pclomp::NdtParams params = make_params();
+  autoware_ndt_scan_matcher_rs_ndt_engine_set_params(
+    engine.raw(), params.trans_epsilon, params.step_size, params.resolution, params.max_iterations,
+    0.55, params.num_threads);
+  add_target(engine, *tile0, 0);
+  add_target(engine, *tile1, 1);
+  autoware_ndt_scan_matcher_rs_ndt_engine_create_kdtree(engine.raw());
+  return engine;
 }
 
 AwNdtAlignServiceSearchInput make_search_input(
@@ -137,12 +170,12 @@ AwNdtAlignServiceSearchOutput make_search_output(
 }
 }  // namespace
 
-// run_align via raw_handle == the bare engine align FFI on the same engine + same guess + a
+// run_align via a direct engine handle == the bare engine align FFI on the same engine + same guess + a
 // self-consistent verdict. Exact equality (deterministic Rust engine), no tolerance.
 TEST(NodeRunAlign, MatchesEngineAlignAndVerdictIsConsistent)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  RustEngine engine = make_driven_engine(source);
   const std::array<float, 16> guess16 = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
   const std::vector<float> src = flatten(*source);
 
@@ -150,7 +183,7 @@ TEST(NodeRunAlign, MatchesEngineAlignAndVerdictIsConsistent)  // NOLINT
   // adapter has no align/getResult). run_align below re-aligns the same engine from the same guess,
   // so the align outputs match exactly (deterministic).
   autoware_ndt_scan_matcher_rs_ndt_engine_align(
-    rs.raw_handle(), guess16.data(), src.data(), source->size());
+    engine.raw(), guess16.data(), src.data(), source->size());
   std::array<float, 16> ref_pose{};
   std::int32_t ref_iter = 0;
   float ref_tp = 0.0F;
@@ -160,16 +193,17 @@ TEST(NodeRunAlign, MatchesEngineAlignAndVerdictIsConsistent)  // NOLINT
   ref_out.iteration_num = &ref_iter;
   ref_out.transform_probability = &ref_tp;
   ref_out.nearest_voxel_likelihood = &ref_nvl;
-  autoware_ndt_scan_matcher_rs_ndt_engine_get_result(rs.raw_handle(), &ref_out);
+  autoware_ndt_scan_matcher_rs_ndt_engine_get_result(engine.raw(), &ref_out);
 
   // Orchestrator: re-align the same engine from the same guess via run_align.
   const AwAlignParams params{kTp, 0.0, 0.0};
   AwAlignOutcome outcome{};
   autoware_ndt_scan_matcher_rs_node_run_align(
-    rs.raw_handle(), guess16.data(), src.data(), source->size(), &params, &outcome);
+    engine.raw(), guess16.data(), src.data(), source->size(), &params, &outcome);
 
   EXPECT_EQ(outcome.iteration_num, ref_iter);
-  EXPECT_EQ(outcome.max_iterations, rs.getMaximumIterations());
+  EXPECT_EQ(
+    outcome.max_iterations, autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(engine.raw()));
   EXPECT_FLOAT_EQ(outcome.transform_probability, ref_tp);
   EXPECT_FLOAT_EQ(outcome.nearest_voxel_likelihood, ref_nvl);
   for (int i = 0; i < 16; ++i) {
@@ -192,13 +226,13 @@ TEST(NodeRunAlign, MatchesEngineAlignAndVerdictIsConsistent)  // NOLINT
 TEST(NodeRunAlign, UnknownParamTypeIsInvalid)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  RustEngine engine = make_driven_engine(source);
   const std::array<float, 16> guess16 = {1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1};
   const std::vector<float> src = flatten(*source);
   const AwAlignParams params{2 /* unknown */, 0.0, 0.0};
   AwAlignOutcome outcome{};
   autoware_ndt_scan_matcher_rs_node_run_align(
-    rs.raw_handle(), guess16.data(), src.data(), source->size(), &params, &outcome);
+    engine.raw(), guess16.data(), src.data(), source->size(), &params, &outcome);
   EXPECT_FALSE(outcome.verdict.valid_param_type);
 }
 
@@ -218,7 +252,7 @@ TEST(NodeRunAlign, NullEngineIsNoop)  // NOLINT
 TEST(NodeRunAlign, AlignServiceSearchWritesParticlesAndBestPose)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  RustEngine engine = make_driven_engine(source);
   const std::vector<float> flat = flatten(*source);
   constexpr std::size_t kParticles = 6U;
   std::vector<AwPose> initial_poses(kParticles);
@@ -231,7 +265,7 @@ TEST(NodeRunAlign, AlignServiceSearchWritesParticlesAndBestPose)  // NOLINT
     make_search_output(initial_poses, result_poses, scores, iterations);
 
   const std::int32_t status = autoware_ndt_scan_matcher_rs_node_run_align_service_search(
-    rs.raw_handle(), &input, &output);
+    engine.raw(), &input, &output);
 
   EXPECT_EQ(status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
   EXPECT_EQ(output.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
@@ -254,7 +288,7 @@ TEST(NodeRunAlign, AlignServiceSearchWritesParticlesAndBestPose)  // NOLINT
 TEST(NodeRunAlign, AlignServiceSearchRejectsTooSmallOutputCapacity)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
-  Adapter rs = make_driven_adapter(source);
+  RustEngine engine = make_driven_engine(source);
   const std::vector<float> flat = flatten(*source);
   constexpr std::size_t kCapacity = 2U;
   std::vector<AwPose> initial_poses(kCapacity);
@@ -266,7 +300,7 @@ TEST(NodeRunAlign, AlignServiceSearchRejectsTooSmallOutputCapacity)  // NOLINT
     make_search_output(initial_poses, result_poses, scores, iterations);
 
   const std::int32_t status = autoware_ndt_scan_matcher_rs_node_run_align_service_search(
-    rs.raw_handle(), &input, &output);
+    engine.raw(), &input, &output);
 
   EXPECT_EQ(status, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
   EXPECT_EQ(output.status, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
