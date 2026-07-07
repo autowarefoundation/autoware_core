@@ -77,10 +77,8 @@ class NDTScanMatcher : public rclcpp::Node
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
-#ifndef NDT_USE_RUST
   // The engine type is selected in one place (ndt_backend.hpp); see plan/ndt_in_rust.md (案B).
   using NormalDistributionsTransform = NdtBackend;
-#endif
 
 public:
   explicit NDTScanMatcher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
@@ -126,15 +124,10 @@ private:
       req,
     autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Response::SharedPtr res);
 
-#ifdef NDT_USE_RUST
   std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-    AwNdtAlignServiceTrace * trace = nullptr);
-#else
-  std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
-    const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-    NormalDistributionsTransform & ndt_ref, AwNdtAlignServiceTrace * trace = nullptr);
-#endif
+    AwNdtAlignServiceTrace * trace = nullptr,
+    NormalDistributionsTransform * legacy_ndt_ref = nullptr);
 
   void transform_sensor_measurement(
     const std::string & source_frame, const std::string & target_frame,
@@ -166,20 +159,14 @@ private:
   AwHost make_host();
 #endif
 
-#ifdef NDT_USE_RUST
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-    const float & lower_nvs, const float & upper_nvs);
-
-  void add_regularization_pose(const rclcpp::Time & sensor_ros_time);
-#else
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
-    const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-    const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref);
+    const float & lower_nvs, const float & upper_nvs,
+    NormalDistributionsTransform * legacy_ndt_ref = nullptr);
 
   void add_regularization_pose(
-    const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
-#endif
+    const rclcpp::Time & sensor_ros_time,
+    NormalDistributionsTransform * legacy_ndt_ref = nullptr);
 
   rclcpp::TimerBase::SharedPtr map_update_timer_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;

@@ -26,13 +26,18 @@ using autoware::localization_util::SmartPoseBuffer;
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-  const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
+  const float & lower_nvs, const float & upper_nvs,
+  NormalDistributionsTransform * legacy_ndt_ref)
 {
-  pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i =
-    ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
     new pcl::PointCloud<pcl::PointXYZRGB>};
+  if (legacy_ndt_ref == nullptr) {
+    return nvs_points_in_map_ptr_rgb;
+  }
+  NormalDistributionsTransform & ndt_ref = *legacy_ndt_ref;
 
+  pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i =
+    ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
   const float range = upper_nvs - lower_nvs;
   for (std::size_t i = 0; i < nvs_points_in_map_ptr_i.size(); i++) {
     pcl::PointXYZRGB point;
@@ -50,8 +55,13 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
 }
 
 void NDTScanMatcher::add_regularization_pose(
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
+  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform * legacy_ndt_ref)
 {
+  if (legacy_ndt_ref == nullptr) {
+    return;
+  }
+  NormalDistributionsTransform & ndt_ref = *legacy_ndt_ref;
+
   ndt_ref.unsetRegularizationPose();
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
     regularization_pose_buffer_->interpolate(sensor_ros_time);

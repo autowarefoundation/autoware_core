@@ -39,7 +39,8 @@ std::vector<float> cloud_to_flat(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-  const float & lower_nvs, const float & upper_nvs)
+  const float & lower_nvs, const float & upper_nvs,
+  NormalDistributionsTransform * /*legacy_ndt_ref*/)
 {
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
   const std::vector<float> flat = cloud_to_flat(*sensor_points_in_map_ptr);
@@ -76,7 +77,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   return nvs_points_in_map_ptr_rgb;
 }
 
-void NDTScanMatcher::add_regularization_pose(const rclcpp::Time & sensor_ros_time)
+void NDTScanMatcher::add_regularization_pose(
+  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform * /*legacy_ndt_ref*/)
 {
   autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
     rs_.engine_raw(), 0.0F, 0.0F, 0.0F);

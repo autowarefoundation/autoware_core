@@ -281,7 +281,7 @@ void NDTScanMatcher::service_ndt_align_main(
 
 std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher::align_pose(
   const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-  AwNdtAlignServiceTrace * trace)
+  AwNdtAlignServiceTrace * trace, NormalDistributionsTransform * /*legacy_ndt_ref*/)
 {
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);

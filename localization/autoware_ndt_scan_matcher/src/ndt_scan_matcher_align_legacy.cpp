@@ -25,6 +25,7 @@
 #include <array>
 #include <cmath>
 #include <cstdint>
+#include <limits>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -97,7 +98,8 @@ void NDTScanMatcher::service_ndt_align_main(
       return;
     }
 
-    const auto [pose_with_covariance, score] = align_pose(initial_pose_msg_in_map_frame, *ndt_ptr);
+    const auto [pose_with_covariance, score] =
+      align_pose(initial_pose_msg_in_map_frame, nullptr, ndt_ptr.get());
 
     res->reliable =
       (param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood < score);
@@ -113,10 +115,17 @@ void NDTScanMatcher::service_ndt_align_main(
 
 std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher::align_pose(
   const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-  NormalDistributionsTransform & ndt_ref, AwNdtAlignServiceTrace * /*trace*/)
+  AwNdtAlignServiceTrace * /*trace*/, NormalDistributionsTransform * legacy_ndt_ref)
 {
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
+
+  if (legacy_ndt_ref == nullptr) {
+    geometry_msgs::msg::PoseWithCovarianceStamped failure_pose = initial_pose_with_cov;
+    failure_pose.header.frame_id = param_.frame.map_frame;
+    return std::make_tuple(failure_pose, -std::numeric_limits<double>::infinity());
+  }
+  NormalDistributionsTransform & ndt_ref = *legacy_ndt_ref;
 
   const auto base_rpy = autoware::localization_util::get_rpy(initial_pose_with_cov);
   const Eigen::Map<const autoware::localization_util::RowMatrixXd> covariance = {
