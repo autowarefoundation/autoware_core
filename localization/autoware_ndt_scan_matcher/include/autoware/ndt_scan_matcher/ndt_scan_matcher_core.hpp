@@ -126,12 +126,12 @@ private:
       req,
     autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Response::SharedPtr res);
 
-  // These helpers are implemented by build-selected translation units. The optional legacy engine
-  // pointer preserves the OFF-build lock scope; Rust-selected implementations ignore it.
   std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-    AwNdtAlignServiceTrace * trace = nullptr,
-    NormalDistributionsTransform * legacy_ndt_ref = nullptr);
+    AwNdtAlignServiceTrace * trace = nullptr);
+  std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose_with_legacy_engine(
+    const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
+    NormalDistributionsTransform & ndt_ref);
 
   void transform_sensor_measurement(
     const std::string & source_frame, const std::string & target_frame,
