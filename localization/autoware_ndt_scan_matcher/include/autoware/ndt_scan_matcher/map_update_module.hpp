@@ -59,13 +59,20 @@ class MapUpdateModule
   struct BuilderState
   {
     bool need_rebuild{true};
+#ifndef NDT_USE_RUST
     NdtPtrType secondary_ndt_ptr;
+#endif
   };
 
 public:
+#ifdef NDT_USE_RUST
+  MapUpdateModule(
+    rclcpp::Node * node, HyperParameters::DynamicMapLoading param, AwNdtScanMatcher * rs_handle);
+#else
   MapUpdateModule(
     rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param,
     AwNdtScanMatcher * rs_handle = nullptr);
+#endif
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
@@ -118,9 +125,11 @@ private:
     pcd_loader_client_;
 
   // Lock ordering (OFF, where these are real mutexes): builder_state_ -> ndt_ptr_ and
-  // builder_state_ -> last_update_position_. Under NDT_USE_RUST `ndt_ptr_` is a lock-free Unguarded
-  // handle, so only builder_state_/last_update_position_ are real locks (no engine lock to order).
+  // builder_state_ -> last_update_position_. Under NDT_USE_RUST the live engine is owned by the Rust
+  // node handle, so only builder_state_/last_update_position_ are real locks here.
+#ifndef NDT_USE_RUST
   EngineHolder & ndt_ptr_;
+#endif
   Guarded<BuilderState> builder_state_;
   // Phase 6: the map-update decision state (last-update position + need-rebuild) lives Rust-side on
   // the node handle; this module reads/updates it through the `..._map_update_*` FFIs.

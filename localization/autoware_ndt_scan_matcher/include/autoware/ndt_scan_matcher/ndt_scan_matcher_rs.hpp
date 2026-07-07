@@ -162,6 +162,7 @@ public:
   NDTScanMatcherRS & operator=(NDTScanMatcherRS &&) = delete;
 
   AwNdtScanMatcher * raw() { return handle_; }
+  const AwNdtEngine * engine_raw() const { return autoware_ndt_scan_matcher_rs_engine(handle_); }
 
 private:
   AwNdtScanMatcher * handle_{nullptr};

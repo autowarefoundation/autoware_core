@@ -124,10 +124,15 @@ private:
       req,
     autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Response::SharedPtr res);
 
+#ifdef NDT_USE_RUST
+  std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
+    const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
+    AwNdtAlignServiceTrace * trace = nullptr);
+#else
   std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
     NormalDistributionsTransform & ndt_ref, AwNdtAlignServiceTrace * trace = nullptr);
-
+#endif
 
   void transform_sensor_measurement(
     const std::string & source_frame, const std::string & target_frame,

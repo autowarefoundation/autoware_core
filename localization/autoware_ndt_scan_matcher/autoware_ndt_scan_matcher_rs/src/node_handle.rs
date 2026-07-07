@@ -25,6 +25,7 @@
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+use crate::engine::NdtEngine;
 use crate::ffi::{Error, ffi_boundary_ptr};
 use crate::node::{MapUpdateInput, evaluate_map_update};
 use crate::pose_buffer::{InterpolateResult, PoseBuffer, TimedPoseWithCov};
@@ -71,6 +72,34 @@ pub struct Params {
     pub sensor_points_required_distance: f64,
 }
 
+impl Params {
+    fn make_engine(&self) -> NdtEngine {
+        let engine = NdtEngine::new(self.resolution, self.min_points, self.eig_mult);
+        engine.set_params(
+            self.trans_epsilon,
+            self.step_size,
+            self.resolution,
+            self.max_iterations,
+            self.outlier_ratio,
+            self.num_threads,
+        );
+        engine.set_convergence_params(
+            self.converged_param_type,
+            self.converged_param_transform_probability,
+            self.converged_param_nearest_voxel_transformation_likelihood,
+        );
+        engine.set_covariance_config(
+            self.covariance_estimation_type,
+            self.covariance_scale_factor,
+            self.covariance_temperature,
+            self.output_pose_covariance,
+            &self.initial_pose_offset_model_x,
+            &self.initial_pose_offset_model_y,
+        );
+        engine
+    }
+}
+
 /// Map-update decision state (Phase 6): the position of the last attempted map update, and whether
 /// the next update must rebuild from scratch (set on the first update + whenever the loaded map can
 /// no longer keep up with the lidar range; cleared on a successful update). The C++
@@ -98,6 +127,8 @@ pub struct NdtScanMatcherRs {
     initial_pose_buffer: Mutex<PoseBuffer>,
     /// `Some` iff `params.regularization_enable` (mirrors the C++ conditional buffer creation).
     regularization_buffer: Option<Mutex<PoseBuffer>>,
+    /// The live NDT engine used by Rust-enabled callbacks and map updates.
+    engine: NdtEngine,
     /// Map-update decision state (Phase 6): last-update position + need-rebuild policy.
     map_update_state: Mutex<MapUpdateState>,
     /// Latest sensor cloud transformed into `base_link` by the Rust sensor callback. The align service
@@ -107,6 +138,7 @@ pub struct NdtScanMatcherRs {
 
 impl NdtScanMatcherRs {
     fn new(params: Params) -> Self {
+        let engine = params.make_engine();
         let regularization_buffer = if params.regularization_enable {
             Some(Mutex::new(PoseBuffer::new(
                 params.regularization_pose_timeout_sec,
@@ -125,9 +157,16 @@ impl NdtScanMatcherRs {
             latest_ekf_position: Mutex::new(None),
             initial_pose_buffer,
             regularization_buffer,
+            engine,
             map_update_state: Mutex::new(MapUpdateState::default()),
             latest_sensor_points_base_link: Mutex::new(Vec::new()),
         }
+    }
+
+    /// Borrow the live Rust-owned NDT engine. The returned reference must not outlive `self`.
+    #[must_use]
+    pub(crate) fn engine(&self) -> &NdtEngine {
+        &self.engine
     }
 
     /// Read the activation flag (the C++ `is_activated_`). Relaxed: each callback reads/writes it
@@ -605,6 +644,26 @@ pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_latest_sensor_points_copy(
     points.len()
 }
 
+/// Borrow the Rust-owned live NDT engine from the node handle. The returned pointer is owned by the
+/// handle and must not be freed by C++; it is valid only while `handle` is alive.
+///
+/// # Safety
+/// `handle` must be a valid, live `NdtScanMatcherRs` from `_new`, or null -> null.
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; returns a borrowed engine pointer"
+)]
+#[unsafe(no_mangle)]
+pub unsafe extern "C" fn autoware_ndt_scan_matcher_rs_engine(
+    handle: *const NdtScanMatcherRs,
+) -> *const NdtEngine {
+    if handle.is_null() {
+        return core::ptr::null();
+    }
+    // SAFETY: non-null per the check; caller guarantees a valid, live handle.
+    core::ptr::from_ref(unsafe { &*handle }.engine())
+}
+
 /// Interpolate the regularization pose at `stamp_ns` from the handle's Rust-owned buffer, writing the
 /// result into `*out` and returning `true`; returns `false` (leaving `*out` untouched) if
 /// regularization is disabled or the buffer cannot interpolate (the C++ `if (!opt) return;`). Also
@@ -911,6 +970,7 @@ mod tests {
         assert_eq!(m.params.resolution, 2.0);
         assert_eq!(m.params.num_threads, 4);
         assert_eq!(m.params.output_pose_covariance[35], 2.0);
+        assert_eq!(m.engine().max_iterations(), 30);
         assert_eq!(m.params.initial_pose_offset_model_x, vec![0.0, 0.5, -0.5]);
         assert_eq!(m.params.initial_pose_offset_model_y, vec![0.0, 0.5, 0.5]);
         // Node state starts empty (inactive, no EKF position yet).
@@ -926,6 +986,24 @@ mod tests {
                 .is_none()
         );
         // SAFETY: `handle` is a live pointer from `_new`, freed exactly once here.
+        unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
+    }
+
+    #[test]
+    fn engine_accessor_returns_borrowed_engine_or_null() {
+        let ox: [f64; 0] = [];
+        let oy: [f64; 0] = [];
+        let p = sample_params(&ox, &oy);
+        // SAFETY: valid params.
+        let handle = unsafe { autoware_ndt_scan_matcher_rs_new(&raw const p) };
+        // SAFETY: live handle.
+        let engine = unsafe { autoware_ndt_scan_matcher_rs_engine(handle) };
+        assert!(!engine.is_null());
+        // SAFETY: borrowed engine pointer from a live handle.
+        assert_eq!(unsafe { &*engine }.max_iterations(), 30);
+        // SAFETY: null is explicitly handled.
+        assert!(unsafe { autoware_ndt_scan_matcher_rs_engine(core::ptr::null()) }.is_null());
+        // SAFETY: freed once.
         unsafe { autoware_ndt_scan_matcher_rs_free(handle) };
     }
 

@@ -179,7 +179,9 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
       &NDTScanMatcher::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
     AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), sensor_callback_group);
 
+#ifndef NDT_USE_RUST
   ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
+#endif
 
   initialize_mode_specific_state();
   create_map_update_module();

@@ -44,8 +44,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
   const std::vector<float> flat = cloud_to_flat(*sensor_points_in_map_ptr);
   std::vector<float> scores(sensor_points_in_map_ptr->size(), 0.0F);
+  (void)ndt_ref;
   autoware_ndt_scan_matcher_rs_ndt_engine_calc_nearest_voxel_score_each_point(
-    ndt_ref.raw_handle(), flat.data(), sensor_points_in_map_ptr->size(), scores.data());
+    rs_.engine_raw(), flat.data(), sensor_points_in_map_ptr->size(), scores.data());
   for (std::size_t i = 0; i < sensor_points_in_map_ptr->size(); ++i) {
     if (scores[i] > 0.0F) {
       pcl::PointXYZI p;
@@ -79,8 +80,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
 void NDTScanMatcher::add_regularization_pose(
   const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
 {
+  (void)ndt_ref;
   autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
-    ndt_ref.raw_handle(), 0.0F, 0.0F, 0.0F);
+    rs_.engine_raw(), 0.0F, 0.0F, 0.0F);
   AwInterpolatedPose interpolated{};
   const int64_t stamp_ns = static_cast<rclcpp::Time>(sensor_ros_time).nanoseconds();
   if (!autoware_ndt_scan_matcher_rs_regularization_interpolate(
@@ -88,7 +90,7 @@ void NDTScanMatcher::add_regularization_pose(
     return;
   }
   autoware_ndt_scan_matcher_rs_ndt_engine_set_regularization(
-    ndt_ref.raw_handle(), static_cast<float>(interpolated.position[0]),
+    rs_.engine_raw(), static_cast<float>(interpolated.position[0]),
     static_cast<float>(interpolated.position[1]), param_.ndt.regularization_scale_factor);
 }
 

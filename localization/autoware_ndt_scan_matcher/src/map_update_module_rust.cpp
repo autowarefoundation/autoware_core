@@ -27,12 +27,32 @@
 
 namespace autoware::ndt_scan_matcher
 {
+namespace
+{
+std::vector<std::string> current_map_ids(const AwNdtEngine * engine)
+{
+  std::uint32_t count = 0;
+  std::uint32_t total = 0;
+  autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+    engine, nullptr, 0, nullptr, 0, &count, &total);
+  std::vector<std::uint32_t> lengths(count);
+  std::vector<std::uint8_t> bytes(total);
+  autoware_ndt_scan_matcher_rs_ndt_engine_get_current_map_ids(
+    engine, lengths.data(), count, bytes.data(), total, &count, &total);
+  std::vector<std::string> ids;
+  ids.reserve(count);
+  std::size_t off = 0;
+  for (std::uint32_t i = 0; i < count; ++i) {
+    ids.emplace_back(reinterpret_cast<const char *>(bytes.data()) + off, lengths[i]);
+    off += lengths[i];
+  }
+  return ids;
+}
+}  // namespace
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, EngineHolder & ndt_ptr, HyperParameters::DynamicMapLoading param,
-  AwNdtScanMatcher * rs_handle)
-: ndt_ptr_(ndt_ptr), rs_handle_(rs_handle), logger_(node->get_logger()), clock_(node->get_clock()),
-  param_(param)
+  rclcpp::Node * node, HyperParameters::DynamicMapLoading param, AwNdtScanMatcher * rs_handle)
+: rs_handle_(rs_handle), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
@@ -40,29 +60,11 @@ MapUpdateModule::MapUpdateModule(
   pcd_loader_client_ =
     node->create_client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>("pcd_loader_service");
 
-  auto copied = builder_state_.with([&](auto & builder_state) {
-    // Initially, a direct map update on ndt_ptr_ is needed.
-    // ndt_ptr_'s mutex is locked until it is fully rebuilt.
-    // From the second update, the update is done on secondary_ndt_ptr_,
-    // and ndt_ptr_ is only locked when swapping its pointer with
-    // secondary_ndt_ptr_.
-    builder_state.need_rebuild = true;
-    builder_state.secondary_ndt_ptr.reset(new NdtType);
-
-    return ndt_ptr_.with([&](const auto & ptr) {
-      if (ptr) {
-        *builder_state.secondary_ndt_ptr = *ptr;
-        return true;
-      } else {
-        return false;
-      }
-    });
-  });
-
-  if (!copied) {
+  builder_state_.with([](auto & builder_state) { builder_state.need_rebuild = true; });
+  if (autoware_ndt_scan_matcher_rs_engine(rs_handle_) == nullptr) {
     std::stringstream message;
     message << "Error at MapUpdateModule::MapUpdateModule."
-            << "`ndt_ptr_` is a null NDT pointer.";
+            << "`rs_handle_` does not expose an NDT engine.";
     throw std::runtime_error(message.str());
   }
 }
@@ -123,10 +125,9 @@ void MapUpdateModule::update_map_internal(
 
   MapSourceContext source_ctx{this, need_rebuild, diagnostics_ptr.get(), false};
   const AwMapSource source{&source_ctx, &MapUpdateModule::map_source_fill};
-  ndt_ptr_.with([&](const auto & ndt_ptr) {
-    autoware_ndt_scan_matcher_rs_ndt_engine_update_map(
-      ndt_ptr->raw_handle(), &source, position.x, position.y, param_.map_radius, need_rebuild);
-  });
+  autoware_ndt_scan_matcher_rs_ndt_engine_update_map(
+    autoware_ndt_scan_matcher_rs_engine(rs_handle_), &source, position.x, position.y,
+    param_.map_radius, need_rebuild);
   const bool updated = source_ctx.updated;
 
   // check is_updated_map
@@ -171,7 +172,7 @@ bool MapUpdateModule::build_map_delta(
   // and otherwise clones the live map (cached_ids = its current tiles → the loader returns the delta).
   const std::vector<std::string> cached_ids =
     rebuild ? std::vector<std::string>{}
-            : ndt_ptr_.with([](const auto & ndt_ptr) { return ndt_ptr->getCurrentMapIDs(); });
+            : current_map_ids(autoware_ndt_scan_matcher_rs_engine(rs_handle_));
   diagnostics.add_key_value("maps_size_before", cached_ids.size());
 
   auto request = std::make_shared<autoware_map_msgs::srv::GetDifferentialPointCloudMap::Request>();

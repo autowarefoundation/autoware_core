@@ -98,40 +98,37 @@ bool NDTScanMatcher::callback_sensor_points_main(
   const rclcpp::Time sensor_ros_time = sensor_points_msg_in_sensor_frame->header.stamp;
 
 
-  return ndt_ptr_.with([&](const auto & ndt_ptr) {
-    const AwHost host = make_host();
-    const AwDiagnostics diag = make_diagnostics(diagnostics_scan_points_.get());
-    const AwPointCloud2View view = make_pointcloud2_view(*sensor_points_msg_in_sensor_frame);
-    const AwSensorPointsMatchParams match_params{
-      param_.dynamic_map_loading.lidar_radius,
-      param_.dynamic_map_loading.map_radius,
-      param_.validation.initial_to_result_distance_tolerance_m,
-      param_.ndt.regularization_scale_factor,
-      param_.score_estimation.no_ground_points.enable,
-      param_.score_estimation.no_ground_points.z_margin_for_ground_removal};
+  const AwHost host = make_host();
+  const AwDiagnostics diag = make_diagnostics(diagnostics_scan_points_.get());
+  const AwPointCloud2View view = make_pointcloud2_view(*sensor_points_msg_in_sensor_frame);
+  const AwSensorPointsMatchParams match_params{
+    param_.dynamic_map_loading.lidar_radius,
+    param_.dynamic_map_loading.map_radius,
+    param_.validation.initial_to_result_distance_tolerance_m,
+    param_.ndt.regularization_scale_factor,
+    param_.score_estimation.no_ground_points.enable,
+    param_.score_estimation.no_ground_points.z_margin_for_ground_removal};
 
-    bool is_converged = false;
-    const int32_t status = autoware_ndt_scan_matcher_rs_node_on_sensor_points(
-      rs_.raw(), ndt_ptr->raw_handle(), &host, &diag, &match_params, &view, &is_converged);
-    if (status != 0) {
-      return false;
-    }
+  bool is_converged = false;
+  const int32_t status = autoware_ndt_scan_matcher_rs_node_on_sensor_points(
+    rs_.raw(), rs_.engine_raw(), &host, &diag, &match_params, &view, &is_converged);
+  if (status != 0) {
+    return false;
+  }
 
-    const auto exe_end_time = std::chrono::system_clock::now();
-    const auto duration_micro_sec =
-      std::chrono::duration_cast<std::chrono::microseconds>(exe_end_time - exe_start_time).count();
-    const auto exe_time = static_cast<float>(duration_micro_sec) / 1000.0f;
-    diagnostics_scan_points_->add_key_value("execution_time", exe_time);
-    if (exe_time > param_.validation.critical_upper_bound_exe_time_ms) {
-      std::stringstream message;
-      message << "NDT exe time is too long (took " << exe_time << " [ms]).";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    }
-    exe_time_pub_->publish(make_float32_stamped(sensor_ros_time, exe_time));
-    return is_converged;
-  });
-
+  const auto exe_end_time = std::chrono::system_clock::now();
+  const auto duration_micro_sec =
+    std::chrono::duration_cast<std::chrono::microseconds>(exe_end_time - exe_start_time).count();
+  const auto exe_time = static_cast<float>(duration_micro_sec) / 1000.0f;
+  diagnostics_scan_points_->add_key_value("execution_time", exe_time);
+  if (exe_time > param_.validation.critical_upper_bound_exe_time_ms) {
+    std::stringstream message;
+    message << "NDT exe time is too long (took " << exe_time << " [ms]).";
+    diagnostics_scan_points_->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+  }
+  exe_time_pub_->publish(make_float32_stamped(sensor_ros_time, exe_time));
+  return is_converged;
 }
 
 }  // namespace autoware::ndt_scan_matcher

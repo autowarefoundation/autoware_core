@@ -222,69 +222,66 @@ void NDTScanMatcher::service_ndt_align_main(
   map_update_module_->update_map(
     initial_pose_msg_in_map_frame.pose.pose.position, diagnostics_ndt_align_);
 
-  ndt_ptr_.with([&](auto & ndt_ptr) {
-    bool is_set_map_points =
-      autoware_ndt_scan_matcher_rs_ndt_engine_has_target(ndt_ptr->raw_handle());
-    diagnostics_ndt_align_->add_key_value("is_set_map_points", is_set_map_points);
-    if (!is_set_map_points) {
-      const AwNdtAlignServiceGateAction action =
-        evaluate_align_service_gate(true, false, false, false, 0.0, 0.0, align_service_trace_);
-      const std::string message =
-        align_service_gate_message(action.message_kind, target_frame, source_frame);
-      diagnostics_ndt_align_->update_level_and_message(
-        static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
-        message);
-      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
-      res->success = (action.success != 0U);
-      return;
-    }
+  const AwNdtEngine * engine = rs_.engine_raw();
+  const bool is_set_map_points =
+    autoware_ndt_scan_matcher_rs_ndt_engine_has_target(engine);
+  diagnostics_ndt_align_->add_key_value("is_set_map_points", is_set_map_points);
+  if (!is_set_map_points) {
+    const AwNdtAlignServiceGateAction action =
+      evaluate_align_service_gate(true, false, false, false, 0.0, 0.0, align_service_trace_);
+    const std::string message = align_service_gate_message(action.message_kind, target_frame, source_frame);
+    diagnostics_ndt_align_->update_level_and_message(
+      static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
+      message);
+    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
+    res->success = (action.success != 0U);
+    return;
+  }
 
-    const bool is_set_sensor_points =
-      autoware_ndt_scan_matcher_rs_latest_sensor_points_count(rs_.raw()) > 0U;
-    diagnostics_ndt_align_->add_key_value("is_set_sensor_points", is_set_sensor_points);
-    if (!is_set_sensor_points) {
-      const AwNdtAlignServiceGateAction action =
-        evaluate_align_service_gate(true, true, false, false, 0.0, 0.0, align_service_trace_);
-      const std::string message =
-        align_service_gate_message(action.message_kind, target_frame, source_frame);
-      diagnostics_ndt_align_->update_level_and_message(
-        static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
-        message);
-      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
-      res->success = (action.success != 0U);
-      return;
-    }
+  const bool is_set_sensor_points =
+    autoware_ndt_scan_matcher_rs_latest_sensor_points_count(rs_.raw()) > 0U;
+  diagnostics_ndt_align_->add_key_value("is_set_sensor_points", is_set_sensor_points);
+  if (!is_set_sensor_points) {
+    const AwNdtAlignServiceGateAction action =
+      evaluate_align_service_gate(true, true, false, false, 0.0, 0.0, align_service_trace_);
+    const std::string message = align_service_gate_message(action.message_kind, target_frame, source_frame);
+    diagnostics_ndt_align_->update_level_and_message(
+      static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
+      message);
+    RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message);
+    res->success = (action.success != 0U);
+    return;
+  }
 
-    const AwNdtAlignServiceGateAction ready_action =
-      evaluate_align_service_gate(true, true, true, false, 0.0, 0.0, align_service_trace_);
-    if (ready_action.should_align == 0U) {
-      res->success = false;
-      return;
-    }
+  const AwNdtAlignServiceGateAction ready_action =
+    evaluate_align_service_gate(true, true, true, false, 0.0, 0.0, align_service_trace_);
+  if (ready_action.should_align == 0U) {
+    res->success = false;
+    return;
+  }
 
-    const auto [pose_with_covariance, score] =
-      align_pose(initial_pose_msg_in_map_frame, *ndt_ptr, align_service_trace_);
+  const auto [pose_with_covariance, score] =
+    align_pose(initial_pose_msg_in_map_frame, align_service_trace_);
 
-    static_cast<void>(evaluate_align_service_gate(
-      true, true, true, true, score,
-      param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood,
-      align_service_trace_));
+  static_cast<void>(evaluate_align_service_gate(
+    true, true, true, true, score,
+    param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood,
+    align_service_trace_));
 
-    const AwNdtAlignServiceResponse align_response = assemble_align_service_response(
-      pose_with_covariance, req->pose_with_covariance, score,
-      param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood);
-    append_align_response_trace(align_response, align_service_trace_);
-    apply_align_service_response(align_response, pose_with_covariance.header.frame_id, *res);
-    if (!res->reliable) {
-      RCLCPP_WARN_STREAM(
-        this->get_logger(), "Initial Pose Estimation is Unstable. Score is " << score);
-    }
-  });
+  const AwNdtAlignServiceResponse align_response = assemble_align_service_response(
+    pose_with_covariance, req->pose_with_covariance, score,
+    param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood);
+  append_align_response_trace(align_response, align_service_trace_);
+  apply_align_service_response(align_response, pose_with_covariance.header.frame_id, *res);
+  if (!res->reliable) {
+    RCLCPP_WARN_STREAM(
+      this->get_logger(), "Initial Pose Estimation is Unstable. Score is " << score);
+  }
 }
 
 std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher::align_pose(
   const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-  NormalDistributionsTransform & ndt_ref, AwNdtAlignServiceTrace * trace)
+  AwNdtAlignServiceTrace * trace)
 {
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
@@ -350,7 +347,7 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
 
   const std::int32_t search_status =
     autoware_ndt_scan_matcher_rs_node_run_align_service_search_latest(
-      rs_.raw(), ndt_ref.raw_handle(), &search_input, &search_output);
+      rs_.raw(), rs_.engine_raw(), &search_input, &search_output);
   if (search_status != NDT_ALIGN_SERVICE_STATUS_ALIGNED || search_output.valid == 0U) {
     return return_search_failure(
       "Rust align-service search failed with status " + std::to_string(search_status));
