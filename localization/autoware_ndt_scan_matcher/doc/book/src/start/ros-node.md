@@ -10,8 +10,8 @@ Planned contents:
 - Services: `trigger_node`, `ndt_align`.
 - Key parameters (link to [Parameter reference](../appendix/parameters.md)).
 - Regularization (optional, off by default).
-- How the Rust path is selected at build time (`NDT_USE_RUST`) — pointer to
-  [Porting strategy](../port/strategy.md).
+- How the Rust path is selected at build time (`NDT_USE_RUST`) — see
+  [Build and test](build-and-test.md#selecting-the-backend-c-vs-rust).
 
 > Status: outline (draft to be written).
 > Source: package `README.md`, `config/ndt_scan_matcher.param.yaml`, `launch/`.

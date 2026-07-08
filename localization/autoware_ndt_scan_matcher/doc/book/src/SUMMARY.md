@@ -39,7 +39,6 @@
 
 # Part IV — The C++ to Rust Port
 
-- [Porting strategy and phases](port/strategy.md)
 - [Behavior equivalence and verification](port/verification.md)
     - [Differential testing](port/differential.md)
     - [Trace-based state-machine verification](port/trace-verification.md)
@@ -59,7 +58,6 @@
 - [Lint gates and suppression policy](quality/hardening.md)
 - [Test taxonomy](quality/tests.md)
 - [Benchmarking](quality/benchmarks.md)
-- [Contributing and PR conventions](quality/contributing.md)
 
 # Appendices
 

@@ -11,7 +11,7 @@ Planned contents:
   corresponding thresholds.
 - The per-iteration score traces (`transform_probability_array`, `nearest_voxel_likelihood_array`).
 - The no-ground variants published for diagnostics.
-- Link to [convergence](../port/strategy.md) and [covariance estimation](../arch/covariance.md).
+- How the scores feed convergence and [covariance estimation](../arch/covariance.md).
 
 > Status: outline (draft to be written).
 > Source: `src/convergence.rs`, `src/ndt.rs` (`transformation_probability`,

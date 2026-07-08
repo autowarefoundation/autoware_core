@@ -33,8 +33,7 @@ colcon build --symlink-install \
   --cmake-args -DCMAKE_BUILD_TYPE=Release -DNDT_USE_RUST=ON
 ```
 
-The two backends are selected at the *translation-unit* level (not with in-function `#ifdef`s); see
-[Porting strategy and phases](../port/strategy.md).
+The two backends are selected at the *translation-unit* level (not with in-function `#ifdef`s).
 
 ## Running the tests
 

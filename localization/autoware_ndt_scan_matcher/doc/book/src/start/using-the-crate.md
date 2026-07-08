@@ -98,4 +98,4 @@ rayon backend. The rayon *worker count* is the process-global pool size — set 
 - [`tpe::TreeStructuredParzenEstimator`](../arch/tpe.md) — the align-service pose-search sampler.
 - [`convergence`](../concepts/scores.md), `covariance`, `cov_estimate` — pure decision/estimation
   kernels reused across the ROS and kernel builds.
-- [`pose_buffer`](../port/strategy.md) — a time-ordered pose interpolation buffer.
+- `pose_buffer` — a time-ordered pose interpolation buffer.
