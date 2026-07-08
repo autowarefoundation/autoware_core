@@ -24,6 +24,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
 using autoware::map_loader::PointCloudMapLoaderNode;
 using autoware_map_msgs::srv::GetDifferentialPointCloudMap;
