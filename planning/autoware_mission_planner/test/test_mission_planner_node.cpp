@@ -297,6 +297,18 @@ protected:
     return future.get();
   }
 
+  template <typename ResponseT>
+  void expect_success(const ResponseT & response)
+  {
+    EXPECT_TRUE(response->status.success);
+  }
+
+  template <typename ResponseT>
+  void expect_failure(const ResponseT & response)
+  {
+    EXPECT_FALSE(response->status.success);
+  }
+
   void expect_route_state(const uint8_t expected_state)
   {
     ASSERT_NE(received_state_, nullptr);
@@ -342,7 +354,7 @@ TEST_F(MissionPlannerIntegrationTest, SetLaneletRouteBeforeInitializationReturns
   const auto response = call_set_lanelet_route(FIRST_LANELET_ID, make_pose(40.0, 0.0));
 
   // Assert
-  EXPECT_FALSE(response->status.success);
+  expect_failure(response);
 }
 
 TEST_F(MissionPlannerIntegrationTest, FirstSetLaneletRouteRequestSucceeds)
@@ -357,7 +369,7 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetLaneletRouteRequestSucceeds)
   const auto response = call_set_lanelet_route(FIRST_LANELET_ID, make_pose(40.0, 0.0));
 
   // Assert
-  EXPECT_TRUE(response->status.success);
+  expect_success(response);
   expect_route_state(RouteState::SET);
   expect_route_has_segment(FIRST_LANELET_ID);
 }
@@ -376,7 +388,7 @@ TEST_F(MissionPlannerIntegrationTest, SecondRequestAsSafeRerouteWhileStoppedSucc
   const auto response = call_set_lanelet_route(SECOND_LANELET_ID, make_pose(90.0, 0.0));
 
   // Assert
-  EXPECT_TRUE(response->status.success);
+  expect_success(response);
   expect_route_state(RouteState::SET);
   expect_route_has_segment(SECOND_LANELET_ID);
 }
@@ -390,7 +402,7 @@ TEST_F(MissionPlannerIntegrationTest, SetWaypointRouteBeforeInitializationReturn
   const auto response = call_set_waypoint_route(make_pose(140.0, 0.0));
 
   // Assert
-  EXPECT_FALSE(response->status.success);
+  expect_failure(response);
 }
 
 TEST_F(MissionPlannerIntegrationTest, FirstSetWaypointRouteRequestSucceeds)
@@ -405,7 +417,7 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetWaypointRouteRequestSucceeds)
   const auto response = call_set_waypoint_route(make_pose(90.0, 0.0));
 
   // Assert
-  EXPECT_TRUE(response->status.success);
+  expect_success(response);
   expect_route_state(RouteState::SET);
   expect_route_ends_with_segment(SECOND_LANELET_ID);
 }
@@ -424,7 +436,7 @@ TEST_F(MissionPlannerIntegrationTest, SecondWaypointRequestAsSafeRerouteWhileSto
   const auto response = call_set_waypoint_route(make_pose(60.0, 0.0));
 
   // Assert
-  EXPECT_TRUE(response->status.success);
+  expect_success(response);
   expect_route_state(RouteState::SET);
   expect_route_ends_with_segment(SECOND_LANELET_ID);
 }
