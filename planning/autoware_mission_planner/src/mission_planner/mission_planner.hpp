@@ -67,10 +67,23 @@ class MissionPlanner : public rclcpp::Node
 {
 public:
   explicit MissionPlanner(const rclcpp::NodeOptions & options);
+
+private:
+  // Publishes the processing time on destruction, regardless of which return path is taken.
+  class ScopedProcessingTimePublisher
+  {
+  public:
+    explicit ScopedProcessingTimePublisher(MissionPlanner & node) : node_(node) {}
+    ~ScopedProcessingTimePublisher() { node_.publish_processing_time(stop_watch_); }
+
+  private:
+    MissionPlanner & node_;
+    autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
+  };
+
   void publish_processing_time(
     autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
 
-private:
   ArrivalChecker arrival_checker_;
   pluginlib::ClassLoader<PlannerPlugin> plugin_loader_;
   std::shared_ptr<PlannerPlugin> planner_;
