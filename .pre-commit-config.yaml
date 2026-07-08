@@ -119,3 +119,13 @@ repos:
     hooks:
       - id: hadolint
         exclude: .svg$
+
+  - repo: local
+    hooks:
+      - id: interface-spec-lint
+        name: interface-spec-lint (WARN)
+        entry: python3 common/autoware_interface_spec_lint/scripts/run_lint.py --warn-only
+        language: system
+        files: ^.*/autoware_component_interface_specs/include/.*\.hpp$
+        pass_filenames: false
+        verbose: true
