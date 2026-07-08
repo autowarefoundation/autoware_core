@@ -21,7 +21,7 @@ import yaml
 
 
 def launch_setup(context, *args, **kwargs):
-    param_file = LaunchConfiguration("param_file").perform(context)
+    param_file = LaunchConfiguration("global_parameter_loader_param_file").perform(context)
     with open(param_file, "r") as f:
         params = yaml.safe_load(f)["/**"]["ros__parameters"]
     return [SetParameter(name=k, value=v) for k, v in params.items()]
@@ -30,7 +30,7 @@ def launch_setup(context, *args, **kwargs):
 def generate_launch_description():
     return LaunchDescription(
         [
-            DeclareLaunchArgument("param_file"),
+            DeclareLaunchArgument("global_parameter_loader_param_file"),
             OpaqueFunction(function=launch_setup),
         ]
     )

@@ -49,7 +49,10 @@ def launch_setup(context, *args, **kwargs):
                 [FindPackageShare("autoware_global_parameter_loader"), "/launch/loader.launch.py"]
             ),
             launch_arguments={
-                "param_file": [vehicle_description_pkg, "/config/control_unit_info.param.yaml"]
+                "global_parameter_loader_param_file": [
+                    vehicle_description_pkg,
+                    "/config/control_unit_info.param.yaml",
+                ]
             }.items(),
         )
         actions.append(load_control_unit_info)
