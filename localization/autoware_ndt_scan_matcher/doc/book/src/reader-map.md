@@ -19,5 +19,5 @@ rest.
 - **`Aw*`** names are C-ABI FFI types; **`Ndt*` / `ScanMatcher`** are Rust-side types.
 - **TP** = transform probability, **NVTL** = nearest-voxel transformation likelihood
   (see the [Glossary](appendix/glossary.md)).
-- Chapters marked *Status: outline* are stubs to be expanded; their bullet lists show the
-  intended contents and the source material they will distill.
+- Each chapter ends with a **Source** note listing the in-tree files it distills, so a reader can go
+  from the prose to the authoritative code.

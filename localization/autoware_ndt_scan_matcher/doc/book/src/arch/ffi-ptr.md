@@ -1,14 +1,31 @@
 # ffi_ptr helpers and guard macros
 
-The single audited home for raw-pointer dereferences at the boundary (`src/ffi_ptr.rs`).
+Every raw-pointer dereference at the boundary goes through one audited module, `src/ffi_ptr.rs`.
+There are no ad-hoc `unsafe { *ptr }` sites elsewhere in the crate — so the soundness argument for
+foreign pointers lives in exactly one file.
 
-Planned contents:
+## Guard macros
 
-- Why every deref is centralized: one file holds the soundness argument.
-- The guard macros `ffi_ref!`, `ffi_mut!`, `ffi_slice!` — null handling via the `else` arm.
-- Helper functions (e.g. `write_out`) and their contracts.
-- `core + alloc` only (not `std`-gated) so the `no_std` FFI shares them.
-- How this maps to the 26 FFI soundness rules.
+The macros borrow a foreign pointer and run an `else` arm on null (no panic), so callers write a
+total function:
 
-> Status: outline (draft to be written).
+```rust,ignore
+let input = ffi_ref!(input_ptr, else return AwStatus::NullPtr);      // &T   (null -> else)
+let out   = ffi_mut!(out_ptr,   else return AwStatus::NullPtr);      // &mut T
+let src   = ffi_slice!(ptr, len, [f32; 3], else return STATUS_ERR);  // &[T] from ptr + len
+let buf   = ffi_mut_slice!(ptr, len, else return STATUS_ERR);        // &mut [T]
+let val   = ffi_read!(ptr, else return);                             // read a Copy value out
+```
+
+Under the hood they wrap the documented helpers `as_ref` / `as_mut` (thin, audited wrappers over
+`<*const T>::as_ref` / `as_mut`, which already null-check), plus `write_out` (write a value through
+an `*mut T`, no-op on null) and `into_handle` (box a value into an owned `*mut T`).
+
+## Why centralize
+
+Each macro carries the module's "master contract" (non-null-or-handled, aligned, initialized, valid
+for the borrow's lifetime, unique for `_mut`). Concentrating the derefs means a reviewer audits one
+module against the [26 FFI soundness rules](ffi-boundary.md) instead of every call site. The module
+is `core + alloc` only (not `std`-gated), because FFI functions exist in the `no_std` build too.
+
 > Source: `src/ffi_ptr.rs`.

@@ -1,17 +1,32 @@
 # Map update
 
-How the target map is updated at runtime without disturbing concurrent alignment.
+How the target map is refreshed at runtime without disturbing concurrent alignment.
 
-Planned contents:
+## Policy and state (Rust-owned)
 
-- The policy/state Rust owns (`MapUpdateState`: `last_update_position`, `loaded_map_ids`,
-  `need_rebuild`); first-update + keep-up decisions; out-of-range check.
-- `apply_map_update`: async `MapSource::load` → build on a **private staging engine** →
-  `commit_from` atomic swap. Empty-delta no-op.
-- Incremental (`clone`) vs rebuild (`clone_empty`, the `need_rebuild` path).
-- The C++ / Rust split: C++ keeps the pcd-loader service I/O + tile apply + debug-map publish;
-  Rust owns the decision/state.
+`MapUpdateState` holds the map-update decision state: `last_update_position`, whether the next update
+must `need_rebuild`, and the loaded cell ids live in the engine. Rust decides *when* an update is
+needed (first update, and whenever the vehicle has moved far enough that the loaded map can no longer
+cover the LiDAR range) and whether a full rebuild is required.
 
-> Status: outline (draft to be written).
+## The atomic commit
+
+`scan_matcher::apply_map_update` performs:
+
+1. `source.load(center, radius).await` — fetch the delta through the async [`MapSource`](host-vtable.md)
+   port (empty delta ⇒ no-op, no republish).
+2. Build the new map on a **private staging engine** — `engine.clone()` for an incremental update, or
+   `engine.clone_empty()` for a rebuild — apply the added/removed tiles, and `create_kdtree()`.
+3. `engine.commit_from(&staging)` — one atomic store publishes the fully-built map.
+
+Because the map is built off to the side and swapped in with a single atomic step
+([Concurrency](concurrency.md)), a concurrent align never observes a partial or kd-tree-less map.
+
+## C++ / Rust split
+
+Rust owns the decision/state and the staging build; C++ keeps the ROS pcd-loader service I/O, the
+tile-apply, and the debug-map publish (`node_map_update.rs` bridges the C-ABI map-source vtable to
+the async port).
+
 > Source: `src/scan_matcher.rs` (`apply_map_update`), `src/node_map_update.rs`, `src/engine.rs`
-> (`commit_from`, `clone_empty`).
+> (`commit_from`, `clone_empty`), `src/node_handle.rs` (`MapUpdateState`).
