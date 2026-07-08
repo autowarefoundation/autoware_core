@@ -1,0 +1,159 @@
+{
+  "owner": "autowarefoundation",
+  "interfaces": [
+    {
+      "domain": "control",
+      "interface": "/control/command/control_cmd",
+      "type": "autoware_control_msgs/msg/Control",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "localization",
+      "interface": "/localization/initialize",
+      "type": "autoware_localization_msgs/srv/InitializeLocalization",
+      "kind": "service",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "localization",
+      "interface": "/localization/initialization_state",
+      "type": "autoware_adapi_v1_msgs/msg/LocalizationInitializationState",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "localization",
+      "interface": "/localization/kinematic_state",
+      "type": "nav_msgs/msg/Odometry",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "localization",
+      "interface": "/localization/acceleration",
+      "type": "geometry_msgs/msg/AccelWithCovarianceStamped",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "map",
+      "interface": "/map/map_projector_info",
+      "type": "autoware_map_msgs/msg/MapProjectorInfo",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "map",
+      "interface": "/map/point_cloud_map",
+      "type": "sensor_msgs/msg/PointCloud2",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "map",
+      "interface": "/map/vector_map",
+      "type": "autoware_map_msgs/msg/LaneletMapBin",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "perception",
+      "interface": "/perception/object_recognition/objects",
+      "type": "autoware_perception_msgs/msg/PredictedObjects",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "planning",
+      "interface": "/planning/set_lanelet_route",
+      "type": "autoware_planning_msgs/srv/SetLaneletRoute",
+      "kind": "service",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "planning",
+      "interface": "/planning/set_waypoint_route",
+      "type": "autoware_planning_msgs/srv/SetWaypointRoute",
+      "kind": "service",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "planning",
+      "interface": "/planning/clear_route",
+      "type": "autoware_planning_msgs/srv/ClearRoute",
+      "kind": "service",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "planning",
+      "interface": "/planning/route_state",
+      "type": "autoware_planning_msgs/msg/RouteState",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "planning",
+      "interface": "/planning/route",
+      "type": "autoware_planning_msgs/msg/LaneletRoute",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "planning",
+      "interface": "/planning/trajectory",
+      "type": "autoware_planning_msgs/msg/Trajectory",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "system",
+      "interface": "/system/operation_mode/change_autoware_control",
+      "type": "autoware_system_msgs/srv/ChangeAutowareControl",
+      "kind": "service",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "system",
+      "interface": "/system/operation_mode/change_operation_mode",
+      "type": "autoware_system_msgs/srv/ChangeOperationMode",
+      "kind": "service",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "system",
+      "interface": "/system/operation_mode/state",
+      "type": "autoware_adapi_v1_msgs/msg/OperationModeState",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "vehicle",
+      "interface": "/vehicle/status/steering_status",
+      "type": "autoware_vehicle_msgs/msg/SteeringReport",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "vehicle",
+      "interface": "/vehicle/status/gear_status",
+      "type": "autoware_vehicle_msgs/msg/GearReport",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "vehicle",
+      "interface": "/vehicle/status/turn_indicators_status",
+      "type": "autoware_vehicle_msgs/msg/TurnIndicatorsReport",
+      "kind": "topic",
+      "version": "0.1.0"
+    },
+    {
+      "domain": "vehicle",
+      "interface": "/vehicle/status/hazard_lights_status",
+      "type": "autoware_vehicle_msgs/msg/HazardLightsReport",
+      "kind": "topic",
+      "version": "0.1.0"
+    }
+  ]
+}

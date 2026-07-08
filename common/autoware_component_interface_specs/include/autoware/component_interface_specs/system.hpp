@@ -15,12 +15,15 @@
 #ifndef AUTOWARE__COMPONENT_INTERFACE_SPECS__SYSTEM_HPP_
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__SYSTEM_HPP_
 
+#include <autoware/component_interface_specs/version.hpp>
 #include <rclcpp/qos.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/mrm_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_system_msgs/srv/change_autoware_control.hpp>
 #include <autoware_system_msgs/srv/change_operation_mode.hpp>
+
+#include <tuple>
 
 namespace autoware::component_interface_specs::system
 {
@@ -45,6 +48,18 @@ struct OperationModeState
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
 };
+
+static constexpr Version version{0, 1, 0};
+
+using Specs = std::tuple<ChangeAutowareControl, ChangeOperationMode, OperationModeState>;
+
+/// ADL hook: lets consumers resolve this domain's version from any spec type
+/// defined in this namespace (used by spec_version<Spec>()).
+template <class Spec>
+constexpr Version resolve_domain_version(const Spec &) noexcept
+{
+  return version;
+}
 
 }  // namespace autoware::component_interface_specs::system
 

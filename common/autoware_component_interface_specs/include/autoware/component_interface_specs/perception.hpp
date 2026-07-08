@@ -16,9 +16,12 @@
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__PERCEPTION_HPP_
 
 #include <autoware/component_interface_specs/utils.hpp>
+#include <autoware/component_interface_specs/version.hpp>
 #include <rclcpp/qos.hpp>
 
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
+
+#include <tuple>
 
 namespace autoware::component_interface_specs::perception
 {
@@ -31,6 +34,18 @@ struct ObjectRecognition
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
+
+static constexpr Version version{0, 1, 0};
+
+using Specs = std::tuple<ObjectRecognition>;
+
+/// ADL hook: lets consumers resolve this domain's version from any spec type
+/// defined in this namespace (used by spec_version<Spec>()).
+template <class Spec>
+constexpr Version resolve_domain_version(const Spec &) noexcept
+{
+  return version;
+}
 
 }  // namespace autoware::component_interface_specs::perception
 
