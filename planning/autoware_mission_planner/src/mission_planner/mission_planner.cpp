@@ -48,6 +48,14 @@ void set_fail_response(
   res->status.code = code;
   res->status.message = message;
 }
+
+void set_success_response(
+  const ClearRoute::Response::SharedPtr & res, const uint16_t code, const std::string & message)
+{
+  res->status.success = true;
+  res->status.code = code;
+  res->status.message = message;
+}
 }  // namespace
 
 MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
@@ -199,9 +207,7 @@ void MissionPlanner::on_clear_route(
 
   if (!is_mission_planner_ready_) {
     using ResponseCode = autoware_adapi_v1_msgs::msg::ResponseStatus;
-    res->status.success = true;
-    res->status.code = ResponseCode::NO_EFFECT;
-    res->status.message = "The mission planner is not ready.";
+    set_success_response(res, ResponseCode::NO_EFFECT, "The mission planner is not ready.");
     return;
   }
 
