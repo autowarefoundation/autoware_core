@@ -1214,6 +1214,55 @@ mod tests {
         assert_eq!(d_none.hessian, d_zero.hessian);
     }
 
+    // The complement: a nonzero-scale regularization toward a distant reference pose must actually
+    // change the score and gradient (the `finalize` reg term is exercised, not just executed).
+    #[test]
+    fn nonzero_regularization_changes_derivatives() {
+        let map = test_map();
+        let source = test_source();
+        let g = gauss_constants(0.55, 1.0);
+        let p = Vector6::new(0.05, -0.03, 0.02, 0.04, -0.02, 0.03);
+        let trans = transform_cloud(&source, &p);
+        let mut ws = AlignWorkspace::new();
+
+        let d_none = compute_derivatives(
+            &map,
+            &source,
+            &trans,
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &g,
+                reg: None,
+            },
+            &mut ws,
+        );
+        let reg = Regularization {
+            pose_xy: [5.0, 5.0],
+            scale_factor: 1.0,
+        };
+        let d_reg = compute_derivatives(
+            &map,
+            &source,
+            &trans,
+            &p,
+            &ScoreConfig {
+                resolution: 1.0,
+                gauss: &g,
+                reg: Some(&reg),
+            },
+            &mut ws,
+        );
+        assert!(
+            (d_reg.score - d_none.score).abs() > 1e-9,
+            "reg must change the score"
+        );
+        assert!(
+            (d_reg.gradient - d_none.gradient).norm() > 1e-9,
+            "reg must change the gradient"
+        );
+    }
+
     // ---- align ----
 
     // Target points spread in 3D (constrains translation), built into a map; the originals are

@@ -2000,3 +2000,258 @@ mod tests {
         expect_f64_array_bits_eq(&out.covariance, &input_ok.request_covariance);
     }
 }
+
+// align-service search loop (`run_align_service_search_impl`) — own module so it can relax the
+// test-only lints (expect/unwrap, similar short buffer names, direct unsafe FFI calls).
+#[cfg(test)]
+#[allow(
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::similar_names,
+    clippy::indexing_slicing,
+    clippy::arithmetic_side_effects,
+    unsafe_code,
+    clippy::allow_attributes,
+    reason = "test code"
+)]
+mod search_loop_tests {
+    use super::*;
+
+    const ZERO_POSE: AwPose = AwPose {
+        position: [0.0; 3],
+        orientation: [0.0, 0.0, 0.0, 1.0],
+    };
+
+    // Engine with two dense voxel clusters (>= `min_points` each) so `run_align` yields finite NVTL.
+    fn search_engine() -> (NdtEngine, Vec<[f32; 3]>) {
+        let mut cloud: Vec<[f32; 3]> = Vec::new();
+        for &(cx, cy, cz) in &[(0.5_f32, 0.5, 0.5), (4.5, 0.5, 0.5)] {
+            for i in 0..12_u8 {
+                let d = f32::from(i) * 0.02;
+                cloud.push([cx + d, cy - d, cz + d]);
+            }
+        }
+        let engine = NdtEngine::new(1.0, 6, 0.01);
+        engine.set_params(0.01, 0.1, 1.0, 30, 0.55, 1);
+        engine.add_target(&cloud, 0);
+        engine.create_kdtree();
+        let source = cloud.clone();
+        (engine, source)
+    }
+
+    fn search_input(source_len: usize, particles_num: i64) -> AwNdtAlignServiceSearchInput {
+        let mut covariance = [0.0_f64; 36];
+        covariance[0] = 0.25; // x variance
+        covariance[7] = 0.25; // y variance
+        covariance[14] = 0.25; // z variance
+        covariance[21] = 0.0003; // roll variance (~ (1 deg)^2)
+        covariance[28] = 0.0003; // pitch variance
+        AwNdtAlignServiceSearchInput {
+            position: [0.0, 0.0, 0.0],
+            orientation: [0.0, 0.0, 0.0, 1.0],
+            covariance,
+            particles_num,
+            n_startup_trials: 5,
+            reliable_score_threshold: 2.0,
+            source_points: core::ptr::null(),
+            source_points_len: source_len,
+        }
+    }
+
+    #[test]
+    fn search_impl_selects_best_and_is_deterministic() {
+        let (engine, source) = search_engine();
+        let input = search_input(source.len(), 5);
+        let run = || {
+            let mut ip = [ZERO_POSE; 5];
+            let mut rp = [ZERO_POSE; 5];
+            let mut sc = [0.0_f64; 5];
+            let mut it = [0_i32; 5];
+            let out = run_align_service_search_impl(
+                &engine, &input, &source, &mut ip, &mut rp, &mut sc, &mut it,
+            )
+            .expect("search succeeds for a valid engine + input");
+            (out, sc)
+        };
+        let (out, sc) = run();
+        assert_eq!(out.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
+        assert_eq!(out.valid, 1);
+        assert_eq!(out.particles_len, 5);
+        assert_eq!(out.particles_requested, 5);
+        assert_eq!(out.particles_evaluated, 5);
+        assert_eq!(out.cloud_publish_count, 5);
+        assert_eq!(out.marker_publish_count, marker_publish_count(5));
+        // best_score is the max over the per-particle scores (the impl selects by `>`, so it is
+        // bit-identical to one of them).
+        let max_bits = sc.iter().copied().fold(f64::NEG_INFINITY, f64::max).to_bits();
+        assert_eq!(out.best_score.to_bits(), max_bits);
+        // Fixed TPE seed + deterministic engine => identical result across runs.
+        let (out2, _) = run();
+        assert_eq!(out2.best_score.to_bits(), out.best_score.to_bits());
+        assert_eq!(
+            out2.best_pose.position.map(f64::to_bits),
+            out.best_pose.position.map(f64::to_bits)
+        );
+        assert_eq!(
+            out2.best_pose.orientation.map(f64::to_bits),
+            out.best_pose.orientation.map(f64::to_bits)
+        );
+    }
+
+    #[test]
+    fn search_impl_rejects_invalid_input() {
+        let (engine, source) = search_engine();
+        let mut ip = [ZERO_POSE; 5];
+        let mut rp = [ZERO_POSE; 5];
+        let mut sc = [0.0_f64; 5];
+        let mut it = [0_i32; 5];
+
+        let call = |input: &AwNdtAlignServiceSearchInput,
+                    src: &[[f32; 3]],
+                    ip: &mut [AwPose],
+                    rp: &mut [AwPose],
+                    sc: &mut [f64],
+                    it: &mut [i32]| {
+            run_align_service_search_impl(&engine, input, src, ip, rp, sc, it)
+        };
+
+        // particles_num <= 0
+        assert!(
+            call(&search_input(source.len(), 0), &source, &mut ip, &mut rp, &mut sc, &mut it)
+                .is_none()
+        );
+        // empty source
+        assert!(
+            call(&search_input(0, 5), &[], &mut ip, &mut rp, &mut sc, &mut it).is_none()
+        );
+        // non-finite position
+        let mut bad_pos = search_input(source.len(), 5);
+        bad_pos.position[0] = f64::NAN;
+        assert!(call(&bad_pos, &source, &mut ip, &mut rp, &mut sc, &mut it).is_none());
+        // non-finite stddev (negative covariance diagonal -> sqrt NaN)
+        let mut bad_cov = search_input(source.len(), 5);
+        bad_cov.covariance[0] = -1.0;
+        assert!(call(&bad_cov, &source, &mut ip, &mut rp, &mut sc, &mut it).is_none());
+        // zero quaternion -> initial_rpy None
+        let mut bad_quat = search_input(source.len(), 5);
+        bad_quat.orientation = [0.0, 0.0, 0.0, 0.0];
+        assert!(call(&bad_quat, &source, &mut ip, &mut rp, &mut sc, &mut it).is_none());
+        // output buffers too small for particles_num
+        let mut small_ip = [ZERO_POSE; 3];
+        let mut small_rp = [ZERO_POSE; 3];
+        let mut small_sc = [0.0_f64; 3];
+        let mut small_it = [0_i32; 3];
+        assert!(
+            call(
+                &search_input(source.len(), 5),
+                &source,
+                &mut small_ip,
+                &mut small_rp,
+                &mut small_sc,
+                &mut small_it,
+            )
+            .is_none()
+        );
+    }
+
+    #[test]
+    fn initial_rpy_and_marker_count_helpers() {
+        // Identity quaternion -> zero roll/pitch.
+        let mut id = search_input(0, 1);
+        id.orientation = [0.0, 0.0, 0.0, 1.0];
+        let (roll, pitch) = initial_rpy(&id).expect("identity quaternion is valid");
+        assert!(roll.abs() < 1e-12 && pitch.abs() < 1e-12);
+        // Zero quaternion is rejected.
+        let mut zero = search_input(0, 1);
+        zero.orientation = [0.0, 0.0, 0.0, 0.0];
+        assert!(initial_rpy(&zero).is_none());
+        // Publish count: interval is max(n/20, 1); for n <= 20 every particle publishes.
+        assert_eq!(marker_publish_count(5), 5);
+        assert_eq!(marker_publish_count(1), 1);
+        assert_eq!(marker_publish_count(0), 0);
+    }
+
+    fn call_search_ffi(
+        engine: *const NdtEngine,
+        input: *const AwNdtAlignServiceSearchInput,
+        out: *mut AwNdtAlignServiceSearchOutput,
+    ) -> i32 {
+        // SAFETY: each call site passes either a null pointer (to check the guard) or valid local
+        // POD + engine references / caller-owned buffers that outlive the call.
+        unsafe { autoware_ndt_scan_matcher_rs_node_run_align_service_search(engine, input, out) }
+    }
+
+    #[test]
+    fn search_ffi_guards_pointers_and_capacity() {
+        let (engine, source) = search_engine();
+        let mut input = search_input(source.len(), 5);
+        input.source_points = source.as_ptr().cast::<f32>();
+
+        let mut ip = [ZERO_POSE; 5];
+        let mut rp = [ZERO_POSE; 5];
+        let mut sc = [0.0_f64; 5];
+        let mut it = [0_i32; 5];
+        let mut make_out = |cap: usize| AwNdtAlignServiceSearchOutput {
+            status: 123,
+            valid: 9,
+            particles_len: 0,
+            particles_capacity: cap,
+            initial_poses: ip.as_mut_ptr(),
+            result_poses: rp.as_mut_ptr(),
+            scores: sc.as_mut_ptr(),
+            iterations: it.as_mut_ptr(),
+            source_points: core::ptr::null_mut(),
+            source_points_capacity: 0,
+            source_points_len: 0,
+            best_pose: ZERO_POSE,
+            best_score: 0.0,
+            best_iteration: 0,
+            particles_requested: 0,
+            particles_evaluated: 0,
+            marker_publish_count: 0,
+            cloud_publish_count: 0,
+        };
+
+        // null engine / input / out -> INVALID_INPUT.
+        let mut out = make_out(5);
+        assert_eq!(
+            call_search_ffi(core::ptr::null(), &raw const input, &raw mut out),
+            NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT
+        );
+        assert_eq!(
+            call_search_ffi(&raw const engine, core::ptr::null(), &raw mut out),
+            NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT
+        );
+        assert_eq!(
+            call_search_ffi(&raw const engine, &raw const input, core::ptr::null_mut()),
+            NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT
+        );
+
+        // capacity smaller than particles_num -> INVALID_INPUT, and set_search_invalid ran.
+        let mut small = make_out(3);
+        assert_eq!(
+            call_search_ffi(&raw const engine, &raw const input, &raw mut small),
+            NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT
+        );
+        assert_eq!(small.valid, 0);
+
+        // null source pointer -> INVALID_INPUT.
+        let mut null_src = input;
+        null_src.source_points = core::ptr::null();
+        let mut out_ns = make_out(5);
+        assert_eq!(
+            call_search_ffi(&raw const engine, &raw const null_src, &raw mut out_ns),
+            NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT
+        );
+
+        // happy path -> ALIGNED + output written.
+        let mut ok = make_out(5);
+        assert_eq!(
+            call_search_ffi(&raw const engine, &raw const input, &raw mut ok),
+            NDT_ALIGN_SERVICE_STATUS_ALIGNED
+        );
+        assert_eq!(ok.valid, 1);
+        assert_eq!(ok.particles_len, 5);
+        assert_eq!(ok.marker_publish_count, marker_publish_count(5));
+    }
+}

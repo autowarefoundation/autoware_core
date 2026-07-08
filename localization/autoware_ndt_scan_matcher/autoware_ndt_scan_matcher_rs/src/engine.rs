@@ -2578,4 +2578,79 @@ mod tests {
         }
         assert_eq!(c2, 99);
     }
+
+    // #2: set_regularization must fold into the align path and shift the converged pose.
+    #[test]
+    fn set_regularization_changes_align_result() {
+        let (engine, source) = two_tile_engine();
+        let guess = Matrix4::<f32>::identity();
+        let mut scratch = MatchScratch::new();
+
+        engine.set_regularization(0.0, 0.0, 0.0); // cleared (scale 0 => None)
+        engine.align_with(&guess, &source, &mut scratch);
+        let pose_none = scratch.result().pose;
+
+        engine.set_regularization(5.0, 5.0, 10.0); // strong pull toward (5, 5)
+        engine.align_with(&guess, &source, &mut scratch);
+        let pose_reg = scratch.result().pose;
+
+        assert!(
+            (pose_reg - pose_none).norm() > 1e-4_f32,
+            "regularization must fold into align_with and shift the result"
+        );
+    }
+
+    // #3: the self-contained estimate_covariance wrapper must equal a manual composition — pinning
+    // its rot3x3 extraction from the result pose + the covariance-config plumbing.
+    #[test]
+    fn estimate_covariance_wrapper_matches_manual_composition() {
+        let (engine, source, _pose) = aligned_engine();
+        engine.set_covariance_config(2, 2.0, 0.1, out_cov(), &COV_OX, &COV_OY);
+        // A result pose with a clear yaw so the rot3x3 extraction is actually exercised.
+        let result_pose =
+            crate::transform::se3_matrix_f32(&nalgebra::Vector6::new(0.1, 0.2, 0.0, 0.0, 0.0, 0.5));
+
+        let wrapped = engine.estimate_covariance(
+            &result_pose,
+            &Matrix6::zeros(),
+            &Matrix4::identity(),
+            &source,
+            1.0,
+            &mut MatchScratch::new(),
+        );
+
+        // Manual composition: the wrapper builds rot3x3 (row-major) from the pose and reads the same
+        // params from the engine's covariance config.
+        let rot3x3 = [
+            f64::from(result_pose[(0, 0)]),
+            f64::from(result_pose[(0, 1)]),
+            f64::from(result_pose[(0, 2)]),
+            f64::from(result_pose[(1, 0)]),
+            f64::from(result_pose[(1, 1)]),
+            f64::from(result_pose[(1, 2)]),
+            f64::from(result_pose[(2, 0)]),
+            f64::from(result_pose[(2, 1)]),
+            f64::from(result_pose[(2, 2)]),
+        ];
+        let params = CovEstimationParams {
+            estimation_type: 2,
+            scale_factor: 2.0,
+            temperature: 0.1,
+            main_nvtl: 1.0,
+            output_pose_covariance: out_cov(),
+            map_to_base_link_rot3x3: rot3x3,
+        };
+        let manual = estimate_pose_covariance(
+            &engine,
+            &result_pose,
+            &[0.0; 36],
+            &Matrix4::identity(),
+            &source,
+            &COV_OX,
+            &COV_OY,
+            &params,
+            &mut MatchScratch::new(),
+        );
+        assert_eq!(wrapped.ndt_covariance, manual.ndt_covariance);
+    }
 }
