@@ -354,6 +354,7 @@ TEST_F(MissionPlannerIntegrationTest, SetLaneletRouteBeforeInitializationReturns
   const auto response = call_set_lanelet_route(FIRST_LANELET_ID, make_pose(40.0, 0.0));
 
   // Assert
+  // Request must fail before the node has received map/odometry/operation mode state
   expect_failure(response);
 }
 
@@ -369,6 +370,8 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetLaneletRouteRequestSucceeds)
   const auto response = call_set_lanelet_route(FIRST_LANELET_ID, make_pose(40.0, 0.0));
 
   // Assert
+  // Once the node is fully initialized, the first route request must succeed and the
+  // resulting route/state must reflect the requested goal lanelet.
   expect_success(response);
   expect_route_state(RouteState::SET);
   expect_route_has_segment(FIRST_LANELET_ID);
@@ -388,6 +391,8 @@ TEST_F(MissionPlannerIntegrationTest, SecondRequestAsSafeRerouteWhileStoppedSucc
   const auto response = call_set_lanelet_route(SECOND_LANELET_ID, make_pose(90.0, 0.0));
 
   // Assert
+  // A reroute requested while the vehicle is stopped (a "safe reroute") must succeed and
+  // replace the previously set route with the new goal lanelet.
   expect_success(response);
   expect_route_state(RouteState::SET);
   expect_route_has_segment(SECOND_LANELET_ID);
@@ -402,6 +407,7 @@ TEST_F(MissionPlannerIntegrationTest, SetWaypointRouteBeforeInitializationReturn
   const auto response = call_set_waypoint_route(make_pose(140.0, 0.0));
 
   // Assert
+  // Request must fail before the node has received map/odometry/operation mode state
   expect_failure(response);
 }
 
@@ -417,6 +423,8 @@ TEST_F(MissionPlannerIntegrationTest, FirstSetWaypointRouteRequestSucceeds)
   const auto response = call_set_waypoint_route(make_pose(90.0, 0.0));
 
   // Assert
+  // A waypoint-based route request must succeed once the node is initialized, and the
+  // planned route must end at the lanelet containing the requested goal pose.
   expect_success(response);
   expect_route_state(RouteState::SET);
   expect_route_ends_with_segment(SECOND_LANELET_ID);
@@ -436,6 +444,8 @@ TEST_F(MissionPlannerIntegrationTest, SecondWaypointRequestAsSafeRerouteWhileSto
   const auto response = call_set_waypoint_route(make_pose(60.0, 0.0));
 
   // Assert
+  // A waypoint-based reroute requested while the vehicle is stopped (a "safe reroute") must
+  // succeed and replace the previous route with one ending at the new goal lanelet.
   expect_success(response);
   expect_route_state(RouteState::SET);
   expect_route_ends_with_segment(SECOND_LANELET_ID);
