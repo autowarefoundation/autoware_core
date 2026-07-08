@@ -641,17 +641,10 @@ class ROS2PollingSubscriber : public PollingSubscriber<MessageT, PollingPolicy>
   static constexpr bool default_allow_same_message =
     polling_default_allow_same_message_v<MessageT, PollingPolicy>;
 
-  // The Newest policy exposes take_data() with no argument; Latest exposes take_data(bool).
-  // Dispatch to the matching signature so allow_same_message is honored where it applies.
   AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data_impl(bool allow_same_message)
   {
-    if constexpr (std::is_same_v<PollingPolicy<MessageT>, polling_policy::Newest<MessageT>>) {
-      (void)allow_same_message;
-      return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(subscriber_->take_data()));
-    } else {
-      return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(
-        std::move(subscriber_->take_data(allow_same_message)));
-    }
+    (void)allow_same_message;
+    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(subscriber_->take_data()));
   }
 
 public:
