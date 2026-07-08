@@ -10,7 +10,7 @@ Planned contents:
 - Order-preserving reduction (`collect_into_vec`, per-point-local contributions reduced in
   point-index order) → bit-for-bit identical result.
 - Why parallel is a pure throughput option and serial is the WCET baseline.
-- The pcl Hessian approximation the port mirrors (link to
+- The `h_ang` angular Hessian table and the PR #1217 d1 sign fix that made it exact (link to
   [Divergences](../port/divergences.md)).
 
 > Status: outline (draft to be written).

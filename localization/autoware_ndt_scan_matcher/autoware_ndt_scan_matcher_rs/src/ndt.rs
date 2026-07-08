@@ -990,8 +990,9 @@ mod tests {
     }
 
     // Headline oracle: the assembled gradient equals the central finite difference of the full
-    // multi-point score; the translation Hessian rows equal the second FD (the angle-angle block is
-    // the pcl form, validated vs C++). Also asserts Hessian symmetry.
+    // multi-point score; the full 6x6 Hessian equals the second FD. (Before PR #1217 the `h_ang`
+    // d1 sign bug made the angle-angle block non-exact, so it was excluded from the FD check; with
+    // the sign fixed the whole Hessian matches FD.) Also asserts Hessian symmetry.
     #[test]
     fn compute_derivatives_matches_finite_difference() {
         let map = test_map();
@@ -1039,9 +1040,9 @@ mod tests {
             }
         }
 
-        // translation Hessian rows (0..3) vs second central FD (exact part).
+        // full Hessian vs second central FD (exact since the PR #1217 h_ang d1 sign fix).
         let h = 1e-4;
-        for i in 0..3 {
+        for i in 0..6 {
             for j in 0..6 {
                 let (mut ppp, mut ppm, mut pmp, mut pmm) = (p, p, p, p);
                 ppp[i] += h;

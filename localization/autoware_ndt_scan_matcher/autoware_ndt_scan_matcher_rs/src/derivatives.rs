@@ -151,7 +151,7 @@ pub fn compute_angle_derivatives(p: &Vector6<f64>) -> AngleDerivatives {
         5,
         &RowVector4::new(cx * cz - sx * sy * sz, -sx * sy * cz - cx * sz, 0.0, 0.0),
     ); // c3
-    h_ang.set_row(6, &RowVector4::new(-cy * cz, cy * sz, sy, 0.0)); // d1
+    h_ang.set_row(6, &RowVector4::new(-cy * cz, cy * sz, -sy, 0.0)); // d1
     h_ang.set_row(
         7,
         &RowVector4::new(-sx * sy * cz, sx * sy * sz, sx * cy, 0.0),
@@ -412,15 +412,13 @@ mod tests {
             }
         }
 
-        // Hessian rows 0-2 (translation derivatives) vs second central FD of S(p). These rows have
-        // ZERO dependence on the angle second-derivative `point_hessian` blocks (rows 0-11 are
-        // zero), so they equal the exact analytic Hessian and FD-validate cleanly.
-        //
-        // The angle-angle 3x3 block (i,j in 3..6) is intentionally NOT FD-tested: pcl/Autoware's
-        // NDT Hessian is the *approximate* pcl form (its `h_ang` second-derivative terms differ
-        // from the exact d^2T/dp^2 — e.g. row 6 `d1` uses +sy where the exact value is -sy), so FD
-        // is the wrong oracle there. That block is verified against the C++ `NdtResult.hessian`.
-        // The translation rows below + the gradient above pin down everything FD can judge.
+        // Full 6x6 Hessian vs second central FD of S(p). The translation rows (0-2) never depended
+        // on the angle second-derivative `point_hessian` blocks. The angle-angle block (3..6)
+        // depends on the `h_ang` table: before PR #1217 that table's row 6 (`d1`) had the wrong
+        // sign (+sy instead of -sy), so the analytic Hessian was not the true d^2T/dp^2 and this
+        // block could not be FD-validated. With the sign fixed, `h_ang` equals the exact second
+        // derivative, so the WHOLE Hessian now matches the finite difference — this loop pins the
+        // corrected sign directly.
         let h = 1e-4;
         let second_fd = |i: usize, j: usize| {
             let (mut ppp, mut ppm, mut pmp, mut pmm) = (p, p, p, p);
@@ -438,7 +436,7 @@ mod tests {
                 + score_at(&pmm, &x, &mean, &c_inv, &g))
                 / (4.0 * h * h)
         };
-        for i in 0..3 {
+        for i in 0..6 {
             for j in 0..6 {
                 let fd = second_fd(i, j);
                 assert!(

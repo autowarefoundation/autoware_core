@@ -30,9 +30,9 @@ verification workflow.
 
 For the deterministic paths the differential check is effectively exact; for the align result the
 accepted tolerances are: pose translation ≤ 1e-3 m, rotation ≤ 1e-3 rad, TP / NVTL ≤ 1e-4,
-iteration count **exact**. Where a documented upstream divergence exists (e.g. the pcl Hessian
-quirk, see [Divergences from upstream](divergences.md)) the port **mirrors** it rather than
-"fixing" it, so the differential test stays green.
+iteration count **exact**. Where a documented upstream divergence exists the port **mirrors** it
+(rather than "fixing" it locally) until the upstream fix lands, then follows the fix — see
+[Divergences from upstream](divergences.md).
 
 Some behaviour is not amenable to exact traces — notably the align-service TPE search, which in
 C++ samples with a libstdc++-specific `std::mt19937_64` + distributions. There, verification

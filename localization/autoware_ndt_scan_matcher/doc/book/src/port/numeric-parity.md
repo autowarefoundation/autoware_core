@@ -9,8 +9,8 @@ Planned contents:
 - `libm` for `sqrt`/trig (IEEE correctly-rounded `sqrt` keeps the differential oracle exact).
 - Gauss constants (`outlier_ratio`, `resolution`) parity.
 - Serial/parallel bit-identity (order-preserving reduction).
-- The pcl Hessian approximation the port reproduces (link to
-  [Divergences](divergences.md)).
+- The NDT angle Hessian (`h_ang`): since the PR #1217 d1 sign fix it is the exact analytic
+  Hessian and finite-difference-validates (see [Divergences](divergences.md)).
 - Tolerances used in the differential tests.
 
 > Status: outline (draft to be written).
