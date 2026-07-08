@@ -19,7 +19,7 @@ verification workflow.
   frame-time benchmark (`examples/wcet_frame.rs`) on the serial backend, plus a real-time review
   per engine/align patch. See [The WCET contract](../rt/wcet.md).
 - **`no_std` gate.** `cargo rustc --no-default-features --lib --target
-  {x86_64,aarch64}-unknown-none --crate-type rlib` — proves the portable core stays kernel-buildable.
+{x86_64,aarch64}-unknown-none --crate-type rlib` — proves the portable core stays kernel-buildable.
 - **Unsafe FFI under Miri.** `cargo +nightly miri test` with `libm/force-soft-floats`, exercising
   the `ffi_ptr` boundary.
 - **Coverage as a map, not a target.** `cargo llvm-cov` is diagnostic. Every test carries an oracle

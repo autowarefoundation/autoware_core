@@ -42,20 +42,20 @@ PKG=autoware_ndt_scan_matcher
 # (unlike a "cut at the first /src/" heuristic or a fixed "N levels up"). Override with WS_ROOT=...
 # for a relocated/non-standard layout.
 PKG_REL="src/core/autoware_core/localization/${PKG}/bench"
-if [[ -z "${WS_ROOT:-}" ]]; then
-  if [[ "$BENCH_DIR" == */"$PKG_REL" ]]; then
-    WS_ROOT="${BENCH_DIR%/"$PKG_REL"}"
-  else
-    WS_ROOT="$PWD"
-    echo "[bench] WARNING: bench dir is not at the canonical '$PKG_REL' path;" >&2
-    echo "[bench]          assuming WS_ROOT=$WS_ROOT — override with WS_ROOT=... if wrong." >&2
-  fi
+if [[ -z ${WS_ROOT:-} ]]; then
+    if [[ $BENCH_DIR == */"$PKG_REL" ]]; then
+        WS_ROOT="${BENCH_DIR%/"$PKG_REL"}"
+    else
+        WS_ROOT="$PWD"
+        echo "[bench] WARNING: bench dir is not at the canonical '$PKG_REL' path;" >&2
+        echo "[bench]          assuming WS_ROOT=$WS_ROOT — override with WS_ROOT=... if wrong." >&2
+    fi
 fi
 
 echo "[bench] workspace: $WS_ROOT"
 if [[ ! -d "$WS_ROOT/src" ]]; then
-  echo "[bench] ERROR: $WS_ROOT has no src/ — not a colcon workspace root (set WS_ROOT=...)." >&2
-  exit 1
+    echo "[bench] ERROR: $WS_ROOT has no src/ — not a colcon workspace root (set WS_ROOT=...)." >&2
+    exit 1
 fi
 cd "$WS_ROOT"
 
@@ -68,17 +68,17 @@ set -u
 
 echo "[bench] building $PKG (Release, NDT_USE_RUST=ON, NDT_BUILD_BENCH=ON) ..."
 colcon build --packages-select "$PKG" \
-  --cmake-args -DCMAKE_BUILD_TYPE=Release -DNDT_USE_RUST=ON -DNDT_BUILD_BENCH=ON
+    --cmake-args -DCMAKE_BUILD_TYPE=Release -DNDT_USE_RUST=ON -DNDT_BUILD_BENCH=ON
 
 EXE="$WS_ROOT/build/$PKG/ndt_bench_replay"
-if [[ ! -x "$EXE" ]]; then
-  # Fall back to searching the build tree (in case of a custom colcon --build-base layout).
-  EXE="$(find "$WS_ROOT/build" -type f -name ndt_bench_replay -perm -u+x 2>/dev/null | head -n1 || true)"
+if [[ ! -x $EXE ]]; then
+    # Fall back to searching the build tree (in case of a custom colcon --build-base layout).
+    EXE="$(find "$WS_ROOT/build" -type f -name ndt_bench_replay -perm -u+x 2>/dev/null | head -n1 || true)"
 fi
-if [[ -z "$EXE" || ! -x "$EXE" ]]; then
-  echo "[bench] ERROR: ndt_bench_replay not found under $WS_ROOT/build" >&2
-  echo "[bench]        (did the build enable -DNDT_BUILD_BENCH=ON?)" >&2
-  exit 1
+if [[ -z $EXE || ! -x $EXE ]]; then
+    echo "[bench] ERROR: ndt_bench_replay not found under $WS_ROOT/build" >&2
+    echo "[bench]        (did the build enable -DNDT_BUILD_BENCH=ON?)" >&2
+    exit 1
 fi
 
 echo "[bench] running: $EXE $ITERS $WARMUP $JSON $INTERVAL"
@@ -89,8 +89,8 @@ ${TASKSET:-} "$EXE" "$ITERS" "$WARMUP" "$JSON" "$INTERVAL"
 # very compilers used. Values are passed via the environment (not string-interpolated) so quotes /
 # backslashes in them can't corrupt the JSON.
 CPU_MODEL="$(grep -m1 'model name' /proc/cpuinfo 2>/dev/null | cut -d: -f2- | sed 's/^[[:space:]]*//')"
-if [[ -z "$CPU_MODEL" ]]; then
-  CPU_MODEL="$(lscpu 2>/dev/null | grep -m1 'Model name' | cut -d: -f2- | sed 's/^[[:space:]]*//')"
+if [[ -z $CPU_MODEL ]]; then
+    CPU_MODEL="$(lscpu 2>/dev/null | grep -m1 'Model name' | cut -d: -f2- | sed 's/^[[:space:]]*//')"
 fi
 CPU_CORES="$(nproc 2>/dev/null || echo '?')"
 CPU_GOV="$(cat /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor 2>/dev/null || echo 'n/a')"
@@ -101,8 +101,8 @@ STAMP="$(date -u '+%Y-%m-%dT%H:%M:%SZ' 2>/dev/null || echo '?')"
 
 echo "[bench] capturing environment (CPU / compilers / kernel) ..."
 BENCH_CPU="$CPU_MODEL" BENCH_CORES="$CPU_CORES" BENCH_GOV="$CPU_GOV" BENCH_KERNEL="$KERNEL" \
-BENCH_CXX="$CXX_VER" BENCH_RUSTC="$RUSTC_VER" BENCH_STAMP="$STAMP" BENCH_TASKSET="${TASKSET:-none}" \
-python3 - "$JSON" <<'PYEOF'
+    BENCH_CXX="$CXX_VER" BENCH_RUSTC="$RUSTC_VER" BENCH_STAMP="$STAMP" BENCH_TASKSET="${TASKSET:-none}" \
+    python3 - "$JSON" <<'PYEOF'
 import json, os, sys
 path = sys.argv[1]
 with open(path, encoding="utf-8") as fh:

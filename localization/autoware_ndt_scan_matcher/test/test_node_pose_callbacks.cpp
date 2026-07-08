@@ -14,10 +14,11 @@
 
 // Test: the trigger + initial-pose callbacks run entirely in Rust, driving the
 // node's Rust-owned state on the opaque handle (activation, the initial-pose buffer, latest-EKF
-// position) and emitting /diagnostics through the AwDiagnostics vtable. We build a real handle via the
-// FFI + a MOCK AwDiagnostics that records the ordered events, then assert each gate's status, the
-// observable state (via the is_activated / latest_ekf_position read-FFIs), and the exact diagnostics
-// sequence (key order + values + WARN/ERROR text). The host vtable is gone (state is Rust-owned now).
+// position) and emitting /diagnostics through the AwDiagnostics vtable. We build a real handle via
+// the FFI + a MOCK AwDiagnostics that records the ordered events, then assert each gate's status,
+// the observable state (via the is_activated / latest_ekf_position read-FFIs), and the exact
+// diagnostics sequence (key order + values + WARN/ERROR text). The host vtable is gone (state is
+// Rust-owned now).
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
@@ -29,9 +30,9 @@
 
 namespace
 {
-// A live handle with the given expected initial-pose frame. Regularization off; 1000/1000 initial-pose
-// tolerances (validation effectively off, as for the regularization buffer). `map_frame` must outlive
-// the `_new` call (Rust copies it).
+// A live handle with the given expected initial-pose frame. Regularization off; 1000/1000
+// initial-pose tolerances (validation effectively off, as for the regularization buffer).
+// `map_frame` must outlive the `_new` call (Rust copies it).
 AwNdtScanMatcher * make_handle(const std::string & map_frame)
 {
   AwNdtParams p{};
@@ -67,8 +68,8 @@ AwPoseWithCovarianceStampedView make_view(
   return v;
 }
 
-// Mock diagnostics: each vtable op appends a human-readable event so the callback's full diagnostics
-// sequence (order + keys + values) can be asserted.
+// Mock diagnostics: each vtable op appends a human-readable event so the callback's full
+// diagnostics sequence (order + keys + values) can be asserted.
 struct DiagRec
 {
   std::vector<std::string> events;
@@ -77,10 +78,14 @@ std::string key_str(const std::uint8_t * p, std::size_t len)
 {
   return std::string(reinterpret_cast<const char *>(p), len);
 }
-extern "C" void d_clear(void * d) { static_cast<DiagRec *>(d)->events.emplace_back("clear"); }
+extern "C" void d_clear(void * d)
+{
+  static_cast<DiagRec *>(d)->events.emplace_back("clear");
+}
 extern "C" void d_bool(void * d, const std::uint8_t * k, std::size_t kl, bool v)
 {
-  static_cast<DiagRec *>(d)->events.push_back("bool " + key_str(k, kl) + "=" + (v ? "true" : "false"));
+  static_cast<DiagRec *>(d)->events.push_back(
+    "bool " + key_str(k, kl) + "=" + (v ? "true" : "false"));
 }
 extern "C" void d_i64(void * d, const std::uint8_t * k, std::size_t kl, std::int64_t v)
 {
@@ -152,8 +157,7 @@ TEST(NodePoseCallbacks, InitialPoseRejectedWhenNotActivated)  // NOLINT
   const double pos[3] = {1.0, 2.0, 3.0};
   const std::string frame_id = "map";  // must outlive the call (the view borrows its bytes)
   const AwPoseWithCovarianceStampedView view = make_view(100, frame_id, pos);
-  EXPECT_EQ(
-    autoware_ndt_scan_matcher_rs_node_on_initial_pose(h, &diag, &view), kNotActivated);
+  EXPECT_EQ(autoware_ndt_scan_matcher_rs_node_on_initial_pose(h, &diag, &view), kNotActivated);
   double xyz[3] = {0.0, 0.0, 0.0};
   EXPECT_FALSE(autoware_ndt_scan_matcher_rs_latest_ekf_position(h, xyz));
   EXPECT_EQ(

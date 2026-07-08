@@ -37,8 +37,8 @@ types, Rust `Vec`/`String`, or any Rust reference with non-FFI-safe layout.
 
 ## Borrowed view types
 
-ROS messages cross as thin `#[repr(C)]` **views** that borrow C++ memory *for the duration of the
-call only*:
+ROS messages cross as thin `#[repr(C)]` **views** that borrow C++ memory _for the duration of the
+call only_:
 
 ```rust,ignore
 #[repr(C)]

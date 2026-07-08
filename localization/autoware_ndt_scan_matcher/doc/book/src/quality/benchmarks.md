@@ -54,24 +54,24 @@ Synthetic 3-plane cloud, **30,603 points**, `resolution = 2.0`, `max_iterations 
 **`num_threads = 1` (serial)**, 200 iterations after 20 warmup, `steady_clock`. **Both engines
 converge in `iteration_num = 4`** (equal work). Latency per `align` call, milliseconds:
 
-| Engine | min | median | mean | p95 | max |
-|---|--:|--:|--:|--:|--:|
-| C++ (`multigrid_ndt_omp`) | 360.61 | 366.64 | 366.44 | 370.68 | 372.33 |
+| Engine                                |    min | median |   mean |    p95 |    max |
+| ------------------------------------- | -----: | -----: | -----: | -----: | -----: |
+| C++ (`multigrid_ndt_omp`)             | 360.61 | 366.64 | 366.44 | 370.68 | 372.33 |
 | Rust (`autoware_ndt_scan_matcher_rs`) | 118.19 | 118.67 | 118.71 | 119.06 | 120.50 |
 
 **Rust is ≈ 3.1× faster** at the median (366.64 / 118.67 = 3.09×; ≈ 3.1× at p95 too) on this
 workload.
 
-*Environment:* AMD Ryzen 9 5900HX (16 logical cores), governor `powersave`, no CPU pinning,
+_Environment:_ AMD Ryzen 9 5900HX (16 logical cores), governor `powersave`, no CPU pinning,
 `rustc 1.96.0`, `g++ 11.4.0`.
 
 ### L2 — per-frame WCET (`examples/wcet_frame.rs`)
 
 Rust serial `align`, small 288-point cloud, 5 iterations, 20,000 frames (µs per frame):
 
-| p50 | p99 | p99.9 | max |
-|--:|--:|--:|--:|
-| 524 | 647 | 859 | 1090 |
+| p50 | p99 | p99.9 |  max |
+| --: | --: | ----: | ---: |
+| 524 | 647 |   859 | 1090 |
 
 (min 513 µs, mean 529 µs.) The bounded, low-spread tail reflects the allocation-free, panic-free
 align path (see [The WCET contract](../rt/wcet.md)).

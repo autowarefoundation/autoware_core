@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/ndt_scan_matcher/map_update_module.hpp>
-
 #include "autoware_ndt_scan_matcher_rs.h"
+
+#include <autoware/ndt_scan_matcher/map_update_module.hpp>
 
 #include <chrono>
 #include <cstdint>
@@ -58,8 +58,11 @@ std::vector<std::string> current_map_ids(const AwNdtEngine * engine)
 MapUpdateModule::MapUpdateModule(
   rclcpp::Node * node, EngineHolder * /*legacy_ndt_ptr*/, HyperParameters::DynamicMapLoading param,
   AwNdtScanMatcher * rs_handle)
-: legacy_(std::make_unique<LegacyState>()), rs_handle_(rs_handle), logger_(node->get_logger()),
-  clock_(node->get_clock()), param_(param)
+: legacy_(std::make_unique<LegacyState>()),
+  rs_handle_(rs_handle),
+  logger_(node->get_logger()),
+  clock_(node->get_clock()),
+  param_(param)
 {
   loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
     "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
@@ -84,8 +87,9 @@ bool MapUpdateModule::should_update_map(
 {
   // The whole decision — last-update-position check, distance math, and the need_rebuild
   // policy — is Rust-owned on the handle. The C++ side keeps only the diagnostics (emitted from the
-  // returned verdict, preserving the original keys/levels). `is_first_update` is the no-prior-update
-  // case (force rebuild + update; no distance diagnostic, matching the old early return).
+  // returned verdict, preserving the original keys/levels). `is_first_update` is the
+  // no-prior-update case (force rebuild + update; no distance diagnostic, matching the old early
+  // return).
   (void)builder_state;
   AwMapUpdateDecision decision{};
   autoware_ndt_scan_matcher_rs_map_update_evaluate(
@@ -118,13 +122,13 @@ void MapUpdateModule::update_map_internal(
   BuilderState & builder_state, const geometry_msgs::msg::Point & position,
   std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
 {
-  // Rust engine: the portable `apply_map_update` (the `MapSource` Host port) owns the staging engine +
-  // atomic `commit_from` double-buffer. We only supply the tiles: `map_source_fill` runs the pcd-loader
-  // and pushes the add/remove delta into the Rust-owned builder, which Rust applies to a private
-  // staging engine (a clone of the live map, or empty when `need_rebuild`) and publishes in one atomic
-  // store — a concurrent align always sees a complete map (the engine's ArcSwap is the lock-free
-  // buffer). An empty delta is a no-op on the Rust side (no republish). `need_rebuild` + the
-  // last-update position are Rust-owned.
+  // Rust engine: the portable `apply_map_update` (the `MapSource` Host port) owns the staging
+  // engine + atomic `commit_from` double-buffer. We only supply the tiles: `map_source_fill` runs
+  // the pcd-loader and pushes the add/remove delta into the Rust-owned builder, which Rust applies
+  // to a private staging engine (a clone of the live map, or empty when `need_rebuild`) and
+  // publishes in one atomic store — a concurrent align always sees a complete map (the engine's
+  // ArcSwap is the lock-free buffer). An empty delta is a no-op on the Rust side (no republish).
+  // `need_rebuild` + the last-update position are Rust-owned.
   (void)builder_state;
   const bool need_rebuild = autoware_ndt_scan_matcher_rs_map_update_need_rebuild(rs_handle_);
   diagnostics_ptr->add_key_value("is_need_rebuild", need_rebuild);
@@ -177,8 +181,9 @@ bool MapUpdateModule::build_map_delta(
   void * builder, double cx, double cy, double radius, bool rebuild,
   DiagnosticsInterface & diagnostics)
 {
-  // The Rust staging engine starts empty on rebuild (cached_ids empty → the loader returns every tile)
-  // and otherwise clones the live map (cached_ids = its current tiles → the loader returns the delta).
+  // The Rust staging engine starts empty on rebuild (cached_ids empty → the loader returns every
+  // tile) and otherwise clones the live map (cached_ids = its current tiles → the loader returns
+  // the delta).
   const std::vector<std::string> cached_ids =
     rebuild ? std::vector<std::string>{}
             : current_map_ids(autoware_ndt_scan_matcher_rs_engine(rs_handle_));

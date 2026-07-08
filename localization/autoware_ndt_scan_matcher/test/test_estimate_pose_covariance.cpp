@@ -21,10 +21,10 @@
 // (pose/hessian/offsets/output_cov -> FFI) and the publish-kind asymmetry. The cov math itself is
 // differential-tested vs pure C++ in test_estimate_covariance_multi.
 
-#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
+#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 
 #include <gtest/gtest.h>
 #include <pcl/point_cloud.h>

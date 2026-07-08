@@ -20,10 +20,10 @@ colcon build --symlink-install \
 The package builds one of two backends, chosen by the CMake option **`NDT_USE_RUST`** (defined in
 `CMakeLists.txt`):
 
-| `NDT_USE_RUST` | Backend | Notes |
-|---|---|---|
-| `OFF` (default) | legacy C++ (`multigrid_ndt_omp`) | No dependency on Rust/corrosion at all. |
-| `ON` | Rust port over FFI | Builds the nested `autoware_ndt_scan_matcher_rs` crate via corrosion, generates the cbindgen C header, links it, and compiles the C++ shell with `-DNDT_USE_RUST` so the node/map-update translation units dispatch to the Rust engine. |
+| `NDT_USE_RUST`  | Backend                          | Notes                                                                                                                                                                                                                                   |
+| --------------- | -------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `OFF` (default) | legacy C++ (`multigrid_ndt_omp`) | No dependency on Rust/corrosion at all.                                                                                                                                                                                                 |
+| `ON`            | Rust port over FFI               | Builds the nested `autoware_ndt_scan_matcher_rs` crate via corrosion, generates the cbindgen C header, links it, and compiles the C++ shell with `-DNDT_USE_RUST` so the node/map-update translation units dispatch to the Rust engine. |
 
 Build the **Rust** backend by passing the flag:
 
@@ -33,7 +33,7 @@ colcon build --symlink-install \
   --cmake-args -DCMAKE_BUILD_TYPE=Release -DNDT_USE_RUST=ON
 ```
 
-The two backends are selected at the *translation-unit* level (not with in-function `#ifdef`s).
+The two backends are selected at the _translation-unit_ level (not with in-function `#ifdef`s).
 
 ## Running the tests
 

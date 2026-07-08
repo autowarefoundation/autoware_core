@@ -5,7 +5,7 @@ How the target map is refreshed at runtime without disturbing concurrent alignme
 ## Policy and state (Rust-owned)
 
 `MapUpdateState` holds the map-update decision state: `last_update_position`, whether the next update
-must `need_rebuild`, and the loaded cell ids live in the engine. Rust decides *when* an update is
+must `need_rebuild`, and the loaded cell ids live in the engine. Rust decides _when_ an update is
 needed (first update, and whenever the vehicle has moved far enough that the loaded map can no longer
 cover the LiDAR range) and whether a full rebuild is required.
 

@@ -182,8 +182,8 @@ void MapUpdateModule::update_map_internal(
     }
 
     // Update the NDT map pointer with minimal lock duration to prevent latency spikes.
-    // Heavy memory operations (cloning and destruction) are executed outside the legacy engine lock,
-    // while only the fast pointer swap is performed inside the lock scope.
+    // Heavy memory operations (cloning and destruction) are executed outside the legacy engine
+    // lock, while only the fast pointer swap is performed inside the lock scope.
 
     // 1. Clone the contents of the secondary engine to create new_ndt_ptr.
     auto new_ndt_ptr = std::make_shared<NdtType>(*legacy_->secondary_ndt_ptr);

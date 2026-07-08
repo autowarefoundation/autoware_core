@@ -20,12 +20,12 @@
 #include <vector>
 
 // NOTE: The pure helpers (calc_weight_vec, calculate_weighted_mean_and_cov,
-// estimate_xy_covariance_by_laplace_approximation, rotate_covariance_to_*, adjust_diagonal_covariance)
-// live in estimate_covariance_math.cpp. The engine-driving estimators
-// (estimate_xy_covariance_by_multi_ndt[_score]) and propose_poses_to_search live here — they drive the
-// concrete pclomp engine (NDT_USE_RUST computes the covariance in the Rust orchestrator instead, so
-// the node no longer drives these under ON; they remain for the C++ baseline and the differential
-// tests).
+// estimate_xy_covariance_by_laplace_approximation, rotate_covariance_to_*,
+// adjust_diagonal_covariance) live in estimate_covariance_math.cpp. The engine-driving estimators
+// (estimate_xy_covariance_by_multi_ndt[_score]) and propose_poses_to_search live here — they drive
+// the concrete pclomp engine (NDT_USE_RUST computes the covariance in the Rust orchestrator
+// instead, so the node no longer drives these under ON; they remain for the C++ baseline and the
+// differential tests).
 
 namespace pclomp
 {
@@ -67,7 +67,8 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
     const NdtResult sub_ndt_result = ndt_ref.getResult();
     ndt_results.push_back(sub_ndt_result);
 
-    const Eigen::Vector2d sub_ndt_pose_2d = sub_ndt_result.pose.topRightCorner<2, 1>().cast<double>();
+    const Eigen::Vector2d sub_ndt_pose_2d =
+      sub_ndt_result.pose.topRightCorner<2, 1>().cast<double>();
     ndt_pose_2d_vec.emplace_back(sub_ndt_pose_2d);
   }
 

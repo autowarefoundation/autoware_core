@@ -15,16 +15,15 @@
 // Differential test: the Rust multi-NDT covariance estimators (via FFI) must match
 // the C++ pclomp implementation on the same target/source/main-pose/offsets/params. propose +
 // multi_ndt (re-align per candidate) + multi_ndt_score (score per candidate) are all checked. The
-// per-candidate align/score parity is already covered by test_align; this validates the orchestration
-// (pose proposal, weighting, weighted mean/covariance, unbiased correction).
-
-#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
-#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
+// per-candidate align/score parity is already covered by test_align; this validates the
+// orchestration (pose proposal, weighting, weighted mean/covariance, unbiased correction).
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
+#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 
+#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 #include <gtest/gtest.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -62,7 +61,8 @@ void make_target(pcl::PointCloud<pcl::PointXYZ> & cloud, std::vector<float> & fl
   cloud.is_dense = true;
 }
 
-// Build the target/source clouds (+ flat buffers) and run the main C++ align; returns its NdtResult.
+// Build the target/source clouds (+ flat buffers) and run the main C++ align; returns its
+// NdtResult.
 struct Fixture
 {
   pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> target;
@@ -188,7 +188,9 @@ TEST(EstimateCovarianceMulti, MultiNdtMatchesCpp)  // NOLINT
   EXPECT_NEAR(cpp.mean(1), rs_mean[1], 2e-2) << "mean.y";
   for (int r = 0; r < 2; ++r) {
     for (int c = 0; c < 2; ++c) {
-      EXPECT_LE(std::abs(cpp.covariance(r, c) - rs_cov[(r * 2) + c]), 5e-2 + (0.2 * std::abs(cpp.covariance(r, c))))
+      EXPECT_LE(
+        std::abs(cpp.covariance(r, c) - rs_cov[(r * 2) + c]),
+        5e-2 + (0.2 * std::abs(cpp.covariance(r, c))))
         << "cov(" << r << "," << c << ")";
     }
   }
@@ -216,7 +218,9 @@ TEST(EstimateCovarianceMulti, MultiNdtScoreMatchesCpp)  // NOLINT
   EXPECT_NEAR(cpp.mean(1), rs_mean[1], 1e-2) << "mean.y";
   for (int r = 0; r < 2; ++r) {
     for (int c = 0; c < 2; ++c) {
-      EXPECT_LE(std::abs(cpp.covariance(r, c) - rs_cov[(r * 2) + c]), 1e-2 + (0.1 * std::abs(cpp.covariance(r, c))))
+      EXPECT_LE(
+        std::abs(cpp.covariance(r, c) - rs_cov[(r * 2) + c]),
+        1e-2 + (0.1 * std::abs(cpp.covariance(r, c))))
         << "cov(" << r << "," << c << ")";
     }
   }

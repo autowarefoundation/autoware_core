@@ -13,8 +13,8 @@
 // limitations under the License.
 
 // Differential test: the Rust-owned initial-pose buffer (pushed through
-// on_initial_pose after activation, queried through initial_pose_interpolate) must reproduce the C++
-// SmartPoseBuffer's interpolation bit-close over many random sequences — with the real (finite)
+// on_initial_pose after activation, queried through initial_pose_interpolate) must reproduce the
+// C++ SmartPoseBuffer's interpolation bit-close over many random sequences — with the real (finite)
 // initial-pose tolerances. Also pins activation gating: a pose pushed while deactivated is dropped.
 
 #include "autoware/ndt_scan_matcher/ndt_scan_matcher_rs.hpp"
@@ -23,10 +23,10 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <gtest/gtest.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 #include <cmath>
 #include <cstdint>
@@ -41,21 +41,32 @@ namespace
 constexpr double kTimeoutSec = 10.0;
 constexpr double kDistanceTolM = 10.0;
 
-extern "C" void nd_noop_clear(void *) {}
-extern "C" void nd_noop_bool(void *, const std::uint8_t *, std::size_t, bool) {}
-extern "C" void nd_noop_i64(void *, const std::uint8_t *, std::size_t, std::int64_t) {}
-extern "C" void nd_noop_f64(void *, const std::uint8_t *, std::size_t, double) {}
+extern "C" void nd_noop_clear(void *)
+{
+}
+extern "C" void nd_noop_bool(void *, const std::uint8_t *, std::size_t, bool)
+{
+}
+extern "C" void nd_noop_i64(void *, const std::uint8_t *, std::size_t, std::int64_t)
+{
+}
+extern "C" void nd_noop_f64(void *, const std::uint8_t *, std::size_t, double)
+{
+}
 extern "C" void nd_noop_str(
   void *, const std::uint8_t *, std::size_t, const std::uint8_t *, std::size_t)
 {
 }
-extern "C" void nd_noop_level(void *, std::int8_t, const std::uint8_t *, std::size_t) {}
-extern "C" void nd_noop_publish(void *, std::int64_t) {}
+extern "C" void nd_noop_level(void *, std::int8_t, const std::uint8_t *, std::size_t)
+{
+}
+extern "C" void nd_noop_publish(void *, std::int64_t)
+{
+}
 AwDiagnostics noop_diag()
 {
-  return AwDiagnostics{
-    nullptr,     nd_noop_clear, nd_noop_bool,    nd_noop_i64,
-    nd_noop_f64, nd_noop_str,   nd_noop_level, nd_noop_publish};
+  return AwDiagnostics{nullptr,     nd_noop_clear, nd_noop_bool,  nd_noop_i64,
+                       nd_noop_f64, nd_noop_str,   nd_noop_level, nd_noop_publish};
 }
 
 AwNdtScanMatcher * make_handle(const std::string & map_frame)
@@ -162,8 +173,8 @@ TEST(InitialPoseBuffer, MatchesCppOnRandomSequences)  // NOLINT
   }
 }
 
-// A pose pushed while the node is deactivated is dropped (the activation gate), so the buffer cannot
-// interpolate afterwards.
+// A pose pushed while the node is deactivated is dropped (the activation gate), so the buffer
+// cannot interpolate afterwards.
 TEST(InitialPoseBuffer, PoseDroppedWhenNotActivated)  // NOLINT
 {
   const AwDiagnostics diag = noop_diag();

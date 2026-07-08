@@ -71,8 +71,7 @@ geometry_msgs::msg::Pose aw_pose_to_msg(const AwPose & pose)
 
 AwNdtAlignServiceInput make_align_service_input(
   const bool transform_initial_pose_ok, const bool map_points_ok, const bool sensor_points_ok,
-  const bool align_score_available, const double align_score,
-  const double reliable_score_threshold)
+  const bool align_score_available, const double align_score, const double reliable_score_threshold)
 {
   AwNdtAlignServiceInput input{};
   input.transform_initial_pose_ok = transform_initial_pose_ok ? 1U : 0U;
@@ -86,8 +85,8 @@ AwNdtAlignServiceInput make_align_service_input(
 
 AwNdtAlignServiceGateAction evaluate_align_service_gate(
   const bool transform_initial_pose_ok, const bool map_points_ok, const bool sensor_points_ok,
-  const bool align_score_available, const double align_score,
-  const double reliable_score_threshold, AwNdtAlignServiceTrace * trace = nullptr)
+  const bool align_score_available, const double align_score, const double reliable_score_threshold,
+  AwNdtAlignServiceTrace * trace = nullptr)
 {
   const AwNdtAlignServiceInput input = make_align_service_input(
     transform_initial_pose_ok, map_points_ok, sensor_points_ok, align_score_available, align_score,
@@ -141,8 +140,8 @@ AwNdtAlignServiceResponse assemble_align_service_response(
 void append_align_search_summary_trace(
   const std::int64_t particles_requested, const std::int64_t particles_evaluated,
   const std::int64_t marker_publish_count, const std::int64_t cloud_publish_count,
-  const std::int32_t best_iteration, const double best_score,
-  const double reliable_score_threshold, AwNdtAlignServiceTrace * trace)
+  const std::int32_t best_iteration, const double best_score, const double reliable_score_threshold,
+  AwNdtAlignServiceTrace * trace)
 {
   if (trace == nullptr) {
     return;
@@ -223,13 +222,13 @@ void NDTScanMatcher::service_ndt_align_main(
     initial_pose_msg_in_map_frame.pose.pose.position, diagnostics_ndt_align_);
 
   const AwNdtEngine * engine = rs_.engine_raw();
-  const bool is_set_map_points =
-    autoware_ndt_scan_matcher_rs_ndt_engine_has_target(engine);
+  const bool is_set_map_points = autoware_ndt_scan_matcher_rs_ndt_engine_has_target(engine);
   diagnostics_ndt_align_->add_key_value("is_set_map_points", is_set_map_points);
   if (!is_set_map_points) {
     const AwNdtAlignServiceGateAction action =
       evaluate_align_service_gate(true, false, false, false, 0.0, 0.0, align_service_trace_);
-    const std::string message = align_service_gate_message(action.message_kind, target_frame, source_frame);
+    const std::string message =
+      align_service_gate_message(action.message_kind, target_frame, source_frame);
     diagnostics_ndt_align_->update_level_and_message(
       static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
       message);
@@ -244,7 +243,8 @@ void NDTScanMatcher::service_ndt_align_main(
   if (!is_set_sensor_points) {
     const AwNdtAlignServiceGateAction action =
       evaluate_align_service_gate(true, true, false, false, 0.0, 0.0, align_service_trace_);
-    const std::string message = align_service_gate_message(action.message_kind, target_frame, source_frame);
+    const std::string message =
+      align_service_gate_message(action.message_kind, target_frame, source_frame);
     diagnostics_ndt_align_->update_level_and_message(
       static_cast<diagnostic_msgs::msg::DiagnosticStatus::_level_type>(action.diagnostic_level),
       message);
@@ -301,8 +301,9 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     geometry_msgs::msg::PoseWithCovarianceStamped failure_pose = initial_pose_with_cov;
     failure_pose.header.frame_id = param_.frame.map_frame;
     append_align_search_summary_trace(
-      param_.initial_pose_estimation.particles_num, static_cast<std::int64_t>(particle_array.size()),
-      0, 0, -1, -std::numeric_limits<double>::infinity(),
+      param_.initial_pose_estimation.particles_num,
+      static_cast<std::int64_t>(particle_array.size()), 0, 0, -1,
+      -std::numeric_limits<double>::infinity(),
       param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood, trace);
     return std::make_tuple(failure_pose, -std::numeric_limits<double>::infinity());
   };

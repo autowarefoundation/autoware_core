@@ -23,7 +23,6 @@
 #ifdef NDT_USE_RUST
 
 #include "autoware/ndt_scan_matcher/hyper_parameters.hpp"
-
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -37,9 +36,9 @@
 namespace autoware::ndt_scan_matcher
 {
 
-/// Build the FFI param struct from the node's `HyperParameters`. The covariance offset-model vectors
-/// are borrowed by pointer for the duration of the `_new` call only (Rust copies them), so the
-/// referenced `HyperParameters` must outlive that call. The fixed `min_points` / `eig_mult` /
+/// Build the FFI param struct from the node's `HyperParameters`. The covariance offset-model
+/// vectors are borrowed by pointer for the duration of the `_new` call only (Rust copies them), so
+/// the referenced `HyperParameters` must outlive that call. The fixed `min_points` / `eig_mult` /
 /// `outlier_ratio` mirror the legacy C++ engine constants used by the Rust-owned engine.
 inline AwNdtParams make_aw_ndt_params(const HyperParameters & p)
 {
@@ -77,8 +76,8 @@ inline AwNdtParams make_aw_ndt_params(const HyperParameters & p)
   out.regularization_enable = p.ndt_regularization_enable;
   out.regularization_pose_timeout_sec = 1000.0;
   out.regularization_pose_distance_tolerance_m = 1000.0;
-  // Initial pose buffer: the expected frame + the SmartPoseBuffer tolerances. `map_frame` is borrowed
-  // for the `_new` call only (Rust copies it), so `p` must outlive the call.
+  // Initial pose buffer: the expected frame + the SmartPoseBuffer tolerances. `map_frame` is
+  // borrowed for the `_new` call only (Rust copies it), so `p` must outlive the call.
   out.map_frame = reinterpret_cast<const std::uint8_t *>(p.frame.map_frame.data());
   out.map_frame_len = p.frame.map_frame.size();
   out.initial_pose_timeout_sec = p.validation.initial_pose_timeout_sec;
@@ -91,8 +90,9 @@ inline AwNdtParams make_aw_ndt_params(const HyperParameters & p)
   return out;
 }
 
-/// Build the borrowed FFI view of a `PointCloud2` (stamp + frame + layout + data + xyz field offsets).
-/// Valid only for the duration of the FFI call. The xyz datatype is taken from the `x` field.
+/// Build the borrowed FFI view of a `PointCloud2` (stamp + frame + layout + data + xyz field
+/// offsets). Valid only for the duration of the FFI call. The xyz datatype is taken from the `x`
+/// field.
 inline AwPointCloud2View make_pointcloud2_view(const sensor_msgs::msg::PointCloud2 & msg)
 {
   AwPointCloud2View v{};

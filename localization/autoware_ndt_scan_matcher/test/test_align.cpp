@@ -17,12 +17,11 @@
 // tolerance (Eigen JacobiSVD + float transform vs nalgebra SVD + f32 transform). This validates the
 // full optimization loop and the (pcl-form) angle-angle Hessian against the real engine.
 
-#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
-
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
 
+#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 #include <gtest/gtest.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>

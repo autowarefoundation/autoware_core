@@ -7,7 +7,7 @@ Exactly which responsibilities are Rust's and which stay in C++.
 - The NDT engine and voxel-grid map, the align kernel, and the TP/NVTL scores.
 - Covariance estimation and the align-service pose search (TPE).
 - Node-level algorithmic state: pose buffers, activation flag, map-update policy/bookkeeping.
-- The convergence decision, publish/skip decisions, and diagnostics *content*.
+- The convergence decision, publish/skip decisions, and diagnostics _content_.
 
 These live in the `autoware_ndt_scan_matcher_rs` crate — a portable `no_std` core plus a `std` FFI
 shell (see [System overview](../arch/overview.md)).

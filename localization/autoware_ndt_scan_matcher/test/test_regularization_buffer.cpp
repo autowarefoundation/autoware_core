@@ -13,9 +13,9 @@
 // limitations under the License.
 
 // Differential test: the Rust-owned regularization pose buffer (driven through the
-// FFI — push via on_regularization_pose, query via regularization_interpolate) must reproduce the C++
-// SmartPoseBuffer's interpolation bit-close, over many random pose sequences. This pins the ported
-// twist/linear-RPY interpolation math against the original.
+// FFI — push via on_regularization_pose, query via regularization_interpolate) must reproduce the
+// C++ SmartPoseBuffer's interpolation bit-close, over many random pose sequences. This pins the
+// ported twist/linear-RPY interpolation math against the original.
 
 #include "autoware/ndt_scan_matcher/ndt_scan_matcher_rs.hpp"
 
@@ -23,10 +23,10 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <tf2/LinearMath/Quaternion.h>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <gtest/gtest.h>
+#include <tf2/LinearMath/Quaternion.h>
 
 #include <cmath>
 #include <cstdint>
@@ -38,13 +38,27 @@ namespace autoware::ndt_scan_matcher
 namespace
 {
 // No-op diagnostics vtable (the callback emits diagnostics we don't assert here).
-extern "C" void nd_clear(void *) {}
-extern "C" void nd_bool(void *, const std::uint8_t *, std::size_t, bool) {}
-extern "C" void nd_i64(void *, const std::uint8_t *, std::size_t, std::int64_t) {}
-extern "C" void nd_f64(void *, const std::uint8_t *, std::size_t, double) {}
-extern "C" void nd_str(void *, const std::uint8_t *, std::size_t, const std::uint8_t *, std::size_t) {}
-extern "C" void nd_level(void *, std::int8_t, const std::uint8_t *, std::size_t) {}
-extern "C" void nd_publish(void *, std::int64_t) {}
+extern "C" void nd_clear(void *)
+{
+}
+extern "C" void nd_bool(void *, const std::uint8_t *, std::size_t, bool)
+{
+}
+extern "C" void nd_i64(void *, const std::uint8_t *, std::size_t, std::int64_t)
+{
+}
+extern "C" void nd_f64(void *, const std::uint8_t *, std::size_t, double)
+{
+}
+extern "C" void nd_str(void *, const std::uint8_t *, std::size_t, const std::uint8_t *, std::size_t)
+{
+}
+extern "C" void nd_level(void *, std::int8_t, const std::uint8_t *, std::size_t)
+{
+}
+extern "C" void nd_publish(void *, std::int64_t)
+{
+}
 AwDiagnostics noop_diag()
 {
   return AwDiagnostics{nullptr, nd_clear, nd_bool, nd_i64, nd_f64, nd_str, nd_level, nd_publish};
@@ -105,10 +119,12 @@ TEST(RegularizationBuffer, MatchesCppOnRandomSequences)  // NOLINT
     }
     const std::int64_t first = rclcpp::Time(seq.front().header.stamp).nanoseconds();
     const std::int64_t last = rclcpp::Time(seq.back().header.stamp).nanoseconds();
-    const std::int64_t query = first + static_cast<std::int64_t>(rnd() * static_cast<double>(last - first));
+    const std::int64_t query =
+      first + static_cast<std::int64_t>(rnd() * static_cast<double>(last - first));
 
     // C++ reference.
-    autoware::localization_util::SmartPoseBuffer cpp_buf(rclcpp::get_logger("diff"), 1000.0, 1000.0);
+    autoware::localization_util::SmartPoseBuffer cpp_buf(
+      rclcpp::get_logger("diff"), 1000.0, 1000.0);
     for (const auto & m : seq) {
       cpp_buf.push_back(std::make_shared<const geometry_msgs::msg::PoseWithCovarianceStamped>(m));
     }

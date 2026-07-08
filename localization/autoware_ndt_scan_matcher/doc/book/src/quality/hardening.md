@@ -26,12 +26,12 @@ clippy::allow_attributes, reason = "…")]`.
 
 Allowlist (production, per function, each with its condition):
 
-| Lint(s) | Allowed only for |
-|---|---|
-| `arithmetic_side_effects` | f64/f32 **float** math (integer arithmetic must use checked/saturating) |
-| `indexing_slicing` | fixed-size nalgebra `Vector`/`Matrix` indexing, or a provably-bounded index (e.g. `axis = depth % 3`) |
-| `as_conversions`, `cast_*` | a deliberate, documented conversion (the f32 `Matrix4f` parity pipeline) |
-| readability `pedantic`/style lints | readability/parity in math kernels — never a safety lint |
+| Lint(s)                            | Allowed only for                                                                                      |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------- |
+| `arithmetic_side_effects`          | f64/f32 **float** math (integer arithmetic must use checked/saturating)                               |
+| `indexing_slicing`                 | fixed-size nalgebra `Vector`/`Matrix` indexing, or a provably-bounded index (e.g. `axis = depth % 3`) |
+| `as_conversions`, `cast_*`         | a deliberate, documented conversion (the f32 `Matrix4f` parity pipeline)                              |
+| readability `pedantic`/style lints | readability/parity in math kernels — never a safety lint                                              |
 
 **Absolute-never in production:** `unwrap_used`, `expect_used`, `panic`, `unreachable`, `todo`,
 `unimplemented`, `string_slice` — suppressing these would defeat the gates.

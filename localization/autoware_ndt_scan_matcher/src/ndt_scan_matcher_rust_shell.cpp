@@ -120,7 +120,8 @@ void NDTScanMatcher::callback_timer()
     point.z = ekf_xyz[2];
     latest_ekf_position = point;
   }
-  map_update_module_->callback_timer(node_is_activated, latest_ekf_position, diagnostics_map_update_);
+  map_update_module_->callback_timer(
+    node_is_activated, latest_ekf_position, diagnostics_map_update_);
 
   diagnostics_map_update_->publish(ros_time_now);
 }
@@ -139,8 +140,8 @@ void NDTScanMatcher::callback_initial_pose(
 void NDTScanMatcher::callback_regularization_pose(
   geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose_conv_msg_ptr)
 {
-  // Callback-level: the whole body (diagnostics + buffer push) runs in Rust. The pose now crosses as
-  // a value view and is pushed into the Rust-owned regularization buffer on the handle — no host
+  // Callback-level: the whole body (diagnostics + buffer push) runs in Rust. The pose now crosses
+  // as a value view and is pushed into the Rust-owned regularization buffer on the handle — no host
   // vtable needed here.
   const AwDiagnostics diag = make_diagnostics(diagnostics_regularization_pose_.get());
   const AwPoseWithCovarianceStampedView view = make_pose_with_cov_view(*pose_conv_msg_ptr);
@@ -153,9 +154,9 @@ void NDTScanMatcher::service_trigger_node(
 {
   const rclcpp::Time ros_time_now = this->now();
 
-  // Callback-level: the whole body — diagnostics + activation + buffer clear — runs in Rust, driving
-  // the handle's Rust-owned state. The C++ shell only builds the diagnostics vtable
-  // and assigns res->success.
+  // Callback-level: the whole body — diagnostics + activation + buffer clear — runs in Rust,
+  // driving the handle's Rust-owned state. The C++ shell only builds the diagnostics vtable and
+  // assigns res->success.
   const AwDiagnostics diag = make_diagnostics(diagnostics_trigger_node_.get());
   res->success = autoware_ndt_scan_matcher_rs_node_on_trigger(
     rs_.raw(), &diag, req->data, ros_time_now.nanoseconds());

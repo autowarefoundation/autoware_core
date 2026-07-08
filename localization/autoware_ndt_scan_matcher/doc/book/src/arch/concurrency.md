@@ -1,7 +1,7 @@
 # Concurrency and interior mutability
 
 The engine is `&self`-only so a shared `&NdtEngine` is sound across concurrent ROS callbacks
-*without* an external mutex. Its mutable state sits behind an interior-mutability cell whose backend
+_without_ an external mutex. Its mutable state sits behind an interior-mutability cell whose backend
 is chosen at compile time — the crate's central concurrency decision.
 
 ## The `Swap<T>` cell
@@ -9,11 +9,11 @@ is chosen at compile time — the crate's central concurrency decision.
 A `Swap<T>` alias abstracts the backend, with uniform `swap_new` / `swap_load` / `swap_store` /
 `swap_rcu` free functions:
 
-| Build | `Swap<T>` backend | read/align path |
-|---|---|---|
-| **std** (default) | `arc_swap::ArcSwap<T>` | `load_full()` — an owned `Arc<T>` snapshot, **lock-free** |
-| **`no_std` single-core** | `RefCell<Arc<T>>` | `borrow().clone()` |
-| **`no_std` `mt`** | `awkernel_sync::Mutex<Arc<T>>` | short critical section: one `Arc` refcount bump |
+| Build                    | `Swap<T>` backend              | read/align path                                           |
+| ------------------------ | ------------------------------ | --------------------------------------------------------- |
+| **std** (default)        | `arc_swap::ArcSwap<T>`         | `load_full()` — an owned `Arc<T>` snapshot, **lock-free** |
+| **`no_std` single-core** | `RefCell<Arc<T>>`              | `borrow().clone()`                                        |
+| **`no_std` `mt`**        | `awkernel_sync::Mutex<Arc<T>>` | short critical section: one `Arc` refcount bump           |
 
 `swap_load` returns an owned `Arc<T>` so a reader holds a stable snapshot while a concurrent
 `store`/`rcu` publishes a new version; the old `Arc` lives until its last reader drops it.

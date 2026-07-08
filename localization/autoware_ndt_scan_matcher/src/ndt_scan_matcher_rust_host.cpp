@@ -219,8 +219,7 @@ void NdtRustHostAccess::host_publish_tf(void * ctx, int64_t stamp_ns, const AwPo
   try {
     self->publish_tf(rclcpp::Time(stamp_ns), aw_pose_to_msg(*pose));
   } catch (...) {
-    RCLCPP_ERROR_STREAM_THROTTLE(
-      self->get_logger(), *self->get_clock(), 1000, "publish_tf failed");
+    RCLCPP_ERROR_STREAM_THROTTLE(self->get_logger(), *self->get_clock(), 1000, "publish_tf failed");
   }
 }
 void NdtRustHostAccess::host_publish_initial_to_result(
@@ -299,7 +298,8 @@ void NdtRustHostAccess::host_publish_voxel_score_points(
 {
   auto * self = static_cast<NDTScanMatcher *>(ctx);
   try {
-    if ((points.ptr == nullptr && points.len > 0) || scores == nullptr || scores_len != points.len) {
+    if (
+      (points.ptr == nullptr && points.len > 0) || scores == nullptr || scores_len != points.len) {
       return;
     }
     constexpr float lower_nvs = 1.0f;

@@ -88,7 +88,10 @@ def svg_overlay_histogram(series, hi, bins=50, w=760, h=240):
         hi = lo + 1.0
     bw = w / bins
 
-    per = [(label, color, histogram(samples, bins, lo, hi), samples) for label, color, samples in series]
+    per = [
+        (label, color, histogram(samples, bins, lo, hi), samples)
+        for label, color, samples in series
+    ]
     peak = max((max(counts) for _, _, counts, _ in per), default=0) or 1
 
     def x_of(val):
@@ -272,8 +275,7 @@ def main():
             for k, v in env.items()
         )
         env_html = (
-            "<h2>Execution environment</h2>"
-            f'<table class="env"><tbody>{env_rows}</tbody></table>'
+            "<h2>Execution environment</h2>" f'<table class="env"><tbody>{env_rows}</tbody></table>'
         )
 
     doc = f"""<!doctype html>

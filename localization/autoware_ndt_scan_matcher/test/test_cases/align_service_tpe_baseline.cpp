@@ -75,8 +75,8 @@ AwNdtAlignServiceTrace make_trace(std::array<AwNdtAlignServiceTraceEvent, 4> & e
 }
 
 void expect_align_trace(
-  const std::array<AwNdtAlignServiceTraceEvent, 4> & events,
-  const AwNdtAlignServiceTrace & trace, const geometry_msgs::msg::Pose & result_pose)
+  const std::array<AwNdtAlignServiceTraceEvent, 4> & events, const AwNdtAlignServiceTrace & trace,
+  const geometry_msgs::msg::Pose & result_pose)
 {
   ASSERT_EQ(trace.len, 4U);
   EXPECT_EQ(trace.overflowed, 0U);
@@ -148,17 +148,15 @@ TEST_F(TestNDTScanMatcher, align_service_tpe_baseline_repeated_runs)  // NOLINT
 
 #ifdef NDT_USE_RUST
     RCLCPP_INFO_STREAM(
-      node_->get_logger(), "align-service baseline run " << i << ": pose=("
-                                                         << result_pose.position.x << ", "
-                                                         << result_pose.position.y << ", "
-                                                         << result_pose.position.z << ")"
-                                                         << ", best_score=" << sample.best_score);
+      node_->get_logger(), "align-service baseline run "
+                             << i << ": pose=(" << result_pose.position.x << ", "
+                             << result_pose.position.y << ", " << result_pose.position.z << ")"
+                             << ", best_score=" << sample.best_score);
 #else
     RCLCPP_INFO_STREAM(
-      node_->get_logger(), "align-service baseline run " << i << ": pose=("
-                                                         << result_pose.position.x << ", "
-                                                         << result_pose.position.y << ", "
-                                                         << result_pose.position.z << ")");
+      node_->get_logger(), "align-service baseline run "
+                             << i << ": pose=(" << result_pose.position.x << ", "
+                             << result_pose.position.y << ", " << result_pose.position.z << ")");
 #endif
   }
 
@@ -187,9 +185,8 @@ TEST_F(TestNDTScanMatcher, align_service_tpe_baseline_repeated_runs)  // NOLINT
   const double y_spread = spread(ys);
   const double z_spread = spread(zs);
   RCLCPP_INFO_STREAM(
-    node_->get_logger(), "align-service baseline position spread: x=" << x_spread
-                                                                        << ", y=" << y_spread
-                                                                        << ", z=" << z_spread);
+    node_->get_logger(), "align-service baseline position spread: x="
+                           << x_spread << ", y=" << y_spread << ", z=" << z_spread);
   EXPECT_LE(x_spread, kPositionSpreadTolerance);
   EXPECT_LE(y_spread, kPositionSpreadTolerance);
   EXPECT_LE(z_spread, kPositionSpreadTolerance);
