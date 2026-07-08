@@ -22,7 +22,7 @@ verification workflow.
   {x86_64,aarch64}-unknown-none --crate-type rlib` — proves the portable core stays kernel-buildable.
 - **Unsafe FFI under Miri.** `cargo +nightly miri test` with `libm/force-soft-floats`, exercising
   the `ffi_ptr` boundary.
-- **Coverage as a map, not a target.** `./coverage.sh` is diagnostic. Every test carries an oracle
+- **Coverage as a map, not a target.** `cargo llvm-cov` is diagnostic. Every test carries an oracle
   (assertion / invariant / round-trip / reference model / null-edge contract); `extern "C"` shims
   get Rust direct-call tests because `cargo llvm-cov` sees only Rust.
 
@@ -41,12 +41,17 @@ outcomes, and property/statistical checks (success rate, p95 error envelope) for
 
 ## Running it
 
+The differential (ON-vs-OFF) and FFI tests only build under `-DNDT_USE_RUST=ON` — build that way
+first, then:
+
 ```sh
 colcon test --packages-select autoware_ndt_scan_matcher [--ctest-args -R <regex>]
 ```
 
 For the integration tests, source the ROS + workspace environment first and filter the package's
-own results via `colcon test-result --test-result-base build/<pkg>`.
+own results via `colcon test-result --test-result-base build/<pkg>`. See
+[Build and test](../start/build-and-test.md) for the full command set (backend flag, cargo, clippy,
+`no_std` gate).
 
 ## Sub-chapters
 
