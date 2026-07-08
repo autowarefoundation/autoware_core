@@ -138,6 +138,13 @@ pub struct NdtScanMatcherRs {
 
 impl NdtScanMatcherRs {
     fn new(params: Params) -> Self {
+        // Size rayon's process-global worker pool once from the configured `num_threads` (the
+        // `parallel` build only). Best-effort: a no-op if the pool is already initialized, and it
+        // runs before any align since the handle is built at node startup. The returned bool is
+        // observational (whether THIS call initialized the pool), so it is intentionally unused.
+        #[cfg(feature = "parallel")]
+        let _pool_sized = params.num_threads > 1 && crate::init_thread_pool(params.num_threads);
+
         let engine = params.make_engine();
         let regularization_buffer = if params.regularization_enable {
             Some(Mutex::new(PoseBuffer::new(

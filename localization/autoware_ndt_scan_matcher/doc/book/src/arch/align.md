@@ -40,7 +40,10 @@ traces ([TP and NVTL](../concepts/scores.md)).
 derivative reduction. Contributions are per-point-local and reduced in **point-index order**
 (`collect_into_vec`), so the parallel result is **bit-for-bit identical** to the serial one. The
 parallel backend is therefore a pure throughput option; the serial backend stays the predictable
-WCET baseline. See [Serial and parallel derivatives](derivatives.md).
+WCET baseline. The reduction runs on rayon's process-global pool, whose worker count is sized
+separately (the `num_threads` param via the node handle, `init_thread_pool`, or `RAYON_NUM_THREADS`)
+— see [Feature flags and build configurations](../start/features.md#parallelism-and-worker-threads).
+See [Serial and parallel derivatives](derivatives.md).
 
 ## Allocation and panics
 

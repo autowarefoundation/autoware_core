@@ -340,7 +340,9 @@ pub fn compute_derivatives(
 /// **Parallel** (rayon) backend for [`compute_derivatives`] — bit-identical to the serial version
 /// (per-point contributions collected in point-index order, then folded in the same order). NOT the
 /// WCET baseline: it allocates `ws.contribs` + per-worker neighbor buffers and adds scheduling
-/// jitter, so it is a throughput option only. `align` selects it when `params.num_threads > 1`.
+/// jitter, so it is a throughput option only. `align` selects it when `params.num_threads > 1`. It
+/// runs on rayon's **process-global** thread pool; the pool's worker count is set separately (see
+/// [`crate::init_thread_pool`] or `RAYON_NUM_THREADS`), not by `num_threads`.
 #[cfg(feature = "parallel")]
 #[must_use]
 pub fn compute_derivatives_parallel(
@@ -527,9 +529,13 @@ pub struct NdtParams {
     pub max_iterations: i32,
     pub outlier_ratio: f64,
     pub regularization: Option<Regularization>,
-    /// Worker count for the derivative reduction (mirrors C++ `NdtParams.num_threads`). `> 1` uses
+    /// Selects the derivative-reduction backend (mirrors C++ `NdtParams.num_threads`): `> 1` uses
     /// the rayon backend when the `parallel` feature is on; otherwise the serial backend runs. The
     /// result is bit-identical either way, so this only trades WCET predictability for throughput.
+    ///
+    /// This is a **switch, not a worker count** — the rayon backend runs on the process-global pool,
+    /// whose size is set separately via [`crate::init_thread_pool`] or `RAYON_NUM_THREADS` (the node
+    /// handle sizes it from this same value at construction).
     pub num_threads: usize,
 }
 

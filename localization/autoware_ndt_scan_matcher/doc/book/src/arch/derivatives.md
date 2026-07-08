@@ -10,6 +10,9 @@ Planned contents:
 - Order-preserving reduction (`collect_into_vec`, per-point-local contributions reduced in
   point-index order) → bit-for-bit identical result.
 - Why parallel is a pure throughput option and serial is the WCET baseline.
+- The parallel backend runs on rayon's process-global pool; sizing the worker count (the
+  `num_threads` param via the node handle, `init_thread_pool`, or `RAYON_NUM_THREADS`) — see
+  [Feature flags and build configurations](../start/features.md#parallelism-and-worker-threads).
 - The `h_ang` angular Hessian table and the PR #1217 d1 sign fix that made it exact (link to
   [Divergences](../port/divergences.md)).
 

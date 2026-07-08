@@ -86,6 +86,13 @@ align(&map, &target, &Matrix4::identity(), &params, &mut ws, &mut out);
 assert!(out.iteration_num >= 0);
 ```
 
+## Parallelism
+
+Under the `parallel` feature, set `num_threads > 1` (in `NdtParams` / `set_params`) to use the
+rayon backend. The rayon *worker count* is the process-global pool size — set it once with
+`init_thread_pool(n)` or `RAYON_NUM_THREADS`; see
+[Feature flags and build configurations](features.md#parallelism-and-worker-threads).
+
 ## Other public modules
 
 - [`tpe::TreeStructuredParzenEstimator`](../arch/tpe.md) — the align-service pose-search sampler.

@@ -92,8 +92,9 @@ impl ScanMatcher {
     /// * `resolution` — voxel/leaf size in metres.
     /// * `max_iterations` — optimizer iteration cap.
     /// * `outlier_ratio` — Gaussian mixture outlier ratio (default 0.55).
-    /// * `num_threads` — derivative-reduction worker count (`> 1` uses rayon under the `parallel`
-    ///   feature; bit-identical to serial).
+    /// * `num_threads` — serial/parallel switch (`> 1` uses rayon under the `parallel` feature;
+    ///   bit-identical to serial). The rayon worker count itself is the process-global pool size,
+    ///   set via [`crate::init_thread_pool`] or `RAYON_NUM_THREADS`, not by this value.
     pub fn set_params(
         &self,
         trans_epsilon: f64,

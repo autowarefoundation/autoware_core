@@ -185,6 +185,41 @@ pub extern "C" fn autoware_ndt_scan_matcher_rs_add(left: u64, right: u64) -> u64
     add(left, right)
 }
 
+/// Size rayon's process-global worker pool used by the `parallel` derivative reduction.
+///
+/// The parallel backend runs on rayon's process-global thread pool; this sizes that pool to
+/// `num_threads` workers. It is orthogonal to [`ndt::NdtParams::num_threads`], which only selects
+/// serial vs parallel (`> 1`). If never called, the pool defaults to the number of logical CPUs
+/// (or `RAYON_NUM_THREADS`, if set).
+///
+/// Best-effort and idempotent — call it **once, early** (before any align). Returns `true` iff this
+/// call initialized the pool; `false` if the pool was already initialized (a previous call, or a
+/// prior parallel run initialized it lazily) or `num_threads == 0`. Never panics.
+///
+/// # Arguments
+/// * `num_threads` — desired global worker count; `0` is a no-op returning `false`.
+#[cfg(feature = "parallel")]
+#[must_use]
+pub fn init_thread_pool(num_threads: usize) -> bool {
+    num_threads != 0
+        && rayon::ThreadPoolBuilder::new()
+            .num_threads(num_threads)
+            .build_global()
+            .is_ok()
+}
+
+/// C ABI entry point for [`init_thread_pool`]. Passed by value; no pointers cross the boundary.
+/// Returns `true` iff this call initialized the pool (see [`init_thread_pool`]).
+#[cfg(feature = "parallel")]
+#[expect(
+    unsafe_code,
+    reason = "C ABI boundary; no pointers cross here (value in, bool out)"
+)]
+#[unsafe(no_mangle)]
+pub extern "C" fn autoware_ndt_scan_matcher_rs_init_thread_pool(num_threads: usize) -> bool {
+    init_thread_pool(num_threads)
+}
+
 /// Rotate the 3x3 position block of a 6x6 row-major pose covariance: `out = R * C * R^T`.
 ///
 /// # Safety
@@ -253,6 +288,21 @@ mod tests {
     fn it_works() {
         assert_eq!(add(2, 2), 4);
         assert_eq!(autoware_ndt_scan_matcher_rs_add(2, 2), 4);
+    }
+
+    #[cfg(feature = "parallel")]
+    #[test]
+    fn init_thread_pool_zero_is_noop_and_pool_is_usable() {
+        // Zero threads is always a deterministic no-op.
+        assert!(!init_thread_pool(0), "0 threads must be a no-op");
+        // Best-effort: `sized` is true only if THIS call initialized the process-global pool — a
+        // prior test in the same binary may have already done so — so assert the pool is usable
+        // rather than the flag value.
+        let sized = init_thread_pool(4);
+        assert!(
+            rayon::current_num_threads() >= 1,
+            "global pool usable after init (sized={sized})"
+        );
     }
 
     #[test]

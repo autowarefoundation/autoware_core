@@ -13,6 +13,30 @@ panic handler); the `no_std` build opts out with `--no-default-features`.
 | `mt` | ❌ | Multi-core `no_std` (kernel). Replaces the single-core `RefCell` cells with `awkernel_sync` mutexes and removes the engine-owned align scratch (callers pass a `&mut MatchScratch`). Ignored when `std` is also on. |
 | `ros` | ❌ | Builds the rosidl `bindgen` bindings for the `geometry_msgs` C structs + the `Pose`-pointer FFI shims. Independent of `std`. |
 
+## Parallelism and worker threads
+
+The `parallel` backend runs the derivative reduction on rayon's **process-global thread pool**.
+There are two independent knobs:
+
+- **Enable parallel** — set the `num_threads` param `> 1` (`NdtParams.num_threads`, the ROS node's
+  `num_threads` parameter, or `ScanMatcher::set_params`). This is a *switch*: `> 1` selects the rayon
+  backend, `≤ 1` stays serial. It does **not** by itself decide how many workers rayon uses.
+- **Set the worker count** — size the process-global pool, in one of three ways (all equivalent,
+  process-wide):
+
+  1. **The `num_threads` param, via the node handle.** When `autoware_ndt_scan_matcher_rs_new`
+     builds the handle with `num_threads > 1`, it sizes the global pool to that value once, before
+     any align. So a ROS node needs only its existing `num_threads` parameter.
+  2. **Explicit API.** Call `init_thread_pool(n)` (C ABI:
+     `autoware_ndt_scan_matcher_rs_init_thread_pool(n)`) once, early. Best-effort and idempotent.
+  3. **Environment.** `RAYON_NUM_THREADS=n` (rayon's built-in), read on first use.
+
+  If none is set, the pool defaults to the number of logical CPUs.
+
+Because the pool is process-global, `n` is the total worker count for the whole process (not
+per-engine). The reduction is bit-identical regardless of `n`, so this only trades throughput for
+WCET predictability — the serial backend (`num_threads ≤ 1`) stays the predictable RT baseline.
+
 ## The three engine configurations
 
 The interior mutability of the engine (its target map + params) is chosen at compile time. This
