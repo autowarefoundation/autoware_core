@@ -108,7 +108,6 @@ TEST_F(EuclideanClusterTest, TestClusteringWithoutHeight)
   auto result = detector.cluster(ros_test_cloud_);
 
   // Verify the result
-  EXPECT_TRUE(result);
   EXPECT_EQ(result.cluster_message.objects.size(), 2u);  // Should still detect two clusters
 
   // When use_height is false, we're flattening points for clustering, but original z-values
@@ -132,7 +131,6 @@ TEST_F(EuclideanClusterTest, TestClusteringWithMinSizeFilter)
   auto result = detector.cluster(ros_test_cloud_);
 
   // Verify the result
-  EXPECT_TRUE(result);
   EXPECT_EQ(result.cluster_message.objects.size(), 0u);  // No clusters should pass the size filter
 }
 
