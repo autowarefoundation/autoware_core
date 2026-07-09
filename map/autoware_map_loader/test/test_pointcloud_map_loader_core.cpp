@@ -78,6 +78,7 @@ TEST(PointcloudMapLoaderCore, ResolvePcdPathsCollectsFilesAndSkipsInvalidPath)
   std::sort(resolved.begin(), resolved.end());
 
   EXPECT_EQ(resolved, (std::vector<std::string>{direct_pcd, direct_pcd, dir_pcd}));
+  EXPECT_FALSE(logged_errors.empty());
 
   std::filesystem::remove_all(test_dir);
 }
@@ -180,6 +181,7 @@ TEST(PointcloudMapLoaderCore, LoadPointcloudMapCallsErrorCallbackOnMissingFile)
     {"/tmp/pointcloud_map_loader_missing_input_file.pcd"}, boost::none, {}, error_log);
 
   EXPECT_EQ(merged.header.frame_id, "map");
+  EXPECT_FALSE(errors.empty());
 }
 
 TEST(PointcloudMapLoaderCore, ThrowsWhenMetadataFileMissingForMultiplePcds)
