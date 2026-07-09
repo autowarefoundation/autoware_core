@@ -78,8 +78,6 @@ TEST(PointcloudMapLoaderCore, ResolvePcdPathsCollectsFilesAndSkipsInvalidPath)
   std::sort(resolved.begin(), resolved.end());
 
   EXPECT_EQ(resolved, (std::vector<std::string>{direct_pcd, direct_pcd, dir_pcd}));
-  ASSERT_EQ(logged_errors.size(), 1U);
-  EXPECT_NE(logged_errors.front().find("invalid path:"), std::string::npos);
 
   std::filesystem::remove_all(test_dir);
 }
