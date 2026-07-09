@@ -38,8 +38,7 @@ std::string create_test_dir(const std::string & dir_name)
   return dir.string();
 }
 
-std::string create_pcd(
-  const std::string & path, const std::vector<pcl::PointXYZ> & points)
+std::string create_pcd(const std::string & path, const std::vector<pcl::PointXYZ> & points)
 {
   pcl::PointCloud<pcl::PointXYZ> cloud;
   cloud.width = static_cast<uint32_t>(points.size());
@@ -56,7 +55,8 @@ TEST(PointcloudMapLoaderCore, ResolvePcdPathsCollectsFilesAndSkipsInvalidPath)
   const std::string direct_pcd = create_pcd(
     test_dir + "/direct.pcd", {pcl::PointXYZ(0.0F, 0.0F, 0.0F), pcl::PointXYZ(1.0F, 1.0F, 1.0F)});
   const std::string dir_pcd = create_pcd(
-    test_dir + "/from_dir.PCD", {pcl::PointXYZ(-1.0F, 2.0F, 0.5F), pcl::PointXYZ(3.0F, 0.0F, -2.0F)});
+    test_dir + "/from_dir.PCD",
+    {pcl::PointXYZ(-1.0F, 2.0F, 0.5F), pcl::PointXYZ(3.0F, 0.0F, -2.0F)});
   const std::string non_pcd = test_dir + "/ignore.txt";
   {
     std::ofstream ofs(non_pcd);
@@ -64,7 +64,9 @@ TEST(PointcloudMapLoaderCore, ResolvePcdPathsCollectsFilesAndSkipsInvalidPath)
   }
 
   std::vector<std::string> logged_errors;
-  const auto error_log = [&logged_errors](const std::string & msg) { logged_errors.push_back(msg); };
+  const auto error_log = [&logged_errors](const std::string & msg) {
+    logged_errors.push_back(msg);
+  };
 
   const std::vector<std::string> inputs = {
     direct_pcd,
@@ -86,12 +88,11 @@ TEST(PointcloudMapLoaderCore, BuildMetadataFromSinglePcdWithoutMetadataFile)
 {
   const auto test_dir = create_test_dir("test_pointcloud_map_loader_core_metadata_single");
   const std::string pcd_path = create_pcd(
-    test_dir + "/single.pcd",
-    {
-      pcl::PointXYZ(-2.0F, 3.0F, -1.0F),
-      pcl::PointXYZ(5.0F, -4.0F, 7.0F),
-      pcl::PointXYZ(1.0F, 2.0F, 0.0F),
-    });
+    test_dir + "/single.pcd", {
+                                pcl::PointXYZ(-2.0F, 3.0F, -1.0F),
+                                pcl::PointXYZ(5.0F, -4.0F, 7.0F),
+                                pcl::PointXYZ(1.0F, 2.0F, 0.0F),
+                              });
 
   const auto metadata = build_pcd_metadata_dict(test_dir + "/missing_metadata.yaml", {pcd_path});
 
@@ -147,18 +148,16 @@ TEST(PointcloudMapLoaderCore, LoadPointcloudMapMergesFilesSetsMapFrameAndReports
   std::string last_path;
   std::vector<std::string> errors;
 
-  const auto progress =
-    [&progress_count, &last_processed, &last_total, &last_path](
-      size_t processed, size_t total, const std::string & path) {
-      ++progress_count;
-      last_processed = processed;
-      last_total = total;
-      last_path = path;
-    };
+  const auto progress = [&progress_count, &last_processed, &last_total, &last_path](
+                          size_t processed, size_t total, const std::string & path) {
+    ++progress_count;
+    last_processed = processed;
+    last_total = total;
+    last_path = path;
+  };
   const auto error_log = [&errors](const std::string & msg) { errors.push_back(msg); };
 
-  const auto merged =
-    load_pointcloud_map({pcd_a, pcd_b}, boost::none, progress, error_log);
+  const auto merged = load_pointcloud_map({pcd_a, pcd_b}, boost::none, progress, error_log);
 
   pcl::PointCloud<pcl::PointXYZ> merged_pcl;
   pcl::fromROSMsg(merged, merged_pcl);
@@ -179,8 +178,8 @@ TEST(PointcloudMapLoaderCore, LoadPointcloudMapCallsErrorCallbackOnMissingFile)
   std::vector<std::string> errors;
   const auto error_log = [&errors](const std::string & msg) { errors.push_back(msg); };
 
-  const auto merged =
-    load_pointcloud_map({"/tmp/pointcloud_map_loader_missing_input_file.pcd"}, boost::none, {}, error_log);
+  const auto merged = load_pointcloud_map(
+    {"/tmp/pointcloud_map_loader_missing_input_file.pcd"}, boost::none, {}, error_log);
 
   EXPECT_EQ(merged.header.frame_id, "map");
   ASSERT_EQ(errors.size(), 1U);
