@@ -142,9 +142,18 @@ EuclideanClusterObjectDetector::cluster_voxel_grid(
     return std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>{};
   }
 
+  // In legacy code, the previous authors unconditionally flatten centroids to 2D for clustering.
+  // This sounds weird, but right now as this is a refactoring effort, I will keep as it is.
+  // Thus here matching oiginal legacy code's behavior which bypassed `param_.use_height`.
+  pcl::PointCloud<pcl::PointXYZ>::Ptr flattened_centroids(new pcl::PointCloud<pcl::PointXYZ>);
+  flattened_centroids->points.reserve(voxel_centroids->points.size());
+  for (const auto & point : voxel_centroids->points) {
+    flattened_centroids->points.emplace_back(point.x, point.y, 0.0f);
+  }
+
   // 2. Create KD-Tree
   pcl::search::KdTree<pcl::PointXYZ>::Ptr tree(new pcl::search::KdTree<pcl::PointXYZ>);
-  tree->setInputCloud(voxel_centroids);
+  tree->setInputCloud(flattened_centroids);
 
   // 3. Euclidean clustering on voxel centroids
   std::vector<pcl::PointIndices> cluster_indices;
@@ -153,7 +162,7 @@ EuclideanClusterObjectDetector::cluster_voxel_grid(
   ec.setMinClusterSize(1);
   ec.setMaxClusterSize(param_.max_cluster_size);
   ec.setSearchMethod(tree);
-  ec.setInputCloud(voxel_centroids);
+  ec.setInputCloud(flattened_centroids);
   ec.extract(cluster_indices);
 
   // 4. Create map to search cluster index from voxel grid index
