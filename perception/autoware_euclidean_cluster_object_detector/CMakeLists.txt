@@ -14,7 +14,6 @@ include_directories(
 )
 
 ament_auto_add_library(${PROJECT_NAME}_lib SHARED
-  lib/euclidean_cluster.cpp
   lib/voxel_grid_based_euclidean_cluster.cpp
   lib/ros_conversions.cpp
   src/euclidean_cluster_object_detector.cpp
