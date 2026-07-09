@@ -14,8 +14,8 @@
 
 #include "euclidean_cluster_node.hpp"
 
+#include "../lib/ros_conversions.hpp"
 #include "parameters.hpp"
-#include "utils.hpp"
 
 #include <functional>
 #include <memory>

@@ -21,9 +21,7 @@
 
 namespace autoware::euclidean_cluster
 {
-EuclideanCluster::EuclideanCluster()
-{
-}
+EuclideanCluster::EuclideanCluster() = default;
 
 EuclideanCluster::EuclideanCluster(bool use_height, int min_cluster_size, int max_cluster_size)
 : EuclideanClusterInterface(use_height, min_cluster_size, max_cluster_size)

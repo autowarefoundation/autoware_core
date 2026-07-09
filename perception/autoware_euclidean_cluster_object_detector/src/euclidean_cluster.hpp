@@ -16,7 +16,6 @@
 #define EUCLIDEAN_CLUSTER_HPP_
 
 #include "euclidean_cluster_interface.hpp"
-#include "utils.hpp"
 
 #include <pcl/point_types.h>
 

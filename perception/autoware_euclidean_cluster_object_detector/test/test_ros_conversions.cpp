@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ros_conversions.hpp"
+#include "../lib/ros_conversions.hpp"
 
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
@@ -98,17 +98,17 @@ protected:
   std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters_;
 };
 
-TEST_F(UtilsTest, TestGetCentroid)
+TEST_F(RosConversionsTest, TestGetCentroid)
 {
   // Calculate centroid
-  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::getCentroid(pointcloud_);
+  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::get_centroid(pointcloud_);
 
   EXPECT_NEAR(centroid.x, 5.5f, near_tol);
   EXPECT_NEAR(centroid.y, 6.5f, near_tol);
   EXPECT_NEAR(centroid.z, 7.5f, near_tol);
 }
 
-TEST_F(UtilsTest, TestGetCentroidEmptyPointCloud)
+TEST_F(RosConversionsTest, TestGetCentroidEmptyPointCloud)
 {
   // Create an empty point cloud
   sensor_msgs::msg::PointCloud2 empty_pointcloud;
@@ -141,14 +141,14 @@ TEST_F(UtilsTest, TestGetCentroidEmptyPointCloud)
   empty_pointcloud.data.resize(0);
 
   // Calculate centroid - should return origin (0, 0, 0)
-  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::getCentroid(empty_pointcloud);
+  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::get_centroid(empty_pointcloud);
 
   EXPECT_FLOAT_EQ(centroid.x, 0.0f);
   EXPECT_FLOAT_EQ(centroid.y, 0.0f);
   EXPECT_FLOAT_EQ(centroid.z, 0.0f);
 }
 
-TEST_F(UtilsTest, TestConvertPointCloudClusters2Msg)
+TEST_F(RosConversionsTest, TestConvertClustersToDetectedObjects)
 {
   // Create header for conversion
   std_msgs::msg::Header header;
@@ -158,7 +158,7 @@ TEST_F(UtilsTest, TestConvertPointCloudClusters2Msg)
 
   // Convert clusters to msg
   autoware_perception_msgs::msg::DetectedObjects objects;
-  autoware::euclidean_cluster::convertPointCloudClusters2Msg(header, clusters_, objects);
+  autoware::euclidean_cluster::convert_clusters_to_detected_objects(header, clusters_, objects);
 
   // Check results
   EXPECT_EQ(objects.header.frame_id, "base_link");
@@ -184,7 +184,7 @@ TEST_F(UtilsTest, TestConvertPointCloudClusters2Msg)
   EXPECT_NEAR(objects.objects[0].classification[0].probability, 1.0f, near_tol);
 }
 
-TEST_F(UtilsTest, TestConvertClusters2SensorMsg)
+TEST_F(RosConversionsTest, TestConvertClustersToDebugPointCloud)
 {
   // Create header for conversion
   std_msgs::msg::Header header;
@@ -194,7 +194,7 @@ TEST_F(UtilsTest, TestConvertClusters2SensorMsg)
 
   // Convert clusters to sensor msg
   sensor_msgs::msg::PointCloud2 output;
-  autoware::euclidean_cluster::convertClusters2SensorMsg(header, clusters_, output);
+  autoware::euclidean_cluster::convert_clusters_to_debug_point_cloud(header, clusters_, output);
 
   // Check header
   EXPECT_EQ(output.header.frame_id, "base_link");
