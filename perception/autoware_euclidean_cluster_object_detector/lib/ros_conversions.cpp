@@ -1,4 +1,4 @@
-// Copyright 2020 TIER IV, Inc.
+// Copyright 2021 Tier IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ namespace autoware::euclidean_cluster
 {
 geometry_msgs::msg::Point get_centroid(const sensor_msgs::msg::PointCloud2 & pointcloud)
 {
-  geometry_msgs::msg::Point centroid{};
+  geometry_msgs::msg::Point centroid;
   centroid.x = 0.0f;
   centroid.y = 0.0f;
   centroid.z = 0.0f;
@@ -40,10 +40,10 @@ geometry_msgs::msg::Point get_centroid(const sensor_msgs::msg::PointCloud2 & poi
     size++;
   }
 
+  // const size_t size = pointcloud.width * pointcloud.height;
   if (size == 0) {
     return centroid;
   }
-
   centroid.x = centroid.x / static_cast<float>(size);
   centroid.y = centroid.y / static_cast<float>(size);
   centroid.z = centroid.z / static_cast<float>(size);
@@ -59,13 +59,13 @@ void convert_clusters_to_detected_objects(
   msg.header = header;
 
   for (const auto & cluster : clusters) {
-    sensor_msgs::msg::PointCloud2 ros_pointcloud{};
-    autoware_perception_msgs::msg::DetectedObject object{};
+    sensor_msgs::msg::PointCloud2 ros_pointcloud;
+    autoware_perception_msgs::msg::DetectedObject object;
     pcl::toROSMsg(cluster, ros_pointcloud);
 
     ros_pointcloud.header = header;
     object.kinematics.pose_with_covariance.pose.position = get_centroid(ros_pointcloud);
-    autoware_perception_msgs::msg::ObjectClassification classification{};
+    autoware_perception_msgs::msg::ObjectClassification classification;
     classification.label = autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
     classification.probability = 1.0f;
     object.classification.emplace_back(classification);
@@ -84,6 +84,7 @@ void convert_clusters_to_debug_point_cloud(
   for (const auto & cluster : input) {
     pointcloud_size += cluster.size();
   }
+
   sensor_msgs::PointCloud2Modifier modifier(output);
   modifier.setPointCloud2Fields(
     4, "x", 1, sensor_msgs::msg::PointField::FLOAT32, "y", 1, sensor_msgs::msg::PointField::FLOAT32,
@@ -98,7 +99,7 @@ void convert_clusters_to_debug_point_cloud(
   sensor_msgs::PointCloud2Iterator<uint8_t> iter_out_b(output, "b");
 
   constexpr uint8_t color_data[] = {200, 0,   0, 0,   200, 0,   0, 0,   200,
-                                    200, 200, 0, 200, 0,   200, 0, 200, 200};
+                                    200, 200, 0, 200, 0,   200, 0, 200, 200};  // 6 pattern
 
   size_t clusters_size = input.size();
   for (size_t i = 0; i < clusters_size; ++i) {
