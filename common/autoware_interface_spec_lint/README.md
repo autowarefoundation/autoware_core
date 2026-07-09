@@ -41,10 +41,10 @@ struct PointCloudMap {
 
 ```bash
 # Lint the core specs include dir (defaults resolve relative to the repo root).
-ament_interface_spec_lint --warn-only
+ament_autoware_interface_spec_lint --warn-only
 
 # Lint an explicit directory and diff against a manifest.
-ament_interface_spec_lint --warn-only \
+ament_autoware_interface_spec_lint --warn-only \
   --spec-dir common/autoware_component_interface_specs/include/autoware/component_interface_specs \
   --manifest common/autoware_component_interface_specs/interface_manifest.json
 ```
@@ -55,7 +55,7 @@ ament_interface_spec_lint --warn-only \
 
 ```bash
 export INTERFACE_MANIFEST_GENERATOR=$PWD/build/autoware_component_interface_specs/generate_interface_manifest
-ament_interface_spec_lint --warn-only \
+ament_autoware_interface_spec_lint --warn-only \
   --manifest common/autoware_component_interface_specs/interface_manifest.json \
   --generator "$INTERFACE_MANIFEST_GENERATOR"
 ```

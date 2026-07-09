@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Console entry point for the interface spec lint (``ament_interface_spec_lint``)."""
+"""Console entry point for the interface spec lint (``ament_autoware_interface_spec_lint``)."""
 
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ DEFAULT_MANIFEST = "common/autoware_component_interface_specs/interface_manifest
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        prog="ament_interface_spec_lint",
+        prog="ament_autoware_interface_spec_lint",
         description=(
             "WARN-only lint for the Autoware component interface specs "
             "(interface_spec_concept, spec_registered, version_consistency, "

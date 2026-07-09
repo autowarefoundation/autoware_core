@@ -4,7 +4,7 @@
   <name>autoware_interface_spec_lint</name>
   <version>1.9.0</version>
   <description>WARN-only lint for the Autoware component interface specs</description>
-  <maintainer email="yutaka.kondo@youtalk.jp">Yutaka Kondo</maintainer>
+  <maintainer email="yutaka.kondo@tier4.jp">Yutaka Kondo</maintainer>
   <license>Apache License 2.0</license>
 
   <test_depend>ament_copyright</test_depend>

@@ -27,13 +27,13 @@ setup(
     install_requires=["setuptools"],
     zip_safe=True,
     maintainer="Yutaka Kondo",
-    maintainer_email="yutaka.kondo@youtalk.jp",
+    maintainer_email="yutaka.kondo@tier4.jp",
     description="WARN-only lint for the Autoware component interface specs",
     license="Apache License 2.0",
     tests_require=["pytest"],
     entry_points={
         "console_scripts": [
-            "ament_interface_spec_lint = autoware_interface_spec_lint.main:main",
+            "ament_autoware_interface_spec_lint = autoware_interface_spec_lint.main:main",
         ],
     },
 )
