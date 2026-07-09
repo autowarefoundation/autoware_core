@@ -19,9 +19,11 @@
 #include <autoware_perception_msgs/msg/detected_objects.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include <pcl/filters/voxel_grid.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <functional>
 #include <string>
 #include <utility>
 #include <vector>
@@ -43,8 +45,20 @@ public:
 
 private:
   EuclideanClusterParams param_;
+  pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_;
+
+  // Addressing Akamine-san's concern, here I make the package decides cluster strategy only once at
+  // startup
+  using ClusterStrategy =
+    std::function<std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>(
+      const sensor_msgs::msg::PointCloud2 &, const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &)>;
+  ClusterStrategy strategy_;
 
   [[nodiscard]] std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t> cluster_standard(
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
+
+  [[nodiscard]] std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t> cluster_voxel_grid(
+    const sensor_msgs::msg::PointCloud2 & input_msg,
+    const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud);
 };
 }  // namespace autoware::euclidean_cluster
