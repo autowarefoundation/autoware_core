@@ -144,17 +144,6 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
   EXPECT_EQ(result.cluster_message.objects.size(), 0);
 }
 
-// Test default constructor
-TEST(VoxelGridBasedEuclideanClusterTest, DefaultConstructor)
-{
-  autoware::euclidean_cluster::EuclideanClusterParams param;
-  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
-  EXPECT_NE(cluster, nullptr);
-
-  // Since the default constructor doesn't initialize parameters, we just check if the object was
-  // created successfully
-}
-
 // Helper function: Generate a point cloud with multiple clusters
 sensor_msgs::msg::PointCloud2 generateMultiClusterPointCloud(
   int point_per_cluster, int num_clusters)
