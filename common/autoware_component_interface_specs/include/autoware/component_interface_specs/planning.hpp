@@ -26,8 +26,6 @@
 #include <autoware_planning_msgs/srv/set_lanelet_route.hpp>
 #include <autoware_planning_msgs/srv/set_waypoint_route.hpp>
 
-#include <tuple>
-
 namespace autoware::component_interface_specs::planning
 {
 
@@ -76,18 +74,8 @@ struct Trajectory
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
 
-static constexpr Version version{0, 1, 0};
-
-using Specs =
-  std::tuple<SetLaneletRoute, SetWaypointRoute, ClearRoute, RouteState, LaneletRoute, Trajectory>;
-
-/// ADL hook: lets consumers resolve this domain's version from any spec type
-/// defined in this namespace (used by spec_version<Spec>()).
-template <class Spec>
-constexpr Version resolve_domain_version(const Spec &) noexcept
-{
-  return version;
-}
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
+  0, 1, 0, SetLaneletRoute, SetWaypointRoute, ClearRoute, RouteState, LaneletRoute, Trajectory)
 
 }  // namespace autoware::component_interface_specs::planning
 

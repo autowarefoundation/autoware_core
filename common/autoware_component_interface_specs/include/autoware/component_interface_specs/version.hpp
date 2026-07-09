@@ -16,6 +16,7 @@
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__VERSION_HPP_
 
 #include <cstdint>
+#include <tuple>
 
 namespace autoware::component_interface_specs
 {
@@ -76,5 +77,32 @@ constexpr Version spec_version()
 }
 
 }  // namespace autoware::component_interface_specs
+
+/// Declares the three things every domain namespace owes the versioning contract: its
+/// `version`, the `Specs` tuple registering the interfaces it owns, and the ADL hook
+/// `spec_version<Spec>()` resolves through. Emitting them from one macro keeps them from
+/// drifting apart -- a domain cannot bump its version but forget to register a new spec,
+/// or register a spec whose version nothing can resolve.
+///
+/// Invoke once per domain header, inside the domain namespace, after the spec structs:
+///
+///     namespace autoware::component_interface_specs::control
+///     {
+///     struct ControlCommand { ... };
+///     AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(0, 1, 0, ControlCommand)
+///     }
+///
+/// A domain may still add a `resolve_domain_version(const Spec &) = delete;` overload
+/// afterwards to exclude an individual spec from version resolution.
+#define AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(MAJOR, MINOR, PATCH, ...)              \
+  static constexpr ::autoware::component_interface_specs::Version version{MAJOR, MINOR, PATCH}; \
+  using Specs = ::std::tuple<__VA_ARGS__>;                                                      \
+                                                                                                \
+  template <class Spec>                                                                         \
+  constexpr ::autoware::component_interface_specs::Version resolve_domain_version(              \
+    const Spec &) noexcept                                                                      \
+  {                                                                                             \
+    return version;                                                                             \
+  }
 
 #endif  // AUTOWARE__COMPONENT_INTERFACE_SPECS__VERSION_HPP_

@@ -17,6 +17,13 @@
 #include "autoware/component_interface_specs/planning.hpp"
 #include "gtest/gtest.h"
 
+// concepts.hpp is an empty header below C++20. Without this, dropping the target's
+// `target_compile_features(... cxx_std_20)` would not fail here as a missing standard but as a
+// wall of "no member named InterfaceSpec" further down.
+#if !AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CONCEPTS
+#error "this target must be compiled as C++20; see target_compile_features() in CMakeLists.txt"
+#endif
+
 namespace cis = autoware::component_interface_specs;
 
 // A topic spec satisfies InterfaceSpec, a service spec satisfies ServiceSpec.

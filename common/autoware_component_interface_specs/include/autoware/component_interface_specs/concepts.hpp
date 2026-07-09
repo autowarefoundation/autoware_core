@@ -17,7 +17,29 @@
 
 #include "autoware/component_interface_specs/version.hpp"
 
+/// 1 when this header declares the concepts, 0 when it expands to nothing.
+///
+/// The concepts need C++20: the standard library only exposes `<concepts>` -- and the
+/// `std::convertible_to` these build on -- in C++20 mode. `autoware_package()` leaves
+/// every target at `CMAKE_CXX_STANDARD 17`, so a target that wants the concepts opts in
+/// with
+///
+///     target_compile_features(<target> PRIVATE cxx_std_20)
+///
+/// CMake raises that one target to `-std=c++20` and leaves every other target -- and
+/// every C++17 consumer of the domain headers -- on `-std=c++17`. This is what the
+/// package's own `generate_interface_manifest` and gtest targets do, on Humble/gcc-11
+/// (Ubuntu 22.04) as well as Jazzy.
+///
+/// A target left at C++17 gets an empty header rather than a hard error, so including it
+/// is always safe. Test this macro before naming anything the header declares.
 #if __cplusplus >= 202002L
+#define AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CONCEPTS 1
+#else
+#define AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CONCEPTS 0
+#endif
+
+#if AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CONCEPTS
 
 #include <rmw/qos_profiles.h>
 
@@ -39,7 +61,9 @@ concept InterfaceSpec = requires {
   { T::durability } -> std::convertible_to<rmw_qos_durability_policy_t>;
 };
 
-/// A service interface spec: service type + name.
+/// A service interface spec: service type + name. Services carry no QoS of their own
+/// because there is exactly one service profile and no call site varies it; see
+/// `service_qos` in utils.hpp.
 template <class T>
 concept ServiceSpec = requires {
   typename T::Service;
@@ -63,5 +87,5 @@ constexpr bool all_specs_valid()
 
 }  // namespace autoware::component_interface_specs
 
-#endif  // __cplusplus >= 202002L
+#endif  // AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CONCEPTS
 #endif  // AUTOWARE__COMPONENT_INTERFACE_SPECS__CONCEPTS_HPP_

@@ -26,8 +26,6 @@
 #include <autoware_vehicle_msgs/msg/steering_report.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_report.hpp>
 
-#include <tuple>
-
 namespace autoware::component_interface_specs::vehicle
 {
 
@@ -67,17 +65,8 @@ struct HazardLightStatus
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
 
-static constexpr Version version{0, 1, 0};
-
-using Specs = std::tuple<SteeringStatus, GearStatus, TurnIndicatorStatus, HazardLightStatus>;
-
-/// ADL hook: lets consumers resolve this domain's version from any spec type
-/// defined in this namespace (used by spec_version<Spec>()).
-template <class Spec>
-constexpr Version resolve_domain_version(const Spec &) noexcept
-{
-  return version;
-}
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
+  0, 1, 0, SteeringStatus, GearStatus, TurnIndicatorStatus, HazardLightStatus)
 
 }  // namespace autoware::component_interface_specs::vehicle
 

@@ -23,8 +23,6 @@
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
-#include <tuple>
-
 namespace autoware::component_interface_specs::map
 {
 
@@ -55,17 +53,8 @@ struct VectorMap
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
 };
 
-static constexpr Version version{0, 1, 0};
-
-using Specs = std::tuple<MapProjectorInfo, PointCloudMap, VectorMap>;
-
-/// ADL hook: lets consumers resolve this domain's version from any spec type
-/// defined in this namespace (used by spec_version<Spec>()).
-template <class Spec>
-constexpr Version resolve_domain_version(const Spec &) noexcept
-{
-  return version;
-}
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
+  0, 1, 0, MapProjectorInfo, PointCloudMap, VectorMap)
 
 }  // namespace autoware::component_interface_specs::map
 

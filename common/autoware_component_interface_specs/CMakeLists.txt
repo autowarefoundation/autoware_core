@@ -28,11 +28,28 @@ if(BUILD_TESTING)
     test/test_version.cpp
     test/test_concepts.cpp
     test/test_manifest.cpp
+    test/test_service_qos.cpp
   )
   # test_concepts.cpp exercises the C++20 concepts header.
   target_compile_features(gtest_${PROJECT_NAME} PRIVATE cxx_std_20)
+  # COMMITTED_MANIFEST lets test_manifest.cpp diff the generator's output against the file
+  # that is actually checked in, which is the copy consumers read.
   target_compile_definitions(gtest_${PROJECT_NAME}
-    PRIVATE GENERATE_TOOL="$<TARGET_FILE:generate_interface_manifest>")
+    PRIVATE
+      GENERATE_TOOL="$<TARGET_FILE:generate_interface_manifest>"
+      COMMITTED_MANIFEST="${CMAKE_CURRENT_SOURCE_DIR}/interface_manifest.json")
+
+  # Consumers of the domain headers get the C++17 that autoware_package() sets, so keep one
+  # target on it. Pinned with the property rather than target_compile_features(cxx_std_17),
+  # which only asks for *at least* C++17 and would silently follow a raised global default.
+  ament_auto_add_gtest(gtest_${PROJECT_NAME}_cxx17
+    test/gtest_main.cpp
+    test/test_cxx17_compat.cpp
+  )
+  set_target_properties(gtest_${PROJECT_NAME}_cxx17 PROPERTIES
+    CXX_STANDARD 17
+    CXX_STANDARD_REQUIRED ON
+    CXX_EXTENSIONS OFF)
 endif()
 
 autoware_ament_auto_package(

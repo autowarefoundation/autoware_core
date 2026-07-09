@@ -21,8 +21,6 @@
 
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
 
-#include <tuple>
-
 namespace autoware::component_interface_specs::perception
 {
 
@@ -35,17 +33,7 @@ struct ObjectRecognition
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
 
-static constexpr Version version{0, 1, 0};
-
-using Specs = std::tuple<ObjectRecognition>;
-
-/// ADL hook: lets consumers resolve this domain's version from any spec type
-/// defined in this namespace (used by spec_version<Spec>()).
-template <class Spec>
-constexpr Version resolve_domain_version(const Spec &) noexcept
-{
-  return version;
-}
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(0, 1, 0, ObjectRecognition)
 
 }  // namespace autoware::component_interface_specs::perception
 
