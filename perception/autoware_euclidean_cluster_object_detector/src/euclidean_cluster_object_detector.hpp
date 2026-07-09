@@ -46,8 +46,8 @@ private:
   EuclideanClusterParams param_;
   pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_;
 
-  // Addressing Akamine-san's concern, here I make the package decides cluster strategy only once at
-  // startup
+  // Addressing conditional branching concern, here I make the package decides cluster strategy only
+  // once at startup
   using ClusterStrategy =
     std::function<std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>(
       const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &)>;

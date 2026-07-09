@@ -32,8 +32,7 @@ namespace autoware::euclidean_cluster
 EuclideanClusterObjectDetector::EuclideanClusterObjectDetector(const EuclideanClusterParams & param)
 : param_(param)
 {
-  // [Concern from Akamine-san] Bind cluster strategy ONCE at startup to avoid runtime branching
-  // (条件分岐)
+  // Bind cluster strategy ONCE at startup to avoid runtime branching (条件分岐)
   if (param_.voxel_leaf_size > 0.0f) {
     strategy_ = [this](const auto & cloud) { return cluster_voxel_grid(cloud); };
   } else {
