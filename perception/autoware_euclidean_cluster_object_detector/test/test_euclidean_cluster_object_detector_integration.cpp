@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/voxel_grid_based_euclidean_cluster_node.hpp"
+#include "../src/euclidean_cluster_node.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -39,7 +39,7 @@ constexpr float near_tol = 1e-4F;
 class EuclideanClusterObjectDetectorIntegrationHarness : public ::testing::Test
 {
 protected:
-  std::shared_ptr<VoxelGridBasedEuclideanClusterNode> target_node_;
+  std::shared_ptr<EuclideanClusterNode> target_node_;
   std::shared_ptr<rclcpp::Node> interceptor_node_;
 
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_input_;
@@ -63,7 +63,7 @@ protected:
     options.append_parameter_override("voxel_leaf_size", 0.1);
     options.append_parameter_override("min_points_number_per_voxel", 1);
 
-    target_node_ = std::make_shared<VoxelGridBasedEuclideanClusterNode>(options);
+    target_node_ = std::make_shared<EuclideanClusterNode>(options);
 
     interceptor_node_ = std::make_shared<rclcpp::Node>("test_interceptor_node");
 
@@ -243,7 +243,7 @@ TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, AsyncParameterUpdateLeg
   new_options.append_parameter_override("voxel_leaf_size", 0.1);
   new_options.append_parameter_override("min_points_number_per_voxel", 1);
 
-  target_node_ = std::make_shared<VoxelGridBasedEuclideanClusterNode>(new_options);
+  target_node_ = std::make_shared<EuclideanClusterNode>(new_options);
 
   publish_and_wait(input_cloud);
 
