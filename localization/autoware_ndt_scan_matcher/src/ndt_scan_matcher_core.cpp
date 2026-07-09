@@ -374,7 +374,6 @@ void NDTScanMatcher::service_ndt_align(
   diagnostics_ndt_align_->publish(ros_time_now);
 }
 
-
 }  // namespace autoware::ndt_scan_matcher
 
 #include <rclcpp_components/register_node_macro.hpp>

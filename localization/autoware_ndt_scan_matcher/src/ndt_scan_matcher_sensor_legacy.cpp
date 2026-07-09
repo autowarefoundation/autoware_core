@@ -120,8 +120,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
   const rclcpp::Time sensor_ros_time = sensor_points_msg_in_sensor_frame->header.stamp;
 
-
-
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame(
     new pcl::PointCloud<PointSource>);
 
@@ -205,7 +203,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // store sensor points for ndt alignment
     legacy_ndt_.sensor_points_in_baselink_frame() = sensor_points_in_baselink_frame;
 
-    // The still-C++ cloud publishers read the aligned pose; the return feeds `skipping_publish_num`.
+    // The still-C++ cloud publishers read the aligned pose; the return feeds
+    // `skipping_publish_num`.
     pclomp::NdtResult ndt_result;
     bool is_converged = false;
     SmartPoseBuffer::InterpolateResult interpolation_result;
@@ -406,11 +405,10 @@ bool NDTScanMatcher::callback_sensor_points_main(
     if (
       param_.covariance.covariance_estimation.covariance_estimation_type !=
       CovarianceEstimationType::FIXED_VALUE) {
-      const Eigen::Matrix2d estimated_covariance_2d =
-        estimate_legacy_covariance(
-          param_, ndt_result, initial_pose_matrix, sensor_ros_time, *ndt_ptr,
-          legacy_ndt_.sensor_points_in_baselink_frame(), multi_ndt_pose_pub_,
-          multi_initial_pose_pub_);
+      const Eigen::Matrix2d estimated_covariance_2d = estimate_legacy_covariance(
+        param_, ndt_result, initial_pose_matrix, sensor_ros_time, *ndt_ptr,
+        legacy_ndt_.sensor_points_in_baselink_frame(), multi_ndt_pose_pub_,
+        multi_initial_pose_pub_);
       const Eigen::Matrix2d estimated_covariance_2d_scaled =
         estimated_covariance_2d * param_.covariance.covariance_estimation.scale_factor;
       const double default_cov_xx = param_.covariance.output_pose_covariance[0];
@@ -477,8 +475,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
       pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
         new pcl::PointCloud<pcl::PointXYZRGB>};
       nvs_points_in_map_ptr_rgb =
-        visualize_legacy_point_score(
-          sensor_points_in_map_ptr, lower_nvs, upper_nvs, *ndt_ptr);
+        visualize_legacy_point_score(sensor_points_in_map_ptr, lower_nvs, upper_nvs, *ndt_ptr);
       sensor_msgs::msg::PointCloud2 nvs_points_msg_in_map;
       pcl::toROSMsg(*nvs_points_in_map_ptr_rgb, nvs_points_msg_in_map);
       nvs_points_msg_in_map.header.stamp = sensor_ros_time;
@@ -524,7 +521,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     return is_converged;
   });
-
 }
 
 }  // namespace autoware::ndt_scan_matcher

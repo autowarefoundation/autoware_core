@@ -6,7 +6,7 @@ maintain the port — not as a user manual for the ROS node (see the package
 [`README.md`](https://github.com/autowarefoundation/autoware_core) for node I/O and
 parameters).
 
-The port keeps `rclcpp` as the ROS 2 runtime and moves the *algorithmic core* — the NDT
+The port keeps `rclcpp` as the ROS 2 runtime and moves the _algorithmic core_ — the NDT
 engine, scan-matching state, convergence judgement, covariance estimation, map-update
 decisions, and callback bodies — into a Rust crate,
 [`autoware_ndt_scan_matcher_rs`](https://github.com/autowarefoundation/autoware_core).

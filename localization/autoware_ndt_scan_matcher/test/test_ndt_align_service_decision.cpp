@@ -21,14 +21,14 @@
 #include <gtest/gtest.h>
 
 #include <array>
-#include <cstdint>
 #include <cstddef>
+#include <cstdint>
 
 namespace
 {
 AwNdtAlignServiceInput make_input(
-  const bool transform_ok, const bool map_ok, const bool sensor_ok,
-  const bool score_available, const double score)
+  const bool transform_ok, const bool map_ok, const bool sensor_ok, const bool score_available,
+  const double score)
 {
   AwNdtAlignServiceInput input{};
   input.transform_initial_pose_ok = transform_ok ? 1U : 0U;
@@ -56,9 +56,8 @@ AwNdtAlignServiceDecision decide_traced(
 }
 
 AwNdtAlignServiceDecision decide_like_cpp_helper(
-  const bool transform_ok, const bool map_ok, const bool sensor_ok,
-  const bool score_available, const double score, const double threshold,
-  AwNdtAlignServiceTrace * trace = nullptr)
+  const bool transform_ok, const bool map_ok, const bool sensor_ok, const bool score_available,
+  const double score, const double threshold, AwNdtAlignServiceTrace * trace = nullptr)
 {
   AwNdtAlignServiceInput input{};
   input.transform_initial_pose_ok = transform_ok ? 1U : 0U;
@@ -73,9 +72,8 @@ AwNdtAlignServiceDecision decide_like_cpp_helper(
 }
 
 AwNdtAlignServiceGateAction evaluate_gate_like_cpp_helper(
-  const bool transform_ok, const bool map_ok, const bool sensor_ok,
-  const bool score_available, const double score, const double threshold,
-  AwNdtAlignServiceTrace * trace = nullptr)
+  const bool transform_ok, const bool map_ok, const bool sensor_ok, const bool score_available,
+  const double score, const double threshold, AwNdtAlignServiceTrace * trace = nullptr)
 {
   AwNdtAlignServiceInput input{};
   input.transform_initial_pose_ok = transform_ok ? 1U : 0U;
@@ -296,36 +294,35 @@ TEST(NdtAlignServiceDecision, GateFailuresStopBeforeAlign)  // NOLINT
     decide(make_input(false, true, true, false, 0.0)),
     NDT_ALIGN_SERVICE_STATUS_TRANSFORM_UNAVAILABLE, 0U, 0U, 0U, 1U);
   expect_decision(
-    decide(make_input(true, false, true, false, 0.0)),
-    NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE, 0U, 0U, 0U, 1U);
+    decide(make_input(true, false, true, false, 0.0)), NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE, 0U,
+    0U, 0U, 1U);
   expect_decision(
-    decide(make_input(true, true, false, false, 0.0)),
-    NDT_ALIGN_SERVICE_STATUS_SENSOR_UNAVAILABLE, 0U, 0U, 0U, 1U);
+    decide(make_input(true, true, false, false, 0.0)), NDT_ALIGN_SERVICE_STATUS_SENSOR_UNAVAILABLE,
+    0U, 0U, 0U, 1U);
 }
 
 TEST(NdtAlignServiceDecision, ReadyToAlignWhenAllGatesPassWithoutScore)  // NOLINT
 {
   expect_decision(
-    decide(make_input(true, true, true, false, 0.0)),
-    NDT_ALIGN_SERVICE_STATUS_READY_TO_ALIGN, 0U, 0U, 1U, 1U);
+    decide(make_input(true, true, true, false, 0.0)), NDT_ALIGN_SERVICE_STATUS_READY_TO_ALIGN, 0U,
+    0U, 1U, 1U);
 }
 
 TEST(NdtAlignServiceDecision, AlignedReliabilityMatchesCppStrictLessThanSemantics)  // NOLINT
 {
   expect_decision(
-    decide(make_input(true, true, true, true, 4.1)),
-    NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U, 1U);
+    decide(make_input(true, true, true, true, 4.1)), NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U,
+    1U);
   expect_decision(
-    decide(make_input(true, true, true, true, 4.0)),
-    NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 0U, 0U, 1U);
+    decide(make_input(true, true, true, true, 4.0)), NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 0U, 0U,
+    1U);
 }
 
 TEST(NdtAlignServiceDecision, InvalidFlagAndNullPointersAreSafe)  // NOLINT
 {
   AwNdtAlignServiceInput invalid = make_input(true, true, true, false, 0.0);
   invalid.sensor_points_ok = 2U;
-  expect_decision(
-    decide(invalid), NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0U, 0U, 0U, 0U);
+  expect_decision(decide(invalid), NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0U, 0U, 0U, 0U);
 
   AwNdtAlignServiceDecision unchanged{};
   unchanged.status = 99;
@@ -399,20 +396,20 @@ TEST(NdtAlignServiceDecision, GateActionMapsMessagesAndDiagnosticLevels)  // NOL
     NDT_ALIGN_SERVICE_DIAGNOSTIC_ERROR, NDT_ALIGN_SERVICE_MESSAGE_TRANSFORM_UNAVAILABLE);
   expect_gate_action(
     evaluate_gate_like_cpp_helper(true, false, true, false, 0.0, 4.0),
-    NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE, 0U, 0U, 0U, 1U,
-    NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN, NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE);
+    NDT_ALIGN_SERVICE_STATUS_MAP_UNAVAILABLE, 0U, 0U, 0U, 1U, NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+    NDT_ALIGN_SERVICE_MESSAGE_MAP_UNAVAILABLE);
   expect_gate_action(
     evaluate_gate_like_cpp_helper(true, true, false, false, 0.0, 4.0),
-    NDT_ALIGN_SERVICE_STATUS_SENSOR_UNAVAILABLE, 0U, 0U, 0U, 1U,
-    NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN, NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE);
+    NDT_ALIGN_SERVICE_STATUS_SENSOR_UNAVAILABLE, 0U, 0U, 0U, 1U, NDT_ALIGN_SERVICE_DIAGNOSTIC_WARN,
+    NDT_ALIGN_SERVICE_MESSAGE_SENSOR_UNAVAILABLE);
 }
 
 TEST(NdtAlignServiceDecision, GateActionReadyAlignedAndInvalidHaveNoMessage)  // NOLINT
 {
   expect_gate_action(
     evaluate_gate_like_cpp_helper(true, true, true, false, 0.0, 4.0),
-    NDT_ALIGN_SERVICE_STATUS_READY_TO_ALIGN, 0U, 0U, 1U, 1U,
-    NDT_ALIGN_SERVICE_DIAGNOSTIC_OK, NDT_ALIGN_SERVICE_MESSAGE_NONE);
+    NDT_ALIGN_SERVICE_STATUS_READY_TO_ALIGN, 0U, 0U, 1U, 1U, NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+    NDT_ALIGN_SERVICE_MESSAGE_NONE);
   expect_gate_action(
     evaluate_gate_like_cpp_helper(true, true, true, true, 4.5, 4.0),
     NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 0U, 1U, NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
@@ -423,8 +420,8 @@ TEST(NdtAlignServiceDecision, GateActionReadyAlignedAndInvalidHaveNoMessage)  //
   AwNdtAlignServiceGateAction action{};
   autoware_ndt_scan_matcher_rs_node_evaluate_align_service_gate(&invalid, nullptr, &action);
   expect_gate_action(
-    action, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0U, 0U, 0U, 0U,
-    NDT_ALIGN_SERVICE_DIAGNOSTIC_OK, NDT_ALIGN_SERVICE_MESSAGE_NONE);
+    action, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT, 0U, 0U, 0U, 0U, NDT_ALIGN_SERVICE_DIAGNOSTIC_OK,
+    NDT_ALIGN_SERVICE_MESSAGE_NONE);
 }
 
 TEST(NdtAlignServiceDecision, ProductionShapedGateHelperMatchesDecisionAndTrace)  // NOLINT
@@ -505,7 +502,6 @@ TEST(NdtAlignServiceDecision, ProductionShapedHelperCanAppendDecisionTrace)  // 
   expect_event(aligned_events[0], reference_event(aligned_input, aligned_decision));
 }
 
-
 TEST(NdtAlignServiceDecision, SearchSummaryTraceAppendsSemanticEvent)  // NOLINT
 {
   const AwNdtAlignServiceSearchSummaryInput input =
@@ -521,8 +517,7 @@ TEST(NdtAlignServiceDecision, SearchSummaryTraceAppendsSemanticEvent)  // NOLINT
 
   ASSERT_EQ(trace.len, 1U);
   EXPECT_EQ(trace.overflowed, 0U);
-  expect_search_summary_event(
-    events[0], input, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 1U, 1U);
+  expect_search_summary_event(events[0], input, NDT_ALIGN_SERVICE_STATUS_ALIGNED, 1U, 1U, 1U, 1U);
 }
 
 TEST(NdtAlignServiceDecision, SearchSummaryTraceInvalidCountsAreExplicit)  // NOLINT
@@ -570,7 +565,6 @@ TEST(NdtAlignServiceDecision, SearchSummaryTraceNullAndFullBuffersAreSafe)  // N
   EXPECT_EQ(null_events.len, 0U);
   EXPECT_EQ(null_events.overflowed, 1U);
 }
-
 
 TEST(NdtAlignServiceDecision, ResponseTraceAppendsResponsePayloadEvent)  // NOLINT
 {

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 // The C++ RAII owner of the opaque Rust
-// node handle. Builds an AwNdtParams directly (no live node needed) and exercises the construct/throw
-// lifecycle across the FFI boundary.
+// node handle. Builds an AwNdtParams directly (no live node needed) and exercises the
+// construct/throw lifecycle across the FFI boundary.
 
 #include "autoware/ndt_scan_matcher/ndt_scan_matcher_rs.hpp"
 

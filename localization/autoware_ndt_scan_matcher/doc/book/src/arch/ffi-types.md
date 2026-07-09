@@ -28,7 +28,7 @@ ROS messages cross as thin borrowed views, read **only during the call**:
 ```
 
 A `PointCloud2` view is untrusted: its field datatype and count are validated (expect `FLOAT32`
-x/y/z) *before* the bytes are decoded — never reinterpreted blindly. Any data Rust must retain is
+x/y/z) _before_ the bytes are decoded — never reinterpreted blindly. Any data Rust must retain is
 copied into a Rust-owned structure first ([`ffi_ptr`](ffi-ptr.md) does the audited reads).
 
 ## Parameters

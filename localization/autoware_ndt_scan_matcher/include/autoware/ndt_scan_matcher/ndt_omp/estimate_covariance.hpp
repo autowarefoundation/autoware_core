@@ -71,7 +71,8 @@ Eigen::Matrix2d adjust_diagonal_covariance(
   const Eigen::Matrix2d & covariance, const Eigen::Matrix4f & pose, const double fixed_cov00,
   const double fixed_cov11);
 
-// --- Engine-driving estimators (concrete pclomp engine; definitions in estimate_covariance.cpp) ---
+// --- Engine-driving estimators (concrete pclomp engine; definitions in estimate_covariance.cpp)
+// ---
 
 /** \brief Multi-NDT covariance: re-align from each candidate pose; uniform weights; unbiased
  * (n-1)/n covariance. */

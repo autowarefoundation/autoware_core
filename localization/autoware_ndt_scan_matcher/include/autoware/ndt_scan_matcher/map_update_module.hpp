@@ -94,11 +94,11 @@ private:
     const geometry_msgs::msg::Point & position, NdtType & ndt,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
 
-  // Map-update via the portable Rust `apply_map_update` (the `MapSource` Host port). The Rust FFI owns
-  // the staging + atomic commit double-buffer; we only supply the tiles. `build_map_delta` runs the
-  // pcd-loader fetch and pushes the add/remove delta into the Rust-owned `builder` (returns whether
-  // anything changed); `map_source_fill` is the C-ABI trampoline the FFI calls back (ctx ==
-  // MapSourceContext*), mirroring the make_host/make_diagnostics vtable pattern.
+  // Map-update via the portable Rust `apply_map_update` (the `MapSource` Host port). The Rust FFI
+  // owns the staging + atomic commit double-buffer; we only supply the tiles. `build_map_delta`
+  // runs the pcd-loader fetch and pushes the add/remove delta into the Rust-owned `builder`
+  // (returns whether anything changed); `map_source_fill` is the C-ABI trampoline the FFI calls
+  // back (ctx == MapSourceContext*), mirroring the make_host/make_diagnostics vtable pattern.
   struct MapSourceContext
   {
     MapUpdateModule * self;
@@ -119,8 +119,8 @@ private:
     pcd_loader_client_;
 
   // Lock ordering (OFF, where these are real mutexes): builder_state_ -> legacy_->ndt_ptr and
-  // builder_state_ -> last_update_position_. Under NDT_USE_RUST the live engine is owned by the Rust
-  // node handle, so only builder_state_/last_update_position_ are real locks here.
+  // builder_state_ -> last_update_position_. Under NDT_USE_RUST the live engine is owned by the
+  // Rust node handle, so only builder_state_/last_update_position_ are real locks here.
   std::unique_ptr<LegacyState> legacy_;
   Guarded<BuilderState> builder_state_;
   // The map-update decision state (last-update position + need-rebuild) lives Rust-side on

@@ -41,7 +41,7 @@ kernel:
 1. **Portable core (`no_std`)** — `ScanMatcher` is generic over the [host ports](host-vtable.md)
    and wraps the persistent [`NdtEngine`](engine.md). No ROS, no FFI, no `std`. It reuses the pure
    `convergence` / `covariance` / `cov_estimate` kernels. This is the kernel (Track-B) target.
-2. **`std` FFI shell** — `NdtScanMatcherRs` is the opaque handle C++ holds. It owns the *node-level*
+2. **`std` FFI shell** — `NdtScanMatcherRs` is the opaque handle C++ holds. It owns the _node-level_
    state the algorithm core does not (pose buffers, activation flag, map-update bookkeeping) and
    adapts everything to the C ABI. It lives in the `#[cfg(feature = "std")]` `node` /
    `node_map_update` / `node_align_service` modules and is never compiled into the `no_std` rlib.

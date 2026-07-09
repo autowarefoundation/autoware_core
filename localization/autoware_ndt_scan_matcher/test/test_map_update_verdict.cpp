@@ -16,8 +16,8 @@
 // (autoware_ndt_scan_matcher_rs_node_evaluate_map_update) must match the original C++ logic from
 // MapUpdateModule::should_update_map / out_of_map_range. Both call libm hypot and then do threshold
 // comparisons, so the verdict (distance + the two flags) is bit-exact. The C++ reference below is a
-// verbatim transcription of that distance math (the nullopt short-circuits stay C++-side and are not
-// exercised here).
+// verbatim transcription of that distance math (the nullopt short-circuits stay C++-side and are
+// not exercised here).
 
 #include "autoware_ndt_scan_matcher_rs.h"
 

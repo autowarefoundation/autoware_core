@@ -18,9 +18,9 @@
 // verdict (flags + selected score/threshold) is exactly equal -- compared with EXPECT_EQ, not a
 // tolerance. The C++ reference below is a verbatim transcription of the callback's gate logic.
 
-#include <autoware/ndt_scan_matcher/hyper_parameters.hpp>
-
 #include "autoware_ndt_scan_matcher_rs.h"
+
+#include <autoware/ndt_scan_matcher/hyper_parameters.hpp>
 
 #include <gtest/gtest.h>
 
@@ -85,11 +85,11 @@ constexpr int kNvtl = 1;  // ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LI
 // A grid over both param types, the iteration / oscillation / score gates, and an invalid type.
 TEST(ConvergenceVerdict, MatchesCppAcrossGrid)  // NOLINT
 {
-  const int it_cases[] = {5, 30, 31};                   // below / at / above the cap of 30
-  const int osc_cases[] = {0, 10, 11};                  // below / at / above the threshold of 10
-  const int type_cases[] = {kTp, kNvtl, 2};             // TP / NVTL / unknown
-  const double tp_cases[] = {1.0, 3.0};                 // vs the 2.0 TP threshold
-  const double nvtl_cases[] = {3.0, 5.0};               // vs the 4.0 NVTL threshold
+  const int it_cases[] = {5, 30, 31};        // below / at / above the cap of 30
+  const int osc_cases[] = {0, 10, 11};       // below / at / above the threshold of 10
+  const int type_cases[] = {kTp, kNvtl, 2};  // TP / NVTL / unknown
+  const double tp_cases[] = {1.0, 3.0};      // vs the 2.0 TP threshold
+  const double nvtl_cases[] = {3.0, 5.0};    // vs the 4.0 NVTL threshold
 
   for (const int it : it_cases) {
     for (const int osc : osc_cases) {

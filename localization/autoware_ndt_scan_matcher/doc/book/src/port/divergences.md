@@ -25,7 +25,7 @@ port keeps the C++ behavior verbatim until that upstream fix lands.
 
 Reproduce-not-fix is temporary per finding. Once the upstream fix lands, the port **follows it**:
 update the Rust to match the corrected C++, widen or re-point the pinning test to the corrected
-value, and move the entry to *Resolved* below. Following the fix restores `ON == OFF` (both now
+value, and move the entry to _Resolved_ below. Following the fix restores `ON == OFF` (both now
 compute the corrected value).
 
 ## Resolved

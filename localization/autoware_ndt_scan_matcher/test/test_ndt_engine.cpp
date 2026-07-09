@@ -18,12 +18,11 @@
 // validates the node-facing handle + the per-id add/createVoxelKdtree path (the one-shot align is
 // already covered by test_align).
 
-#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
-
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
 
+#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 #include <gtest/gtest.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
@@ -61,7 +60,8 @@ void make_tile(
 TEST(NdtEngine, IncrementalMapMatchesCppEngine)  // NOLINT
 {
   std::mt19937 rng(11);
-  const std::array<std::array<float, 3>, 2> centers = {{{{0.0F, 0.0F, 0.0F}}, {{8.0F, 4.0F, 0.0F}}}};
+  const std::array<std::array<float, 3>, 2> centers = {
+    {{{0.0F, 0.0F, 0.0F}}, {{8.0F, 4.0F, 0.0F}}}};
 
   // Two map tiles (id 0 and 1), each a PCL cloud + a flat buffer for the Rust handle.
   std::array<pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>>, 2> tiles;

@@ -130,11 +130,8 @@ NDTScanMatcher::align_pose_with_legacy_engine(
   const double stddev_pitch = std::sqrt(covariance(4, 4));
 
   const std::vector<double> sample_mean{
-    initial_pose_with_cov.pose.pose.position.x,
-    initial_pose_with_cov.pose.pose.position.y,
-    initial_pose_with_cov.pose.pose.position.z,
-    base_rpy.x,
-    base_rpy.y};
+    initial_pose_with_cov.pose.pose.position.x, initial_pose_with_cov.pose.pose.position.y,
+    initial_pose_with_cov.pose.pose.position.z, base_rpy.x, base_rpy.y};
   const std::vector<double> sample_stddev{stddev_x, stddev_y, stddev_z, stddev_roll, stddev_pitch};
 
   TreeStructuredParzenEstimator tpe(

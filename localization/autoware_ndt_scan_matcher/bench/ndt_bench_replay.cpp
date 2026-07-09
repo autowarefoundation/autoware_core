@@ -15,21 +15,21 @@
 // L3 offline replay benchmark. A single executable drives BOTH NDT engines
 // on identical inputs: the C++ `MultiGridNormalDistributionsTransform` and the Rust port over the C
 // ABI. The target map + kd-tree is built ONCE per engine; only the repeated `align` loop is timed
-// (steady_clock), so this measures the align kernel, not map construction. Both engines see the same
-// synthetic geometry from the same buffers, so the comparison is apples-to-apples by construction.
+// (steady_clock), so this measures the align kernel, not map construction. Both engines see the
+// same synthetic geometry from the same buffers, so the comparison is apples-to-apples by
+// construction.
 //
-// Output: a JSON file with per-align latency samples (ms) + iteration_num + run metadata, consumed by
-// bench/gen_report.py to render a self-contained HTML report.
+// Output: a JSON file with per-align latency samples (ms) + iteration_num + run metadata, consumed
+// by bench/gen_report.py to render a self-contained HTML report.
 //
 // Usage: ndt_bench_replay [iters=200] [warmup=20] [out.json=ndt_bench.json] [interval=0.2]
 //   `interval` sets the synthetic point spacing → point count (default 0.2 m ⇒ ~30,603 pts).
-
-#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
 
+#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
@@ -195,10 +195,18 @@ int main(int argc, char ** argv)
   std::fprintf(f, "    \"note\": \"align loop only; map+kdtree built once per engine\"\n");
   std::fprintf(f, "  },\n");
   std::fprintf(f, "  \"engines\": {\n");
-  std::fprintf(f, "    \"cpp\": { \"label\": \"C++ (multigrid_ndt_omp)\", \"iteration_num\": %d, \"samples_ms\": ", cpp_iter);
+  std::fprintf(
+    f,
+    "    \"cpp\": { \"label\": \"C++ (multigrid_ndt_omp)\", \"iteration_num\": %d, "
+    "\"samples_ms\": ",
+    cpp_iter);
   write_samples(f, cpp_ms);
   std::fprintf(f, " },\n");
-  std::fprintf(f, "    \"rust\": { \"label\": \"Rust (autoware_ndt_scan_matcher_rs)\", \"iteration_num\": %d, \"samples_ms\": ", rs_iter);
+  std::fprintf(
+    f,
+    "    \"rust\": { \"label\": \"Rust (autoware_ndt_scan_matcher_rs)\", \"iteration_num\": %d, "
+    "\"samples_ms\": ",
+    rs_iter);
   write_samples(f, rs_ms);
   std::fprintf(f, " }\n");
   std::fprintf(f, "  }\n");
@@ -206,7 +214,7 @@ int main(int argc, char ** argv)
   std::fclose(f);
 
   std::fprintf(
-    stderr, "ndt_bench_replay: %zu pts, %d aligns/engine (+%d warmup) -> %s\n", n_pts, iters, warmup,
-    out_path.c_str());
+    stderr, "ndt_bench_replay: %zu pts, %d aligns/engine (+%d warmup) -> %s\n", n_pts, iters,
+    warmup, out_path.c_str());
   return 0;
 }

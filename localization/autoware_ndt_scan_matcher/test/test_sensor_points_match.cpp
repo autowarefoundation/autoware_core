@@ -13,20 +13,20 @@
 // limitations under the License.
 
 // Differential test: the sensor-callback *middle* orchestrator
-// (on_sensor_points_match) fuses the gates → align → convergence → covariance into one Rust call and
-// requests the POD publishers through the AwHost publish ops. This test drives it on a
+// (on_sensor_points_match) fuses the gates → align → convergence → covariance into one Rust call
+// and requests the POD publishers through the AwHost publish ops. This test drives it on a
 // synthetic engine + seeded handle with a **recording mock AwHost** that captures every publish op,
-// and asserts: the align values it publishes match the decomposed run_align on the same engine (exact,
-// identity-orientation guess); the FIXED covariance == rotate_covariance(output_cov, rot(result_pose))
-// (tolerance); ndt_pose / ndt_pose_with_covariance fire only on convergence; and the gate status codes.
+// and asserts: the align values it publishes match the decomposed run_align on the same engine
+// (exact, identity-orientation guess); the FIXED covariance == rotate_covariance(output_cov,
+// rot(result_pose)) (tolerance); ndt_pose / ndt_pose_with_covariance fire only on convergence; and
+// the gate status codes.
 
 #include "../src/ndt_scan_matcher_helper.hpp"
-
-#include <autoware/localization_util/util_func.hpp>
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
+#include <autoware/localization_util/util_func.hpp>
 
 #include <gtest/gtest.h>
 #include <pcl/point_cloud.h>
@@ -47,9 +47,8 @@ namespace
 constexpr int kTp = 0;  // ConvergedParamType::TRANSFORM_PROBABILITY
 // A distinct diagonal 6x6 (row-major) so the covariance rotation is observable.
 constexpr std::array<double, 36> kOutputCov = {
-  4.0, 0.0, 0.0, 0.0, 0.0, 0.0,   0.0, 9.0, 0.0, 0.0, 0.0, 0.0,
-  0.0, 0.0, 16.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.0, 0.1, 0.0, 0.0,
-  0.0, 0.0, 0.0, 0.0, 0.2, 0.0,   0.0, 0.0, 0.0, 0.0, 0.0, 0.3};
+  4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 9.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 16.0, 0.0, 0.0, 0.0,
+  0.0, 0.0, 0.0, 0.1, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2, 0.0, 0.0, 0.0, 0.0,  0.0, 0.0, 0.3};
 
 // --- Rust engine fixture + source, mirroring test_node_run_align -------------------------------
 void make_tile(float cx, float cy, float cz, std::mt19937 & rng, pcl::PointCloud<pcl::PointXYZ> & c)
@@ -99,13 +98,11 @@ std::vector<float> flatten(const pcl::PointCloud<pcl::PointXYZ> & cloud)
 }
 
 void add_target(
-  const AwNdtEngine * engine, const pcl::PointCloud<pcl::PointXYZ> & tile,
-  const std::string & id)
+  const AwNdtEngine * engine, const pcl::PointCloud<pcl::PointXYZ> & tile, const std::string & id)
 {
   const std::vector<float> flat = flatten(tile);
   autoware_ndt_scan_matcher_rs_ndt_engine_add_target_str(
-    engine, flat.data(), tile.size(), reinterpret_cast<const std::uint8_t *>(id.data()),
-    id.size());
+    engine, flat.data(), tile.size(), reinterpret_cast<const std::uint8_t *>(id.data()), id.size());
 }
 
 const AwNdtEngine * load_driven_map(AwNdtScanMatcher * handle, const DrivenFixture & fixture)
@@ -127,9 +124,9 @@ struct PoseCall
 };
 struct Captured
 {
-  std::vector<PoseCall> poses;                 // publish_pose
-  std::vector<std::pair<int, float>> float32s;  // publish_float32 (topic, value)
-  std::vector<int32_t> iterations;              // publish_int32 (IterationNum only)
+  std::vector<PoseCall> poses;                           // publish_pose
+  std::vector<std::pair<int, float>> float32s;           // publish_float32 (topic, value)
+  std::vector<int32_t> iterations;                       // publish_int32 (IterationNum only)
   std::vector<std::pair<int, std::size_t>> pose_arrays;  // publish_pose_array (topic, count)
   std::vector<std::pair<int, std::vector<std::array<float, 3>>>> xyz_clouds;
   std::vector<std::array<float, 3>> voxel_score_points;
@@ -153,9 +150,17 @@ struct Captured
   }
 };
 
-extern "C" std::int64_t h_now(void *) { return 0; }
-extern "C" void h_log(void *, std::int32_t, const std::uint8_t *, std::size_t) {}
-extern "C" bool h_lookup(void *, AwStr, AwStr, float *) { return false; }
+extern "C" std::int64_t h_now(void *)
+{
+  return 0;
+}
+extern "C" void h_log(void *, std::int32_t, const std::uint8_t *, std::size_t)
+{
+}
+extern "C" bool h_lookup(void *, AwStr, AwStr, float *)
+{
+  return false;
+}
 extern "C" void h_pub_pose(
   void * ctx, AwPoseTopic topic, std::int64_t, const AwPose * pose, const double * cov)
 {
@@ -217,7 +222,8 @@ std::vector<std::array<float, 3>> copy_points(AwPoint3fSlice points)
 extern "C" void h_pub_cloud(
   void * ctx, AwPointCloudTopic topic, std::int64_t, AwPoint3fSlice points)
 {
-  static_cast<Captured *>(ctx)->xyz_clouds.emplace_back(static_cast<int>(topic), copy_points(points));
+  static_cast<Captured *>(ctx)->xyz_clouds.emplace_back(
+    static_cast<int>(topic), copy_points(points));
 }
 extern "C" void h_pub_score_cloud(
   void * ctx, std::int64_t, AwPoint3fSlice points, const float * scores, std::size_t scores_len)
@@ -228,20 +234,37 @@ extern "C" void h_pub_score_cloud(
 }
 AwHost recording_host(Captured & c)
 {
-  return AwHost{
-    &c,           h_now,        h_log,         h_lookup,   h_pub_pose, h_pub_pose_array,
-    h_pub_marker, h_pub_float32, h_pub_int32, h_pub_tf,    h_pub_itr,  h_pc_has,
-    h_pub_cloud,  h_pub_score_cloud};
+  return AwHost{&c,           h_now,
+                h_log,        h_lookup,
+                h_pub_pose,   h_pub_pose_array,
+                h_pub_marker, h_pub_float32,
+                h_pub_int32,  h_pub_tf,
+                h_pub_itr,    h_pc_has,
+                h_pub_cloud,  h_pub_score_cloud};
 }
 
 // --- no-op diagnostics ---------------------------------------------------------------------------
-extern "C" void d_clear(void *) {}
-extern "C" void d_bool(void *, const std::uint8_t *, std::size_t, bool) {}
-extern "C" void d_i64(void *, const std::uint8_t *, std::size_t, std::int64_t) {}
-extern "C" void d_f64(void *, const std::uint8_t *, std::size_t, double) {}
-extern "C" void d_str(void *, const std::uint8_t *, std::size_t, const std::uint8_t *, std::size_t) {}
-extern "C" void d_level(void *, std::int8_t, const std::uint8_t *, std::size_t) {}
-extern "C" void d_publish(void *, std::int64_t) {}
+extern "C" void d_clear(void *)
+{
+}
+extern "C" void d_bool(void *, const std::uint8_t *, std::size_t, bool)
+{
+}
+extern "C" void d_i64(void *, const std::uint8_t *, std::size_t, std::int64_t)
+{
+}
+extern "C" void d_f64(void *, const std::uint8_t *, std::size_t, double)
+{
+}
+extern "C" void d_str(void *, const std::uint8_t *, std::size_t, const std::uint8_t *, std::size_t)
+{
+}
+extern "C" void d_level(void *, std::int8_t, const std::uint8_t *, std::size_t)
+{
+}
+extern "C" void d_publish(void *, std::int64_t)
+{
+}
 AwDiagnostics noop_diag()
 {
   return AwDiagnostics{nullptr, d_clear, d_bool, d_i64, d_f64, d_str, d_level, d_publish};
@@ -358,7 +381,8 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
   ASSERT_EQ(cap.xyz_clouds[0].second.size(), source->size());
   const Eigen::Matrix4f ref_pose = to_eigen(ref.pose);
   for (std::size_t i = 0; i < source->size(); ++i) {
-    const Eigen::Vector4f p_src(source->points[i].x, source->points[i].y, source->points[i].z, 1.0F);
+    const Eigen::Vector4f p_src(
+      source->points[i].x, source->points[i].y, source->points[i].z, 1.0F);
     const Eigen::Vector4f p_map = ref_pose * p_src;
     EXPECT_NEAR(cap.xyz_clouds[0].second[i][0], p_map.x(), 1e-5) << i;
     EXPECT_NEAR(cap.xyz_clouds[0].second[i][1], p_map.y(), 1e-5) << i;
@@ -375,7 +399,8 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
   EXPECT_EQ(
     cap.marker_max_iterations, autoware_ndt_scan_matcher_rs_ndt_engine_max_iterations(engine));
 
-  // pose publishes: InitialPoseWithCovariance always; NdtPose + NdtPoseWithCovariance on convergence.
+  // pose publishes: InitialPoseWithCovariance always; NdtPose + NdtPoseWithCovariance on
+  // convergence.
   EXPECT_EQ(cap.count_pose_topic(2), 1);  // InitialPoseWithCovariance
   EXPECT_EQ(cap.count_pose_topic(0), 1);  // NdtPose (converged)
   EXPECT_EQ(cap.count_pose_topic(1), 1);  // NdtPoseWithCovariance (converged)
@@ -395,7 +420,8 @@ TEST(SensorPointsMatch, PublishesDecomposedAlignAndCovariance)  // NOLINT
       EXPECT_NEAR(call.pose.position[2], ref_pose_msg.position.z, 1e-5);
       ASSERT_TRUE(call.has_cov);
       for (int i = 0; i < 36; ++i) {
-        EXPECT_NEAR(call.cov[static_cast<std::size_t>(i)], expected_cov[static_cast<std::size_t>(i)], 1e-5)
+        EXPECT_NEAR(
+          call.cov[static_cast<std::size_t>(i)], expected_cov[static_cast<std::size_t>(i)], 1e-5)
           << "cov[" << i << "]";
       }
     } else if (call.topic == 2) {  // InitialPoseWithCovariance == the seeded identity/origin pose
@@ -505,7 +531,6 @@ TEST(SensorPointsMatch, MapNotSetGate)  // NOLINT
     3);  // SM_MAP_NOT_SET
   autoware_ndt_scan_matcher_rs_free(h);
 }
-
 
 TEST(SensorPointsMatch, NoGroundPublishesCloudAndScores)  // NOLINT
 {

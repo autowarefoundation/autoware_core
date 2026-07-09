@@ -15,15 +15,14 @@
 // Test: the sensor-callback align orchestrator
 // (autoware_ndt_scan_matcher_rs_node_run_align) drives a live Rust engine directly through the C
 // ABI. It must align EXACTLY like the bare engine align FFI on the same deterministic Rust engine +
-// guess and return a self-consistent convergence verdict. This pins the engine-handle + orchestrator
-// wiring; engine-vs-pclomp accuracy is already covered by test_ndt_engine/test_align, and the
-// convergence-formula vs C++ by test_convergence_verdict.
-
-#include <autoware/ndt_scan_matcher/ndt_omp/ndt_struct.hpp>
+// guess and return a self-consistent convergence verdict. This pins the engine-handle +
+// orchestrator wiring; engine-vs-pclomp accuracy is already covered by test_ndt_engine/test_align,
+// and the convergence-formula vs C++ by test_convergence_verdict.
 
 #include "autoware_ndt_scan_matcher_rs.h"
 
 #include <Eigen/Core>
+#include <autoware/ndt_scan_matcher/ndt_omp/ndt_struct.hpp>
 
 #include <gtest/gtest.h>
 #include <pcl/point_cloud.h>
@@ -170,8 +169,8 @@ AwNdtAlignServiceSearchOutput make_search_output(
 }
 }  // namespace
 
-// run_align via a direct engine handle == the bare engine align FFI on the same engine + same guess + a
-// self-consistent verdict. Exact equality (deterministic Rust engine), no tolerance.
+// run_align via a direct engine handle == the bare engine align FFI on the same engine + same guess
+// + a self-consistent verdict. Exact equality (deterministic Rust engine), no tolerance.
 TEST(NodeRunAlign, MatchesEngineAlignAndVerdictIsConsistent)  // NOLINT
 {
   pcl::PointCloud<pcl::PointXYZ>::Ptr source;
@@ -210,12 +209,13 @@ TEST(NodeRunAlign, MatchesEngineAlignAndVerdictIsConsistent)  // NOLINT
     EXPECT_FLOAT_EQ(outcome.pose[i], ref_pose[i]) << "pose[" << i << "]";
   }
 
-  // Verdict self-consistency (the formula is differential-tested against C++ in test_convergence_verdict).
+  // Verdict self-consistency (the formula is differential-tested against C++ in
+  // test_convergence_verdict).
   EXPECT_TRUE(outcome.verdict.valid_param_type);
   EXPECT_GE(outcome.oscillation_num, 0);
-  const bool expect_converged =
-    (outcome.verdict.is_ok_iteration_num || outcome.verdict.is_local_optimal_solution_oscillation) &&
-    outcome.verdict.is_ok_score;
+  const bool expect_converged = (outcome.verdict.is_ok_iteration_num ||
+                                 outcome.verdict.is_local_optimal_solution_oscillation) &&
+                                outcome.verdict.is_ok_score;
   EXPECT_EQ(outcome.verdict.is_converged, expect_converged);
   // With zero thresholds and a good alignment, the score gate passes and it converges.
   EXPECT_TRUE(outcome.verdict.is_ok_score);
@@ -264,8 +264,8 @@ TEST(NodeRunAlign, AlignServiceSearchWritesParticlesAndBestPose)  // NOLINT
   AwNdtAlignServiceSearchOutput output =
     make_search_output(initial_poses, result_poses, scores, iterations);
 
-  const std::int32_t status = autoware_ndt_scan_matcher_rs_node_run_align_service_search(
-    engine.raw(), &input, &output);
+  const std::int32_t status =
+    autoware_ndt_scan_matcher_rs_node_run_align_service_search(engine.raw(), &input, &output);
 
   EXPECT_EQ(status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
   EXPECT_EQ(output.status, NDT_ALIGN_SERVICE_STATUS_ALIGNED);
@@ -299,8 +299,8 @@ TEST(NodeRunAlign, AlignServiceSearchRejectsTooSmallOutputCapacity)  // NOLINT
   AwNdtAlignServiceSearchOutput output =
     make_search_output(initial_poses, result_poses, scores, iterations);
 
-  const std::int32_t status = autoware_ndt_scan_matcher_rs_node_run_align_service_search(
-    engine.raw(), &input, &output);
+  const std::int32_t status =
+    autoware_ndt_scan_matcher_rs_node_run_align_service_search(engine.raw(), &input, &output);
 
   EXPECT_EQ(status, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);
   EXPECT_EQ(output.status, NDT_ALIGN_SERVICE_STATUS_INVALID_INPUT);

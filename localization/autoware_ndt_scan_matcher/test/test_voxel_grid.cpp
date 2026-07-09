@@ -16,14 +16,12 @@
 // leaf parameters (mean + inverse covariance) as the C++ MultiVoxelGridCovariance for the same
 // cloud. C++ leaves are fetched via the public radiusSearch; Rust leaves via the FFI lookup.
 
-#include <autoware/ndt_scan_matcher/ndt_omp/multi_voxel_grid_covariance_omp.h>
-
 #include "autoware_ndt_scan_matcher_rs.h"
 
+#include <autoware/ndt_scan_matcher/ndt_omp/multi_voxel_grid_covariance_omp.h>
+#include <gtest/gtest.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-
-#include <gtest/gtest.h>
 
 #include <array>
 #include <cmath>
@@ -146,7 +144,8 @@ TEST(VoxelGrid, MultiGridRadiusSearchMatchesCpp)  // NOLINT
   Grid cpp_grid;
   cpp_grid.setLeafSize(2.0, 2.0, 2.0);
   const std::array<double, 3> leaf_size = {2.0, 2.0, 2.0};
-  AwNdtVoxelGridMap * map = autoware_ndt_scan_matcher_rs_voxel_grid_map_new(leaf_size.data(), 6, 0.01);
+  AwNdtVoxelGridMap * map =
+    autoware_ndt_scan_matcher_rs_voxel_grid_map_new(leaf_size.data(), 6, 0.01);
   ASSERT_NE(map, nullptr);
 
   const std::array<const char *, 3> sids = {"a", "b", "c"};
@@ -190,7 +189,8 @@ TEST(VoxelGrid, MultiGridRadiusSearchMatchesCpp)  // NOLINT
 
     std::array<double, 3> mean{};
     std::array<double, 9> icov{};
-    ASSERT_TRUE(autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(map, idx[0], mean.data(), icov.data()));
+    ASSERT_TRUE(
+      autoware_ndt_scan_matcher_rs_voxel_grid_map_leaf(map, idx[0], mean.data(), icov.data()));
     for (int d = 0; d < 3; ++d) {
       expect_close(cpp_leaves.front()->getMean()(d), mean[d]);
     }

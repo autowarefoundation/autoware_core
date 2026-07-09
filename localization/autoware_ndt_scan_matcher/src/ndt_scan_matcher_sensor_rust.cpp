@@ -97,7 +97,6 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
   const rclcpp::Time sensor_ros_time = sensor_points_msg_in_sensor_frame->header.stamp;
 
-
   const AwHost host = make_host();
   const AwDiagnostics diag = make_diagnostics(diagnostics_scan_points_.get());
   const AwPointCloud2View view = make_pointcloud2_view(*sensor_points_msg_in_sensor_frame);

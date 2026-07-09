@@ -31,9 +31,8 @@ void NDTScanMatcher::initialize_mode_specific_state()
 
   if (param_.ndt_regularization_enable) {
     const double value_as_unlimited = 1000.0;
-    regularization_pose_buffer_ =
-      std::make_unique<autoware::localization_util::SmartPoseBuffer>(
-        this->get_logger(), value_as_unlimited, value_as_unlimited);
+    regularization_pose_buffer_ = std::make_unique<autoware::localization_util::SmartPoseBuffer>(
+      this->get_logger(), value_as_unlimited, value_as_unlimited);
   }
 
   initial_pose_buffer_ = std::make_unique<autoware::localization_util::SmartPoseBuffer>(
@@ -43,9 +42,8 @@ void NDTScanMatcher::initialize_mode_specific_state()
 
 void NDTScanMatcher::create_map_update_module()
 {
-  map_update_module_ =
-    std::make_unique<MapUpdateModule>(
-      this, &legacy_ndt_.ndt(), param_.dynamic_map_loading, nullptr);
+  map_update_module_ = std::make_unique<MapUpdateModule>(
+    this, &legacy_ndt_.ndt(), param_.dynamic_map_loading, nullptr);
 }
 
 void NDTScanMatcher::callback_timer()
@@ -58,7 +56,8 @@ void NDTScanMatcher::callback_timer()
 
   const bool node_is_activated = is_activated_;
   const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
-  map_update_module_->callback_timer(node_is_activated, latest_ekf_position, diagnostics_map_update_);
+  map_update_module_->callback_timer(
+    node_is_activated, latest_ekf_position, diagnostics_map_update_);
 
   diagnostics_map_update_->publish(ros_time_now);
 }

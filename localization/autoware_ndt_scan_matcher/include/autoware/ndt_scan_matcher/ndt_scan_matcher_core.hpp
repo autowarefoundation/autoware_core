@@ -22,8 +22,8 @@
 #include "map_update_module.hpp"
 #include "ndt_backend.hpp"
 #include "ndt_legacy_state.hpp"
-#include "ndt_scan_matcher_rs.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
+#include "ndt_scan_matcher_rs.hpp"
 
 #include <autoware/localization_util/smart_pose_buffer.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
