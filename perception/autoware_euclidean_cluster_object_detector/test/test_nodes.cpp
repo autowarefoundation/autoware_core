@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "../src/euclidean_cluster_node.hpp"
-#include "../src/voxel_grid_based_euclidean_cluster_node.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -24,9 +23,8 @@
 #include <memory>
 
 using autoware::euclidean_cluster::EuclideanClusterNode;
-using autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterNode;
 
-// Create a test framework class for testing EuclideanClusterNode
+// Create a test framework class for testing EuclideanClusterNode (standard clustering)
 class TestEuclideanClusterNode : public ::testing::Test
 {
 protected:
@@ -56,7 +54,7 @@ protected:
   std::shared_ptr<EuclideanClusterNode> node_;
 };
 
-// Create a test framework class for testing VoxelGridBasedEuclideanClusterNode
+// Create a test framework class for testing EuclideanClusterNode (voxel-grid-based clustering)
 class TestVoxelGridBasedEuclideanClusterNode : public ::testing::Test
 {
 protected:
@@ -73,7 +71,7 @@ protected:
     options.append_parameter_override("voxel_leaf_size", 0.2);
     options.append_parameter_override("min_points_number_per_voxel", 2);
 
-    node_ = std::make_shared<VoxelGridBasedEuclideanClusterNode>(options);
+    node_ = std::make_shared<EuclideanClusterNode>(options);
 
     // Wait for publishers and subscribers to establish connections
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
@@ -85,7 +83,7 @@ protected:
     rclcpp::shutdown();
   }
 
-  std::shared_ptr<VoxelGridBasedEuclideanClusterNode> node_;
+  std::shared_ptr<EuclideanClusterNode> node_;
 };
 
 // Test creation of EuclideanClusterNode
