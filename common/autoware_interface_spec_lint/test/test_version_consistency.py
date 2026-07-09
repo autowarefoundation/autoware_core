@@ -84,6 +84,58 @@ def test_manifest_version_mismatch_warns(tmp_path):
     assert "header version '0.1.0'" in findings[0].message
 
 
+_MACRO_STRUCT = """
+namespace autoware::component_interface_specs::localization {
+struct KinematicState {
+  using Message = nav_msgs::msg::Odometry;
+  static constexpr char name[] = "/localization/kinematic_state";
+};
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(%s, KinematicState)
+}
+"""
+
+
+def test_macro_declared_version_passes(tmp_path):
+    # The macro expands to the same `version{...}` the literal fixtures declare. Reading
+    # only the literal form made every domain look version-less -- and because this check
+    # `continue`s past a domain without exactly one version, it silently stopped
+    # cross-checking the manifest at all.
+    spec_dir = _write(tmp_path, _MACRO_STRUCT % "0, 1, 0")
+    assert version_consistency(spec_dir, None) == []
+
+
+def test_macro_declared_non_zero_major_warns(tmp_path):
+    spec_dir = _write(tmp_path, _MACRO_STRUCT % "1, 0, 0")
+    findings = version_consistency(spec_dir, None)
+    assert len(findings) == 1
+    assert "not 0.x" in findings[0].message
+
+
+def test_macro_declared_version_is_cross_checked_against_the_manifest(tmp_path):
+    spec_dir = _write(tmp_path, _MACRO_STRUCT % "0, 1, 0")
+    manifest = tmp_path / "interface_manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "owner": "autowarefoundation",
+                "interfaces": [
+                    {
+                        "domain": "localization",
+                        "interface": "/localization/kinematic_state",
+                        "type": "nav_msgs/msg/Odometry",
+                        "kind": "topic",
+                        "version": "0.2.0",
+                    }
+                ],
+            }
+        )
+    )
+    findings = version_consistency(spec_dir, manifest)
+    assert len(findings) == 1
+    assert "manifest version '0.2.0'" in findings[0].message
+    assert "header version '0.1.0'" in findings[0].message
+
+
 def test_unreadable_manifest_path_warns_and_skips(tmp_path):
     # Every other manifest-backed gate warns and skips when the manifest cannot be
     # read; version_consistency must not raise FileNotFoundError at the user.

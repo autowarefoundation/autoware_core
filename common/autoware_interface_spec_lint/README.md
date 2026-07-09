@@ -6,14 +6,23 @@ In milestone M0 every check is advisory: the tool prints findings but always exi
 
 ## Checks
 
-| Check                    | Input                      | Flags (WARN)                                                                                                                                                                              |
-| ------------------------ | -------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface_spec_concept` | domain headers             | a struct with a `name[]` that is neither a valid topic (`Message` + `depth` + `reliability` + `durability`) nor a valid service (`Service`)                                               |
-| `spec_registered`        | domain headers             | a spec struct not listed in its namespace's `using Specs = std::tuple<...>`                                                                                                               |
-| `version_consistency`    | headers + manifest         | a domain not declaring exactly one `version{...}`, a MAJOR that is not `0` (the standard is unstable at `0.x` in this wave), or a manifest version that disagrees with the header version |
-| `manifest_fresh`         | generator + committed JSON | the rebuilt generator output differs from the committed `interface_manifest.json`                                                                                                         |
+| Check                    | Input                      | Flags (WARN)                                                                                                                                                                                        |
+| ------------------------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface_spec_concept` | domain headers             | a struct with a `name[]` that is neither a valid topic (`Message` + `depth` + `reliability` + `durability`) nor a valid service (`Service`)                                                         |
+| `spec_registered`        | domain headers             | a spec struct not listed in its namespace's `using Specs = std::tuple<...>`                                                                                                                         |
+| `version_consistency`    | headers + manifest         | a domain not declaring exactly one `version{...}`, a MAJOR that is not `0` (the standard is unstable at `0.x` in this wave), or a manifest version that disagrees with the header version           |
+| `qos_consistency`        | headers + manifest         | a registered spec whose `history` / `depth` / `reliability` / `durability` disagrees with its manifest `qos` block, is missing from the manifest, or names a QoS policy the manifest cannot express |
+| `manifest_fresh`         | generator + committed JSON | the rebuilt generator output differs from the committed `interface_manifest.json`                                                                                                                   |
 
-`interface_spec_concept`, `spec_registered` and `version_consistency` are pure-Python static analyses over the domain headers and are wired into pre-commit. `manifest_fresh` is a colcon test because it needs the built M0.1 generator binary.
+`interface_spec_concept`, `spec_registered`, `version_consistency` and `qos_consistency` are pure-Python static analyses over the domain headers and are wired into pre-commit. `manifest_fresh` is a colcon test because it needs the built M0.1 generator binary.
+
+A domain declares its `version` and its `Specs` tuple either literally or through `AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(MAJOR, MINOR, PATCH, ...)`, which expands to both. The header parser understands each form, including the multi-line invocation clang-format produces.
+
+### `qos_consistency` vs `manifest_fresh`
+
+Both catch QoS drift between the domain headers and the committed manifest, but `manifest_fresh` needs the built generator binary and skips without it — which is the ordinary pre-commit path. `qos_consistency` reads only the headers and the committed JSON, so `reliability` and `durability` stay verified there too. Those are the two axes ROS 2 evaluates before it will let a publisher and a subscription talk at all: a `RELIABLE` subscription never hears a `BEST_EFFORT` publisher, and a `TRANSIENT_LOCAL` one never receives the latched message a `VOLATILE` publisher dropped.
+
+Topic specs carry their own QoS. Service specs carry none, so `qos_consistency` derives theirs from the single `service_qos` profile in `utils.hpp` rather than restating the values — a second copy would be one more place for the specs and the wire to drift apart.
 
 ## Suppression contract
 

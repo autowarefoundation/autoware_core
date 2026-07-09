@@ -138,6 +138,50 @@ def test_unregistered_struct_with_trailing_comment_warns(tmp_path):
     assert "Acceleration" in findings[0].message
 
 
+def test_macro_registration_is_understood(tmp_path):
+    # The real headers register their specs through
+    # AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN, which expands to the
+    # `using Specs = std::tuple<...>` the literal fixtures above spell out. Parsing only
+    # the literal form once made every macro-registered spec look unregistered.
+    spec_dir = _write(
+        tmp_path,
+        """
+        namespace autoware::component_interface_specs::localization {
+        struct KinematicState {
+          using Message = nav_msgs::msg::Odometry;
+          static constexpr char name[] = "/localization/kinematic_state";
+        };
+        AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(0, 1, 0, KinematicState)
+        }
+        """,
+    )
+    assert spec_registered(spec_dir, None) == []
+
+
+def test_macro_registration_still_catches_an_unregistered_spec(tmp_path):
+    # clang-format wraps a long invocation across lines; the scanner must see through it.
+    spec_dir = _write(
+        tmp_path,
+        """
+        namespace autoware::component_interface_specs::localization {
+        struct KinematicState {
+          using Message = nav_msgs::msg::Odometry;
+          static constexpr char name[] = "/localization/kinematic_state";
+        };
+        struct Acceleration {
+          using Message = geometry_msgs::msg::AccelWithCovarianceStamped;
+          static constexpr char name[] = "/localization/acceleration";
+        };
+        AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
+          0, 1, 0, KinematicState)
+        }
+        """,
+    )
+    findings = spec_registered(spec_dir, None)
+    assert len(findings) == 1
+    assert "Acceleration" in findings[0].message
+
+
 def test_suppression_marker_survives_trailing_comment_form(tmp_path):
     spec_dir = _write(
         tmp_path,

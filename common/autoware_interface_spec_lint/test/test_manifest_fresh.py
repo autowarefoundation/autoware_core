@@ -33,10 +33,23 @@ def _make_stub_generator(tmp_path: Path, out_content: str) -> Path:
     return gen
 
 
-def test_skips_when_generator_unavailable(tmp_path):
+def test_skips_when_generator_unavailable(tmp_path, monkeypatch):
+    # `resolve_generator` falls back to GENERATOR_ENV when no generator is passed, so the
+    # variable has to be cleared for this test to be about an unavailable generator at
+    # all. Left set -- as it is wherever the generator is actually built -- this ran the
+    # real generator against the stub manifest below and reported drift.
+    monkeypatch.delenv(GENERATOR_ENV, raising=False)
     manifest = tmp_path / "interface_manifest.json"
     manifest.write_text('{"owner": "x", "interfaces": []}\n')
     # No generator provided and env not set -> record-only skip (M0), never raises.
+    assert manifest_fresh(manifest, generator=None) == []
+
+
+def test_env_var_supplies_the_generator(tmp_path, monkeypatch):
+    content = '{"owner": "autowarefoundation", "interfaces": []}\n'
+    manifest = tmp_path / "interface_manifest.json"
+    manifest.write_text(content)
+    monkeypatch.setenv(GENERATOR_ENV, str(_make_stub_generator(tmp_path, content)))
     assert manifest_fresh(manifest, generator=None) == []
 
 
@@ -60,7 +73,7 @@ def test_drift_is_recorded_as_warning(tmp_path):
     assert "stale" in findings[0].message
 
 
-def test_real_generator_against_committed_manifest():
+def test_committed_manifest_is_up_to_date():
     gen = os.environ.get(GENERATOR_ENV)
     if not gen or not Path(gen).is_file():
         pytest.skip(f"{GENERATOR_ENV} not set (generator not built in this workspace)")
@@ -72,5 +85,12 @@ def test_real_generator_against_committed_manifest():
     if not committed.is_file():
         pytest.skip("committed interface_manifest.json not found in this workspace")
     findings = manifest_fresh(committed, generator=gen)
-    # Record-only in M0: only assert the finding shape, never fail on drift.
-    assert all(f.level == "WARN" for f in findings)
+    # WARN-only governs the *hook*: a contributor's commit is never blocked in M0. The
+    # committed manifest matching the generator is a separate thing -- a repo invariant --
+    # so a spec, QoS or version change that does not land the regenerated manifest in the
+    # same commit fails here rather than reaching consumers.
+    #
+    # The assertion this replaces was `all(f.level == "WARN" for f in findings)`, which
+    # holds on an empty list and holds again on a list of drift findings, so it passed
+    # whether or not the manifest was stale and verified nothing.
+    assert findings == [], findings[0].message if findings else ""

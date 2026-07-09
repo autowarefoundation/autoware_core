@@ -22,11 +22,12 @@ import sys
 
 from autoware_interface_spec_lint.checks import interface_spec_concept
 from autoware_interface_spec_lint.checks import manifest_fresh
+from autoware_interface_spec_lint.checks import qos_consistency
 from autoware_interface_spec_lint.checks import spec_registered
 from autoware_interface_spec_lint.checks import version_consistency
 
-# The three fast, pure-Python static checks wired into pre-commit.
-STATIC_CHECKS = (interface_spec_concept, spec_registered, version_consistency)
+# The fast, pure-Python static checks wired into pre-commit.
+STATIC_CHECKS = (interface_spec_concept, spec_registered, version_consistency, qos_consistency)
 
 # Default core specs include dir and committed manifest, relative to the repo root
 # (the working directory pre-commit runs the hook from).
@@ -41,7 +42,8 @@ def _build_parser() -> argparse.ArgumentParser:
         prog="ament_interface_spec_lint",
         description=(
             "WARN-only lint for the Autoware component interface specs "
-            "(interface_spec_concept, spec_registered, version_consistency, manifest_fresh)."
+            "(interface_spec_concept, spec_registered, version_consistency, "
+            "qos_consistency, manifest_fresh)."
         ),
     )
     parser.add_argument(
@@ -54,7 +56,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--manifest",
         default=None,
-        help="Committed interface_manifest.json used by version_consistency / manifest_fresh.",
+        help="Committed interface_manifest.json used by version_consistency, "
+        "qos_consistency and manifest_fresh.",
     )
     parser.add_argument(
         "--generator",
