@@ -14,9 +14,12 @@
 
 #include "euclidean_cluster_node.hpp"
 
-#include "utils.hpp"
+#include "../lib/ros_conversions.hpp"
+#include "parameters.hpp"
 
+#include <functional>
 #include <memory>
+#include <string>
 #include <vector>
 
 namespace autoware::euclidean_cluster
@@ -24,17 +27,19 @@ namespace autoware::euclidean_cluster
 EuclideanClusterNode::EuclideanClusterNode(const rclcpp::NodeOptions & options)
 : Node("euclidean_cluster_node", options)
 {
-  const bool use_height = this->declare_parameter("use_height", false);
-  const int min_cluster_size = static_cast<int>(this->declare_parameter("min_cluster_size", 3));
-  const int max_cluster_size = static_cast<int>(this->declare_parameter("max_cluster_size", 200));
-  const float tolerance = static_cast<float>(this->declare_parameter("tolerance", 1.0));
-  cluster_ =
-    std::make_shared<EuclideanCluster>(use_height, min_cluster_size, max_cluster_size, tolerance);
+  EuclideanClusterParams param;
+  param.use_height = declare_parameter<bool>("use_height", false);
+  param.min_cluster_size = static_cast<int>(declare_parameter<int64_t>("min_cluster_size", 3));
+  param.max_cluster_size = static_cast<int>(declare_parameter<int64_t>("max_cluster_size", 200));
+  param.tolerance = static_cast<float>(declare_parameter<double>("tolerance", 1.0));
+
+  // cppcheck-suppress useInitializationList
+  detector_ = std::make_unique<EuclideanClusterObjectDetector>(param);
 
   using std::placeholders::_1;
   pointcloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
     "input", rclcpp::SensorDataQoS().keep_last(1),
-    std::bind(&EuclideanClusterNode::onPointCloud, this, _1));
+    std::bind(&EuclideanClusterNode::on_point_cloud, this, _1));
 
   cluster_pub_ = this->create_publisher<autoware_perception_msgs::msg::DetectedObjects>(
     "output", rclcpp::QoS{1});
@@ -42,11 +47,12 @@ EuclideanClusterNode::EuclideanClusterNode(const rclcpp::NodeOptions & options)
   stop_watch_ptr_ = std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>();
   debug_publisher_ =
     std::make_unique<autoware_utils_debug::DebugPublisher>(this, "euclidean_cluster");
+
   stop_watch_ptr_->tic("cyclic_time");
   stop_watch_ptr_->tic("processing_time");
 }
 
-void EuclideanClusterNode::onPointCloud(
+void EuclideanClusterNode::on_point_cloud(
   const sensor_msgs::msg::PointCloud2::ConstSharedPtr input_msg)
 {
   stop_watch_ptr_->toc("processing_time", true);
@@ -62,32 +68,24 @@ void EuclideanClusterNode::onPointCloud(
     return;
   }
 
-  // convert ros to pcl
-  pcl::PointCloud<pcl::PointXYZ>::Ptr raw_pointcloud_ptr(new pcl::PointCloud<pcl::PointXYZ>);
-  pcl::fromROSMsg(*input_msg, *raw_pointcloud_ptr);
+  // Now passing to isolated core logic
+  const auto result = detector_->cluster(*input_msg);
 
-  // clustering
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  cluster_->cluster(raw_pointcloud_ptr, clusters);
-
-  // build output msg
-  autoware_perception_msgs::msg::DetectedObjects output;
-  convertPointCloudClusters2Msg(input_msg->header, clusters, output);
-  cluster_pub_->publish(output);
+  cluster_pub_->publish(result.cluster_message);
 
   // build debug msg
   if (debug_pub_->get_subscription_count() >= 1) {
-    sensor_msgs::msg::PointCloud2 debug;
-    convertClusters2SensorMsg(input_msg->header, clusters, debug);
-    debug_pub_->publish(debug);
+    debug_pub_->publish(result.debug_message);
   }
   if (debug_publisher_) {
     const double cyclic_time_ms = stop_watch_ptr_->toc("cyclic_time", true);
     const double processing_time_ms = stop_watch_ptr_->toc("processing_time", true);
     const double pipeline_latency_ms =
       std::chrono::duration<double, std::milli>(
-        std::chrono::nanoseconds((this->get_clock()->now() - output.header.stamp).nanoseconds()))
+        std::chrono::nanoseconds(
+          (this->get_clock()->now() - result.cluster_message.header.stamp).nanoseconds()))
         .count();
+
     debug_publisher_->publish<autoware_internal_debug_msgs::msg::Float64Stamped>(
       "debug/cyclic_time_ms", cyclic_time_ms);
     debug_publisher_->publish<autoware_internal_debug_msgs::msg::Float64Stamped>(
