@@ -51,14 +51,13 @@ private:
   // startup
   using ClusterStrategy =
     std::function<std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>(
-      const sensor_msgs::msg::PointCloud2 &, const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &)>;
+      const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &)>;
   ClusterStrategy strategy_;
 
   [[nodiscard]] std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t> cluster_standard(
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 
   [[nodiscard]] std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t> cluster_voxel_grid(
-    const sensor_msgs::msg::PointCloud2 & input_msg,
-    const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud);
+    const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 };
 }  // namespace autoware::euclidean_cluster
