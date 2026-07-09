@@ -95,18 +95,18 @@ EuclideanClusterObjectDetector::cluster_standard(
   size_t skipped_count = 0;
 
   valid_clusters.reserve(cluster_indices.size());
-  for (const auto & cluster : cluster_indices) {
-    if (static_cast<int>(cluster.indices.size()) < param_.min_cluster_size) {
+  for (const auto & cluster_item : cluster_indices) {
+    if (static_cast<int>(cluster_item.indices.size()) < param_.min_cluster_size) {
       continue;
     }
-    if (static_cast<int>(cluster.indices.size()) > param_.max_cluster_size) {
+    if (static_cast<int>(cluster_item.indices.size()) > param_.max_cluster_size) {
       skipped_count++;
       continue;
     }
 
     auto & cloud_cluster = valid_clusters.emplace_back();
-    cloud_cluster.points.reserve(cluster.indices.size());
-    for (const auto & point_idx : cluster.indices) {
+    cloud_cluster.points.reserve(cluster_item.indices.size());
+    for (const auto & point_idx : cluster_item.indices) {
       cloud_cluster.points.push_back(input_cloud->points[point_idx]);
     }
     cloud_cluster.width = cloud_cluster.points.size();
