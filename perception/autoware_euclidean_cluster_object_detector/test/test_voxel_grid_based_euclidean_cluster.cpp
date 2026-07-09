@@ -12,7 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "voxel_grid_based_euclidean_cluster.hpp"
+#include "../src/euclidean_cluster_object_detector.hpp"
+#include "../src/parameters.hpp"
 
 #include <autoware/point_types/types.hpp>
 #include <experimental/random>
@@ -83,29 +84,19 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase1)
   int nb_generated_points = 100;
   sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
 
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
-  autoware_perception_msgs::msg::DetectedObjects output;
-  std::shared_ptr<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster> cluster_;
-  float tolerance = 0.7;
-  float voxel_leaf_size = 0.3;
-  int min_points_number_per_voxel = 1;
-  int min_cluster_size = 1;
-  int max_cluster_size = 100;
-  bool use_height = false;
-  cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-    use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
-    min_points_number_per_voxel);
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  if (cluster_->cluster(pointcloud_msg, output, clusters)) {
-    std::cout << "cluster success" << std::endl;
-  } else {
-    std::cout << "cluster failed" << std::endl;
-  }
-  std::cout << "number of output objects " << output.objects.size() << std::endl;
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = false;
+  param.min_cluster_size = 1;
+  param.max_cluster_size = 100;
+  param.tolerance = 0.7f;
+  param.voxel_leaf_size = 0.3f;
+  param.min_points_number_per_voxel = 1;
+
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  auto result = cluster.cluster(pointcloud);
 
   // the output clusters should has only one cluster with nb_generated_points points
-  EXPECT_EQ(output.objects.size(), 1);
+  EXPECT_EQ(result.cluster_message.objects.size(), 1);
 }
 
 // Test case 2: Test case when the input pointcloud has only one cluster with points number less
@@ -116,28 +107,19 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase2)
 
   sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
 
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
-  autoware_perception_msgs::msg::DetectedObjects output;
-  std::shared_ptr<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster> cluster_;
-  float tolerance = 0.7;
-  float voxel_leaf_size = 0.3;
-  int min_points_number_per_voxel = 1;
-  int min_cluster_size = 2;
-  int max_cluster_size = 100;
-  bool use_height = false;
-  cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-    use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
-    min_points_number_per_voxel);
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  if (cluster_->cluster(pointcloud_msg, output, clusters)) {
-    std::cout << "cluster success" << std::endl;
-  } else {
-    std::cout << "cluster failed" << std::endl;
-  }
-  std::cout << "number of output clusters " << output.objects.size() << std::endl;
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = false;
+  param.min_cluster_size = 2;
+  param.max_cluster_size = 100;
+  param.tolerance = 0.7f;
+  param.voxel_leaf_size = 0.3f;
+  param.min_points_number_per_voxel = 1;
+
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  auto result = cluster.cluster(pointcloud);
+
   // the output clusters should be empty
-  EXPECT_EQ(output.objects.size(), 0);
+  EXPECT_EQ(result.cluster_message.objects.size(), 0);
 }
 
 // Test case 3: Test case when the input pointcloud has two clusters with points number greater to
@@ -147,57 +129,30 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
   int nb_generated_points = 100;
   sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
 
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
-  autoware_perception_msgs::msg::DetectedObjects output;
-  std::shared_ptr<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster> cluster_;
-  float tolerance = 0.7;
-  float voxel_leaf_size = 0.3;
-  int min_points_number_per_voxel = 1;
-  int min_cluster_size = 1;
-  int max_cluster_size = 99;  // max_cluster_size is less than nb_generated_points
-  bool use_height = false;
-  cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-    use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
-    min_points_number_per_voxel);
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  if (cluster_->cluster(pointcloud_msg, output, clusters)) {
-    std::cout << "cluster success" << std::endl;
-  } else {
-    std::cout << "cluster failed" << std::endl;
-  }
-  std::cout << "number of output clusters " << output.objects.size() << std::endl;
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = false;
+  param.min_cluster_size = 1;
+  param.max_cluster_size = 99;
+  param.tolerance = 0.7f;
+  param.voxel_leaf_size = 0.3f;
+  param.min_points_number_per_voxel = 1;
+
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  auto result = cluster.cluster(pointcloud);
+
   // the output clusters should be emtpy
-  EXPECT_EQ(output.objects.size(), 0);
+  EXPECT_EQ(result.cluster_message.objects.size(), 0);
 }
 
 // Test default constructor
 TEST(VoxelGridBasedEuclideanClusterTest, DefaultConstructor)
 {
-  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>();
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
   EXPECT_NE(cluster, nullptr);
 
   // Since the default constructor doesn't initialize parameters, we just check if the object was
   // created successfully
-}
-
-// Test three-parameter constructor
-TEST(VoxelGridBasedEuclideanClusterTest, ThreeParamConstructor)
-{
-  bool use_height = true;
-  int min_cluster_size = 5;
-  int max_cluster_size = 100;
-
-  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-    use_height, min_cluster_size, max_cluster_size);
-  EXPECT_NE(cluster, nullptr);
-
-  // Indirectly test if parameters were set correctly by calling other methods
-  pcl::PointCloud<pcl::PointXYZ>::ConstPtr empty_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-
-  // This method should return false (unimplemented)
-  EXPECT_FALSE(cluster->cluster(empty_cloud, clusters));
 }
 
 // Helper function: Generate a point cloud with multiple clusters
@@ -233,43 +188,6 @@ sensor_msgs::msg::PointCloud2 generateMultiClusterPointCloud(
   return pointcloud;
 }
 
-// Test unimplemented cluster functions
-TEST(VoxelGridBasedEuclideanClusterTest, UnimplementedClusterMethod)
-{
-  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>();
-
-  // Test first unimplemented cluster method
-  pcl::PointCloud<pcl::PointXYZ>::ConstPtr empty_cloud(new pcl::PointCloud<pcl::PointXYZ>);
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  EXPECT_FALSE(cluster->cluster(empty_cloud, clusters));
-
-  // Test second unimplemented cluster method
-  sensor_msgs::msg::PointCloud2::ConstSharedPtr msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(generateMultiClusterPointCloud(5, 2));
-  autoware_perception_msgs::msg::DetectedObjects objects;
-  EXPECT_FALSE(cluster->cluster(msg, objects));
-}
-
-// Test diagnostics interface (indirectly)
-TEST(VoxelGridBasedEuclideanClusterTest, DiagnosticsInterface)
-{
-  // Create cluster
-  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-    true, 5, 100, 0.5, 0.2, 1);
-
-  // Create a point cloud message
-  sensor_msgs::msg::PointCloud2::ConstSharedPtr msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(generateMultiClusterPointCloud(5, 2));
-
-  // Indirectly test the diagnostics functionality by calling cluster
-  // At this point, the diagnostics interface is nullptr, which shouldn't affect functionality
-  autoware_perception_msgs::msg::DetectedObjects objects;
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-
-  // Indirect call to diagnostics functionality shouldn't crash
-  EXPECT_TRUE(cluster->cluster(msg, objects, clusters));
-}
-
 // Characterization test: pin the exact relationship between the `objects` output and the
 // parallel `clusters` output so the map-lookup-caching and in-place cluster-building refactor
 // is proven behavior-preserving. The number of output clusters must stay in lockstep with the
@@ -281,42 +199,42 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterOutputMatchesObjects)
   int nb_generated_points = 100;
   sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
 
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
-  autoware_perception_msgs::msg::DetectedObjects output;
-  float tolerance = 0.7;
-  float voxel_leaf_size = 0.3;
-  int min_points_number_per_voxel = 1;
-  int min_cluster_size = 1;
-  int max_cluster_size = 100;
-  bool use_height = false;
-  auto cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-    use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
-    min_points_number_per_voxel);
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = false;
+  param.min_cluster_size = 1;
+  param.max_cluster_size = 100;
+  param.tolerance = 0.7f;
+  param.voxel_leaf_size = 0.3f;
+  param.min_points_number_per_voxel = 1;
 
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  ASSERT_TRUE(cluster_->cluster(pointcloud_msg, output, clusters));
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  auto result = cluster.cluster(pointcloud);
 
   // Exactly one cluster, and the parallel outputs stay in lockstep.
-  ASSERT_EQ(output.objects.size(), 1u);
-  ASSERT_EQ(clusters.size(), output.objects.size());
+  ASSERT_EQ(result.cluster_message.objects.size(), 1u);
 
   // The single extracted cluster must be non-empty, and every point must lie inside the
   // generated voxel region (x,y in [0,0.3], z in [0,30]). The exact count is governed by the
   // voxel grouping rather than the raw point count, so it is not asserted here.
-  const auto & cluster_cloud = clusters.front();
-  EXPECT_GT(cluster_cloud.points.size(), 0u);
-  for (const auto & point : cluster_cloud.points) {
-    EXPECT_GE(point.x, 0.0f);
-    EXPECT_LE(point.x, 0.3f);
-    EXPECT_GE(point.y, 0.0f);
-    EXPECT_LE(point.y, 0.3f);
-    EXPECT_GE(point.z, 0.0f);
-    EXPECT_LE(point.z, 30.0f);
+  sensor_msgs::PointCloud2ConstIterator<float> iter_x(result.debug_message, "x");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_y(result.debug_message, "y");
+  sensor_msgs::PointCloud2ConstIterator<float> iter_z(result.debug_message, "z");
+
+  size_t point_count = 0;
+  for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
+    point_count++;
+    EXPECT_GE(*iter_x, 0.0f);
+    EXPECT_LE(*iter_x, 0.3f);
+    EXPECT_GE(*iter_y, 0.0f);
+    EXPECT_LE(*iter_y, 0.3f);
+    EXPECT_GE(*iter_z, 0.0f);
+    EXPECT_LE(*iter_z, 30.0f);
   }
+  EXPECT_GT(point_count, 0u);
 
   // The object centroid's x/y must fall within the same region as the input points.
-  const auto & position = output.objects.front().kinematics.pose_with_covariance.pose.position;
+  const auto & position =
+    result.cluster_message.objects.front().kinematics.pose_with_covariance.pose.position;
   EXPECT_GE(position.x, 0.0);
   EXPECT_LE(position.x, 0.3);
   EXPECT_GE(position.y, 0.0);
@@ -336,23 +254,18 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
   pointcloud.width = 0;
   pointcloud.row_step = 0;
 
-  const sensor_msgs::msg::PointCloud2::ConstSharedPtr pointcloud_msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(pointcloud);
-  autoware_perception_msgs::msg::DetectedObjects objects;
-  float tolerance = 0.7;
-  float voxel_leaf_size = 0.3;
-  int min_points_number_per_voxel = 1;
-  int min_cluster_size = 1;
-  int max_cluster_size = 100;
-  bool use_height = false;
-  auto cluster_ = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-    use_height, min_cluster_size, max_cluster_size, tolerance, voxel_leaf_size,
-    min_points_number_per_voxel);
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = false;
+  param.min_cluster_size = 1;
+  param.max_cluster_size = 100;
+  param.tolerance = 0.7f;
+  param.voxel_leaf_size = 0.3f;
+  param.min_points_number_per_voxel = 1;
 
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  EXPECT_TRUE(cluster_->cluster(pointcloud_msg, objects, clusters));
-  EXPECT_EQ(objects.objects.size(), 0u);
-  EXPECT_EQ(clusters.size(), 0u);
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  auto result = cluster.cluster(pointcloud);
+
+  EXPECT_EQ(result.cluster_message.objects.size(), 0u);
 }
 
 // Test exceeding max_cluster_size case
@@ -360,21 +273,27 @@ TEST(VoxelGridBasedEuclideanClusterTest, ExceedMaxClusterSize)
 {
   // Create a cluster with a relatively small max_cluster_size
   int max_cluster_size = 50;
-  auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-    true, 5, max_cluster_size, 0.5, 0.2, 1);
+  // auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
+  //   true, 5, max_cluster_size, 0.5, 0.2, 1);
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = true;
+  param.min_cluster_size = 5;
+  param.max_cluster_size = max_cluster_size;
+  param.tolerance = 0.5f;
+  param.voxel_leaf_size = 0.2f;
+  param.min_points_number_per_voxel = 1;
+
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
 
   // Create a point cloud message with many points which should exceed max_cluster_size
-  sensor_msgs::msg::PointCloud2::ConstSharedPtr msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>(generateMultiClusterPointCloud(200, 1));
-
-  autoware_perception_msgs::msg::DetectedObjects objects;
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
+  sensor_msgs::msg::PointCloud2 msg = generateMultiClusterPointCloud(200, 1);
+  auto result = cluster.cluster(msg);
 
   // Even when exceeding max_cluster_size, function should return true
-  EXPECT_TRUE(cluster->cluster(msg, objects, clusters));
+  EXPECT_EQ(result.cluster_message.objects.size(), 0);
 
   // But since too many points were filtered out, no objects should be detected
-  EXPECT_EQ(objects.objects.size(), 0);
+  EXPECT_GT(result.skipped_cluster_count, 0);
 }
 
 int main(int argc, char ** argv)
