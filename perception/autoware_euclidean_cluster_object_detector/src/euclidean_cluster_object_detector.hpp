@@ -24,7 +24,6 @@
 #include <pcl/point_types.h>
 
 #include <functional>
-#include <string>
 #include <utility>
 #include <vector>
 
@@ -32,8 +31,8 @@ namespace autoware::euclidean_cluster
 {
 struct ClusterFeatureResult
 {
-  autoware_perception_msgs::msg::DetectedObjects cluster_message{};
-  sensor_msgs::msg::PointCloud2 debug_message{};
+  autoware_perception_msgs::msg::DetectedObjects cluster_message;
+  sensor_msgs::msg::PointCloud2 debug_message;
   size_t skipped_cluster_count{0};
 };
 

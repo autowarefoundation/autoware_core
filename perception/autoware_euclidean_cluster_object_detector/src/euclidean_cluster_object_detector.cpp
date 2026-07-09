@@ -44,7 +44,7 @@ EuclideanClusterObjectDetector::EuclideanClusterObjectDetector(const EuclideanCl
 ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
   const sensor_msgs::msg::PointCloud2 & input_msg) const
 {
-  ClusterFeatureResult result{};
+  ClusterFeatureResult result;
 
   pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud(new pcl::PointCloud<pcl::PointXYZ>);
   pcl::fromROSMsg(input_msg, *raw_cloud);
