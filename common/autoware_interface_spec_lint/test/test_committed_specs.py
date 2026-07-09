@@ -24,6 +24,7 @@ committed sources is the only one that notices when the sources move out from un
 
 from pathlib import Path
 
+from autoware_interface_spec_lint.checks import _domain_headers
 from autoware_interface_spec_lint.checks import parse_header
 from autoware_interface_spec_lint.main import STATIC_CHECKS
 import pytest
@@ -50,11 +51,10 @@ def test_every_committed_domain_declares_a_version_and_registers_its_specs():
     # Anchors the parser to the syntax the headers actually use. Were the macro to stop
     # being understood, every domain here would report zero versions and zero members --
     # which is precisely how the check above silently lost its cross-check once before.
-    domains = [p for p in _SPEC_DIR.glob("*.hpp") if p.name not in {"utils.hpp", "version.hpp"}]
+    # Uses the checks' own header set so the two cannot drift apart.
+    domains = _domain_headers(_SPEC_DIR)
     assert domains, "no domain headers found"
     for path in domains:
-        if path.name == "concepts.hpp":
-            continue
         header = parse_header(path)
         assert len(header.versions) == 1, f"{path.name} declares {len(header.versions)} versions"
         assert header.specs_members, f"{path.name} registers no specs"
