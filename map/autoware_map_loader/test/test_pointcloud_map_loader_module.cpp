@@ -12,8 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/pointcloud_map_loader/pointcloud_map_loader_module.hpp"
-#include "../src/pointcloud_map_loader/utils.hpp"
+#include "../src/pointcloud_map_loader/pointcloud_map_loader_node.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -22,6 +21,7 @@
 #include <gtest/gtest.h>
 #include <pcl/io/pcd_io.h>
 #include <pcl/point_types.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <chrono>
 #include <memory>
@@ -31,13 +31,12 @@
 class TestPointcloudMapLoaderModule : public ::testing::Test
 {
 protected:
-  rclcpp::Node::SharedPtr node;
+  std::shared_ptr<autoware::map_loader::PointCloudMapLoaderNode> map_loader_node_;
   std::string temp_pcd_path;
 
   void SetUp() override
   {
     rclcpp::init(0, nullptr);
-    node = rclcpp::Node::make_shared("test_pointcloud_map_loader_module");
 
     // Create a temporary PCD file with dummy point cloud data
     pcl::PointCloud<pcl::PointXYZ> cloud;
@@ -54,6 +53,17 @@ protected:
 
     temp_pcd_path = "/tmp/test_pointcloud_map_loader_module.pcd";
     pcl::io::savePCDFileASCII(temp_pcd_path, cloud);
+
+    rclcpp::NodeOptions node_options;
+    node_options.append_parameter_override(
+      "pcd_paths_or_directory", std::vector<std::string>{temp_pcd_path});
+    node_options.append_parameter_override("pcd_metadata_path", std::string("/tmp/not_used.yaml"));
+    node_options.append_parameter_override("enable_whole_load", true);
+    node_options.append_parameter_override("enable_downsampled_whole_load", false);
+    node_options.append_parameter_override("enable_partial_load", false);
+    node_options.append_parameter_override("enable_selected_load", false);
+    map_loader_node_ =
+      std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
   }
 
   void TearDown() override { rclcpp::shutdown(); }
@@ -63,22 +73,15 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
 {
   using namespace std::literals::chrono_literals;
 
-  // Prepare PCD paths
-  std::vector<std::string> pcd_paths = {temp_pcd_path};
-
-  // Create PointcloudMapLoaderModule instance
-  autoware::map_loader::PointcloudMapLoaderModule loader(
-    node.get(), pcd_paths, "pointcloud_map_no_downsample", false);
-
-  // Create a subscriber to the published pointcloud topic
+  // Subscribe after node initialization; transient_local publisher should provide the latest map.
   auto pointcloud_received = std::make_shared<bool>(false);
   auto pointcloud_msg = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
-  rclcpp::QoS durable_qos{10};
-  durable_qos.transient_local();  // Match publisher's Durability setting
+  rclcpp::QoS durable_qos{1};
+  durable_qos.transient_local();
 
-  auto pointcloud_sub = node->create_subscription<sensor_msgs::msg::PointCloud2>(
-    "pointcloud_map_no_downsample", durable_qos,
+  auto pointcloud_sub = map_loader_node_->create_subscription<sensor_msgs::msg::PointCloud2>(
+    "output/pointcloud_map", durable_qos,
     [pointcloud_received, pointcloud_msg](const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg) {
       *pointcloud_received = true;
       *pointcloud_msg = *msg;
@@ -86,9 +89,9 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
 
   // Spin until pointcloud is received or timeout occurs
   rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(node);
-  auto start_time = node->now();
-  while (!*pointcloud_received && (node->now() - start_time).seconds() < 3) {
+  executor.add_node(map_loader_node_);
+  auto start_time = map_loader_node_->now();
+  while (!*pointcloud_received && (map_loader_node_->now() - start_time).seconds() < 3) {
     executor.spin_some(50ms);
   }
 
