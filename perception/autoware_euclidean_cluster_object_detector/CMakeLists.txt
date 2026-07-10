@@ -74,7 +74,7 @@ if(BUILD_TESTING)
     test/test_euclidean_cluster_object_detector_integration.cpp
   )
   target_link_libraries(test_euclidean_cluster_object_detector_integration
-    ${PROJECT_NAME}_node_core
+    ${PROJECT_NAME}_voxel_grid_node_core
   )
 endif()
 
