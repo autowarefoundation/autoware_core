@@ -16,6 +16,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <gtest/gtest.h>
@@ -27,6 +28,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+using autoware_map_msgs::srv::GetDifferentialPointCloudMap;
 
 class TestPointcloudMapLoaderModule : public ::testing::Test
 {
@@ -111,6 +114,30 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
     EXPECT_FLOAT_EQ(received_cloud.points[i].y, static_cast<float>(i * 2));
     EXPECT_FLOAT_EQ(received_cloud.points[i].z, static_cast<float>(i * 3));
   }
+}
+
+TEST_F(TestPointcloudMapLoaderModule, LoadDifferentialPCDFiles)
+{
+  auto client = map_loader_node_->create_client<GetDifferentialPointCloudMap>(
+    "service/get_differential_pcd_map");
+
+  ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(3)));
+
+  auto request = std::make_shared<GetDifferentialPointCloudMap::Request>();
+  request->area.center_x = 0;
+  request->area.center_y = 0;
+  request->area.radius = 2;
+  request->cached_ids.clear();
+
+  auto result_future = client->async_send_request(request);
+  ASSERT_EQ(
+    rclcpp::spin_until_future_complete(map_loader_node_, result_future),
+    rclcpp::FutureReturnCode::SUCCESS);
+
+  auto result = result_future.get();
+  ASSERT_EQ(static_cast<int>(result->new_pointcloud_with_ids.size()), 1);
+  EXPECT_EQ(result->new_pointcloud_with_ids[0].cell_id, temp_pcd_path);
+  EXPECT_EQ(static_cast<int>(result->ids_to_remove.size()), 0);
 }
 
 int main(int argc, char ** argv)
