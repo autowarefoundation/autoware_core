@@ -41,7 +41,7 @@ VoxelGridBasedEuclideanClusterNode::VoxelGridBasedEuclideanClusterNode(
   using std::placeholders::_1;
   pointcloud_sub_ = this->create_subscription<sensor_msgs::msg::PointCloud2>(
     "input", rclcpp::SensorDataQoS().keep_last(1),
-    std::bind(&VoxelGridBasedEuclideanClusterNode::onPointCloud, this, _1));
+    std::bind(&VoxelGridBasedEuclideanClusterNode::on_point_cloud, this, _1));
 
   cluster_pub_ = this->create_publisher<autoware_perception_msgs::msg::DetectedObjects>(
     "output", rclcpp::QoS{1});
