@@ -8,10 +8,10 @@ find_package(PCL REQUIRED COMPONENTS common io filters)
 
 ament_auto_add_library(pointcloud_map_loader_node SHARED
   src/pointcloud_map_loader/pointcloud_map_loader_node.cpp
-  src/pointcloud_map_loader/pointcloud_map_loader_module.cpp
-  src/pointcloud_map_loader/partial_map_loader_module.cpp
-  src/pointcloud_map_loader/differential_map_loader_module.cpp
-  src/pointcloud_map_loader/selected_map_loader_module.cpp
+  src/pointcloud_map_loader/pointcloud_map_loader.cpp
+  src/pointcloud_map_loader/partial_map_loader.cpp
+  src/pointcloud_map_loader/differential_map_loader.cpp
+  src/pointcloud_map_loader/selected_map_loader.cpp
   src/pointcloud_map_loader/utils.cpp
 )
 target_link_libraries(pointcloud_map_loader_node ${PCL_LIBRARIES})
@@ -30,6 +30,8 @@ rclcpp_components_register_node(pointcloud_map_loader_node
 ament_auto_add_library(lanelet2_map_loader_node SHARED
   src/lanelet2_map_loader/lanelet2_map_loader_node.cpp
   src/lanelet2_map_loader/lanelet2_map_loader_utils.cpp
+  src/lanelet2_map_loader/lanelet2_map_cell_metadata.cpp
+  src/lanelet2_map_loader/lanelet2_selected_map_loader_module.cpp
 )
 
 rclcpp_components_register_node(lanelet2_map_loader_node
@@ -68,6 +70,8 @@ if(BUILD_TESTING)
   add_testcase(test/test_differential_map_loader_module.cpp)
   add_testcase(test/test_selected_map_loader_module.cpp)
   add_testcase(test/test_lanelet2_map_loader_utils.cpp)
+  add_testcase(test/test_lanelet2_map_cell_metadata.cpp)
+  add_testcase(test/test_lanelet2_selected_map_loader_module.cpp)
 endif()
 
 install(PROGRAMS

@@ -400,8 +400,31 @@ namespace agnocast_wrapper
 namespace message_filters
 {
 
+/// @brief message_filters Subscriber (non-Agnocast build); forwards the wrapper Node to the
+///        underlying rclcpp::Node. Inherited upstream members (connectInput, registerCallback, ...)
+///        are non-portable — they do not exist on the Agnocast-build Subscriber.
 template <class M>
-using Subscriber = ::message_filters::Subscriber<M>;
+class Subscriber : public ::message_filters::Subscriber<M, rclcpp::Node>
+{
+public:
+  using Base = ::message_filters::Subscriber<M, rclcpp::Node>;
+
+  Subscriber() = default;
+
+  Subscriber(
+    autoware::agnocast_wrapper::Node * node, const std::string & topic,
+    const rmw_qos_profile_t qos = rmw_qos_profile_default)
+  : Base(node->get_rclcpp_node().get(), topic, qos)
+  {
+  }
+
+  void subscribe(
+    autoware::agnocast_wrapper::Node * node, const std::string & topic,
+    const rmw_qos_profile_t qos = rmw_qos_profile_default)
+  {
+    Base::subscribe(node->get_rclcpp_node().get(), topic, qos);
+  }
+};
 
 namespace sync_policies
 {

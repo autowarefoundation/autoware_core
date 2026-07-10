@@ -282,10 +282,10 @@ class Updater : public ::diagnostic_updater::Updater
 public:
   /// @brief Construct from a wrapper Node and update period.
   ///
-  /// In this build, autoware::agnocast_wrapper::Node is an alias for rclcpp::Node,
-  /// so the call forwards directly to ::diagnostic_updater::Updater(NodeT, double).
+  /// In this build, autoware::agnocast_wrapper::Node owns an internal rclcpp::Node, so the call
+  /// forwards to ::diagnostic_updater::Updater built on node->get_rclcpp_node().
   ///
-  /// @param node   Wrapper node (alias for rclcpp::Node in this build).
+  /// @param node   Wrapper node providing the underlying rclcpp::Node via get_rclcpp_node().
   /// @param period Default update period in seconds; overridden by the
   ///               `diagnostic_updater.period` ros2 parameter if set.
   ///
@@ -295,7 +295,7 @@ public:
   ///       `::agnocast::Updater` does not support it, and the wrapper keeps a
   ///       single signature shared by both backends.
   explicit Updater(autoware::agnocast_wrapper::Node * node, double period = 1.0)
-  : ::diagnostic_updater::Updater(node, period)
+  : ::diagnostic_updater::Updater(node->get_rclcpp_node(), period)
   {
   }
 };

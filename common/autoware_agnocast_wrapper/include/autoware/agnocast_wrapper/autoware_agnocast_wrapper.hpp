@@ -63,8 +63,8 @@
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Publisher<MessageT>::SharedPtr
-#define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
-  typename autoware::agnocast_wrapper::PollingSubscriber<MessageT>::SharedPtr
+#define AUTOWARE_POLLING_SUBSCRIBER_PTR(...) \
+  typename autoware::agnocast_wrapper::PollingSubscriber<__VA_ARGS__>::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) \
   typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) \
@@ -93,10 +93,10 @@
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2, arg3)
 
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos) \
-  autoware::agnocast_wrapper::create_polling_subscriber<message_type>(this, topic, qos)
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, node, topic, qos) \
-  autoware::agnocast_wrapper::create_polling_subscriber<message_type>(node, topic, qos)
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, policy, topic, qos) \
+  autoware::agnocast_wrapper::create_polling_subscriber<message_type, policy>(this, topic, qos)
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, policy, node, topic, qos) \
+  autoware::agnocast_wrapper::create_polling_subscriber<message_type, policy>(node, topic, qos)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
@@ -445,10 +445,15 @@ public:
     // CudaPointcloudPreprocessorNode which uses UNIQUE_PTR callbacks.
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
+      "const reference to the message type");
 
+    constexpr bool is_message_ptr_callback =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
@@ -457,7 +462,15 @@ public:
     subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
-        if constexpr (ownership == OwnershipType::Unique) {
+        if constexpr (!is_message_ptr_callback) {
+          // msg keeps the shared-memory entry alive only while the callback runs: the
+          // reference is valid for the duration of the callback and no copy is made, but
+          // it must not be stored or used after the callback returns. Callbacks that need
+          // to extend the message lifetime should take AUTOWARE_MESSAGE_CONST_SHARED_PTR.
+          // as_const prevents generic callbacks from mutating the shared-memory entry,
+          // which other processes may be reading concurrently.
+          callback(std::as_const(*msg));
+        } else if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
         } else {
           callback(
@@ -482,10 +495,15 @@ public:
   {
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
+      "const reference to the message type");
 
+    constexpr bool is_message_ptr_callback =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
@@ -496,7 +514,11 @@ public:
     subscription_ = node->create_subscription<MessageT>(
       topic_name, qos,
       [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-        if constexpr (ownership == OwnershipType::Unique) {
+        if constexpr (!is_message_ptr_callback) {
+          // as_const keeps this fallback consistent with the Agnocast path: generic
+          // callbacks must not observe a mutable reference on either path.
+          callback(std::as_const(*msg));
+        } else if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
         } else {
           callback(
@@ -538,90 +560,137 @@ typename Subscription<MessageT>::SharedPtr create_subscription(
   }
 }
 
-template <typename MessageT>
+// Reuse the polling policy tag types (Latest / Newest / All) from autoware_utils_rclcpp so that
+// node code can specify the policy by type, exactly as with the original
+// InterProcessPollingSubscriber.
+namespace polling_policy = autoware_utils_rclcpp::polling_policy;
+
+// Default value for take_data(allow_same_message): Latest re-delivers the cached message (true),
+// Newest only delivers a message that is new since the last take (false).
+template <typename MessageT, template <typename> class PollingPolicy>
+inline constexpr bool polling_default_allow_same_message_v =
+  !std::is_same_v<PollingPolicy<MessageT>, polling_policy::Newest<MessageT>>;
+
+// The wrapper's PollingSubscriber interface returns a single message from take_data(), so the
+// All policy (which yields a std::vector in InterProcessPollingSubscriber, and has no equivalent
+// in agnocast's native polling subscriber) cannot be represented. Reject it at compile time.
+template <typename MessageT, template <typename> class PollingPolicy>
+inline constexpr bool polling_policy_supported_v =
+  !std::is_same_v<PollingPolicy<MessageT>, polling_policy::All<MessageT>>;
+
+template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
 class PollingSubscriber
 {
 public:
-  using SharedPtr = std::shared_ptr<PollingSubscriber<MessageT>>;
+  static_assert(
+    polling_policy_supported_v<MessageT, PollingPolicy>,
+    "polling_policy::All is not supported by autoware::agnocast_wrapper::create_polling_subscriber "
+    "(take_data() returns a single message, not a vector). Use polling_policy::Latest or "
+    "polling_policy::Newest.");
+
+  using SharedPtr = std::shared_ptr<PollingSubscriber<MessageT, PollingPolicy>>;
+
+  static constexpr bool default_allow_same_message =
+    polling_default_allow_same_message_v<MessageT, PollingPolicy>;
 
   virtual ~PollingSubscriber() = default;
 
-  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData() = 0;
-  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data() = 0;
+  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
+    takeData(bool allow_same_message = default_allow_same_message) = 0;
+  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
+    take_data(bool allow_same_message = default_allow_same_message) = 0;
 };
 
-template <typename MessageT>
-class AgnocastPollingSubscriber : public PollingSubscriber<MessageT>
+template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
+class AgnocastPollingSubscriber : public PollingSubscriber<MessageT, PollingPolicy>
 {
-  typename agnocast::PollingSubscriber<MessageT>::SharedPtr subscriber_;
+  typename agnocast::TakeSubscription<MessageT>::SharedPtr subscriber_;
+
+  static constexpr bool default_allow_same_message =
+    polling_default_allow_same_message_v<MessageT, PollingPolicy>;
 
 public:
   template <typename NodeT>
   explicit AgnocastPollingSubscriber(
     NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos)
-  : subscriber_(agnocast::create_subscription<MessageT>(node, topic_name, qos))
+  : subscriber_(std::make_shared<agnocast::TakeSubscription<MessageT>>(node, topic_name, qos))
   {
   }
 
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData() override
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
+  takeData(bool allow_same_message = default_allow_same_message) override
   {
-    auto data = subscriber_->take_data();
+    auto data = subscriber_->take(allow_same_message);
     return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
   }
 
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data() override
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
+  take_data(bool allow_same_message = default_allow_same_message) override
   {
-    auto data = subscriber_->take_data();
+    auto data = subscriber_->take(allow_same_message);
     return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
   }
 };
 
-template <typename MessageT>
-class ROS2PollingSubscriber : public PollingSubscriber<MessageT>
+template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
+class ROS2PollingSubscriber : public PollingSubscriber<MessageT, PollingPolicy>
 {
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr subscriber_;
+  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::SharedPtr
+    subscriber_;
+
+  static constexpr bool default_allow_same_message =
+    polling_default_allow_same_message_v<MessageT, PollingPolicy>;
+
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data_impl(bool allow_same_message)
+  {
+    (void)allow_same_message;
+    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(subscriber_->take_data()));
+  }
 
 public:
   explicit ROS2PollingSubscriber(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
   : subscriber_(
-      autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::create_subscription(
-        node, topic_name, qos))
+      autoware_utils_rclcpp::InterProcessPollingSubscriber<
+        MessageT, PollingPolicy>::create_subscription(node, topic_name, qos))
   {
   }
 
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData() override
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
+  takeData(bool allow_same_message = default_allow_same_message) override
   {
-    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(subscriber_->take_data()));
+    return take_data_impl(allow_same_message);
   }
 
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data() override
+  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)
+  take_data(bool allow_same_message = default_allow_same_message) override
   {
-    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(subscriber_->take_data()));
+    return take_data_impl(allow_same_message);
   }
 };
 
-template <typename MessageT>
-typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
+template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
+typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
   rclcpp::Node * node, const std::string & topic_name, const size_t qos_history_depth)
 {
   if (use_agnocast()) {
-    return std::make_shared<AgnocastPollingSubscriber<MessageT>>(
+    return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
       node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   } else {
-    return std::make_shared<ROS2PollingSubscriber<MessageT>>(
+    return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
       node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 }
 
-template <typename MessageT>
-typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
-  rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
+typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
+  rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
   if (use_agnocast()) {
-    return std::make_shared<AgnocastPollingSubscriber<MessageT>>(node, topic_name, qos);
+    return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
+      node, topic_name, qos);
   } else {
-    return std::make_shared<ROS2PollingSubscriber<MessageT>>(node, topic_name, qos);
+    return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(node, topic_name, qos);
   }
 }
 
@@ -1255,6 +1324,10 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 namespace autoware::agnocast_wrapper
 {
 
+// Mirror the Agnocast-build alias so node code can name the polling policy the same way in both
+// builds (e.g. autoware::agnocast_wrapper::polling_policy::Newest).
+namespace polling_policy = autoware_utils_rclcpp::polling_policy;
+
 /// @brief Set the timer period (non-Agnocast build).
 ///
 /// rclcpp::TimerBase has no set_period member, so we provide a free overload
@@ -1294,8 +1367,8 @@ inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::
 #define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Response>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) typename rclcpp::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
-#define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
+#define AUTOWARE_POLLING_SUBSCRIBER_PTR(...) \
+  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<__VA_ARGS__>::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) typename rclcpp::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) typename rclcpp::Service<ServiceT>::SharedPtr
 #define AUTOWARE_CLIENT_FUTURE(ServiceT) typename rclcpp::Client<ServiceT>::Future
@@ -1320,11 +1393,11 @@ inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   node->create_publisher<message_type>(arg1, arg2, arg3)
 
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos)                       \
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, policy, topic, qos)                       \
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type, policy>::create_subscription( \
     this, topic, qos)
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, node, topic, qos)         \
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
+#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, policy, node, topic, qos)         \
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type, policy>::create_subscription( \
     node, topic, qos)
 
 #if RCLCPP_VERSION_MAJOR >= 28

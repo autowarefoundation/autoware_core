@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/pointcloud_map_loader/differential_map_loader_module.hpp"
+#include "../src/pointcloud_map_loader/pointcloud_map_loader_node.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -24,8 +24,9 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <vector>
 
-using autoware::map_loader::DifferentialMapLoaderModule;
+using autoware::map_loader::PointCloudMapLoaderNode;
 using autoware_map_msgs::srv::GetDifferentialPointCloudMap;
 
 class TestDifferentialMapLoaderModule : public ::testing::Test
@@ -35,7 +36,6 @@ protected:
   {
     // Initialize ROS node
     rclcpp::init(0, nullptr);
-    node_ = std::make_shared<rclcpp::Node>("test_differential_map_loader_module");
 
     // Generate a sample dummy pointcloud and save it to a file
     pcl::PointCloud<pcl::PointXYZ> dummy_cloud;
@@ -47,25 +47,23 @@ protected:
     dummy_cloud.points[2] = pcl::PointXYZ(1.0, 1.0, 1.0);
     pcl::io::savePCDFileASCII("/tmp/dummy.pcd", dummy_cloud);
 
-    // Generate a sample dummy pointcloud metadata dictionary
-    std::map<std::string, autoware::map_loader::PCDFileMetadata> dummy_metadata_dict;
-    autoware::map_loader::PCDFileMetadata dummy_metadata;
-    dummy_metadata.min = pcl::PointXYZ(-1.0, -1.0, -1.0);
-    dummy_metadata.max = pcl::PointXYZ(1.0, 1.0, 1.0);
-    dummy_metadata_dict["/tmp/dummy.pcd"] = dummy_metadata;
+    rclcpp::NodeOptions node_options;
+    node_options.append_parameter_override(
+      "pcd_paths_or_directory", std::vector<std::string>{"/tmp/dummy.pcd"});
+    node_options.append_parameter_override("pcd_metadata_path", std::string("/tmp/not_used.yaml"));
+    node_options.append_parameter_override("enable_whole_load", false);
+    node_options.append_parameter_override("enable_downsampled_whole_load", false);
+    node_options.append_parameter_override("enable_partial_load", false);
+    node_options.append_parameter_override("enable_selected_load", false);
+    map_loader_node_ = std::make_shared<PointCloudMapLoaderNode>(node_options);
 
-    // Initialize the DifferentialMapLoaderModule with the dummy metadata dictionary
-    module_ = std::make_shared<DifferentialMapLoaderModule>(node_.get(), dummy_metadata_dict);
-
-    // Create a client for the GetDifferentialPointCloudMap service
-    client_ =
-      node_->create_client<GetDifferentialPointCloudMap>("service/get_differential_pcd_map");
+    client_ = map_loader_node_->create_client<GetDifferentialPointCloudMap>(
+      "service/get_differential_pcd_map");
   }
 
   void TearDown() override { rclcpp::shutdown(); }
 
-  rclcpp::Node::SharedPtr node_;
-  std::shared_ptr<DifferentialMapLoaderModule> module_;
+  std::shared_ptr<PointCloudMapLoaderNode> map_loader_node_;
   rclcpp::Client<GetDifferentialPointCloudMap>::SharedPtr client_;
 };
 
@@ -84,7 +82,8 @@ TEST_F(TestDifferentialMapLoaderModule, LoadDifferentialPCDFiles)
   // Call the service
   auto result_future = client_->async_send_request(request);
   ASSERT_EQ(
-    rclcpp::spin_until_future_complete(node_, result_future), rclcpp::FutureReturnCode::SUCCESS);
+    rclcpp::spin_until_future_complete(map_loader_node_, result_future),
+    rclcpp::FutureReturnCode::SUCCESS);
 
   // Check the result
   auto result = result_future.get();
