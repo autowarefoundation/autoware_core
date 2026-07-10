@@ -108,6 +108,15 @@ TEST(PointcloudMapLoaderCore, BuildMetadataFromSinglePcdWithoutMetadataFile)
   std::filesystem::remove_all(test_dir);
 }
 
+TEST(PointcloudMapLoaderCore, ThrowsWhenMetadataFileMissingForMultiplePcds)
+{
+  const std::vector<std::string> pcd_paths = {"/tmp/a.pcd", "/tmp/b.pcd"};
+
+  EXPECT_THROW(
+    (void)build_pcd_metadata_dict("/tmp/metadata_that_does_not_exist.yaml", pcd_paths),
+    std::runtime_error);
+}
+
 TEST(PointcloudMapLoaderCore, DownsamplePointcloudPreservesHeaderAndReducesPointCount)
 {
   pcl::PointCloud<pcl::PointXYZ> pcl_input;
@@ -182,15 +191,6 @@ TEST(PointcloudMapLoaderCore, LoadPointcloudMapCallsErrorCallbackOnMissingFile)
 
   EXPECT_EQ(merged.header.frame_id, "map");
   EXPECT_FALSE(errors.empty());
-}
-
-TEST(PointcloudMapLoaderCore, ThrowsWhenMetadataFileMissingForMultiplePcds)
-{
-  const std::vector<std::string> pcd_paths = {"/tmp/a.pcd", "/tmp/b.pcd"};
-
-  EXPECT_THROW(
-    (void)build_pcd_metadata_dict("/tmp/metadata_that_does_not_exist.yaml", pcd_paths),
-    std::runtime_error);
 }
 }  // namespace
 }  // namespace autoware::map_loader
