@@ -29,6 +29,8 @@
 #include <string>
 #include <vector>
 
+using autoware_map_msgs::srv::GetDifferentialPointCloudMap;
+
 class TestPointcloudMapLoaderNode : public ::testing::Test
 {
 protected:
@@ -114,7 +116,7 @@ TEST_F(TestPointcloudMapLoaderNode, LoadPCDFilesNoDownsampleTest)
   }
 }
 
-TEST_F(TestPointcloudMapLoaderModule, LoadDifferentialPCDFiles)
+TEST_F(TestPointcloudMapLoaderNode, LoadDifferentialPCDFiles)
 {
   auto client = map_loader_node_->create_client<GetDifferentialPointCloudMap>(
     "service/get_differential_pcd_map");
