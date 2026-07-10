@@ -38,7 +38,7 @@ PCDFileMetadata make_metadata(
   return metadata;
 }
 
-TEST(DifferentialMapLoaderCore, EmptyCacheLoadsAllCellsInArea)
+TEST(DifferentialMapLoader, EmptyCacheLoadsAllCellsInArea)
 {
   autoware_map_msgs::msg::AreaInfo area_info;
   area_info.center_x = 0.0;
@@ -58,7 +58,7 @@ TEST(DifferentialMapLoaderCore, EmptyCacheLoadsAllCellsInArea)
   EXPECT_TRUE(plan.ids_to_remove.empty());
 }
 
-TEST(DifferentialMapLoaderCore, CachedInAreaIsKeptAndNotReloaded)
+TEST(DifferentialMapLoader, CachedInAreaIsKeptAndNotReloaded)
 {
   autoware_map_msgs::msg::AreaInfo area_info;
   area_info.center_x = 0.0;
@@ -77,7 +77,7 @@ TEST(DifferentialMapLoaderCore, CachedInAreaIsKeptAndNotReloaded)
   EXPECT_TRUE(plan.ids_to_remove.empty());
 }
 
-TEST(DifferentialMapLoaderCore, CachedOutOfAreaAndUnknownIdsAreRemoved)
+TEST(DifferentialMapLoader, CachedOutOfAreaAndUnknownIdsAreRemoved)
 {
   autoware_map_msgs::msg::AreaInfo area_info;
   area_info.center_x = 0.0;
