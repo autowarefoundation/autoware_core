@@ -55,7 +55,8 @@ void write_dummy_pcd(const std::string & path)
 
 using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;
 
-std::vector<std::string> loaded_ids(const GetDifferentialPointCloudMap::Response::SharedPtr & response)
+std::vector<std::string> loaded_ids(
+  const GetDifferentialPointCloudMap::Response::SharedPtr & response)
 {
   std::vector<std::string> ids;
   ids.reserve(response->new_pointcloud_with_ids.size());
