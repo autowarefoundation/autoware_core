@@ -140,7 +140,8 @@ TEST(PointcloudMapLoaderModuleSelected, LoadSelectedPCDFiles)
   node_options.append_parameter_override("enable_partial_load", false);
   node_options.append_parameter_override("enable_selected_load", true);
 
-  auto map_loader_node = std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
+  auto map_loader_node =
+    std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
   auto client =
     map_loader_node->create_client<GetSelectedPointCloudMap>("service/get_selected_pcd_map");
 
@@ -192,7 +193,8 @@ TEST(PointcloudMapLoaderModuleSelected, RequestedIdNotFound)
   node_options.append_parameter_override("enable_partial_load", false);
   node_options.append_parameter_override("enable_selected_load", true);
 
-  auto map_loader_node = std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
+  auto map_loader_node =
+    std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
   auto client =
     map_loader_node->create_client<GetSelectedPointCloudMap>("service/get_selected_pcd_map");
 

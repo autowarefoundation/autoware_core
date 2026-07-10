@@ -67,9 +67,8 @@ TEST(SelectedMapLoader, ReturnsLoadAndMissingIdsInRequestOrder)
   };
 
   std::vector<std::string> errors;
-  SelectedMapLoaderModule module(metadata_dict, [&errors](const std::string & msg) {
-    errors.push_back(msg);
-  });
+  SelectedMapLoaderModule module(
+    metadata_dict, [&errors](const std::string & msg) { errors.push_back(msg); });
 
   auto request = std::make_shared<GetSelectedPointCloudMap::Request>();
   request->cell_ids = {"missing_0.pcd", b_path, "missing_1.pcd", a_path};
@@ -116,9 +115,8 @@ TEST(SelectedMapLoader, DuplicateRequestsArePreserved)
   };
 
   std::vector<std::string> errors;
-  SelectedMapLoaderModule module(metadata_dict, [&errors](const std::string & msg) {
-    errors.push_back(msg);
-  });
+  SelectedMapLoaderModule module(
+    metadata_dict, [&errors](const std::string & msg) { errors.push_back(msg); });
 
   auto request = std::make_shared<GetSelectedPointCloudMap::Request>();
   request->cell_ids = {a_path, a_path, "missing.pcd", "missing.pcd"};
