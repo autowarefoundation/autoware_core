@@ -166,7 +166,8 @@ TEST(PointcloudMapLoaderNodePartial, LoadPartialPCDFiles)
   node_options.append_parameter_override("enable_partial_load", true);
   node_options.append_parameter_override("enable_selected_load", false);
 
-  auto map_loader_node = std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
+  auto map_loader_node =
+    std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
   auto client =
     map_loader_node->create_client<GetPartialPointCloudMap>("service/get_partial_pcd_map");
 

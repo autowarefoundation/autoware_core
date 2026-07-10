@@ -104,8 +104,10 @@ TEST(PartialMapLoader, ReturnsEmptyWhenNoCellsIntersect)
   area_info.radius = 1.0;
 
   const std::map<std::string, PCDFileMetadata> metadata_dict = {
-    {"/tmp/test_partial_map_loader_none_out_a.pcd", make_metadata(3.0F, 3.0F, -1.0F, 4.0F, 4.0F, 1.0F)},
-    {"/tmp/test_partial_map_loader_none_out_b.pcd", make_metadata(-4.0F, -4.0F, -1.0F, -3.0F, -3.0F, 1.0F)},
+    {"/tmp/test_partial_map_loader_none_out_a.pcd",
+     make_metadata(3.0F, 3.0F, -1.0F, 4.0F, 4.0F, 1.0F)},
+    {"/tmp/test_partial_map_loader_none_out_b.pcd",
+     make_metadata(-4.0F, -4.0F, -1.0F, -3.0F, -3.0F, 1.0F)},
   };
 
   PartialMapLoaderModule module(metadata_dict);
