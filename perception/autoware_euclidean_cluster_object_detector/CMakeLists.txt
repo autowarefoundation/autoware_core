@@ -40,6 +40,18 @@ rclcpp_components_register_node(${PROJECT_NAME}_node_core
   EXECUTABLE euclidean_cluster_node
 )
 
+ament_auto_add_library(${PROJECT_NAME}_voxel_grid_node_core SHARED
+  src/voxel_grid_based_euclidean_cluster_node.cpp
+)
+target_link_libraries(${PROJECT_NAME}_voxel_grid_node_core
+  ${PCL_LIBRARIES}
+  ${PROJECT_NAME}_lib
+)
+rclcpp_components_register_node(${PROJECT_NAME}_voxel_grid_node_core
+  PLUGIN "autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterNode"
+  EXECUTABLE voxel_grid_based_euclidean_cluster_node
+)
+
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   ament_auto_add_gtest(test_voxel_grid_based_euclidean_cluster_fusion
