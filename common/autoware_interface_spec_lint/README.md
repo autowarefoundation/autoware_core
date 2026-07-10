@@ -30,12 +30,14 @@ A spec struct is exempt from `spec_registered` when the marker `// interface-spe
 
 ```cpp
 // interface-spec-lint: not-versioned
-struct PointCloudMap {
-  using Message = sensor_msgs::msg::PointCloud2;
-  static constexpr char name[] = "/map/point_cloud_map";
+struct PlanningDebugMarkers {
+  using Message = visualization_msgs::msg::MarkerArray;
+  static constexpr char name[] = "/planning/debug/markers";
   // ...
 };
 ```
+
+The struct above is illustrative: a debug/visualization topic is the kind of interface that is deliberately outside the versioned set. It is not a real spec in this package -- the committed domain headers do not use the marker, since every struct they declare is registered.
 
 ## Usage
 

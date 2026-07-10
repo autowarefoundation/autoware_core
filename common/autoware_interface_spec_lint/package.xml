@@ -7,7 +7,11 @@
   <maintainer email="yutaka.kondo@tier4.jp">Yutaka Kondo</maintainer>
   <license>Apache License 2.0</license>
 
+  <!-- autoware_component_interface_specs is a test dependency because its
+       BUILD_TESTING-gated generator binary backs the manifest_fresh test; see
+       test/conftest.py for how the test locates it. -->
   <test_depend>ament_copyright</test_depend>
+  <test_depend>autoware_component_interface_specs</test_depend>
   <test_depend>python3-pytest</test_depend>
 
   <export>
