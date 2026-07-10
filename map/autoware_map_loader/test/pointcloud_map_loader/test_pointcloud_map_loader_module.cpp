@@ -16,6 +16,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <autoware_map_msgs/srv/get_selected_point_cloud_map.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <gtest/gtest.h>
@@ -27,6 +28,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+using autoware_map_msgs::srv::GetSelectedPointCloudMap;
 
 class TestPointcloudMapLoaderModule : public ::testing::Test
 {
@@ -111,6 +114,103 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
     EXPECT_FLOAT_EQ(received_cloud.points[i].y, static_cast<float>(i * 2));
     EXPECT_FLOAT_EQ(received_cloud.points[i].z, static_cast<float>(i * 3));
   }
+}
+
+TEST(PointcloudMapLoaderModuleSelected, LoadSelectedPCDFiles)
+{
+  rclcpp::init(0, nullptr);
+
+  pcl::PointCloud<pcl::PointXYZ> dummy_cloud;
+  dummy_cloud.width = 3;
+  dummy_cloud.height = 1;
+  dummy_cloud.points.resize(dummy_cloud.width * dummy_cloud.height);
+  dummy_cloud.points[0] = pcl::PointXYZ(-1.0, -1.0, -1.0);
+  dummy_cloud.points[1] = pcl::PointXYZ(0.0, 0.0, 0.0);
+  dummy_cloud.points[2] = pcl::PointXYZ(1.0, 1.0, 1.0);
+
+  const std::string selected_test_pcd_path = "/tmp/test_pointcloud_map_loader_module_selected.pcd";
+  pcl::io::savePCDFileASCII(selected_test_pcd_path, dummy_cloud);
+
+  rclcpp::NodeOptions node_options;
+  node_options.append_parameter_override(
+    "pcd_paths_or_directory", std::vector<std::string>{selected_test_pcd_path});
+  node_options.append_parameter_override("pcd_metadata_path", std::string("/tmp/not_used.yaml"));
+  node_options.append_parameter_override("enable_whole_load", false);
+  node_options.append_parameter_override("enable_downsampled_whole_load", false);
+  node_options.append_parameter_override("enable_partial_load", false);
+  node_options.append_parameter_override("enable_selected_load", true);
+
+  auto map_loader_node = std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
+  auto client =
+    map_loader_node->create_client<GetSelectedPointCloudMap>("service/get_selected_pcd_map");
+
+  ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(3)));
+
+  auto request = std::make_shared<GetSelectedPointCloudMap::Request>();
+  request->cell_ids.push_back(selected_test_pcd_path);
+
+  auto result_future = client->async_send_request(request);
+  ASSERT_EQ(
+    rclcpp::spin_until_future_complete(map_loader_node, result_future),
+    rclcpp::FutureReturnCode::SUCCESS);
+
+  auto result = result_future.get();
+  ASSERT_EQ(static_cast<int>(result->new_pointcloud_with_ids.size()), 1);
+  const auto & cell = result->new_pointcloud_with_ids[0];
+  EXPECT_EQ(cell.cell_id, selected_test_pcd_path);
+  EXPECT_FLOAT_EQ(cell.metadata.min_x, -1.0F);
+  EXPECT_FLOAT_EQ(cell.metadata.min_y, -1.0F);
+  EXPECT_FLOAT_EQ(cell.metadata.max_x, 1.0F);
+  EXPECT_FLOAT_EQ(cell.metadata.max_y, 1.0F);
+  EXPECT_EQ(result->header.frame_id, "map");
+
+  rclcpp::shutdown();
+}
+
+TEST(PointcloudMapLoaderModuleSelected, RequestedIdNotFound)
+{
+  rclcpp::init(0, nullptr);
+
+  pcl::PointCloud<pcl::PointXYZ> dummy_cloud;
+  dummy_cloud.width = 3;
+  dummy_cloud.height = 1;
+  dummy_cloud.points.resize(dummy_cloud.width * dummy_cloud.height);
+  dummy_cloud.points[0] = pcl::PointXYZ(-1.0, -1.0, -1.0);
+  dummy_cloud.points[1] = pcl::PointXYZ(0.0, 0.0, 0.0);
+  dummy_cloud.points[2] = pcl::PointXYZ(1.0, 1.0, 1.0);
+
+  const std::string selected_test_pcd_path =
+    "/tmp/test_pointcloud_map_loader_module_selected_not_found.pcd";
+  pcl::io::savePCDFileASCII(selected_test_pcd_path, dummy_cloud);
+
+  rclcpp::NodeOptions node_options;
+  node_options.append_parameter_override(
+    "pcd_paths_or_directory", std::vector<std::string>{selected_test_pcd_path});
+  node_options.append_parameter_override("pcd_metadata_path", std::string("/tmp/not_used.yaml"));
+  node_options.append_parameter_override("enable_whole_load", false);
+  node_options.append_parameter_override("enable_downsampled_whole_load", false);
+  node_options.append_parameter_override("enable_partial_load", false);
+  node_options.append_parameter_override("enable_selected_load", true);
+
+  auto map_loader_node = std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
+  auto client =
+    map_loader_node->create_client<GetSelectedPointCloudMap>("service/get_selected_pcd_map");
+
+  ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(3)));
+
+  auto request = std::make_shared<GetSelectedPointCloudMap::Request>();
+  request->cell_ids.push_back("/tmp/does_not_exist.pcd");
+
+  auto result_future = client->async_send_request(request);
+  ASSERT_EQ(
+    rclcpp::spin_until_future_complete(map_loader_node, result_future),
+    rclcpp::FutureReturnCode::SUCCESS);
+
+  auto result = result_future.get();
+  EXPECT_EQ(static_cast<int>(result->new_pointcloud_with_ids.size()), 0);
+  EXPECT_EQ(result->header.frame_id, "map");
+
+  rclcpp::shutdown();
 }
 
 int main(int argc, char ** argv)
