@@ -14,10 +14,13 @@
 
 #include "voxel_grid_based_euclidean_cluster.hpp"
 
+#include "ros_conversions.hpp"
+
 #include <rclcpp/node.hpp>
 
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <string>
 #include <unordered_map>
@@ -25,9 +28,7 @@
 
 namespace autoware::euclidean_cluster
 {
-VoxelGridBasedEuclideanCluster::VoxelGridBasedEuclideanCluster()
-{
-}
+VoxelGridBasedEuclideanCluster::VoxelGridBasedEuclideanCluster() = default;
 
 VoxelGridBasedEuclideanCluster::VoxelGridBasedEuclideanCluster(
   bool use_height, int min_cluster_size, int max_cluster_size)
@@ -214,7 +215,7 @@ bool VoxelGridBasedEuclideanCluster::cluster(
       // temp_cluster.width = i_cluster_data_size / point_step / pointcloud_msg->height;
 
       autoware_perception_msgs::msg::DetectedObject object;
-      object.kinematics.pose_with_covariance.pose.position = getCentroid(temp_cluster);
+      object.kinematics.pose_with_covariance.pose.position = get_centroid(temp_cluster);
 
       autoware_perception_msgs::msg::ObjectClassification classification;
       classification.label = autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;

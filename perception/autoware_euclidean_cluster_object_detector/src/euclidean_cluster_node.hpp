@@ -15,7 +15,7 @@
 #ifndef EUCLIDEAN_CLUSTER_NODE_HPP_
 #define EUCLIDEAN_CLUSTER_NODE_HPP_
 
-#include "euclidean_cluster.hpp"
+#include "euclidean_cluster_object_detector.hpp"
 
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
@@ -36,13 +36,13 @@ public:
   explicit EuclideanClusterNode(const rclcpp::NodeOptions & options);
 
 private:
-  void onPointCloud(sensor_msgs::msg::PointCloud2::ConstSharedPtr input_msg);
+  void on_point_cloud(sensor_msgs::msg::PointCloud2::ConstSharedPtr input_msg);
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_sub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr cluster_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr debug_pub_;
 
-  std::shared_ptr<EuclideanCluster> cluster_;
+  std::shared_ptr<EuclideanClusterObjectDetector> detector_{nullptr};
   std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
   std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
 };
