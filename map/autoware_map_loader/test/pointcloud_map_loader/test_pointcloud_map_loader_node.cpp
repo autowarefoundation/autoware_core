@@ -28,7 +28,7 @@
 #include <string>
 #include <vector>
 
-class TestPointcloudMapLoaderModule : public ::testing::Test
+class TestPointcloudMapLoaderNode : public ::testing::Test
 {
 protected:
   std::shared_ptr<autoware::map_loader::PointCloudMapLoaderNode> map_loader_node_;
@@ -69,7 +69,7 @@ protected:
   void TearDown() override { rclcpp::shutdown(); }
 };
 
-TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
+TEST_F(TestPointcloudMapLoaderNode, LoadPCDFilesNoDownsampleTest)
 {
   using namespace std::literals::chrono_literals;
 
