@@ -193,8 +193,8 @@ TEST_F(EuclideanClusterObjectDetectorIntegrationHarness, GeometricCentroidValida
   x_centroids.push_back(last_output_->objects[1].kinematics.pose_with_covariance.pose.position.x);
   std::sort(x_centroids.begin(), x_centroids.end());
 
-  EXPECT_NEAR(x_centroids[0], 1.075, 0.1);
-  EXPECT_NEAR(x_centroids[1], 10.075, 0.1);
+  EXPECT_NEAR(x_centroids[0], 1.075, near_tol);
+  EXPECT_NEAR(x_centroids[1], 10.075, near_tol);
 }
 
 // TEST 2. Confirms empty point cloud input is handled gracefully, node should not crash

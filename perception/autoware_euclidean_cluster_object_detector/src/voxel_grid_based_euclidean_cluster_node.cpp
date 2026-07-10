@@ -14,7 +14,7 @@
 
 #include "voxel_grid_based_euclidean_cluster_node.hpp"
 
-#include "utils.hpp"
+#include "../lib/ros_conversions.hpp"
 
 #include <memory>
 #include <vector>
@@ -82,7 +82,7 @@ void VoxelGridBasedEuclideanClusterNode::onPointCloud(
   // build debug msg
   if (debug_pub_->get_subscription_count() >= 1) {
     sensor_msgs::msg::PointCloud2 debug;
-    convertClusters2SensorMsg(input_msg->header, clusters, debug);
+    convert_clusters_to_debug_point_cloud(input_msg->header, clusters, debug);
     debug_pub_->publish(debug);
   }
   if (debug_publisher_) {

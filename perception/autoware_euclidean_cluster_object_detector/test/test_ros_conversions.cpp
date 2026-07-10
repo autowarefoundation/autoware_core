@@ -12,14 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "utils.hpp"
+#include "../lib/ros_conversions.hpp"
 
 #include <sensor_msgs/point_cloud2_iterator.hpp>
 
 #include <gtest/gtest.h>
 
 #include <vector>
-class UtilsTest : public ::testing::Test
+
+namespace
+{
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
+}  // namespace
+
+class RosConversionsTest : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -91,17 +98,17 @@ protected:
   std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters_;
 };
 
-TEST_F(UtilsTest, TestGetCentroid)
+TEST_F(RosConversionsTest, TestGetCentroid)
 {
   // Calculate centroid
-  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::getCentroid(pointcloud_);
+  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::get_centroid(pointcloud_);
 
-  EXPECT_FLOAT_EQ(centroid.x, 5.5f);
-  EXPECT_FLOAT_EQ(centroid.y, 6.5f);
-  EXPECT_FLOAT_EQ(centroid.z, 7.5f);
+  EXPECT_NEAR(centroid.x, 5.5f, near_tol);
+  EXPECT_NEAR(centroid.y, 6.5f, near_tol);
+  EXPECT_NEAR(centroid.z, 7.5f, near_tol);
 }
 
-TEST_F(UtilsTest, TestGetCentroidEmptyPointCloud)
+TEST_F(RosConversionsTest, TestGetCentroidEmptyPointCloud)
 {
   // Create an empty point cloud
   sensor_msgs::msg::PointCloud2 empty_pointcloud;
@@ -134,14 +141,14 @@ TEST_F(UtilsTest, TestGetCentroidEmptyPointCloud)
   empty_pointcloud.data.resize(0);
 
   // Calculate centroid - should return origin (0, 0, 0)
-  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::getCentroid(empty_pointcloud);
+  geometry_msgs::msg::Point centroid = autoware::euclidean_cluster::get_centroid(empty_pointcloud);
 
   EXPECT_FLOAT_EQ(centroid.x, 0.0f);
   EXPECT_FLOAT_EQ(centroid.y, 0.0f);
   EXPECT_FLOAT_EQ(centroid.z, 0.0f);
 }
 
-TEST_F(UtilsTest, TestConvertPointCloudClusters2Msg)
+TEST_F(RosConversionsTest, TestConvertClustersToDetectedObjects)
 {
   // Create header for conversion
   std_msgs::msg::Header header;
@@ -151,7 +158,7 @@ TEST_F(UtilsTest, TestConvertPointCloudClusters2Msg)
 
   // Convert clusters to msg
   autoware_perception_msgs::msg::DetectedObjects objects;
-  autoware::euclidean_cluster::convertPointCloudClusters2Msg(header, clusters_, objects);
+  autoware::euclidean_cluster::convert_clusters_to_detected_objects(header, clusters_, objects);
 
   // Check results
   EXPECT_EQ(objects.header.frame_id, "base_link");
@@ -160,24 +167,24 @@ TEST_F(UtilsTest, TestConvertPointCloudClusters2Msg)
   EXPECT_EQ(objects.objects.size(), 2);
 
   // Check first object's centroid (average of cloud1 points)
-  EXPECT_FLOAT_EQ(objects.objects[0].kinematics.pose_with_covariance.pose.position.x, 2.5f);
-  EXPECT_FLOAT_EQ(objects.objects[0].kinematics.pose_with_covariance.pose.position.y, 3.5f);
-  EXPECT_FLOAT_EQ(objects.objects[0].kinematics.pose_with_covariance.pose.position.z, 4.5f);
+  EXPECT_NEAR(objects.objects[0].kinematics.pose_with_covariance.pose.position.x, 2.5f, near_tol);
+  EXPECT_NEAR(objects.objects[0].kinematics.pose_with_covariance.pose.position.y, 3.5f, near_tol);
+  EXPECT_NEAR(objects.objects[0].kinematics.pose_with_covariance.pose.position.z, 4.5f, near_tol);
 
   // Check second object's centroid (average of cloud2 points)
-  EXPECT_FLOAT_EQ(objects.objects[1].kinematics.pose_with_covariance.pose.position.x, 8.5f);
-  EXPECT_FLOAT_EQ(objects.objects[1].kinematics.pose_with_covariance.pose.position.y, 9.5f);
-  EXPECT_FLOAT_EQ(objects.objects[1].kinematics.pose_with_covariance.pose.position.z, 10.5f);
+  EXPECT_NEAR(objects.objects[1].kinematics.pose_with_covariance.pose.position.x, 8.5f, near_tol);
+  EXPECT_NEAR(objects.objects[1].kinematics.pose_with_covariance.pose.position.y, 9.5f, near_tol);
+  EXPECT_NEAR(objects.objects[1].kinematics.pose_with_covariance.pose.position.z, 10.5f, near_tol);
 
   // Check classification
   EXPECT_EQ(objects.objects[0].classification.size(), 1);
   EXPECT_EQ(
     objects.objects[0].classification[0].label,
     autoware_perception_msgs::msg::ObjectClassification::UNKNOWN);
-  EXPECT_FLOAT_EQ(objects.objects[0].classification[0].probability, 1.0f);
+  EXPECT_NEAR(objects.objects[0].classification[0].probability, 1.0f, near_tol);
 }
 
-TEST_F(UtilsTest, TestConvertClusters2SensorMsg)
+TEST_F(RosConversionsTest, TestConvertClustersToDebugPointCloud)
 {
   // Create header for conversion
   std_msgs::msg::Header header;
@@ -187,7 +194,7 @@ TEST_F(UtilsTest, TestConvertClusters2SensorMsg)
 
   // Convert clusters to sensor msg
   sensor_msgs::msg::PointCloud2 output;
-  autoware::euclidean_cluster::convertClusters2SensorMsg(header, clusters_, output);
+  autoware::euclidean_cluster::convert_clusters_to_debug_point_cloud(header, clusters_, output);
 
   // Check header
   EXPECT_EQ(output.header.frame_id, "base_link");
@@ -211,36 +218,36 @@ TEST_F(UtilsTest, TestConvertClusters2SensorMsg)
   sensor_msgs::PointCloud2Iterator<float> iter_y(output, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(output, "z");
 
-  EXPECT_FLOAT_EQ(*iter_x, 1.0f);
-  EXPECT_FLOAT_EQ(*iter_y, 2.0f);
-  EXPECT_FLOAT_EQ(*iter_z, 3.0f);
+  EXPECT_NEAR(*iter_x, 1.0f, near_tol);
+  EXPECT_NEAR(*iter_y, 2.0f, near_tol);
+  EXPECT_NEAR(*iter_z, 3.0f, near_tol);
 
   // Move to next point
   ++iter_x;
   ++iter_y;
   ++iter_z;
 
-  EXPECT_FLOAT_EQ(*iter_x, 4.0f);
-  EXPECT_FLOAT_EQ(*iter_y, 5.0f);
-  EXPECT_FLOAT_EQ(*iter_z, 6.0f);
+  EXPECT_NEAR(*iter_x, 4.0f, near_tol);
+  EXPECT_NEAR(*iter_y, 5.0f, near_tol);
+  EXPECT_NEAR(*iter_z, 6.0f, near_tol);
 
   // Move to third point
   ++iter_x;
   ++iter_y;
   ++iter_z;
 
-  EXPECT_FLOAT_EQ(*iter_x, 7.0f);
-  EXPECT_FLOAT_EQ(*iter_y, 8.0f);
-  EXPECT_FLOAT_EQ(*iter_z, 9.0f);
+  EXPECT_NEAR(*iter_x, 7.0f, near_tol);
+  EXPECT_NEAR(*iter_y, 8.0f, near_tol);
+  EXPECT_NEAR(*iter_z, 9.0f, near_tol);
 
   // Move to fourth point
   ++iter_x;
   ++iter_y;
   ++iter_z;
 
-  EXPECT_FLOAT_EQ(*iter_x, 10.0f);
-  EXPECT_FLOAT_EQ(*iter_y, 11.0f);
-  EXPECT_FLOAT_EQ(*iter_z, 12.0f);
+  EXPECT_NEAR(*iter_x, 10.0f, near_tol);
+  EXPECT_NEAR(*iter_y, 11.0f, near_tol);
+  EXPECT_NEAR(*iter_z, 12.0f, near_tol);
 }
 
 int main(int argc, char ** argv)

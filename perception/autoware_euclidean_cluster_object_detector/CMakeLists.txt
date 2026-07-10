@@ -14,9 +14,9 @@ include_directories(
 )
 
 ament_auto_add_library(${PROJECT_NAME}_lib SHARED
-  lib/euclidean_cluster.cpp
   lib/voxel_grid_based_euclidean_cluster.cpp
-  lib/utils.cpp
+  lib/ros_conversions.cpp
+  src/euclidean_cluster_object_detector.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_lib
@@ -64,8 +64,8 @@ if(BUILD_TESTING)
     test/test_euclidean_cluster.cpp
   )
 
-  ament_auto_add_gtest(test_utils
-    test/test_utils.cpp
+  ament_auto_add_gtest(test_ros_conversions
+    test/test_ros_conversions.cpp
   )
 
   ament_auto_add_gtest(test_nodes
