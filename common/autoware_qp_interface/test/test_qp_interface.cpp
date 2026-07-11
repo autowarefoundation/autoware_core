@@ -32,7 +32,7 @@ TEST(QPInterfaceTest, InitializeProblem_NonSquareP_ThrowsException)
   std::vector<double> l = {1.0};
   std::vector<double> u = {1.0};
   bool enable_warm_start = false;
-  c_float eps_abs = 1e-4;
+  OSQPFloat eps_abs = 1e-4;
 
   EXPECT_THROW(
     { OSQPInterface osqp_instance(P, A, q, l, u, enable_warm_start, eps_abs); },
@@ -47,7 +47,7 @@ TEST(QPInterfaceTest, InitializeProblem_PRowsNotEqualQSize_ThrowsException)
   std::vector<double> l = {1.0};
   std::vector<double> u = {1.0};
   bool enable_warm_start = false;
-  c_float eps_abs = 1e-4;
+  OSQPFloat eps_abs = 1e-4;
 
   EXPECT_THROW(
     { OSQPInterface osqp_instance(P, A, q, l, u, enable_warm_start, eps_abs); },
@@ -62,7 +62,7 @@ TEST(QPInterfaceTest, InitializeProblem_PRowsNotEqualACols_ThrowsException)
   std::vector<double> l = {1.0};
   std::vector<double> u = {1.0};
   bool enable_warm_start = false;
-  c_float eps_abs = 1e-4;
+  OSQPFloat eps_abs = 1e-4;
 
   EXPECT_THROW(
     { OSQPInterface osqp_instance(P, A, q, l, u, enable_warm_start, eps_abs); },
@@ -77,7 +77,7 @@ TEST(QPInterfaceTest, InitializeProblem_ARowsNotEqualLSize_ThrowsException)
   std::vector<double> l = {1.0};
   std::vector<double> u = {1.0, 2.0};
   bool enable_warm_start = false;
-  c_float eps_abs = 1e-4;
+  OSQPFloat eps_abs = 1e-4;
 
   EXPECT_THROW(
     { OSQPInterface osqp_instance(P, A, q, l, u, enable_warm_start, eps_abs); },
@@ -92,7 +92,7 @@ TEST(QPInterfaceTest, InitializeProblem_ARowsNotEqualUSize_ThrowsException)
   std::vector<double> l = {1.0, 2.0};
   std::vector<double> u = {1.0};
   bool enable_warm_start = false;
-  c_float eps_abs = 1e-4;
+  OSQPFloat eps_abs = 1e-4;
 
   EXPECT_THROW(
     { OSQPInterface osqp_instance(P, A, q, l, u, enable_warm_start, eps_abs); },
@@ -109,7 +109,7 @@ TEST(QPInterfaceTest, InitializeProblem_ValidInputs_Success)
   std::vector<double> l = {1.0};
   std::vector<double> u = {2.0};
   bool enable_warm_start = false;
-  c_float eps_abs = 1e-4;
+  OSQPFloat eps_abs = 1e-4;
 
   OSQPInterface osqp_instance(P, A, q, l, u, enable_warm_start, eps_abs);
   EXPECT_NO_THROW({ OSQPInterface osqp_instance(P, A, q, l, u, enable_warm_start, eps_abs); });
@@ -125,7 +125,7 @@ TEST(QPInterfaceTest, Optimize_ValidInputs_ReturnsResult)
   std::vector<double> l = {1.0};
   std::vector<double> u = {1.0};
   bool enable_warm_start = false;
-  c_float eps_abs = 1e-4;
+  OSQPFloat eps_abs = 1e-4;
 
   OSQPInterface osqp(P, A, q, l, u, enable_warm_start, eps_abs);
   std::vector<double> result = osqp.QPInterface::optimize(P, A, q, l, u);

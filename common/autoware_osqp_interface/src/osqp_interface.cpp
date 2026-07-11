@@ -27,11 +27,10 @@
 
 namespace autoware::osqp_interface
 {
-OSQPInterface::OSQPInterface(const c_float eps_abs, const bool polish)
-: m_work{nullptr, OSQPWorkspaceDeleter}
+OSQPInterface::OSQPInterface(const OSQPFloat eps_abs, const bool polish)
+: m_solver{nullptr, OSQPSolverDeleter}
 {
   m_settings = std::make_unique<OSQPSettings>();
-  m_data = std::make_unique<OSQPData>();
 
   if (m_settings) {
     osqp_set_default_settings(m_settings.get());
@@ -40,17 +39,17 @@ OSQPInterface::OSQPInterface(const c_float eps_abs, const bool polish)
     m_settings->eps_abs = eps_abs;
     m_settings->eps_prim_inf = 1.0E-4;
     m_settings->eps_dual_inf = 1.0E-4;
-    m_settings->warm_start = true;
+    m_settings->warm_starting = true;
     m_settings->max_iter = 4000;
     m_settings->verbose = false;
-    m_settings->polish = polish;
+    m_settings->polishing = polish;
   }
   m_exitflag = 0;
 }
 
 OSQPInterface::OSQPInterface(
   const Eigen::MatrixXd & P, const Eigen::MatrixXd & A, const std::vector<double> & q,
-  const std::vector<double> & l, const std::vector<double> & u, const c_float eps_abs)
+  const std::vector<double> & l, const std::vector<double> & u, const OSQPFloat eps_abs)
 : OSQPInterface(eps_abs)
 {
   initializeProblem(P, A, q, l, u);
@@ -58,19 +57,15 @@ OSQPInterface::OSQPInterface(
 
 OSQPInterface::OSQPInterface(
   const CSC_Matrix & P, const CSC_Matrix & A, const std::vector<double> & q,
-  const std::vector<double> & l, const std::vector<double> & u, const c_float eps_abs)
+  const std::vector<double> & l, const std::vector<double> & u, const OSQPFloat eps_abs)
 : OSQPInterface(eps_abs)
 {
   initializeProblem(P, A, q, l, u);
 }
 
-OSQPInterface::~OSQPInterface()
-{
-  if (m_data->P) free(m_data->P);
-  if (m_data->A) free(m_data->A);
-}
+OSQPInterface::~OSQPInterface() = default;
 
-void OSQPInterface::OSQPWorkspaceDeleter(OSQPWorkspace * ptr) noexcept
+void OSQPInterface::OSQPSolverDeleter(OSQPSolver * ptr) noexcept
 {
   if (ptr != nullptr) {
     osqp_cleanup(ptr);
@@ -89,14 +84,16 @@ void OSQPInterface::updateP(const Eigen::MatrixXd & P_new)
   c_int P_elem_N = P_sparse.nonZeros();
   */
   CSC_Matrix P_csc = calCSCMatrixTrapezoidal(P_new);
-  osqp_update_P(
-    m_work.get(), P_csc.m_vals.data(), OSQP_NULL, static_cast<c_int>(P_csc.m_vals.size()));
+  osqp_update_data_mat(
+    m_solver.get(), P_csc.m_vals.data(), OSQP_NULL, static_cast<OSQPInt>(P_csc.m_vals.size()),
+    OSQP_NULL, OSQP_NULL, 0);
 }
 
 void OSQPInterface::updateCscP(const CSC_Matrix & P_csc)
 {
-  osqp_update_P(
-    m_work.get(), P_csc.m_vals.data(), OSQP_NULL, static_cast<c_int>(P_csc.m_vals.size()));
+  osqp_update_data_mat(
+    m_solver.get(), P_csc.m_vals.data(), OSQP_NULL, static_cast<OSQPInt>(P_csc.m_vals.size()),
+    OSQP_NULL, OSQP_NULL, 0);
 }
 
 void OSQPInterface::updateA(const Eigen::MatrixXd & A_new)
@@ -109,78 +106,78 @@ void OSQPInterface::updateA(const Eigen::MatrixXd & A_new)
   c_int A_elem_N = A_sparse.nonZeros();
   */
   CSC_Matrix A_csc = calCSCMatrix(A_new);
-  osqp_update_A(
-    m_work.get(), A_csc.m_vals.data(), OSQP_NULL, static_cast<c_int>(A_csc.m_vals.size()));
+  osqp_update_data_mat(
+    m_solver.get(), OSQP_NULL, OSQP_NULL, 0, A_csc.m_vals.data(), OSQP_NULL,
+    static_cast<OSQPInt>(A_csc.m_vals.size()));
   return;
 }
 
 void OSQPInterface::updateCscA(const CSC_Matrix & A_csc)
 {
-  osqp_update_A(
-    m_work.get(), A_csc.m_vals.data(), OSQP_NULL, static_cast<c_int>(A_csc.m_vals.size()));
+  osqp_update_data_mat(
+    m_solver.get(), OSQP_NULL, OSQP_NULL, 0, A_csc.m_vals.data(), OSQP_NULL,
+    static_cast<OSQPInt>(A_csc.m_vals.size()));
 }
 
 void OSQPInterface::updateQ(const std::vector<double> & q_new)
 {
-  std::vector<double> q_tmp(q_new.begin(), q_new.end());
-  double * q_dyn = q_tmp.data();
-  osqp_update_lin_cost(m_work.get(), q_dyn);
+  std::vector<OSQPFloat> q_tmp(q_new.begin(), q_new.end());
+  osqp_update_data_vec(m_solver.get(), q_tmp.data(), OSQP_NULL, OSQP_NULL);
 }
 
 void OSQPInterface::updateL(const std::vector<double> & l_new)
 {
-  std::vector<double> l_tmp(l_new.begin(), l_new.end());
-  double * l_dyn = l_tmp.data();
-  osqp_update_lower_bound(m_work.get(), l_dyn);
+  std::vector<OSQPFloat> l_tmp(l_new.begin(), l_new.end());
+  osqp_update_data_vec(m_solver.get(), OSQP_NULL, l_tmp.data(), OSQP_NULL);
 }
 
 void OSQPInterface::updateU(const std::vector<double> & u_new)
 {
-  std::vector<double> u_tmp(u_new.begin(), u_new.end());
-  double * u_dyn = u_tmp.data();
-  osqp_update_upper_bound(m_work.get(), u_dyn);
+  std::vector<OSQPFloat> u_tmp(u_new.begin(), u_new.end());
+  osqp_update_data_vec(m_solver.get(), OSQP_NULL, OSQP_NULL, u_tmp.data());
 }
 
 void OSQPInterface::updateBounds(
   const std::vector<double> & l_new, const std::vector<double> & u_new)
 {
-  std::vector<double> l_tmp(l_new.begin(), l_new.end());
-  std::vector<double> u_tmp(u_new.begin(), u_new.end());
-  double * l_dyn = l_tmp.data();
-  double * u_dyn = u_tmp.data();
-  osqp_update_bounds(m_work.get(), l_dyn, u_dyn);
+  std::vector<OSQPFloat> l_tmp(l_new.begin(), l_new.end());
+  std::vector<OSQPFloat> u_tmp(u_new.begin(), u_new.end());
+  osqp_update_data_vec(m_solver.get(), OSQP_NULL, l_tmp.data(), u_tmp.data());
+}
+
+void OSQPInterface::updateSettings()
+{
+  // In OSQP 1.0.0 the per-field update functions were removed. Settings are updated by pushing the
+  // whole settings object to the solver. Note that osqp_update_settings ignores scaling, sigma and
+  // the adaptive_rho_* settings (those can only be set at osqp_setup time), and rho must be updated
+  // via osqp_update_rho.
+  if (m_work_initialized) {
+    osqp_update_settings(m_solver.get(), m_settings.get());  // for current work
+  }
 }
 
 void OSQPInterface::updateEpsAbs(const double eps_abs)
 {
   m_settings->eps_abs = eps_abs;  // for default setting
-  if (m_work_initialized) {
-    osqp_update_eps_abs(m_work.get(), eps_abs);  // for current work
-  }
+  updateSettings();               // for current work
 }
 
 void OSQPInterface::updateEpsRel(const double eps_rel)
 {
   m_settings->eps_rel = eps_rel;  // for default setting
-  if (m_work_initialized) {
-    osqp_update_eps_rel(m_work.get(), eps_rel);  // for current work
-  }
+  updateSettings();               // for current work
 }
 
 void OSQPInterface::updateMaxIter(const int max_iter)
 {
   m_settings->max_iter = max_iter;  // for default setting
-  if (m_work_initialized) {
-    osqp_update_max_iter(m_work.get(), max_iter);  // for current work
-  }
+  updateSettings();                 // for current work
 }
 
 void OSQPInterface::updateVerbose(const bool is_verbose)
 {
   m_settings->verbose = is_verbose;  // for default setting
-  if (m_work_initialized) {
-    osqp_update_verbose(m_work.get(), is_verbose);  // for current work
-  }
+  updateSettings();                  // for current work
 }
 
 void OSQPInterface::updateRhoInterval(const int rho_interval)
@@ -192,16 +189,14 @@ void OSQPInterface::updateRho(const double rho)
 {
   m_settings->rho = rho;
   if (m_work_initialized) {
-    osqp_update_rho(m_work.get(), rho);
+    osqp_update_rho(m_solver.get(), rho);
   }
 }
 
 void OSQPInterface::updateAlpha(const double alpha)
 {
-  m_settings->alpha = alpha;
-  if (m_work_initialized) {
-    osqp_update_alpha(m_work.get(), alpha);
-  }
+  m_settings->alpha = alpha;  // for default setting
+  updateSettings();           // for current work
 }
 
 void OSQPInterface::updateScaling(const int scaling)
@@ -211,10 +206,8 @@ void OSQPInterface::updateScaling(const int scaling)
 
 void OSQPInterface::updatePolish(const bool polish)
 {
-  m_settings->polish = polish;
-  if (m_work_initialized) {
-    osqp_update_polish(m_work.get(), polish);
-  }
+  m_settings->polishing = polish;  // for default setting
+  updateSettings();                // for current work
 }
 
 void OSQPInterface::updatePolishRefinementIteration(const int polish_refine_iter)
@@ -224,10 +217,8 @@ void OSQPInterface::updatePolishRefinementIteration(const int polish_refine_iter
     return;
   }
 
-  m_settings->polish_refine_iter = polish_refine_iter;
-  if (m_work_initialized) {
-    osqp_update_polish_refine_iter(m_work.get(), polish_refine_iter);
-  }
+  m_settings->polish_refine_iter = polish_refine_iter;  // for default setting
+  updateSettings();                                     // for current work
 }
 
 void OSQPInterface::updateCheckTermination(const int check_termination)
@@ -237,10 +228,8 @@ void OSQPInterface::updateCheckTermination(const int check_termination)
     return;
   }
 
-  m_settings->check_termination = check_termination;
-  if (m_work_initialized) {
-    osqp_update_check_termination(m_work.get(), check_termination);
-  }
+  m_settings->check_termination = check_termination;  // for default setting
+  updateSettings();                                   // for current work
 }
 
 bool OSQPInterface::setWarmStart(
@@ -255,7 +244,7 @@ bool OSQPInterface::setPrimalVariables(const std::vector<double> & primal_variab
     return false;
   }
 
-  const auto result = osqp_warm_start_x(m_work.get(), primal_variables.data());
+  const auto result = osqp_warm_start(m_solver.get(), primal_variables.data(), OSQP_NULL);
   if (result != 0) {
     std::cerr << "Failed to set primal variables for warm start" << std::endl;
     return false;
@@ -270,7 +259,7 @@ bool OSQPInterface::setDualVariables(const std::vector<double> & dual_variables)
     return false;
   }
 
-  const auto result = osqp_warm_start_y(m_work.get(), dual_variables.data());
+  const auto result = osqp_warm_start(m_solver.get(), OSQP_NULL, dual_variables.data());
   if (result != 0) {
     std::cerr << "Failed to set dual variables for warm start" << std::endl;
     return false;
@@ -321,40 +310,38 @@ int64_t OSQPInterface::initializeProblem(
   const std::vector<double> & u)
 {
   // Dynamic float arrays
-  std::vector<double> q_tmp(q.begin(), q.end());
-  std::vector<double> l_tmp(l.begin(), l.end());
-  std::vector<double> u_tmp(u.begin(), u.end());
-  double * q_dyn = q_tmp.data();
-  double * l_dyn = l_tmp.data();
-  double * u_dyn = u_tmp.data();
+  std::vector<OSQPFloat> q_tmp(q.begin(), q.end());
+  std::vector<OSQPFloat> l_tmp(l.begin(), l.end());
+  std::vector<OSQPFloat> u_tmp(u.begin(), u.end());
 
   /**********************
    * OBJECTIVE FUNCTION
    **********************/
   m_param_n = static_cast<int>(q.size());
-  m_data->m = static_cast<int>(l.size());
+  m_param_m = static_cast<OSQPInt>(l.size());
+  const OSQPInt n = static_cast<OSQPInt>(m_param_n);
 
   /*****************
    * POPULATE DATA
    *****************/
-  m_data->n = m_param_n;
-  if (m_data->P) free(m_data->P);
-  m_data->P = csc_matrix(
-    m_data->n, m_data->n, static_cast<c_int>(P_csc.m_vals.size()), P_csc.m_vals.data(),
-    P_csc.m_row_idxs.data(), P_csc.m_col_idxs.data());
-  m_data->q = q_dyn;
-  if (m_data->A) free(m_data->A);
-  m_data->A = csc_matrix(
-    m_data->m, m_data->n, static_cast<c_int>(A_csc.m_vals.size()), A_csc.m_vals.data(),
+  // The CSC wrappers only reference the data arrays (owned == 0); osqp_setup copies the problem
+  // data internally, so the wrappers can be freed immediately afterwards.
+  OSQPCscMatrix * P = OSQPCscMatrix_new(
+    n, n, static_cast<OSQPInt>(P_csc.m_vals.size()), P_csc.m_vals.data(), P_csc.m_row_idxs.data(),
+    P_csc.m_col_idxs.data());
+  OSQPCscMatrix * A = OSQPCscMatrix_new(
+    m_param_m, n, static_cast<OSQPInt>(A_csc.m_vals.size()), A_csc.m_vals.data(),
     A_csc.m_row_idxs.data(), A_csc.m_col_idxs.data());
-  m_data->l = l_dyn;
-  m_data->u = u_dyn;
 
-  // Setup workspace
-  OSQPWorkspace * workspace;
-  m_exitflag = osqp_setup(&workspace, m_data.get(), m_settings.get());
-  m_work.reset(workspace);
+  // Setup solver
+  OSQPSolver * solver = nullptr;
+  m_exitflag = osqp_setup(
+    &solver, P, q_tmp.data(), A, l_tmp.data(), u_tmp.data(), m_param_m, n, m_settings.get());
+  m_solver.reset(solver);
   m_work_initialized = true;
+
+  OSQPCscMatrix_free(P);
+  OSQPCscMatrix_free(A);
 
   return m_exitflag;
 }
@@ -362,19 +349,19 @@ int64_t OSQPInterface::initializeProblem(
 OSQPResult OSQPInterface::solve()
 {
   // Solve Problem
-  int32_t exit_flag = osqp_solve(m_work.get());
+  int32_t exit_flag = osqp_solve(m_solver.get());
 
   /********************
    * EXTRACT SOLUTION
    ********************/
-  double * sol_x = m_work->solution->x;
-  double * sol_y = m_work->solution->y;
+  OSQPFloat * sol_x = m_solver->solution->x;
+  OSQPFloat * sol_y = m_solver->solution->y;
   std::vector<double> sol_primal(sol_x, sol_x + m_param_n);
-  std::vector<double> sol_lagrange_multiplier(sol_y, sol_y + m_data->m);
+  std::vector<double> sol_lagrange_multiplier(sol_y, sol_y + m_param_m);
 
-  int64_t status_polish = m_work->info->status_polish;
-  int64_t status_solution = m_work->info->status_val;
-  int64_t status_iteration = m_work->info->iter;
+  int64_t status_polish = m_solver->info->status_polish;
+  int64_t status_solution = m_solver->info->status_val;
+  int64_t status_iteration = m_solver->info->iter;
 
   // Result tuple
   OSQPResult result;
@@ -386,7 +373,7 @@ OSQPResult OSQPInterface::solve()
   result.iteration_status = status_iteration;
   result.exit_flag = exit_flag;
 
-  m_latest_work_info = *(m_work->info);
+  m_latest_work_info = *(m_solver->info);
 
   return result;
 }
@@ -408,7 +395,7 @@ OSQPResult OSQPInterface::optimize(
   // Run the solver on the stored problem representation.
   OSQPResult result = solve();
 
-  m_work.reset();
+  m_solver.reset();
   m_work_initialized = false;
 
   return result;

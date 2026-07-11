@@ -16,7 +16,7 @@
 #define AUTOWARE__OSQP_INTERFACE__CSC_MATRIX_CONV_HPP_
 
 #include "autoware/osqp_interface/visibility_control.hpp"
-#include "osqp/glob_opts.h"  // for 'c_int' type ('long' or 'long long')
+#include "osqp/osqp.h"  // for 'OSQPInt' and 'OSQPFloat' types
 
 #include <Eigen/Core>
 
@@ -28,11 +28,11 @@ namespace autoware::osqp_interface
 struct OSQP_INTERFACE_PUBLIC CSC_Matrix
 {
   /// Vector of non-zero values. Ex: [4,1,1,2]
-  std::vector<c_float> m_vals;
+  std::vector<OSQPFloat> m_vals;
   /// Vector of row index corresponding to values. Ex: [0, 1, 0, 1] (Eigen: 'inner')
-  std::vector<c_int> m_row_idxs;
+  std::vector<OSQPInt> m_row_idxs;
   /// Vector of 'val' indices where each column starts. Ex: [0, 2, 4] (Eigen: 'outer')
-  std::vector<c_int> m_col_idxs;
+  std::vector<OSQPInt> m_col_idxs;
 
   friend std::ostream & operator<<(std::ostream & os, const CSC_Matrix & matrix)
   {

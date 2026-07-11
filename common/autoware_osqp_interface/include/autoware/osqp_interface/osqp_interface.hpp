@@ -30,7 +30,7 @@
 
 namespace autoware::osqp_interface
 {
-constexpr c_float INF = 1e30;
+constexpr OSQPFloat INF = 1e30;
 
 struct OSQPResult
 {
@@ -49,13 +49,14 @@ struct OSQPResult
 class OSQP_INTERFACE_PUBLIC OSQPInterface
 {
 private:
-  std::unique_ptr<OSQPWorkspace, std::function<void(OSQPWorkspace *)>> m_work;
+  std::unique_ptr<OSQPSolver, std::function<void(OSQPSolver *)>> m_solver;
   std::unique_ptr<OSQPSettings> m_settings;
-  std::unique_ptr<OSQPData> m_data;
   // store last work info since work is cleaned up at every execution to prevent memory leak.
   OSQPInfo m_latest_work_info;
   // Number of parameters to optimize
   int64_t m_param_n;
+  // Number of constraints (rows of A / size of l and u)
+  OSQPInt m_param_m = 0;
   // Flag to check if the current work exists
   bool m_work_initialized = false;
   // Exitflag
@@ -64,12 +65,15 @@ private:
   // Runs the solver on the stored problem.
   OSQPResult solve();
 
-  static void OSQPWorkspaceDeleter(OSQPWorkspace * ptr) noexcept;
+  // Pushes the current m_settings to the solver (if initialized).
+  void updateSettings();
+
+  static void OSQPSolverDeleter(OSQPSolver * ptr) noexcept;
 
 public:
   /// \brief Constructor without problem formulation
   explicit OSQPInterface(
-    const c_float eps_abs = std::numeric_limits<c_float>::epsilon(), const bool polish = true);
+    const OSQPFloat eps_abs = std::numeric_limits<OSQPFloat>::epsilon(), const bool polish = true);
   /// \brief Constructor with problem setup
   /// \param P: (n,n) matrix defining relations between parameters.
   /// \param A: (m,n) matrix defining parameter constraints relative to the lower and upper bound.
@@ -79,10 +83,10 @@ public:
   /// \param eps_abs: Absolute convergence tolerance.
   OSQPInterface(
     const Eigen::MatrixXd & P, const Eigen::MatrixXd & A, const std::vector<double> & q,
-    const std::vector<double> & l, const std::vector<double> & u, const c_float eps_abs);
+    const std::vector<double> & l, const std::vector<double> & u, const OSQPFloat eps_abs);
   OSQPInterface(
     const CSC_Matrix & P, const CSC_Matrix & A, const std::vector<double> & q,
-    const std::vector<double> & l, const std::vector<double> & u, const c_float eps_abs);
+    const std::vector<double> & l, const std::vector<double> & u, const OSQPFloat eps_abs);
   ~OSQPInterface();
 
   /****************

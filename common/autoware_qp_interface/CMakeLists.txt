@@ -32,8 +32,10 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 )
 target_compile_options(${PROJECT_NAME} PRIVATE -Wno-error=old-style-cast)
 
+# Use BEFORE so the osqp_vendor (1.0.0) headers take precedence over any older osqp
+# (e.g. the 0.6.x headers under /opt/ros/<distro>/include pulled in transitively by proxsuite).
 target_include_directories(${PROJECT_NAME}
-  SYSTEM PUBLIC
+  SYSTEM BEFORE PUBLIC
     "${OSQP_INCLUDE_DIR}"
     "${EIGEN3_INCLUDE_DIR}"
 )

@@ -17,7 +17,7 @@
 
 #include <Eigen/Core>
 
-#include <osqp/glob_opts.h>
+#include <osqp/osqp.h>
 
 #include <vector>
 
@@ -27,11 +27,11 @@ namespace autoware::qp_interface
 struct CSC_Matrix
 {
   /// Vector of non-zero values. Ex: [4,1,1,2]
-  std::vector<c_float> vals_;
+  std::vector<OSQPFloat> vals_;
   /// Vector of row index corresponding to values. Ex: [0, 1, 0, 1] (Eigen: 'inner')
-  std::vector<c_int> row_idxs_;
+  std::vector<OSQPInt> row_idxs_;
   /// Vector of 'val' indices where each column starts. Ex: [0, 2, 4] (Eigen: 'outer')
-  std::vector<c_int> col_idxs_;
+  std::vector<OSQPInt> col_idxs_;
 };
 
 /// \brief Calculate CSC matrix from Eigen matrix

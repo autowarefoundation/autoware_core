@@ -29,16 +29,16 @@ CSC_Matrix calCSCMatrix(const Eigen::MatrixXd & mat)
   const Eigen::Index rows = mat.rows();
   const Eigen::Index cols = mat.cols();
 
-  std::vector<c_float> vals;
+  std::vector<OSQPFloat> vals;
   vals.reserve(elem);
-  std::vector<c_int> row_idxs;
+  std::vector<OSQPInt> row_idxs;
   row_idxs.reserve(elem);
-  std::vector<c_int> col_idxs;
+  std::vector<OSQPInt> col_idxs;
   col_idxs.reserve(elem);
 
   // Construct CSC matrix arrays
-  c_float val;
-  c_int elem_count = 0;
+  OSQPFloat val;
+  OSQPInt elem_count = 0;
 
   col_idxs.push_back(0);
 
@@ -74,17 +74,17 @@ CSC_Matrix calCSCMatrixTrapezoidal(const Eigen::MatrixXd & mat)
     throw std::invalid_argument("Matrix must be square (n, n)");
   }
 
-  std::vector<c_float> vals;
+  std::vector<OSQPFloat> vals;
   vals.reserve(elem);
-  std::vector<c_int> row_idxs;
+  std::vector<OSQPInt> row_idxs;
   row_idxs.reserve(elem);
-  std::vector<c_int> col_idxs;
+  std::vector<OSQPInt> col_idxs;
   col_idxs.reserve(elem);
 
   // Construct CSC matrix arrays
-  c_float val;
+  OSQPFloat val;
   Eigen::Index trap_last_idx = 0;
-  c_int elem_count = 0;
+  OSQPInt elem_count = 0;
 
   col_idxs.push_back(0);
 
@@ -114,19 +114,19 @@ CSC_Matrix calCSCMatrixTrapezoidal(const Eigen::MatrixXd & mat)
 void printCSCMatrix(const CSC_Matrix & csc_mat)
 {
   std::cout << "[";
-  for (const c_float & val : csc_mat.m_vals) {
+  for (const OSQPFloat & val : csc_mat.m_vals) {
     std::cout << val << ", ";
   }
   std::cout << "]\n";
 
   std::cout << "[";
-  for (const c_int & row : csc_mat.m_row_idxs) {
+  for (const OSQPInt & row : csc_mat.m_row_idxs) {
     std::cout << row << ", ";
   }
   std::cout << "]\n";
 
   std::cout << "[";
-  for (const c_int & col : csc_mat.m_col_idxs) {
+  for (const OSQPInt & col : csc_mat.m_col_idxs) {
     std::cout << col << ", ";
   }
   std::cout << "]\n";

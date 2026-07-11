@@ -27,7 +27,7 @@
 
 namespace autoware::qp_interface
 {
-constexpr c_float OSQP_INF = 1e30;
+constexpr OSQPFloat OSQP_INF = 1e30;
 constexpr int OSQP_MAX_ITERATION = 20000;
 
 class OSQPInterface : public QPInterface
@@ -36,8 +36,8 @@ public:
   /// \brief Constructor without problem formulation
   OSQPInterface(
     const bool enable_warm_start = false, const int max_iteration = OSQP_MAX_ITERATION,
-    const c_float eps_abs = std::numeric_limits<c_float>::epsilon(),
-    const c_float eps_rel = std::numeric_limits<c_float>::epsilon(), const bool polish = true,
+    const OSQPFloat eps_abs = std::numeric_limits<OSQPFloat>::epsilon(),
+    const OSQPFloat eps_rel = std::numeric_limits<OSQPFloat>::epsilon(), const bool polish = true,
     const bool verbose = false);
   /// \brief Constructor with problem setup
   /// \param P: (n,n) matrix defining relations between parameters.
@@ -50,15 +50,15 @@ public:
     const Eigen::MatrixXd & P, const Eigen::MatrixXd & A, const std::vector<double> & q,
     const std::vector<double> & l, const std::vector<double> & u,
     const bool enable_warm_start = false,
-    const c_float eps_abs = std::numeric_limits<c_float>::epsilon());
+    const OSQPFloat eps_abs = std::numeric_limits<OSQPFloat>::epsilon());
   OSQPInterface(
     const CSC_Matrix & P, const CSC_Matrix & A, const std::vector<double> & q,
     const std::vector<double> & l, const std::vector<double> & u,
     const bool enable_warm_start = false,
-    const c_float eps_abs = std::numeric_limits<c_float>::epsilon());
+    const OSQPFloat eps_abs = std::numeric_limits<OSQPFloat>::epsilon());
   ~OSQPInterface() override;
 
-  static void OSQPWorkspaceDeleter(OSQPWorkspace * ptr) noexcept;
+  static void OSQPSolverDeleter(OSQPSolver * ptr) noexcept;
 
   std::vector<double> optimize(
     CSC_Matrix P, CSC_Matrix A, const std::vector<double> & q, const std::vector<double> & l,
@@ -122,17 +122,21 @@ public:
   bool setDualVariables(const std::vector<double> & dual_variables);
 
 private:
-  std::unique_ptr<OSQPWorkspace, std::function<void(OSQPWorkspace *)>> work_;
+  std::unique_ptr<OSQPSolver, std::function<void(OSQPSolver *)>> solver_;
   std::unique_ptr<OSQPSettings> settings_;
-  std::unique_ptr<OSQPData> data_;
   // store last work info since work is cleaned up at every execution to prevent memory leak.
   OSQPInfo latest_work_info_;
   // Number of parameters to optimize
   int64_t param_n_;
+  // Number of constraints (rows of A / size of l and u)
+  OSQPInt param_m_ = 0;
   // Flag to check if the current work exists
   bool work__initialized = false;
   // Exitflag
   int64_t exitflag_;
+
+  // Pushes the current settings_ to the solver (if initialized).
+  void updateSettings();
 
   void initializeProblemImpl(
     const Eigen::MatrixXd & P, const Eigen::MatrixXd & A, const std::vector<double> & q,
