@@ -400,11 +400,16 @@ namespace agnocast_wrapper
 namespace message_filters
 {
 
-/// @brief message_filters Subscriber (non-Agnocast build); forwards the wrapper Node to the
-///        underlying rclcpp::Node. Inherited upstream members (connectInput, registerCallback, ...)
-///        are non-portable — they do not exist on the Agnocast-build Subscriber.
+/// @brief Curated message_filters Subscriber for the non-Agnocast build.
+///
+/// Holds a ::message_filters::Subscriber<M, rclcpp::Node> by value and forwards only the curated
+/// member set (subscribe / unsubscribe), instead of deriving from it. This keeps the public surface
+/// identical to the Agnocast build (which takes the wrapper Node), so code that compiles under
+/// ENABLE_AGNOCAST=0 also compiles under =1. Deriving from the upstream Subscriber would instead
+/// leak its full filter API (e.g. registerCallback, the raw node-pointer subscribe overloads) into
+/// the =0 build, allowing =0-only code that breaks under =1.
 template <class M>
-class Subscriber : public ::message_filters::Subscriber<M, rclcpp::Node>
+class Subscriber
 {
 public:
   using Base = ::message_filters::Subscriber<M, rclcpp::Node>;
@@ -414,28 +419,138 @@ public:
   Subscriber(
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
-  : Base(node->get_rclcpp_node().get(), topic, qos)
   {
+    subscribe(node, topic, qos);
   }
 
   void subscribe(
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
-    Base::subscribe(node->get_rclcpp_node().get(), topic, qos);
+    sub_.subscribe(node->get_rclcpp_node().get(), topic, qos);
   }
+
+  void unsubscribe() { sub_.unsubscribe(); }
+
+  // Internal API: used by Synchronizer to connect the underlying filter.
+  // Not intended for downstream use.
+  Base & rclcpp_subscriber() { return sub_; }
+
+private:
+  Base sub_;
 };
 
+/// @brief Policy tags mirroring the Agnocast build. Carry only the queue size; the underlying
+///        rclcpp policy is selected inside Synchronizer<...>. Distinct from
+///        ::message_filters::sync_policies::ApproximateTime / ExactTime so the wrapper owns its
+///        Synchronizer surface rather than aliasing upstream.
 namespace sync_policies
 {
 template <typename... Ms>
-using ApproximateTime = ::message_filters::sync_policies::ApproximateTime<Ms...>;
+struct ApproximateTime
+{
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
+  explicit ApproximateTime(uint32_t qs) noexcept : queue_size(qs) {}
+};
+
 template <typename... Ms>
-using ExactTime = ::message_filters::sync_policies::ExactTime<Ms...>;
+struct ExactTime
+{
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
+  explicit ExactTime(uint32_t qs) noexcept : queue_size(qs) {}
+};
 }  // namespace sync_policies
 
+/// @brief Primary Synchronizer template — supports ApproximateTime and ExactTime specializations.
 template <typename Policy>
-using Synchronizer = ::message_filters::Synchronizer<Policy>;
+class Synchronizer
+{
+  static_assert(
+    sizeof(Policy) == 0,
+    "Only sync_policies::ApproximateTime<Ms...> and sync_policies::ExactTime<Ms...> are supported.");
+};
+
+/// @brief Common synchronizer wrapper parameterized by the underlying upstream policy
+///        (non-Agnocast build). Use through Synchronizer<sync_policies::ApproximateTime<Ms...>> /
+///        Synchronizer<sync_policies::ExactTime<Ms...>>.
+///
+/// Exposes only the constructor (policy + Subscriber refs) and registerCallback, instead of
+/// aliasing ::message_filters::Synchronizer directly. This keeps the surface identical to the
+/// Agnocast build (e.g. connectInput stays unsupported in both), so code compiles under both
+/// ENABLE_AGNOCAST=0 and =1. The callback receives `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)&
+/// ...)`, which in this build is `std::shared_ptr<const Ms>` — exactly what upstream delivers, so
+/// the callable is forwarded to the underlying synchronizer unchanged.
+template <typename UpstreamPolicy, typename... Ms>
+class PolicySynchronizer
+{
+public:
+  PolicySynchronizer(uint32_t queue_size, Subscriber<Ms> &... subs)
+  : sync_(UpstreamPolicy(queue_size), subs.rclcpp_subscriber()...)
+  {
+  }
+
+  // Non-copyable and non-movable: the underlying synchronizer holds connections into the
+  // supplied subscribers, so its address must stay stable for the registrations' lifetime.
+  PolicySynchronizer(const PolicySynchronizer &) = delete;
+  PolicySynchronizer & operator=(const PolicySynchronizer &) = delete;
+  PolicySynchronizer(PolicySynchronizer &&) = delete;
+  PolicySynchronizer & operator=(PolicySynchronizer &&) = delete;
+
+  template <class C>
+  ::message_filters::Connection registerCallback(C & callback)
+  {
+    return sync_.registerCallback(callback);
+  }
+
+  template <class C>
+  ::message_filters::Connection registerCallback(const C & callback)
+  {
+    return sync_.registerCallback(callback);
+  }
+
+  template <class C, typename T>
+  ::message_filters::Connection registerCallback(C & callback, T * t)
+  {
+    return sync_.registerCallback(callback, t);
+  }
+
+  template <class C, typename T>
+  ::message_filters::Connection registerCallback(const C & callback, T * t)
+  {
+    return sync_.registerCallback(callback, t);
+  }
+
+private:
+  ::message_filters::Synchronizer<UpstreamPolicy> sync_;
+};
+
+template <typename... Ms>
+class Synchronizer<sync_policies::ApproximateTime<Ms...>>
+: public PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<Ms...>, Ms...>
+{
+  using Base = PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<Ms...>, Ms...>;
+
+public:
+  Synchronizer(const sync_policies::ApproximateTime<Ms...> & policy, Subscriber<Ms> &... subs)
+  : Base(policy.queue_size, subs...)
+  {
+  }
+};
+
+/// @brief Synchronizer specialization for the wrapper-layer ExactTime policy (non-Agnocast build).
+/// @see Synchronizer<sync_policies::ApproximateTime<Ms...>> for the shared implementation.
+template <typename... Ms>
+class Synchronizer<sync_policies::ExactTime<Ms...>>
+: public PolicySynchronizer<::message_filters::sync_policies::ExactTime<Ms...>, Ms...>
+{
+  using Base = PolicySynchronizer<::message_filters::sync_policies::ExactTime<Ms...>, Ms...>;
+
+public:
+  Synchronizer(const sync_policies::ExactTime<Ms...> & policy, Subscriber<Ms> &... subs)
+  : Base(policy.queue_size, subs...)
+  {
+  }
+};
 
 }  // namespace message_filters
 }  // namespace agnocast_wrapper
