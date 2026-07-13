@@ -913,16 +913,6 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
-
-  // Convenience overload matching rclcpp::Client's call shape: allocates from the pool and copies
-  // req in, so call sites written against plain rclcpp::Client (passing an externally-owned
-  // shared_ptr) work unchanged against this wrapper too.
-  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & req)
-  {
-    auto request = allocate_output_service_request();
-    *request = *req;
-    return async_send_request(std::move(request));
-  }
 };
 
 template <typename ServiceT>
@@ -1331,6 +1321,41 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 
 #else
 
+namespace autoware::agnocast_wrapper
+{
+
+// Mirror the Agnocast-build alias so node code can name the polling policy the same way in both
+// builds (e.g. autoware::agnocast_wrapper::polling_policy::Newest).
+namespace polling_policy = autoware_utils_rclcpp::polling_policy;
+
+/// @brief Set the timer period (non-Agnocast build).
+///
+/// rclcpp::TimerBase has no set_period member, so we provide a free overload
+/// that falls back to the rcl C API. Mirrors the Agnocast-build overload on
+/// Timer::SharedPtr so the same call site works in both builds.
+///
+/// @throws std::invalid_argument if period is negative or equal to
+///   std::chrono::nanoseconds::max() (mirrors rclcpp::create_wall_timer's
+///   precondition 0 <= period < nanoseconds::max()).
+/// @throws rclcpp::exceptions::RCLError on rcl-level failure.
+inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::nanoseconds period)
+{
+  if (period < std::chrono::nanoseconds::zero()) {
+    throw std::invalid_argument{"timer period cannot be negative"};
+  }
+  if (period == std::chrono::nanoseconds::max()) {
+    throw std::invalid_argument{"timer period must be less than std::chrono::nanoseconds::max()"};
+  }
+  int64_t old_period = 0;
+  const rcl_ret_t ret =
+    rcl_timer_exchange_period(timer->get_timer_handle().get(), period.count(), &old_period);
+  if (ret != RCL_RET_OK) {
+    rclcpp::exceptions::throw_from_rcl_error(ret, "Failed to set timer period");
+  }
+}
+
+}  // namespace autoware::agnocast_wrapper
+
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) std::unique_ptr<MessageT>
 
 // For publisher (mutable message)
@@ -1418,36 +1443,6 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 namespace autoware::agnocast_wrapper
 {
 
-// Mirror the Agnocast-build alias so node code can name the polling policy the same way in both
-// builds (e.g. autoware::agnocast_wrapper::polling_policy::Newest).
-namespace polling_policy = autoware_utils_rclcpp::polling_policy;
-
-/// @brief Set the timer period (non-Agnocast build).
-///
-/// rclcpp::TimerBase has no set_period member, so we provide a free overload
-/// that falls back to the rcl C API. Mirrors the Agnocast-build overload on
-/// Timer::SharedPtr so the same call site works in both builds.
-///
-/// @throws std::invalid_argument if period is negative or equal to
-///   std::chrono::nanoseconds::max() (mirrors rclcpp::create_wall_timer's
-///   precondition 0 <= period < nanoseconds::max()).
-/// @throws rclcpp::exceptions::RCLError on rcl-level failure.
-inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::nanoseconds period)
-{
-  if (period < std::chrono::nanoseconds::zero()) {
-    throw std::invalid_argument{"timer period cannot be negative"};
-  }
-  if (period == std::chrono::nanoseconds::max()) {
-    throw std::invalid_argument{"timer period must be less than std::chrono::nanoseconds::max()"};
-  }
-  int64_t old_period = 0;
-  const rcl_ret_t ret =
-    rcl_timer_exchange_period(timer->get_timer_handle().get(), period.count(), &old_period);
-  if (ret != RCL_RET_OK) {
-    rclcpp::exceptions::throw_from_rcl_error(ret, "Failed to set timer period");
-  }
-}
-
 // ===== Client/Service (non-Agnocast build) =====
 //
 // Mirrors the Agnocast-build Client<ServiceT>/Service<ServiceT> abstraction (same class names,
@@ -1499,16 +1494,6 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
-
-  // Convenience overload matching rclcpp::Client's call shape: allocates from the pool and copies
-  // req in, so call sites written against plain rclcpp::Client (passing an externally-owned
-  // shared_ptr) work unchanged against this wrapper too.
-  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & req)
-  {
-    auto request = allocate_output_service_request();
-    *request = *req;
-    return async_send_request(std::move(request));
-  }
 };
 
 template <typename ServiceT>
