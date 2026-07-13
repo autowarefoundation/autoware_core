@@ -230,3 +230,52 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesMetadataPublishedWhenSelecte
   ASSERT_EQ(meta_msg->metadata_list.size(), 1U);
   EXPECT_EQ(meta_msg->metadata_list[0].cell_id, map_path);
 }
+
+// TEST 4. Confirms when allow_unsupported_version = false and loading a map with an unsupported
+// version, node will throw an error and terminate.
+TEST_F(Lanelet2MapLoaderIntegrationHarness, RejectsWeirdVersion)
+{
+  // Dummy file map with wrong version number
+  const std::string incompat_map_path = "/tmp/stupid_version_map.osm";
+  std::ofstream out(incompat_map_path);
+  out << "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n"
+      << "<osm generator=\"VMB\">\n"
+      << "  <MetaInfo format_version=\"69\" map_version=\"1\"/>\n"
+      << "</osm>";
+  out.close();
+
+  // EXPECT_DEATH to run node in forked process
+  EXPECT_DEATH(
+    {
+      rclcpp::init(0, nullptr);
+      auto test_node = std::make_shared<rclcpp::Node>("death_test_client");
+      auto pub = test_node->create_publisher<autoware_map_msgs::msg::MapProjectorInfo>(
+        "input/map_projector_info", rclcpp::QoS{1}.transient_local());
+
+      // Re-init node options with allow_unsupported_version = false
+      rclcpp::NodeOptions options;
+      options.append_parameter_override("lanelet2_map_path", incompat_map_path);
+      options.append_parameter_override("center_line_resolution", 5.0);
+      options.append_parameter_override("use_waypoints", true);
+      options.append_parameter_override("enable_selected_map_loading", false);
+      options.append_parameter_override("lanelet2_map_metadata_path", "");
+
+      // TEST TARGET allow_unsupported_version = false
+      options.append_parameter_override("allow_unsupported_version", false);
+
+      auto target_node = std::make_shared<autoware::map_loader::Lanelet2MapLoaderNode>(options);
+
+      autoware_map_msgs::msg::MapProjectorInfo projector_info;
+      projector_info.projector_type = autoware_map_msgs::msg::MapProjectorInfo::MGRS;
+      pub->publish(projector_info);
+
+      rclcpp::executors::SingleThreadedExecutor executor;
+      executor.add_node(test_node);
+      executor.add_node(target_node);
+
+      executor.spin_some();
+
+      rclcpp::shutdown();
+    },
+    "allow_unsupported_version is false");
+}
