@@ -27,24 +27,6 @@
 
 namespace autoware::map_loader
 {
-/// @brief Result of differential map planning for a request.
-struct DifferentialMapLoadPlan
-{
-  /// @brief Map IDs that should be newly loaded for the requested area.
-  std::vector<std::string> map_ids_to_load;
-  /// @brief Cached map IDs that are no longer needed and should be removed.
-  std::vector<std::string> ids_to_remove;
-};
-
-/// @brief Build a differential load plan from requested area and currently cached IDs.
-/// @param area_info Requested load area.
-/// @param cached_ids IDs already cached by the requester.
-/// @param pcd_file_metadata_dict Metadata dictionary keyed by map ID.
-/// @return Differential load plan with IDs to load and remove.
-DifferentialMapLoadPlan create_differential_map_load_plan(
-  const autoware_map_msgs::msg::AreaInfo & area_info, const std::vector<std::string> & cached_ids,
-  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict);
-
 class DifferentialMapLoaderModule
 {
   using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;
