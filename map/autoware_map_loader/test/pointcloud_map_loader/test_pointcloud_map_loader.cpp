@@ -49,7 +49,7 @@ std::string create_pcd(const std::string & path, const std::vector<pcl::PointXYZ
   return path;
 }
 
-TEST(PointcloudMapLoaderCore, ResolvePcdPathsCollectsFilesAndSkipsInvalidPath)
+TEST(PointcloudMapLoader, ResolvePcdPathsCollectsFilesAndSkipsInvalidPath)
 {
   const auto test_dir = create_test_dir("test_pointcloud_map_loader_core_resolve");
   const std::string direct_pcd = create_pcd(
@@ -83,7 +83,7 @@ TEST(PointcloudMapLoaderCore, ResolvePcdPathsCollectsFilesAndSkipsInvalidPath)
   std::filesystem::remove_all(test_dir);
 }
 
-TEST(PointcloudMapLoaderCore, BuildMetadataFromSinglePcdWithoutMetadataFile)
+TEST(PointcloudMapLoader, BuildMetadataFromSinglePcdWithoutMetadataFile)
 {
   const auto test_dir = create_test_dir("test_pointcloud_map_loader_core_metadata_single");
   const std::string pcd_path = create_pcd(
@@ -108,7 +108,7 @@ TEST(PointcloudMapLoaderCore, BuildMetadataFromSinglePcdWithoutMetadataFile)
   std::filesystem::remove_all(test_dir);
 }
 
-TEST(PointcloudMapLoaderCore, ThrowsWhenMetadataFileMissingForMultiplePcds)
+TEST(PointcloudMapLoader, ThrowsWhenMetadataFileMissingForMultiplePcds)
 {
   const std::vector<std::string> pcd_paths = {"/tmp/a.pcd", "/tmp/b.pcd"};
 
@@ -117,7 +117,7 @@ TEST(PointcloudMapLoaderCore, ThrowsWhenMetadataFileMissingForMultiplePcds)
     std::runtime_error);
 }
 
-TEST(PointcloudMapLoaderCore, DownsamplePointcloudPreservesHeaderAndReducesPointCount)
+TEST(PointcloudMapLoader, DownsamplePointcloudPreservesHeaderAndReducesPointCount)
 {
   pcl::PointCloud<pcl::PointXYZ> pcl_input;
   pcl_input.width = 4;
@@ -142,7 +142,7 @@ TEST(PointcloudMapLoaderCore, DownsamplePointcloudPreservesHeaderAndReducesPoint
   EXPECT_EQ(pcl_output.size(), 2U);
 }
 
-TEST(PointcloudMapLoaderCore, LoadPointcloudMapMergesFilesSetsMapFrameAndReportsProgress)
+TEST(PointcloudMapLoader, LoadPointcloudMapMergesFilesSetsMapFrameAndReportsProgress)
 {
   const auto test_dir = create_test_dir("test_pointcloud_map_loader_core_load_merge");
   const std::string pcd_a = create_pcd(
@@ -181,7 +181,7 @@ TEST(PointcloudMapLoaderCore, LoadPointcloudMapMergesFilesSetsMapFrameAndReports
   std::filesystem::remove_all(test_dir);
 }
 
-TEST(PointcloudMapLoaderCore, LoadPointcloudMapCallsErrorCallbackOnMissingFile)
+TEST(PointcloudMapLoader, LoadPointcloudMapCallsErrorCallbackOnMissingFile)
 {
   std::vector<std::string> errors;
   const auto error_log = [&errors](const std::string & msg) { errors.push_back(msg); };
