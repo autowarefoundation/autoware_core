@@ -41,7 +41,7 @@ private:
   rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr cluster_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr debug_pub_;
 
-  std::shared_ptr<EuclideanClusterObjectDetector> detector_;
+  std::shared_ptr<VoxelGridBasedEuclideanClusterDetector> detector_;
   std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
   std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
   std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_interface_ptr_;

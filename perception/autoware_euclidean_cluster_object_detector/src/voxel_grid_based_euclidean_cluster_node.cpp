@@ -32,7 +32,7 @@ VoxelGridBasedEuclideanClusterNode::VoxelGridBasedEuclideanClusterNode(
   param.min_points_number_per_voxel =
     static_cast<int>(declare_parameter<int64_t>("min_points_number_per_voxel", 3));
 
-  detector_ = std::make_shared<EuclideanClusterObjectDetector>(param);
+  detector_ = std::make_shared<VoxelGridBasedEuclideanClusterDetector>(param);
 
   // Pass the diagnostics interface pointer from the node to the cluster
   diagnostics_interface_ptr_ =

@@ -92,7 +92,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase1)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(pointcloud);
 
   // the output clusters should has only one cluster with nb_generated_points points
@@ -115,7 +115,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase2)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(pointcloud);
 
   // the output clusters should be empty
@@ -137,7 +137,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(pointcloud);
 
   // the output clusters should be emtpy
@@ -196,7 +196,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterOutputMatchesObjects)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(pointcloud);
 
   // Exactly one cluster, and the parallel outputs stay in lockstep.
@@ -251,7 +251,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(pointcloud);
 
   EXPECT_EQ(result.cluster_message.objects.size(), 0u);
@@ -272,7 +272,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ExceedMaxClusterSize)
   param.voxel_leaf_size = 0.2f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::EuclideanClusterObjectDetector cluster(param);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
 
   // Create a point cloud message with many points which should exceed max_cluster_size
   sensor_msgs::msg::PointCloud2 msg = generateMultiClusterPointCloud(200, 1);

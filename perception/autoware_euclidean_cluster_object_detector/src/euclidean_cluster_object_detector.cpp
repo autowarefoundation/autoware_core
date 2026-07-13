@@ -15,7 +15,6 @@
 #include "euclidean_cluster_object_detector.hpp"
 
 #include "../lib/ros_conversions.hpp"
-#include "parameters.hpp"
 
 #include <pcl/kdtree/kdtree.h>
 #include <pcl/segmentation/extract_clusters.h>
@@ -29,15 +28,12 @@
 
 namespace autoware::euclidean_cluster
 {
+
+// ========================= STANDARD CLUSTERING ========================= //
+
 EuclideanClusterObjectDetector::EuclideanClusterObjectDetector(const EuclideanClusterParams & param)
 : param_(param)
 {
-  // Bind cluster strategy ONCE at startup to avoid runtime branching (条件分岐)
-  if (param_.voxel_leaf_size > 0.0f) {
-    strategy_ = [this](const auto & cloud) { return cluster_voxel_grid(cloud); };
-  } else {
-    strategy_ = [this](const auto & cloud) { return cluster_standard(cloud); };
-  }
 }
 
 ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
@@ -54,7 +50,7 @@ ClusterFeatureResult EuclideanClusterObjectDetector::cluster(
     return result;
   }
 
-  auto [valid_clusters, skipped_count] = strategy_(raw_cloud);
+  auto [valid_clusters, skipped_count] = cluster_standard(raw_cloud);
 
   result.skipped_cluster_count = skipped_count;
   convert_clusters_to_detected_objects(input_msg.header, valid_clusters, result.cluster_message);
@@ -124,8 +120,38 @@ EuclideanClusterObjectDetector::cluster_standard(
   return std::make_pair(std::move(valid_clusters), skipped_count);
 }
 
+// ========================= VOXEL-GRID-BASED CLUSTERING ========================= //
+
+VoxelGridBasedEuclideanClusterDetector::VoxelGridBasedEuclideanClusterDetector(
+  const EuclideanClusterParams & param)
+: param_(param)
+{
+}
+
+ClusterFeatureResult VoxelGridBasedEuclideanClusterDetector::cluster(
+  const sensor_msgs::msg::PointCloud2 & input_msg) const
+{
+  ClusterFeatureResult result;
+  pcl::PointCloud<pcl::PointXYZ>::Ptr raw_cloud(new pcl::PointCloud<pcl::PointXYZ>);
+  pcl::fromROSMsg(input_msg, *raw_cloud);
+
+  if (raw_cloud->empty()) {
+    result.cluster_message.header = input_msg.header;
+    result.debug_message.header = input_msg.header;
+    return result;
+  }
+
+  auto [valid_clusters, skipped_count] = cluster_voxel_grid(raw_cloud);
+
+  result.skipped_cluster_count = skipped_count;
+  convert_clusters_to_detected_objects(input_msg.header, valid_clusters, result.cluster_message);
+  convert_clusters_to_debug_point_cloud(input_msg.header, valid_clusters, result.debug_message);
+
+  return result;
+}
+
 std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>
-EuclideanClusterObjectDetector::cluster_voxel_grid(
+VoxelGridBasedEuclideanClusterDetector::cluster_voxel_grid(
   const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const
 {
   // 1. Downsample with voxel grid

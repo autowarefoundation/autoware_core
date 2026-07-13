@@ -16,6 +16,8 @@
 
 #include "parameters.hpp"
 
+#include <pcl/impl/point_types.hpp>
+
 #include <autoware_perception_msgs/msg/detected_objects.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
@@ -23,12 +25,14 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 
+#include <cstddef>
 #include <functional>
 #include <utility>
 #include <vector>
 
 namespace autoware::euclidean_cluster
 {
+// Same return type for both nodes
 struct ClusterFeatureResult
 {
   autoware_perception_msgs::msg::DetectedObjects cluster_message;
@@ -36,6 +40,7 @@ struct ClusterFeatureResult
   size_t skipped_cluster_count{0};
 };
 
+// Standard clustering
 class EuclideanClusterObjectDetector
 {
 public:
@@ -44,18 +49,19 @@ public:
 
 private:
   EuclideanClusterParams param_;
-  pcl::VoxelGrid<pcl::PointXYZ> voxel_grid_;
-
-  // Addressing conditional branching concern, here I make the package decides cluster strategy only
-  // once at startup
-  using ClusterStrategy =
-    std::function<std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t>(
-      const pcl::PointCloud<pcl::PointXYZ>::ConstPtr &)>;
-  ClusterStrategy strategy_;
-
   [[nodiscard]] std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t> cluster_standard(
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
+};
 
+// Voxel-grid-based clustering
+class VoxelGridBasedEuclideanClusterDetector
+{
+public:
+  explicit VoxelGridBasedEuclideanClusterDetector(const EuclideanClusterParams & param);
+  [[nodiscard]] ClusterFeatureResult cluster(const sensor_msgs::msg::PointCloud2 & input_msg) const;
+
+private:
+  EuclideanClusterParams param_;
   [[nodiscard]] std::pair<std::vector<pcl::PointCloud<pcl::PointXYZ>>, size_t> cluster_voxel_grid(
     const pcl::PointCloud<pcl::PointXYZ>::ConstPtr & input_cloud) const;
 };
