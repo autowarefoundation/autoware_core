@@ -26,27 +26,10 @@
 
 namespace autoware::map_loader
 {
-/// @brief Planning result for selected-map requests.
-struct SelectedMapLoadPlan
-{
-  /// @brief IDs found in the metadata dictionary and to be loaded.
-  std::vector<std::string> map_ids_to_load;
-  /// @brief Requested IDs not found in the metadata dictionary.
-  std::vector<std::string> missing_ids;
-};
-
 /// @brief Build metadata message published for map cell bounds.
 /// @param pcd_file_metadata_dict Metadata dictionary keyed by map ID.
 /// @return PointCloudMapMetaData message for all known map cells.
 autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
-  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict);
-
-/// @brief Create a load plan from requested selected IDs and known metadata.
-/// @param request_ids Requested map IDs.
-/// @param pcd_file_metadata_dict Metadata dictionary keyed by map ID.
-/// @return Plan containing IDs to load and missing IDs.
-SelectedMapLoadPlan create_selected_map_load_plan(
-  const std::vector<std::string> & request_ids,
   const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict);
 
 class SelectedMapLoaderModule
