@@ -133,10 +133,11 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesStandardCenterlineInjection)
     ament_index_cpp::get_package_share_directory("autoware_map_loader") + "/test/data/test_map.osm";
   options.append_parameter_override("lanelet2_map_path", map_path);
   options.append_parameter_override("center_line_resolution", 5.0);
-  options.append_parameter_override("use_waypoints", false);
   options.append_parameter_override("allow_unsupported_version", true);
   options.append_parameter_override("enable_selected_map_loading", false);
   options.append_parameter_override("lanelet2_map_metadata_path", "");
+  // TEST TARGET use_waypoints = false
+  options.append_parameter_override("use_waypoints", false);
 
   // Node + pub/sub spinups
   auto target_node = std::make_shared<autoware::map_loader::Lanelet2MapLoaderNode>(options);
@@ -180,4 +181,52 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesStandardCenterlineInjection)
     EXPECT_FALSE(lanelet.hasAttribute("waypoints"))
       << "Waypoints attribute should NOT exist when use_waypoints is false.";
   }
+}
+
+// TEST 3. Confirms when enable_selected_map_loading is set to true, node publishes metadata upon
+// initialization. Expects:
+// - Node publishes LaneletMapMetaData message (with 3 secs)
+// - LaneletMapMetaData message has 1 metadata entry with cell_id matching the map
+TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesMetadataPublishedWhenSelectedLoadingEnabled)
+{
+  // Re-init node options with enable_selected_map_loading = true
+  rclcpp::NodeOptions options;
+  const std::string map_path =
+    ament_index_cpp::get_package_share_directory("autoware_map_loader") + "/test/data/test_map.osm";
+  options.append_parameter_override("lanelet2_map_path", map_path);
+  options.append_parameter_override("center_line_resolution", 5.0);
+  options.append_parameter_override("use_waypoints", true);
+  options.append_parameter_override("allow_unsupported_version", true);
+  options.append_parameter_override("lanelet2_map_metadata_path", "");
+  // TEST TARGET enable_selected_map_loading = true
+  options.append_parameter_override("enable_selected_map_loading", true);
+
+  auto target_node = std::make_shared<autoware::map_loader::Lanelet2MapLoaderNode>(options);
+
+  std::promise<autoware_map_msgs::msg::LaneletMapMetaData::ConstSharedPtr> meta_promise;
+  auto meta_future = meta_promise.get_future();
+  auto meta_sub = test_node_->create_subscription<autoware_map_msgs::msg::LaneletMapMetaData>(
+    "output/lanelet2_map_metadata", rclcpp::QoS{1}.transient_local(),
+    [&meta_promise](const autoware_map_msgs::msg::LaneletMapMetaData::ConstSharedPtr msg) {
+      meta_promise.set_value(msg);
+    });
+
+  autoware_map_msgs::msg::MapProjectorInfo projector_info;
+  projector_info.projector_type = autoware_map_msgs::msg::MapProjectorInfo::MGRS;
+  projector_pub_->publish(projector_info);
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(test_node_);
+  executor.add_node(target_node);
+
+  auto status = executor.spin_until_future_complete(meta_future, std::chrono::seconds(3));
+
+  // Expected message published
+  ASSERT_EQ(status, rclcpp::FutureReturnCode::SUCCESS)
+    << "Metadata was not published upon initialization.";
+
+  // Expects 1 metadata entry with cell_id matching test map
+  auto meta_msg = meta_future.get();
+  ASSERT_EQ(meta_msg->metadata_list.size(), 1U);
+  EXPECT_EQ(meta_msg->metadata_list[0].cell_id, map_path);
 }
