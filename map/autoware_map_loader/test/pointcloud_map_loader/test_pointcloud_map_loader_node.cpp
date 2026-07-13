@@ -33,7 +33,7 @@
 using autoware_map_msgs::srv::GetDifferentialPointCloudMap;
 using autoware_map_msgs::srv::GetPartialPointCloudMap;
 
-class TestPointcloudMapLoaderModule : public ::testing::Test
+class TestPointcloudMapLoaderNode : public ::testing::Test
 {
 protected:
   std::shared_ptr<autoware::map_loader::PointCloudMapLoaderNode> map_loader_node_;
@@ -74,7 +74,7 @@ protected:
   void TearDown() override { rclcpp::shutdown(); }
 };
 
-TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
+TEST_F(TestPointcloudMapLoaderNode, LoadPCDFilesNoDownsampleTest)
 {
   using namespace std::literals::chrono_literals;
 
@@ -118,7 +118,7 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
   }
 }
 
-TEST_F(TestPointcloudMapLoaderModule, LoadDifferentialPCDFiles)
+TEST_F(TestPointcloudMapLoaderNode, LoadDifferentialPCDFiles)
 {
   auto client = map_loader_node_->create_client<GetDifferentialPointCloudMap>(
     "service/get_differential_pcd_map");
