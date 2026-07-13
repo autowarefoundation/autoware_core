@@ -169,7 +169,7 @@ VoxelGridBasedEuclideanClusterDetector::cluster_voxel_grid(
 
   // In legacy code, the previous authors unconditionally flatten centroids to 2D for clustering.
   // This sounds weird, but right now as this is a refactoring effort, I will keep as it is.
-  // Thus here matching oiginal legacy code's behavior which bypassed `param_.use_height`.
+  // Thus here I will match legacy code's behavior which bypassed `param_.use_height`.
   pcl::PointCloud<pcl::PointXYZ>::Ptr flattened_centroids(new pcl::PointCloud<pcl::PointXYZ>);
   flattened_centroids->points.reserve(voxel_centroids->points.size());
   for (const auto & point : voxel_centroids->points) {
