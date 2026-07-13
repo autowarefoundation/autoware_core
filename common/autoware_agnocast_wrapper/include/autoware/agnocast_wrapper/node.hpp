@@ -456,17 +456,8 @@ Timer::SharedPtr create_timer(
 namespace autoware::agnocast_wrapper
 {
 
-// Service-callback traits (mirror of the Agnocast-build definitions; defined per-build because they
-// depend on the AUTOWARE_SERVER_*_PTR macros, which differ between builds).
-template <typename Func, typename ServiceT>
-inline constexpr bool is_message_ptr_service_callback_v = std::is_invocable_v<
-  std::decay_t<Func>, AUTOWARE_SERVER_REQUEST_PTR(ServiceT) &&,
-  AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) &&>;
-
-template <typename Func, typename ServiceT>
-inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
-  std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request> &,
-  std::shared_ptr<typename ServiceT::Response> &>;
+// is_message_ptr_service_callback_v / is_shared_ptr_service_callback_v are defined in
+// autoware_agnocast_wrapper.hpp (included above), identically named in both builds.
 
 /// @brief Node class for the non-Agnocast build.
 ///
@@ -724,39 +715,57 @@ public:
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
-  // ===== Client (rclcpp::QoS overload; Humble's rclcpp::Node::create_client takes rmw) =====
+  // ===== Client =====
   template <typename ServiceT>
-  typename rclcpp::Client<ServiceT>::SharedPtr create_client(
+  AUTOWARE_CLIENT_PTR(ServiceT)
+  create_client(
     const std::string & service_name, const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
-#if RCLCPP_VERSION_MAJOR >= 28
-    return node_->create_client<ServiceT>(service_name, qos, group);
-#else
-    return node_->create_client<ServiceT>(service_name, qos.get_rmw_qos_profile(), group);
-#endif
+    return autoware::agnocast_wrapper::create_client<ServiceT>(node_.get(), service_name, qos, group);
   }
 
-  // ===== Service (rclcpp::QoS overload; same rationale as create_client) =====
-  // Constrained to the same callback set as the Agnocast build, so the rclcpp-only forms
-  // (with-request-header / defer-response) are rejected here instead of silently accepted.
+  // ===== Service =====
+  // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (plain shared_ptr in
+  // this build).
   template <
     typename ServiceT, typename Func,
-    std::enable_if_t<
-      is_message_ptr_service_callback_v<Func, ServiceT> ||
-        is_shared_ptr_service_callback_v<Func, ServiceT>,
-      int> = 0>
-  typename rclcpp::Service<ServiceT>::SharedPtr create_service(
+    std::enable_if_t<is_message_ptr_service_callback_v<Func, ServiceT>, int> = 0>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
     const std::string & service_name, Func && callback,
     const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
-#if RCLCPP_VERSION_MAJOR >= 28
-    return node_->create_service<ServiceT>(service_name, std::forward<Func>(callback), qos, group);
-#else
-    return node_->create_service<ServiceT>(
-      service_name, std::forward<Func>(callback), qos.get_rmw_qos_profile(), group);
-#endif
+    return autoware::agnocast_wrapper::create_service<ServiceT>(
+      node_.get(), service_name, std::forward<Func>(callback), qos, group);
+  }
+
+  // Convenience overload for rclcpp-style std::shared_ptr callbacks (mirrors the Agnocast build):
+  // adapts to the message_ptr-style callback above rather than forwarding directly, since
+  // ROS2Service only accepts that shape.
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      !is_message_ptr_service_callback_v<Func, ServiceT> &&
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_service<ServiceT>(
+      service_name,
+      [callback = std::forward<Func>(callback)](
+        AUTOWARE_SERVER_REQUEST_PTR(ServiceT) && req, AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) && res) {
+        auto request = std::make_shared<typename ServiceT::Request>(*req);
+        auto response = std::make_shared<typename ServiceT::Response>();
+        callback(request, response);
+        *res = *response;
+      },
+      qos, group);
   }
 
   // Fallback overload: neither callback form matched. Exists only to turn the otherwise opaque
@@ -767,7 +776,8 @@ public:
       !is_message_ptr_service_callback_v<Func, ServiceT> &&
         !is_shared_ptr_service_callback_v<Func, ServiceT>,
       int> = 0>
-  typename rclcpp::Service<ServiceT>::SharedPtr create_service(
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
     const std::string & /*service_name*/, Func && /*callback*/,
     const rclcpp::QoS & = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr = nullptr)
   {
