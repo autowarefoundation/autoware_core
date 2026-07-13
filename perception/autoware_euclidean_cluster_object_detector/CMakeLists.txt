@@ -14,7 +14,6 @@ include_directories(
 )
 
 ament_auto_add_library(${PROJECT_NAME}_lib SHARED
-  lib/voxel_grid_based_euclidean_cluster.cpp
   lib/ros_conversions.cpp
   src/euclidean_cluster_object_detector.cpp
 )
@@ -48,7 +47,6 @@ target_link_libraries(${PROJECT_NAME}_voxel_grid_node_core
   ${PCL_LIBRARIES}
   ${PROJECT_NAME}_lib
 )
-
 rclcpp_components_register_node(${PROJECT_NAME}_voxel_grid_node_core
   PLUGIN "autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterNode"
   EXECUTABLE voxel_grid_based_euclidean_cluster_node
