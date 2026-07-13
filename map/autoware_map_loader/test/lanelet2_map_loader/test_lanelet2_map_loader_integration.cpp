@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/map_loader/lanelet2_map_loader_node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -20,6 +21,8 @@
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 
 #include <gtest/gtest.h>
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/Lanelet.h>
 
 #include <chrono>
 #include <memory>
@@ -60,3 +63,57 @@ protected:
   std::shared_ptr<autoware::map_loader::Lanelet2MapLoaderNode> target_node_;
   rclcpp::Publisher<autoware_map_msgs::msg::MapProjectorInfo>::SharedPtr projector_pub_;
 };
+
+// TEST 1. Main integration test to see if Lanelet2MapLoaderNode can load test map and work properly
+// as expected. Spins up pub/sub and checks normal behaviors including proper ROS metadata, lanelet
+// count, and centerline injection. Expects:
+// - Node publishes LaneletMapBin message (with 3 secs)
+// - LaneletMapBin message has proper ROS metadata (frame_id, version_map_format, version_map)
+// - LaneletMapBin message decodes to a LaneletMap with 4 lanelets
+// - Each lanelet has a custom centerline injected via waypoints
+TEST_F(CharacterizationTestLanelet2MapLoaderNode, VerifiesEndToEndMapLoadingAndCenterlineInjection)
+{
+  // Prepare to catch map
+  std::promise<autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr> map_promise;
+  auto map_future = map_promise.get_future();
+
+  auto map_sub = test_node_->create_subscription<autoware_map_msgs::msg::LaneletMapBin>(
+    "/map/vector_map", rclcpp::QoS{1}.transient_local(),
+    [&map_promise](const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg) {
+      map_promise.set_value(msg);
+    });
+
+  autoware_map_msgs::msg::MapProjectorInfo projector_info;
+  projector_info.projector_type = autoware_map_msgs::msg::MapProjectorInfo::MGRS;
+  projector_info.mgrs_grid = "54SUE";
+  projector_pub_->publish(projector_info);
+
+  // Spin both nodes to process callback
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(test_node_);
+  executor.add_node(target_node_);
+
+  auto status = executor.spin_until_future_complete(map_future, std::chrono::seconds(3));
+
+  // Expected message published
+  ASSERT_EQ(status, rclcpp::FutureReturnCode::SUCCESS)
+    << "Target node failed to publish LaneletMapBin within timeout.";
+  auto map_bin_msg = map_future.get();
+  ASSERT_NE(map_bin_msg, nullptr);
+
+  // Expected proper ROS metadata
+  EXPECT_EQ(map_bin_msg->header.frame_id, "map");
+  EXPECT_EQ(map_bin_msg->version_map_format, "1");
+  EXPECT_EQ(map_bin_msg->version_map, "2");
+
+  auto decoded_map = autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*map_bin_msg);
+
+  // Expected 4 lanelets
+  ASSERT_EQ(decoded_map->laneletLayer.size(), 4U);
+
+  // Expected centerline injected via waypoints
+  for (const auto & lanelet : decoded_map->laneletLayer) {
+    EXPECT_TRUE(lanelet.hasCustomCenterline())
+      << "Centerline generation failed to apply to lanelet " << lanelet.id();
+  }
+}
