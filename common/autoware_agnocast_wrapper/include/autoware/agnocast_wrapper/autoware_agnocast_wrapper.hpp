@@ -1539,18 +1539,18 @@ public:
     AUTOWARE_CLIENT_FUTURE(ServiceT) future = promise_ptr->get_future();
 
     auto request_id = client_
-                         ->async_send_request(
-                           std::move(request),
-                           [promise_ptr = std::move(promise_ptr)](
-                             typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
-                             try {
-                               promise_ptr->set_value(
-                                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
-                             } catch (...) {
-                               promise_ptr->set_exception(std::current_exception());
-                             }
-                           })
-                         .request_id;
+                        ->async_send_request(
+                          std::move(request),
+                          [promise_ptr = std::move(promise_ptr)](
+                            typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+                            try {
+                              promise_ptr->set_value(
+                                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+                            } catch (...) {
+                              promise_ptr->set_exception(std::current_exception());
+                            }
+                          })
+                        .request_id;
 
     return AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)(std::move(future), request_id);
   }
@@ -1567,8 +1567,8 @@ public:
       client_
         ->async_send_request(
           std::move(request),
-          [callback = std::move(callback), promise_ptr = std::move(promise_ptr), shared_future](
-            typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+          [callback = std::move(callback), promise_ptr = std::move(promise_ptr),
+           shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
             try {
               promise_ptr->set_value(
                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
