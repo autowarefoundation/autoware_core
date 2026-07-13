@@ -18,6 +18,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
+#include <autoware_map_msgs/msg/lanelet_map_meta_data.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 
 #include <gtest/gtest.h>
@@ -25,10 +26,11 @@
 #include <lanelet2_core/primitives/Lanelet.h>
 
 #include <chrono>
+#include <fstream>
 #include <memory>
 #include <string>
 
-class CharacterizationTestLanelet2MapLoaderNode : public ::testing::Test
+class Lanelet2MapLoaderIntegrationHarness : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -71,7 +73,7 @@ protected:
 // - LaneletMapBin message has proper ROS metadata (frame_id, version_map_format, version_map)
 // - LaneletMapBin message decodes to a LaneletMap with 4 lanelets
 // - Each lanelet has a custom centerline injected via waypoints
-TEST_F(CharacterizationTestLanelet2MapLoaderNode, VerifiesEndToEndMapLoadingAndCenterlineInjection)
+TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesNormalMapLoadingAndReading)
 {
   // Prepare to catch map
   std::promise<autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr> map_promise;
@@ -115,5 +117,67 @@ TEST_F(CharacterizationTestLanelet2MapLoaderNode, VerifiesEndToEndMapLoadingAndC
   for (const auto & lanelet : decoded_map->laneletLayer) {
     EXPECT_TRUE(lanelet.hasCustomCenterline())
       << "Centerline generation failed to apply to lanelet " << lanelet.id();
+  }
+}
+
+// TEST 2. Confirms that when use_waypoints is set to false, standard overwriteLaneletsCenterline is
+// used instead of custom centerline injection. Expects:
+// - Node publishes LaneletMapBin message (with 3 secs)
+// - LaneletMapBin message decodes to a LaneletMap with 4 lanelets
+// - Each lanelet has a standard centerline injected via overwriteLaneletsCenterline
+TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesStandardCenterlineInjection)
+{
+  // Re-init node options with use_waypoints = false
+  rclcpp::NodeOptions options;
+  const std::string map_path =
+    ament_index_cpp::get_package_share_directory("autoware_map_loader") + "/test/data/test_map.osm";
+  options.append_parameter_override("lanelet2_map_path", map_path);
+  options.append_parameter_override("center_line_resolution", 5.0);
+  options.append_parameter_override("use_waypoints", false);
+  options.append_parameter_override("allow_unsupported_version", true);
+  options.append_parameter_override("enable_selected_map_loading", false);
+  options.append_parameter_override("lanelet2_map_metadata_path", "");
+
+  // Node + pub/sub spinups
+  auto target_node = std::make_shared<autoware::map_loader::Lanelet2MapLoaderNode>(options);
+
+  std::promise<autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr> map_promise;
+  auto map_future = map_promise.get_future();
+  auto map_sub = test_node_->create_subscription<autoware_map_msgs::msg::LaneletMapBin>(
+    "/map/vector_map", rclcpp::QoS{1}.transient_local(),
+    [&map_promise](const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg) {
+      map_promise.set_value(msg);
+    });
+
+  autoware_map_msgs::msg::MapProjectorInfo projector_info;
+  projector_info.projector_type = autoware_map_msgs::msg::MapProjectorInfo::MGRS;
+  projector_pub_->publish(projector_info);
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(test_node_);
+  executor.add_node(target_node);
+
+  auto status = executor.spin_until_future_complete(map_future, std::chrono::seconds(3));
+
+  // Expected message published
+  ASSERT_EQ(status, rclcpp::FutureReturnCode::SUCCESS)
+    << "Target node failed to publish LaneletMapBin within timeout.";
+  auto map_bin_msg = map_future.get();
+  ASSERT_NE(map_bin_msg, nullptr);
+
+  auto decoded_map = autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*map_bin_msg);
+
+  // Standard overwriteLaneletsCenterline is used.
+  ASSERT_EQ(decoded_map->laneletLayer.size(), 4U);
+
+  // Each lanelet has a standard centerline injected via overwriteLaneletsCenterline
+  for (const auto & lanelet : decoded_map->laneletLayer) {
+    // Standard centerline exists with points
+    EXPECT_FALSE(lanelet.centerline().empty())
+      << "Standard centerline should be populated when use_waypoints is false.";
+
+    // No custom waypoints generated
+    EXPECT_FALSE(lanelet.hasAttribute("waypoints"))
+      << "Waypoints attribute should NOT exist when use_waypoints is false.";
   }
 }
