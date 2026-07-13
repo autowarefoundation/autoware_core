@@ -18,6 +18,7 @@
 #include "euclidean_cluster_object_detector.hpp"
 
 #include <autoware_utils_debug/debug_publisher.hpp>
+#include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -45,6 +46,8 @@ private:
   std::shared_ptr<EuclideanClusterObjectDetector> detector_{nullptr};
   std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
   std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
+  std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_interface_ptr_{
+    nullptr};
 };
 
 }  // namespace autoware::euclidean_cluster

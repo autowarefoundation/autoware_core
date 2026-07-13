@@ -47,6 +47,8 @@ EuclideanClusterNode::EuclideanClusterNode(const rclcpp::NodeOptions & options)
   stop_watch_ptr_ = std::make_unique<autoware_utils_system::StopWatch<std::chrono::milliseconds>>();
   debug_publisher_ =
     std::make_unique<autoware_utils_debug::DebugPublisher>(this, "euclidean_cluster");
+  diagnostics_interface_ptr_ =
+    std::make_unique<autoware_utils_diagnostics::DiagnosticsInterface>(this, "euclidean_cluster");
 
   stop_watch_ptr_->tic("cyclic_time");
   stop_watch_ptr_->tic("processing_time");
@@ -70,6 +72,24 @@ void EuclideanClusterNode::on_point_cloud(
 
   // Now passing to isolated core logic
   const auto result = detector_->cluster(*input_msg);
+
+  // Publish diagnostic telemetry
+  diagnostics_interface_ptr_->clear();
+  if (result.skipped_cluster_count > 0) {
+    const int64_t max_size = this->get_parameter("max_cluster_size").as_int();
+    std::string summary =
+      std::to_string(result.skipped_cluster_count) +
+      " clusters skipped because cluster point size exceeds the maximum allowed " +
+      std::to_string(max_size);
+    diagnostics_interface_ptr_->add_key_value("is_cluster_data_size_within_range", false);
+    diagnostics_interface_ptr_->update_level_and_message(
+      static_cast<int8_t>(diagnostic_msgs::msg::DiagnosticStatus::WARN), summary);
+  } else {
+    diagnostics_interface_ptr_->add_key_value("is_cluster_data_size_within_range", true);
+    diagnostics_interface_ptr_->update_level_and_message(
+      static_cast<int8_t>(diagnostic_msgs::msg::DiagnosticStatus::OK), "OK");
+  }
+  diagnostics_interface_ptr_->publish(input_msg->header.stamp);
 
   cluster_pub_->publish(result.cluster_message);
 
