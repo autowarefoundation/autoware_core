@@ -73,6 +73,7 @@ if(BUILD_TESTING)
   add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_utils.cpp)
   add_testcase(test/lanelet2_map_loader/test_lanelet2_map_cell_metadata.cpp)
   add_testcase(test/lanelet2_map_loader/test_lanelet2_selected_map_loader_module.cpp)
+  add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_integration.cpp)
 endif()
 
 install(PROGRAMS

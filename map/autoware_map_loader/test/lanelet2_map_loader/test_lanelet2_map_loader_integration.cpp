@@ -30,40 +30,37 @@
 #include <memory>
 #include <string>
 
+using MapProjectorInfo = autoware::component_interface_specs::map::MapProjectorInfo;
+
 class Lanelet2MapLoaderIntegrationHarness : public ::testing::Test
 {
 protected:
+  // Runs once per process, safe for death test in TEST 4
+  static void SetUpTestSuite() { rclcpp::init(0, nullptr); }
+
+  static void TearDownTestSuite() { rclcpp::shutdown(); }
+
+  // Runs before each test
   void SetUp() override
   {
-    rclcpp::init(0, nullptr);
     test_node_ = std::make_shared<rclcpp::Node>("test_lanelet2_map_loader_client");
 
-    // Params setting
-    rclcpp::NodeOptions options;
-    const std::string map_path =
-      ament_index_cpp::get_package_share_directory("autoware_map_loader") +
-      "/test/data/test_map.osm";
-
-    options.append_parameter_override("lanelet2_map_path", map_path);
-    options.append_parameter_override("center_line_resolution", 5.0);
-    options.append_parameter_override("use_waypoints", true);
-    options.append_parameter_override("allow_unsupported_version", true);
-    options.append_parameter_override("enable_selected_map_loading", false);
-    options.append_parameter_override("lanelet2_map_metadata_path", "");
-
-    // Init node
-    target_node_ = std::make_shared<autoware::map_loader::Lanelet2MapLoaderNode>(options);
-
-    // Pub/sub
-    projector_pub_ = test_node_->create_publisher<autoware_map_msgs::msg::MapProjectorInfo>(
-      "input/map_projector_info", rclcpp::QoS{1}.transient_local());
+    projector_pub_ = test_node_->create_publisher<MapProjectorInfo::Message>(
+      MapProjectorInfo::name, autoware::component_interface_specs::get_qos<MapProjectorInfo>());
   }
 
-  void TearDown() override { rclcpp::shutdown(); }
+  void TearDown() override { test_node_.reset(); }
+
+  // Helper to ensure pub/sub are linked before sending data
+  void wait_for_discovery()
+  {
+    while (projector_pub_->get_subscription_count() == 0) {
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+  }
 
   rclcpp::Node::SharedPtr test_node_;
-  std::shared_ptr<autoware::map_loader::Lanelet2MapLoaderNode> target_node_;
-  rclcpp::Publisher<autoware_map_msgs::msg::MapProjectorInfo>::SharedPtr projector_pub_;
+  rclcpp::Publisher<MapProjectorInfo::Message>::SharedPtr projector_pub_;
 };
 
 // TEST 1. Main integration test to see if Lanelet2MapLoaderNode can load test map and work properly
@@ -75,6 +72,19 @@ protected:
 // - Each lanelet has a custom centerline injected via waypoints
 TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesNormalMapLoadingAndReading)
 {
+  rclcpp::NodeOptions options;
+  const std::string map_path =
+    ament_index_cpp::get_package_share_directory("autoware_map_loader") + "/test/data/test_map.osm";
+
+  options.append_parameter_override("lanelet2_map_path", map_path);
+  options.append_parameter_override("center_line_resolution", 5.0);
+  options.append_parameter_override("use_waypoints", true);
+  options.append_parameter_override("allow_unsupported_version", true);
+  options.append_parameter_override("enable_selected_map_loading", false);
+  options.append_parameter_override("lanelet2_map_metadata_path", "");
+
+  auto target_node = std::make_shared<autoware::map_loader::Lanelet2MapLoaderNode>(options);
+
   // Prepare to catch map
   std::promise<autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr> map_promise;
   auto map_future = map_promise.get_future();
@@ -85,15 +95,16 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesNormalMapLoadingAndReading)
       map_promise.set_value(msg);
     });
 
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(test_node_);
+  executor.add_node(target_node);
+
+  wait_for_discovery();
+
   autoware_map_msgs::msg::MapProjectorInfo projector_info;
   projector_info.projector_type = autoware_map_msgs::msg::MapProjectorInfo::MGRS;
   projector_info.mgrs_grid = "54SUE";
   projector_pub_->publish(projector_info);
-
-  // Spin both nodes to process callback
-  rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(test_node_);
-  executor.add_node(target_node_);
 
   auto status = executor.spin_until_future_complete(map_future, std::chrono::seconds(3));
 
@@ -158,6 +169,8 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesStandardCenterlineInjection)
   executor.add_node(test_node_);
   executor.add_node(target_node);
 
+  wait_for_discovery();
+
   auto status = executor.spin_until_future_complete(map_future, std::chrono::seconds(3));
 
   // Expected message published
@@ -219,6 +232,8 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesMetadataPublishedWhenSelecte
   executor.add_node(test_node_);
   executor.add_node(target_node);
 
+  wait_for_discovery();
+
   auto status = executor.spin_until_future_complete(meta_future, std::chrono::seconds(3));
 
   // Expected message published
@@ -244,38 +259,28 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, RejectsWeirdVersion)
       << "</osm>";
   out.close();
 
-  // EXPECT_DEATH to run node in forked process
-  EXPECT_DEATH(
-    {
-      rclcpp::init(0, nullptr);
-      auto test_node = std::make_shared<rclcpp::Node>("death_test_client");
-      auto pub = test_node->create_publisher<autoware_map_msgs::msg::MapProjectorInfo>(
-        "input/map_projector_info", rclcpp::QoS{1}.transient_local());
+  // Re-init node options with allow_unsupported_version = false
+  rclcpp::NodeOptions options;
+  options.append_parameter_override("lanelet2_map_path", incompat_map_path);
+  options.append_parameter_override("center_line_resolution", 5.0);
+  options.append_parameter_override("use_waypoints", true);
+  options.append_parameter_override("enable_selected_map_loading", false);
+  options.append_parameter_override("lanelet2_map_metadata_path", "");
 
-      // Re-init node options with allow_unsupported_version = false
-      rclcpp::NodeOptions options;
-      options.append_parameter_override("lanelet2_map_path", incompat_map_path);
-      options.append_parameter_override("center_line_resolution", 5.0);
-      options.append_parameter_override("use_waypoints", true);
-      options.append_parameter_override("enable_selected_map_loading", false);
-      options.append_parameter_override("lanelet2_map_metadata_path", "");
+  // TEST TARGET allow_unsupported_version = false
+  options.append_parameter_override("allow_unsupported_version", false);
 
-      // TEST TARGET allow_unsupported_version = false
-      options.append_parameter_override("allow_unsupported_version", false);
+  auto target_node = std::make_shared<autoware::map_loader::Lanelet2MapLoaderNode>(options);
 
-      auto target_node = std::make_shared<autoware::map_loader::Lanelet2MapLoaderNode>(options);
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(test_node_);
+  executor.add_node(target_node);
 
-      autoware_map_msgs::msg::MapProjectorInfo projector_info;
-      projector_info.projector_type = autoware_map_msgs::msg::MapProjectorInfo::MGRS;
-      pub->publish(projector_info);
+  wait_for_discovery();
 
-      rclcpp::executors::SingleThreadedExecutor executor;
-      executor.add_node(test_node);
-      executor.add_node(target_node);
+  MapProjectorInfo::Message projector_info;
+  projector_info.projector_type = MapProjectorInfo::Message::MGRS;
+  projector_pub_->publish(projector_info);
 
-      executor.spin_some();
-
-      rclcpp::shutdown();
-    },
-    "allow_unsupported_version is false");
+  EXPECT_THROW(executor.spin_some(), std::invalid_argument);
 }
