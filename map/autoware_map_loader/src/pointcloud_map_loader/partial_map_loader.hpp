@@ -26,14 +26,6 @@
 
 namespace autoware::map_loader
 {
-/// @brief Collect map IDs that intersect the requested area.
-/// @param area Requested load area.
-/// @param pcd_file_metadata_dict Metadata dictionary keyed by map ID.
-/// @return Map IDs that should be loaded for the request.
-std::vector<std::string> collect_partial_map_ids(
-  const autoware_map_msgs::msg::AreaInfo & area,
-  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict);
-
 class PartialMapLoaderModule
 {
   using GetPartialPointCloudMap = autoware_map_msgs::srv::GetPartialPointCloudMap;

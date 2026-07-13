@@ -28,6 +28,12 @@ PartialMapLoaderModule::PartialMapLoaderModule(
 {
 }
 
+namespace
+{
+/// @brief Collect map IDs that intersect the requested area.
+/// @param area Requested load area.
+/// @param pcd_file_metadata_dict Metadata dictionary keyed by map ID.
+/// @return Map IDs that should be loaded for the request.
 std::vector<std::string> collect_partial_map_ids(
   const autoware_map_msgs::msg::AreaInfo & area,
   const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
@@ -45,6 +51,7 @@ std::vector<std::string> collect_partial_map_ids(
 
   return map_ids_to_load;
 }
+}  // namespace
 
 bool PartialMapLoaderModule::create_response(
   GetPartialPointCloudMap::Request::SharedPtr req,
