@@ -17,9 +17,16 @@
 
 #include <Eigen/Core>
 
+#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
+
+#include <pcl/point_cloud.h>
+#include <pcl/point_types.h>
+
 #include <geometry_msgs/msg/pose.hpp>
 
 #include <array>
+#include <cstddef>
+#include <optional>
 #include <vector>
 
 namespace autoware::ndt_scan_matcher
@@ -35,6 +42,47 @@ std::array<double, 36> rotate_covariance(
  * sequence of poses. A step is counted as an inversion when the cosine between consecutive motion
  * vectors falls below an internal threshold. */
 int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
+
+enum class ScoreMetric {
+  TRANSFORM_PROBABILITY = 0,
+  NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD = 1,
+};
+
+struct ScoreEvaluationInput
+{
+  ScoreMetric metric{};
+  double transform_probability_threshold{};
+  double nearest_voxel_transformation_likelihood_threshold{};
+};
+
+struct ScoreEvaluationResult
+{
+  bool is_supported_metric{true};
+
+  double score{};
+  double score_threshold{};
+  bool is_score_above_threshold{};
+
+  int expected_array_size{};
+  std::size_t transform_probability_array_size{};
+  std::size_t nearest_voxel_transformation_likelihood_array_size{};
+
+  std::optional<float> transform_probability_diff{};
+  std::optional<float> transform_probability_before{};
+
+  std::optional<float> nearest_voxel_transformation_likelihood_diff{};
+  std::optional<float> nearest_voxel_transformation_likelihood_before{};
+};
+
+ScoreEvaluationResult evaluate_score(
+  const pclomp::NdtResult & ndt_result, const ScoreEvaluationInput & input);
+
+bool is_scan_matching_converged(
+  bool is_ok_iteration_num, bool is_local_optimal_solution_oscillation, bool is_ok_score);
+
+pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> extract_no_ground_points(
+  const pcl::PointCloud<pcl::PointXYZ> & sensor_points_in_map, double result_pose_z,
+  double z_margin_for_ground_removal);
 
 }  // namespace autoware::ndt_scan_matcher
 

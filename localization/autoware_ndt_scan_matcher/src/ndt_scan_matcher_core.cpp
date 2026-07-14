@@ -493,72 +493,81 @@ bool NDTScanMatcher::callback_sensor_points_main(
     diagnostics_scan_points_->add_key_value(
       "nearest_voxel_transformation_likelihood",
       ndt_result.nearest_voxel_transformation_likelihood);
-    double score = 0.0;
-    double score_threshold = 0.0;
-    if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {
-      score = ndt_result.transform_probability;
-      score_threshold = param_.score_estimation.converged_param_transform_probability;
-    } else if (
+    ScoreMetric score_metric = ScoreMetric::TRANSFORM_PROBABILITY;
+    if (
       param_.score_estimation.converged_param_type ==
       ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD) {
-      score = ndt_result.nearest_voxel_transformation_likelihood;
-      score_threshold =
-        param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
-    } else {
-      std::stringstream message;
-      message
-        << "Unknown converged param type. Please check `score_estimation.converged_param_type`";
+      score_metric = ScoreMetric::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD;
+    }
+
+    const ScoreEvaluationInput score_evaluation_input{
+      score_metric,
+      param_.score_estimation.converged_param_transform_probability,
+      param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood};
+    const ScoreEvaluationResult score_evaluation = evaluate_score(ndt_result, score_evaluation_input);
+    if (!score_evaluation.is_supported_metric) {
       diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+        diagnostic_msgs::msg::DiagnosticStatus::ERROR,
+        "Unknown converged param type. Please check `score_estimation.converged_param_type`");
       return false;
     }
 
-    // check score diff
-    const std::vector<float> & tp_array = ndt_result.transform_probability_array;
-    if (static_cast<int>(tp_array.size()) != ndt_result.iteration_num + 1) {
-      // only publish warning to /diagnostics, not skip publishing pose
+    if (
+      static_cast<int>(score_evaluation.transform_probability_array_size) !=
+      score_evaluation.expected_array_size) {
       std::stringstream message;
       message << "transform_probability_array size is not equal to iteration_num + 1."
-              << " transform_probability_array size: " << tp_array.size()
+              << " transform_probability_array size: "
+              << score_evaluation.transform_probability_array_size
               << ", iteration_num: " << ndt_result.iteration_num;
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    } else {
-      const float diff = tp_array.back() - tp_array.front();
-      diagnostics_scan_points_->add_key_value("transform_probability_diff", diff);
-      diagnostics_scan_points_->add_key_value("transform_probability_before", tp_array.front());
     }
-    const std::vector<float> & nvtl_array =
-      ndt_result.nearest_voxel_transformation_likelihood_array;
-    if (static_cast<int>(nvtl_array.size()) != ndt_result.iteration_num + 1) {
-      // only publish warning to /diagnostics, not skip publishing pose
+
+    if (
+      static_cast<int>(score_evaluation.nearest_voxel_transformation_likelihood_array_size) !=
+      score_evaluation.expected_array_size) {
       std::stringstream message;
       message
         << "nearest_voxel_transformation_likelihood_array size is not equal to iteration_num + 1."
-        << " nearest_voxel_transformation_likelihood_array size: " << nvtl_array.size()
+        << " nearest_voxel_transformation_likelihood_array size: "
+        << score_evaluation.nearest_voxel_transformation_likelihood_array_size
         << ", iteration_num: " << ndt_result.iteration_num;
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    } else {
-      const float diff = nvtl_array.back() - nvtl_array.front();
-      diagnostics_scan_points_->add_key_value("nearest_voxel_transformation_likelihood_diff", diff);
+    }
+    if (score_evaluation.transform_probability_diff) {
       diagnostics_scan_points_->add_key_value(
-        "nearest_voxel_transformation_likelihood_before", nvtl_array.front());
+        "transform_probability_diff", score_evaluation.transform_probability_diff.value());
+    }
+    if (score_evaluation.transform_probability_before) {
+      diagnostics_scan_points_->add_key_value(
+        "transform_probability_before", score_evaluation.transform_probability_before.value());
+    }
+    if (score_evaluation.nearest_voxel_transformation_likelihood_diff) {
+      diagnostics_scan_points_->add_key_value(
+        "nearest_voxel_transformation_likelihood_diff",
+        score_evaluation.nearest_voxel_transformation_likelihood_diff.value());
+    }
+    if (score_evaluation.nearest_voxel_transformation_likelihood_before) {
+      diagnostics_scan_points_->add_key_value(
+        "nearest_voxel_transformation_likelihood_before",
+        score_evaluation.nearest_voxel_transformation_likelihood_before.value());
     }
 
-    bool is_ok_score = (score > score_threshold);
+    const bool is_ok_score = score_evaluation.is_score_above_threshold;
     if (!is_ok_score) {
       std::stringstream message;
-      message << "Score is below the threshold. Score: " << score
-              << ", Threshold: " << score_threshold;
+      message << "Score is below the threshold. Score: " << score_evaluation.score
+              << ", Threshold: " << score_evaluation.score_threshold;
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
       RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
     }
 
     // check is_converged
-    bool is_converged =
-      (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
+    const bool is_converged = is_scan_matching_converged(
+      is_ok_iteration_num, is_local_optimal_solution_oscillation, is_ok_score);
 
     // covariance estimation
     const Eigen::Quaterniond map_to_base_link_quat = Eigen::Quaterniond(
@@ -650,22 +659,10 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     // whether use no ground points to calculate score
     if (param_.score_estimation.no_ground_points.enable) {
-      // remove ground
-      pcl::shared_ptr<pcl::PointCloud<PointSource>> no_ground_points_in_map_ptr(
-        new pcl::PointCloud<PointSource>);
-      no_ground_points_in_map_ptr->points.reserve(sensor_points_in_map_ptr->size());
-      // The aligned pose z is constant over the loop; the translation z of the 4x4 matrix equals
-      // matrix4f_to_pose(ndt_result.pose).position.z. Hoist it to avoid rebuilding a full Pose
-      // (including a quaternion extraction) for every point in the scan.
       const double result_pose_z = ndt_result.pose(2, 3);
-      for (std::size_t i = 0; i < sensor_points_in_map_ptr->size(); i++) {
-        const float point_z = sensor_points_in_map_ptr->points[i].z;  // NOLINT
-        if (
-          point_z - result_pose_z >
-          param_.score_estimation.no_ground_points.z_margin_for_ground_removal) {
-          no_ground_points_in_map_ptr->points.push_back(sensor_points_in_map_ptr->points[i]);
-        }
-      }
+      const auto no_ground_points_in_map_ptr = extract_no_ground_points(
+        *sensor_points_in_map_ptr, result_pose_z,
+        param_.score_estimation.no_ground_points.z_margin_for_ground_removal);
       // pub remove-ground points
       sensor_msgs::msg::PointCloud2 no_ground_points_msg_in_map;
       pcl::toROSMsg(*no_ground_points_in_map_ptr, no_ground_points_msg_in_map);

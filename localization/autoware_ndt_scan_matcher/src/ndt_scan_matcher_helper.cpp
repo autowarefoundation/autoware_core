@@ -79,4 +79,62 @@ int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_
   return max_oscillation_cnt;
 }
 
+ScoreEvaluationResult evaluate_score(
+  const pclomp::NdtResult & ndt_result, const ScoreEvaluationInput & input)
+{
+  ScoreEvaluationResult result;
+  result.expected_array_size = ndt_result.iteration_num + 1;
+
+  if (input.metric == ScoreMetric::TRANSFORM_PROBABILITY) {
+    result.score = ndt_result.transform_probability;
+    result.score_threshold = input.transform_probability_threshold;
+  } else if (input.metric == ScoreMetric::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD) {
+    result.score = ndt_result.nearest_voxel_transformation_likelihood;
+    result.score_threshold = input.nearest_voxel_transformation_likelihood_threshold;
+  } else {
+    result.is_supported_metric = false;
+    return result;
+  }
+
+  const std::vector<float> & tp_array = ndt_result.transform_probability_array;
+  result.transform_probability_array_size = tp_array.size();
+  if (static_cast<int>(tp_array.size()) == result.expected_array_size) {
+    result.transform_probability_diff = tp_array.back() - tp_array.front();
+    result.transform_probability_before = tp_array.front();
+  }
+
+  const std::vector<float> & nvtl_array = ndt_result.nearest_voxel_transformation_likelihood_array;
+  result.nearest_voxel_transformation_likelihood_array_size = nvtl_array.size();
+  if (static_cast<int>(nvtl_array.size()) == result.expected_array_size) {
+    result.nearest_voxel_transformation_likelihood_diff = nvtl_array.back() - nvtl_array.front();
+    result.nearest_voxel_transformation_likelihood_before = nvtl_array.front();
+  }
+
+  result.is_score_above_threshold = (result.score > result.score_threshold);
+  return result;
+}
+
+bool is_scan_matching_converged(
+  bool is_ok_iteration_num, bool is_local_optimal_solution_oscillation, bool is_ok_score)
+{
+  return (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
+}
+
+pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> extract_no_ground_points(
+  const pcl::PointCloud<pcl::PointXYZ> & sensor_points_in_map, const double result_pose_z,
+  const double z_margin_for_ground_removal)
+{
+  auto no_ground_points_in_map_ptr =
+    pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  no_ground_points_in_map_ptr->points.reserve(sensor_points_in_map.size());
+
+  for (const auto & point : sensor_points_in_map.points) {
+    if (point.z - result_pose_z > z_margin_for_ground_removal) {
+      no_ground_points_in_map_ptr->points.push_back(point);
+    }
+  }
+
+  return no_ground_points_in_map_ptr;
+}
+
 }  // namespace autoware::ndt_scan_matcher
