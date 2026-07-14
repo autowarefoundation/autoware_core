@@ -13,9 +13,12 @@
 // limitations under the License.
 
 #include "autoware/component_interface_utils/rclcpp/exceptions.hpp"
+#include "autoware/component_interface_utils/rclcpp/interface.hpp"
 #include "autoware/component_interface_utils/specs.hpp"
 #include "autoware/component_interface_utils/status.hpp"
 #include "gtest/gtest.h"
+
+#include <rclcpp/rclcpp.hpp>
 
 #include <algorithm>
 #include <memory>
@@ -77,4 +80,15 @@ TEST(interface, utils)
     EXPECT_EQ(status_in.status.message, status_copy->status.message);
     EXPECT_EQ(status_in.status.success, status_copy->status.success);
   }
+}
+
+TEST(interface, node_interface_no_service_log)
+{
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_node_interface");
+  autoware::component_interface_utils::NodeInterface interface(node.get());
+  EXPECT_EQ(interface.node, node.get());
+  // Service tracing is provided by ROS 2 service introspection, which defaults to OFF.
+  EXPECT_EQ(interface.introspection_state, RCL_SERVICE_INTROSPECTION_OFF);
+  rclcpp::shutdown();
 }
