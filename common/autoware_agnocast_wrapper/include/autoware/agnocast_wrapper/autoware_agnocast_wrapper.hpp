@@ -989,6 +989,7 @@ public:
           std::move(agnocast_request),
           [callback = std::move(callback), promise_ptr = std::move(promise_ptr), shared_future](
             typename agnocast::Client<ServiceT>::SharedFuture agnocast_shared_future) {
+            // If an exception is set in the underlying future, propagate it to our promise.
             try {
               typename agnocast::ipc_shared_ptr<const typename ServiceT::Response>
                 agnocast_response = agnocast_shared_future.get();
@@ -998,8 +999,6 @@ public:
               promise_ptr->set_exception(std::current_exception());
               return;
             }
-            // callback() runs outside the try: the promise is already satisfied, so its
-            // exceptions must not reach set_exception().
             callback(std::move(shared_future));
           })
         .request_id;
@@ -1082,6 +1081,7 @@ public:
           ros2_request,
           [callback = std::move(callback), promise_ptr = std::move(promise_ptr),
            shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+            // If an exception is set in the underlying future, propagate it to our promise.
             try {
               std::shared_ptr<const typename ServiceT::Response> ros2_response =
                 ros2_shared_future.get();
@@ -1091,8 +1091,6 @@ public:
               promise_ptr->set_exception(std::current_exception());
               return;
             }
-            // callback() runs outside the try: the promise is already satisfied, so its
-            // exceptions must not reach set_exception().
             callback(std::move(shared_future));
           })
         .request_id;
@@ -1418,8 +1416,9 @@ namespace autoware::agnocast_wrapper
 //
 // Mirrors the Agnocast-build Client<ServiceT>/Service<ServiceT> abstraction so code written
 // against AUTOWARE_CLIENT_PTR/AUTOWARE_SERVICE_PTR compiles unchanged in both builds.
-// async_send_request() still bridges through a promise, since AUTOWARE_CLIENT_RESPONSE_PTR is
-// const-qualified while rclcpp::Client<ServiceT>::Future is not.
+// async_send_request() still bridges through a promise: AUTOWARE_CLIENT_FUTURE(ServiceT) and
+// rclcpp::Client<ServiceT>::Future are different std::future instantiations, and std::future has
+// no covariant conversion between them.
 
 template <typename ServiceT>
 class Client
@@ -1497,9 +1496,10 @@ public:
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
-  // rclcpp::Client<ServiceT>::Future is a non-const std::future<std::shared_ptr<Response>>, but
-  // AUTOWARE_CLIENT_RESPONSE_PTR is const-qualified, so the result can't be returned directly --
-  // bridge it through a promise, same as AgnocastClient does for its response.
+  // rclcpp::Client<ServiceT>::Future (std::future<std::shared_ptr<Response>>) and
+  // AUTOWARE_CLIENT_FUTURE(ServiceT) (std::future<std::shared_ptr<const Response>>) are different
+  // std::future instantiations with no covariant conversion between them, so the result can't be
+  // returned directly -- bridge it through a promise instead.
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
   {
@@ -1537,6 +1537,7 @@ public:
           std::move(request),
           [callback = std::move(callback), promise_ptr = std::move(promise_ptr),
            shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+            // If an exception is set in the underlying future, propagate it to our promise.
             try {
               promise_ptr->set_value(
                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
@@ -1544,8 +1545,6 @@ public:
               promise_ptr->set_exception(std::current_exception());
               return;
             }
-            // callback() runs outside the try: the promise is already satisfied, so its
-            // exceptions must not reach set_exception().
             callback(std::move(shared_future));
           })
         .request_id;
