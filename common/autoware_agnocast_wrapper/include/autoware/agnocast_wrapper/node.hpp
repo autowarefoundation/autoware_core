@@ -457,7 +457,7 @@ namespace autoware::agnocast_wrapper
 {
 
 // is_message_ptr_service_callback_v / is_shared_ptr_service_callback_v are defined in
-// autoware_agnocast_wrapper.hpp (included above), identically named in both builds.
+// autoware_agnocast_wrapper.hpp, identically named in both builds.
 
 /// @brief Node class for the non-Agnocast build.
 ///
@@ -727,8 +727,7 @@ public:
   }
 
   // ===== Service =====
-  // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (plain shared_ptr in
-  // this build).
+  // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR.
   template <
     typename ServiceT, typename Func,
     std::enable_if_t<is_message_ptr_service_callback_v<Func, ServiceT>, int> = 0>
@@ -742,9 +741,9 @@ public:
       node_.get(), service_name, std::forward<Func>(callback), qos, group);
   }
 
-  // Convenience overload for rclcpp-style std::shared_ptr callbacks (mirrors the Agnocast build):
-  // adapts to the message_ptr-style callback above rather than forwarding directly, since
-  // ROS2Service only accepts that shape.
+  // Convenience overload for rclcpp-style std::shared_ptr callbacks: adapts to the message_ptr-
+  // style callback above rather than forwarding directly, since ROS2Service only accepts that
+  // shape.
   template <
     typename ServiceT, typename Func,
     std::enable_if_t<

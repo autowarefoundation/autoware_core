@@ -1443,14 +1443,12 @@ inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::
 namespace autoware::agnocast_wrapper
 {
 
-// ===== Client/Service (non-Agnocast build) =====
+// ===== Client/Service, non-Agnocast build =====
 //
-// Mirrors the Agnocast-build Client<ServiceT>/Service<ServiceT> abstraction (same class names,
-// same allocate_output_service_request()/async_send_request() surface) so that code written
-// against AUTOWARE_CLIENT_PTR/AUTOWARE_SERVICE_PTR compiles unchanged in both builds. There is
-// only one backend here (plain rclcpp), so async_send_request() forwards straight through --
-// no promise/future bridging is needed because AUTOWARE_CLIENT_FUTURE*/AUTOWARE_CLIENT_REQUEST_PTR
-// already resolve to the exact types rclcpp::Client natively uses in this build.
+// Mirrors the Agnocast-build Client<ServiceT>/Service<ServiceT> abstraction so code written
+// against AUTOWARE_CLIENT_PTR/AUTOWARE_SERVICE_PTR compiles unchanged in both builds.
+// async_send_request() still bridges through a promise, since AUTOWARE_CLIENT_RESPONSE_PTR is
+// const-qualified while rclcpp::Client<ServiceT>::Future is not.
 
 template <typename ServiceT>
 class Client
@@ -1528,10 +1526,9 @@ public:
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
-  // rclcpp::Client<ServiceT>::Future is std::future<std::shared_ptr<Response>> (non-const), while
-  // AUTOWARE_CLIENT_RESPONSE_PTR is const-qualified, so client_->async_send_request()'s result
-  // can't be returned directly -- bridge it through a promise, same as the Agnocast-build
-  // AgnocastClient does for its own (differently-typed) response.
+  // rclcpp::Client<ServiceT>::Future is a non-const std::future<std::shared_ptr<Response>>, but
+  // AUTOWARE_CLIENT_RESPONSE_PTR is const-qualified, so the result can't be returned directly --
+  // bridge it through a promise, same as AgnocastClient does for its response.
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
   {
@@ -1602,17 +1599,15 @@ public:
   virtual ~Service() = default;
 };
 
-// True when Callback takes the preferred AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr in
-// the Agnocast build, plain shared_ptr here) pair, i.e. it is written against the wrapper's
-// service API.
+// True when Callback takes the preferred AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR pair, i.e. it
+// is written against the wrapper's service API.
 template <typename Func, typename ServiceT>
 inline constexpr bool is_message_ptr_service_callback_v = std::is_invocable_v<
   std::decay_t<Func>, AUTOWARE_SERVER_REQUEST_PTR(ServiceT) &&,
   AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) &&>;
 
 // True when Callback is an rclcpp-style handler taking std::shared_ptr request/response. This lets
-// utilities written for rclcpp::Node (e.g. autoware_utils_logging's LoggerLevelConfigure) be used
-// unchanged on the wrapper Node.
+// utilities written for rclcpp::Node be used unchanged on the wrapper Node.
 template <typename Func, typename ServiceT>
 inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
   std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request> &,
