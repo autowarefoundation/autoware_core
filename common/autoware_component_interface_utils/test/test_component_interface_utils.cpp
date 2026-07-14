@@ -14,10 +14,13 @@
 
 #include "autoware/component_interface_utils/rclcpp/exceptions.hpp"
 #include "autoware/component_interface_utils/rclcpp/interface.hpp"
+#include "autoware/component_interface_utils/rclcpp/service_client.hpp"
+#include "autoware/component_interface_utils/rclcpp/service_server.hpp"
 #include "autoware/component_interface_utils/specs.hpp"
 #include "autoware/component_interface_utils/status.hpp"
 #include "gtest/gtest.h"
 
+#include <autoware/component_interface_specs/system.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <algorithm>
@@ -91,4 +94,30 @@ TEST(interface, node_interface_no_service_log)
   // Service tracing is provided by ROS 2 service introspection, which defaults to OFF.
   EXPECT_EQ(interface.introspection_state, RCL_SERVICE_INTROSPECTION_OFF);
   rclcpp::shutdown();
+}
+
+TEST(interface, service_wrappers_without_service_log)
+{
+  using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_service");
+  auto interface = std::make_shared<autoware::component_interface_utils::NodeInterface>(node.get());
+
+  auto srv = autoware::component_interface_utils::Service<ChangeOperationMode>::make_shared(
+    interface, [](auto, auto res) { res->status.success = true; }, nullptr);
+  auto cli = autoware::component_interface_utils::Client<ChangeOperationMode>::make_shared(
+    interface, nullptr);
+
+  // The wrapper creates a real service server on the spec'd name.
+  EXPECT_NE(node->get_service_names_and_types().count(ChangeOperationMode::name), 0u);
+
+  // ServiceLog is removed: the wrappers create no "/service_log" publisher.
+  EXPECT_TRUE(node->get_publishers_info_by_topic("/service_log").empty());
+
+  // Introspection defaults to OFF, so neither wrapper creates a service-event topic.
+  const std::string event_topic = std::string(ChangeOperationMode::name) + "/_service_event";
+  EXPECT_TRUE(node->get_publishers_info_by_topic(event_topic).empty());
+
+  rclcpp::shutdown();
+  (void)cli;
 }

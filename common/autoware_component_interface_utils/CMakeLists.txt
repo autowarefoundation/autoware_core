@@ -24,6 +24,7 @@ if(BUILD_TESTING)
     rclcpp
     rclcpp_components
     autoware_adapi_v1_msgs
+    autoware_component_interface_specs
   )
 endif()
 
