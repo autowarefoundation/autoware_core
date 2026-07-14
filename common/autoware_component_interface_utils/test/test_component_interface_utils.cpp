@@ -25,8 +25,43 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <algorithm>
+#include <chrono>
 #include <memory>
 #include <string>
+#include <thread>
+
+namespace
+{
+
+/// Graph discovery of even local endpoints is asynchronous, so poll until the
+/// topic has at least one publisher (or the timeout elapses) rather than assume
+/// it is immediately visible.
+bool wait_for_publisher(const rclcpp::Node::SharedPtr & node, const std::string & topic)
+{
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (std::chrono::steady_clock::now() < deadline) {
+    if (!node->get_publishers_info_by_topic(topic).empty()) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+  return false;
+}
+
+/// Poll until the given service name appears in the node graph (or timeout).
+bool wait_for_service(const rclcpp::Node::SharedPtr & node, const std::string & name)
+{
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (std::chrono::steady_clock::now() < deadline) {
+    if (node->get_service_names_and_types().count(name) != 0) {
+      return true;
+    }
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+  return false;
+}
+
+}  // namespace
 
 TEST(interface, utils)
 {
@@ -97,6 +132,24 @@ TEST(interface, node_interface_no_service_log)
   rclcpp::shutdown();
 }
 
+TEST(interface, node_interface_reads_introspection_parameter)
+{
+  rclcpp::init(0, nullptr);
+  rclcpp::NodeOptions opts;
+  opts.append_parameter_override("component_interface.service_introspection", "metadata");
+  auto node = std::make_shared<rclcpp::Node>("test_node_interface_metadata", opts);
+
+  // First construction declares the parameter and reads the override ("metadata").
+  autoware::component_interface_utils::NodeInterface first(node.get());
+  EXPECT_EQ(first.introspection_state, RCL_SERVICE_INTROSPECTION_METADATA);
+
+  // Second construction on the same node finds the parameter already declared and
+  // reads it (the has_parameter path) without re-declaring / throwing.
+  autoware::component_interface_utils::NodeInterface second(node.get());
+  EXPECT_EQ(second.introspection_state, RCL_SERVICE_INTROSPECTION_METADATA);
+  rclcpp::shutdown();
+}
+
 TEST(interface, service_wrappers_without_service_log)
 {
   using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
@@ -110,7 +163,7 @@ TEST(interface, service_wrappers_without_service_log)
     interface, nullptr);
 
   // The wrapper creates a real service server on the spec'd name.
-  EXPECT_NE(node->get_service_names_and_types().count(ChangeOperationMode::name), 0u);
+  EXPECT_TRUE(wait_for_service(node, ChangeOperationMode::name));
 
   // ServiceLog is removed: the wrappers create no "/service_log" publisher.
   EXPECT_TRUE(node->get_publishers_info_by_topic("/service_log").empty());
@@ -134,6 +187,7 @@ TEST(interface, node_adaptor_create_publisher_qos)
   pub = adaptor.create_publisher<OperationModeState>();
 
   // The returning create_publisher<Spec>() applies the spec's QoS (TRANSIENT_LOCAL).
+  ASSERT_TRUE(wait_for_publisher(node, OperationModeState::name));
   const auto infos = node->get_publishers_info_by_topic(OperationModeState::name);
   ASSERT_EQ(infos.size(), 1u);
   EXPECT_EQ(infos[0].qos_profile().durability(), rclcpp::DurabilityPolicy::TransientLocal);
@@ -155,7 +209,26 @@ TEST(interface, introspection_event_topic)
 
   // With introspection enabled, the service exposes its "/_service_event" topic.
   const std::string event_topic = std::string(ChangeOperationMode::name) + "/_service_event";
-  EXPECT_FALSE(node->get_publishers_info_by_topic(event_topic).empty());
+  EXPECT_TRUE(wait_for_publisher(node, event_topic));
   rclcpp::shutdown();
   (void)srv;
+}
+
+TEST(interface, client_introspection_event_topic)
+{
+  using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
+  rclcpp::init(0, nullptr);
+  rclcpp::NodeOptions opts;
+  opts.append_parameter_override("component_interface.service_introspection", "contents");
+  auto node = std::make_shared<rclcpp::Node>("test_client_introspection", opts);
+  autoware::component_interface_utils::NodeAdaptor adaptor(node.get());
+
+  auto cli = adaptor.create_client<ChangeOperationMode>();
+
+  // The client wrapper configures introspection symmetrically with the service,
+  // so it too exposes the "/_service_event" topic when enabled.
+  const std::string event_topic = std::string(ChangeOperationMode::name) + "/_service_event";
+  EXPECT_TRUE(wait_for_publisher(node, event_topic));
+  rclcpp::shutdown();
+  (void)cli;
 }
