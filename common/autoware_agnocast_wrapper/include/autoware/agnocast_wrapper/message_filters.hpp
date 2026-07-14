@@ -467,7 +467,8 @@ class Synchronizer
 {
   static_assert(
     sizeof(Policy) == 0,
-    "Only sync_policies::ApproximateTime<Ms...> and sync_policies::ExactTime<Ms...> are supported.");
+    "Only sync_policies::ApproximateTime<Ms...> and sync_policies::ExactTime<Ms...> are "
+    "supported.");
 };
 
 /// @brief Common synchronizer wrapper parameterized by the underlying upstream policy
