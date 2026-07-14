@@ -62,12 +62,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--generator",
         default=None,
-        help="Path to the M0.1 manifest generator binary; enables the manifest_fresh check.",
+        help="Path to the manifest generator binary; enables the manifest_fresh check.",
     )
     parser.add_argument(
         "--warn-only",
         action="store_true",
-        help="Always exit 0 (M0 behavior). Without it, findings cause a non-zero exit.",
+        help="Always exit 0 (advisory behavior). Without it, findings cause a non-zero exit.",
     )
     return parser
 
@@ -88,8 +88,7 @@ def run(spec_dirs, manifest, generator, warn_only) -> int:
     for finding in findings:
         print(f"{finding.level} {finding.file}:{finding.line} {finding.message}")
     print(
-        f"interface-spec-lint: {len(findings)} warning(s) "
-        f"[WARN-only, M0 does not fail the build]"
+        f"interface-spec-lint: {len(findings)} warning(s) " f"[WARN-only; does not fail the build]"
     )
 
     if warn_only:

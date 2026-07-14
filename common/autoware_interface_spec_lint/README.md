@@ -2,7 +2,7 @@
 
 WARN-only static and manifest checks for the Autoware component interface specifications defined in `autoware_component_interface_specs`. This package gives fast, pre-build, human-readable warnings that complement the compile-time `all_specs_valid<>` static assertions: it catches "defined-but-unregistered" specs and manifest drift that the compiler alone does not.
 
-In milestone M0 every check is advisory: the tool prints findings but always exits 0 with `--warn-only`, and the pre-commit hook never fails the commit. The warn-to-error ratchet is a later milestone (M2).
+In this initial version every check is advisory: the tool prints findings but always exits 0 with `--warn-only`, and the pre-commit hook never fails the commit. Flipping the warnings into hard errors (the warn-to-error ratchet) is left to a follow-up change.
 
 ## Checks
 
@@ -10,11 +10,11 @@ In milestone M0 every check is advisory: the tool prints findings but always exi
 | ------------------------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `interface_spec_concept` | domain headers             | a struct with a `name[]` that is neither a valid topic (`Message` + `depth` + `reliability` + `durability`) nor a valid service (`Service`)                                                         |
 | `spec_registered`        | domain headers             | a spec struct not listed in its namespace's `using Specs = std::tuple<...>`                                                                                                                         |
-| `version_consistency`    | headers + manifest         | a domain not declaring exactly one `version{...}`, a MAJOR that is not `0` (the standard is unstable at `0.x` in this wave), or a manifest version that disagrees with the header version           |
+| `version_consistency`    | headers + manifest         | a domain not declaring exactly one `version{...}`, a MAJOR that is not `0` (the standard is unstable while at `0.x`), or a manifest version that disagrees with the header version                  |
 | `qos_consistency`        | headers + manifest         | a registered spec whose `history` / `depth` / `reliability` / `durability` disagrees with its manifest `qos` block, is missing from the manifest, or names a QoS policy the manifest cannot express |
 | `manifest_fresh`         | generator + committed JSON | the rebuilt generator output differs from the committed `interface_manifest.json`                                                                                                                   |
 
-`interface_spec_concept`, `spec_registered`, `version_consistency` and `qos_consistency` are pure-Python static analyses over the domain headers and are wired into pre-commit. `manifest_fresh` is a colcon test because it needs the built M0.1 generator binary.
+`interface_spec_concept`, `spec_registered`, `version_consistency` and `qos_consistency` are pure-Python static analyses over the domain headers and are wired into pre-commit. `manifest_fresh` is a colcon test because it needs the built manifest generator binary.
 
 A domain declares its `version` and its `Specs` tuple either literally or through `AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(MAJOR, MINOR, PATCH, ...)`, which expands to both. The header parser understands each form, including the multi-line invocation clang-format produces.
 
@@ -53,7 +53,7 @@ ament_autoware_interface_spec_lint --warn-only \
 
 ### `manifest_fresh`
 
-`manifest_fresh` needs the M0.1 generator binary. Point at it with `--generator <path>` or the `INTERFACE_MANIFEST_GENERATOR` environment variable. When neither is available the check skips gracefully with a warning and records nothing, so it never blocks a build in M0.
+`manifest_fresh` needs the manifest generator binary. Point at it with `--generator <path>` or the `INTERFACE_MANIFEST_GENERATOR` environment variable. When neither is available the check skips gracefully with a warning and records nothing, so it never blocks a build.
 
 ```bash
 export INTERFACE_MANIFEST_GENERATOR=$PWD/build/autoware_component_interface_specs/generate_interface_manifest
@@ -62,6 +62,6 @@ ament_autoware_interface_spec_lint --warn-only \
   --generator "$INTERFACE_MANIFEST_GENERATOR"
 ```
 
-## Milestone status
+## Status
 
-M0 is advisory only. `manifest_fresh` records drift but returns success; the pre-commit hook prints warnings and exits 0. M2 flips both the static checks and `manifest_fresh` to hard failures.
+The checks are advisory only. `manifest_fresh` records drift but returns success; the pre-commit hook prints warnings and exits 0. A follow-up change flips both the static checks and `manifest_fresh` to hard failures.

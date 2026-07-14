@@ -14,8 +14,9 @@
 
 """Static and manifest checks for the Autoware component interface specs.
 
-All checks are WARN-only in milestone M0: they report human-readable findings
-but never fail the build. The warn->error ratchet is a later milestone (M2).
+All checks are advisory (WARN-only) in this initial version: they report
+human-readable findings but never fail the build. Flipping the warnings into
+hard errors (the warn->error ratchet) is left to a follow-up change.
 """
 
 from __future__ import annotations
@@ -35,7 +36,7 @@ import tempfile
 # declaration is exempt from the spec_registered check.
 SUPPRESS_MARKER = "// interface-spec-lint: not-versioned"
 
-# Environment variable that points at the built M0.1 manifest generator binary.
+# Environment variable that points at the built manifest generator binary.
 GENERATOR_ENV = "INTERFACE_MANIFEST_GENERATOR"
 
 # Headers that are not per-domain spec files and carry no domain version / Specs.
@@ -82,7 +83,7 @@ _HISTORY = "keep_last"
 class Finding:
     """A single WARN-level diagnostic anchored at a file and line."""
 
-    level: str  # "WARN" (M0); "ERROR" later.
+    level: str  # "WARN" for now; "ERROR" later.
     file: str
     line: int
     message: str
@@ -256,7 +257,7 @@ def interface_spec_concept(spec_dir: Path, _manifest=None) -> list:
     """WARN for a struct with a `name[]` that is neither a valid topic nor service.
 
     A valid topic has Message + depth + reliability + durability; a valid service
-    has Service. This mirrors the compile-time AnySpec concept from M0.1.
+    has Service. This mirrors the compile-time AnySpec concept in autoware_component_interface_specs.
     """
     findings: list = []
     for path in _domain_headers(spec_dir):
@@ -304,7 +305,7 @@ def version_consistency(spec_dir: Path, manifest=None) -> list:
     """WARN on version-declaration problems in the domain headers.
 
     Flags a domain that does not declare exactly one `version{...}`, a domain
-    whose MAJOR is not 0 (the standard is unstable at 0.x in this wave), and a
+    whose MAJOR is not 0 (the standard is unstable while at 0.x), and a
     manifest version that disagrees with the header version for that domain.
     """
     findings: list = []
@@ -333,7 +334,7 @@ def version_consistency(spec_dir: Path, manifest=None) -> list:
                     str(path),
                     anchor,
                     f"domain '{domain}' version '{header_version}' is not 0.x; the "
-                    f"interface standard is unstable (0.x) in this wave",
+                    f"interface standard is unstable (0.x)",
                 )
             )
         for manifest_version in sorted(manifest_versions.get(domain, set())):
@@ -507,22 +508,22 @@ def resolve_generator(generator=None):
 
 
 def manifest_fresh(manifest=None, generator=None) -> list:
-    """Rebuild the manifest with the M0.1 generator and diff the committed copy.
+    """Rebuild the manifest with the specs generator and diff the committed copy.
 
-    In M0 this only RECORDS drift: it returns a WARN finding when the committed
+    For now this only RECORDS drift: it returns a WARN finding when the committed
     manifest is stale but never raises. It skips gracefully (returns []) when the
-    generator or committed manifest is unavailable. M2 flips drift to a hard
+    generator or committed manifest is unavailable. A follow-up change flips drift to a hard
     failure.
     """
     gen = resolve_generator(generator)
     if gen is None:
         _warn(
             "manifest_fresh: generator unavailable "
-            f"(pass --generator or set {GENERATOR_ENV}); skipping in M0"
+            f"(pass --generator or set {GENERATOR_ENV}); skipping"
         )
         return []
     if manifest is None or not Path(manifest).is_file():
-        _warn("manifest_fresh: committed manifest not found; skipping in M0")
+        _warn("manifest_fresh: committed manifest not found; skipping")
         return []
     with tempfile.TemporaryDirectory() as tmp:
         out = Path(tmp) / "manifest_under_test.json"
@@ -533,7 +534,7 @@ def manifest_fresh(manifest=None, generator=None) -> list:
             check=False,
         )
         if proc.returncode != 0 or not out.is_file():
-            _warn(f"manifest_fresh: generator failed (rc={proc.returncode}); skipping in M0")
+            _warn(f"manifest_fresh: generator failed (rc={proc.returncode}); skipping")
             return []
         generated = out.read_text()
     committed = Path(manifest).read_text()
@@ -544,7 +545,7 @@ def manifest_fresh(manifest=None, generator=None) -> list:
                 str(manifest),
                 1,
                 "committed interface_manifest.json is stale: it differs from the "
-                "generator output; regenerate it (M0 records only, M2 fails the build)",
+                "generator output; regenerate it (advisory for now; a follow-up fails the build)",
             )
         ]
     return []

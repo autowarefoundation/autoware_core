@@ -43,7 +43,7 @@ def test_skips_when_generator_unavailable(tmp_path, monkeypatch):
     monkeypatch.delenv(GENERATOR_ENV, raising=False)
     manifest = tmp_path / "interface_manifest.json"
     manifest.write_text('{"owner": "x", "interfaces": []}\n')
-    # No generator provided and env not set -> record-only skip (M0), never raises.
+    # No generator provided and env not set -> record-only skip, never raises.
     assert manifest_fresh(manifest, generator=None) == []
 
 
@@ -68,8 +68,8 @@ def test_drift_is_recorded_as_warning(tmp_path):
     manifest.write_text('{"owner": "autowarefoundation", "interfaces": []}\n')
     gen = _make_stub_generator(tmp_path, '{"owner": "autowarefoundation", "interfaces": [1]}\n')
     findings = manifest_fresh(manifest, generator=gen)
-    # M0 is record-only: drift is detected and reported as WARN, but this test
-    # never fails on drift itself. M2 flips this to a hard failure.
+    # This is record-only: drift is detected and reported as WARN, but this test
+    # never fails on drift itself. A follow-up flips this to a hard failure.
     assert len(findings) == 1
     assert findings[0].level == "WARN"
     assert "stale" in findings[0].message
@@ -87,7 +87,7 @@ def test_committed_manifest_is_up_to_date():
     if not committed.is_file():
         pytest.skip("committed interface_manifest.json not found in this workspace")
     findings = manifest_fresh(committed, generator=gen)
-    # WARN-only governs the *hook*: a contributor's commit is never blocked in M0. The
+    # WARN-only governs the *hook*: a contributor's commit is never blocked. The
     # committed manifest matching the generator is a separate thing -- a repo invariant --
     # so a spec, QoS or version change that does not land the regenerated manifest in the
     # same commit fails here rather than reaching consumers.
