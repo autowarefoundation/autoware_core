@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/component_interface_utils/rclcpp.hpp"
 #include "autoware/component_interface_utils/rclcpp/exceptions.hpp"
 #include "autoware/component_interface_utils/rclcpp/interface.hpp"
 #include "autoware/component_interface_utils/rclcpp/service_client.hpp"
@@ -120,4 +121,41 @@ TEST(interface, service_wrappers_without_service_log)
 
   rclcpp::shutdown();
   (void)cli;
+}
+
+TEST(interface, node_adaptor_create_publisher_qos)
+{
+  using OperationModeState = autoware::component_interface_specs::system::OperationModeState;
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_adaptor");
+  autoware::component_interface_utils::NodeAdaptor adaptor(node.get());
+
+  autoware::component_interface_utils::Publisher<OperationModeState>::SharedPtr pub;
+  pub = adaptor.create_publisher<OperationModeState>();
+
+  // The returning create_publisher<Spec>() applies the spec's QoS (TRANSIENT_LOCAL).
+  const auto infos = node->get_publishers_info_by_topic(OperationModeState::name);
+  ASSERT_EQ(infos.size(), 1u);
+  EXPECT_EQ(infos[0].qos_profile().durability(), rclcpp::DurabilityPolicy::TransientLocal);
+  rclcpp::shutdown();
+  (void)pub;
+}
+
+TEST(interface, introspection_event_topic)
+{
+  using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
+  rclcpp::init(0, nullptr);
+  rclcpp::NodeOptions opts;
+  opts.append_parameter_override("component_interface.service_introspection", "contents");
+  auto node = std::make_shared<rclcpp::Node>("test_introspection", opts);
+  autoware::component_interface_utils::NodeAdaptor adaptor(node.get());
+
+  auto srv =
+    adaptor.create_service<ChangeOperationMode>([](auto, auto res) { res->status.success = true; });
+
+  // With introspection enabled, the service exposes its "/_service_event" topic.
+  const std::string event_topic = std::string(ChangeOperationMode::name) + "/_service_event";
+  EXPECT_FALSE(node->get_publishers_info_by_topic(event_topic).empty());
+  rclcpp::shutdown();
+  (void)srv;
 }
