@@ -994,10 +994,13 @@ public:
                 agnocast_response = agnocast_shared_future.get();
               promise_ptr->set_value(
                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
-              callback(std::move(shared_future));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
+              return;
             }
+            // callback() runs outside the try: the promise is already satisfied, so its
+            // exceptions must not reach set_exception().
+            callback(std::move(shared_future));
           })
         .request_id;
 
@@ -1084,10 +1087,13 @@ public:
                 ros2_shared_future.get();
               promise_ptr->set_value(
                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
-              callback(std::move(shared_future));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
+              return;
             }
+            // callback() runs outside the try: the promise is already satisfied, so its
+            // exceptions must not reach set_exception().
+            callback(std::move(shared_future));
           })
         .request_id;
 
@@ -1569,10 +1575,13 @@ public:
             try {
               promise_ptr->set_value(
                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
-              callback(std::move(shared_future));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
+              return;
             }
+            // callback() runs outside the try: the promise is already satisfied, so its
+            // exceptions must not reach set_exception().
+            callback(std::move(shared_future));
           })
         .request_id;
 
