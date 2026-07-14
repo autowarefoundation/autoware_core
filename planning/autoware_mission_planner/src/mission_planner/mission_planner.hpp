@@ -35,7 +35,6 @@
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <memory>
-#include <optional>
 #include <string>
 #include <vector>
 
@@ -83,7 +82,7 @@ private:
   void publish_processing_time(
     autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
 
-  std::optional<ArrivalChecker> arrival_checker_;
+  ArrivalChecker arrival_checker_;
   pluginlib::ClassLoader<PlannerPlugin> plugin_loader_;
   std::shared_ptr<PlannerPlugin> planner_;
 

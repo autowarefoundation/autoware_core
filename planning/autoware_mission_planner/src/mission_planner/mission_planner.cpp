@@ -57,10 +57,21 @@ void set_success_response(
   res->status.code = code;
   res->status.message = message;
 }
+
+ArrivalCheckerThreshold get_arrival_checker_threshold(rclcpp::Node & node)
+{
+  ArrivalCheckerThreshold threshold;
+  threshold.angle =
+    autoware_utils_math::deg2rad(node.declare_parameter<double>("arrival_check_angle_deg"));
+  threshold.distance = node.declare_parameter<double>("arrival_check_distance");
+  threshold.duration = node.declare_parameter<double>("arrival_check_duration");
+  return threshold;
+}
 }  // namespace
 
 MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
 : Node("mission_planner", options),
+  arrival_checker_(get_arrival_checker_threshold(*this)),
   plugin_loader_("autoware_mission_planner", "autoware::mission_planner::PlannerPlugin"),
   tf_buffer_(get_clock()),
   tf_listener_(tf_buffer_),
@@ -75,13 +86,6 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   reroute_time_threshold_ = declare_parameter<double>("reroute_time_threshold");
   minimum_reroute_length_ = declare_parameter<double>("minimum_reroute_length");
   allow_reroute_in_autonomous_mode_ = declare_parameter<bool>("allow_reroute_in_autonomous_mode");
-
-  ArrivalCheckerThreshold arrival_checker_threshold;
-  arrival_checker_threshold.angle =
-    autoware_utils_math::deg2rad(declare_parameter<double>("arrival_check_angle_deg"));
-  arrival_checker_threshold.distance = declare_parameter<double>("arrival_check_distance");
-  arrival_checker_threshold.duration = declare_parameter<double>("arrival_check_duration");
-  arrival_checker_.emplace(arrival_checker_threshold);
 
   planner_ =
     plugin_loader_.createSharedInstance("autoware::mission_planner::lanelet2::DefaultPlanner");
@@ -167,11 +171,11 @@ void MissionPlanner::check_initialization()
 void MissionPlanner::on_odometry(const Odometry::ConstSharedPtr msg)
 {
   odometry_ = msg;
-  arrival_checker_->update(*msg);
+  arrival_checker_.update(*msg);
 
   // NOTE: Do not check in the other states as goal may change.
   if (state_.state == RouteState::SET) {
-    if (arrival_checker_->is_arrived()) {
+    if (arrival_checker_.is_arrived()) {
       change_state(RouteState::ARRIVED);
     }
   }
@@ -353,7 +357,7 @@ void MissionPlanner::change_route()
 {
   current_route_ = nullptr;
   planner_->clearRoute();
-  arrival_checker_->clear_goal();
+  arrival_checker_.clear_goal();
 
   // TODO(Takagi, Isamu): publish an empty route here
   // pub_route_->publish();
@@ -369,7 +373,7 @@ void MissionPlanner::change_route(const LaneletRoute & route)
 
   current_route_ = std::make_shared<LaneletRoute>(route);
   planner_->updateRoute(route);
-  arrival_checker_->set_goal(goal);
+  arrival_checker_.set_goal(goal);
 
   pub_route_->publish(route);
   pub_marker_->publish(planner_->visualize(route));
