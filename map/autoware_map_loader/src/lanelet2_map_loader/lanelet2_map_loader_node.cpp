@@ -112,15 +112,14 @@ lanelet::LaneletMapPtr Lanelet2MapLoaderNode::load_map(
   const std::string & lanelet2_filename,
   const autoware_map_msgs::msg::MapProjectorInfo & projector_info)
 {
-  Lanelet2MapLoaderParams dummy_params;
-  Lanelet2MapLoader core(dummy_params);
-  std::vector<std::string> warnings;
-
   try {
-    auto map = core.load_map(lanelet2_filename, projector_info, warnings);
+    std::vector<std::string> warnings;
+
+    auto map = Lanelet2MapLoader::load_map(lanelet2_filename, projector_info, warnings);
     for (const auto & w : warnings) {
       RCLCPP_ERROR_STREAM(rclcpp::get_logger("map_loader"), w);
     }
+
     return map;
   } catch (const MapLoadException & e) {
     for (const auto & err : e.errors) {
@@ -133,9 +132,7 @@ lanelet::LaneletMapPtr Lanelet2MapLoaderNode::load_map(
 component_interface_specs::map::VectorMap::Message Lanelet2MapLoaderNode::create_map_bin_msg(
   const lanelet::LaneletMapPtr map, const std::string & lanelet2_filename, const rclcpp::Time & now)
 {
-  Lanelet2MapLoaderParams dummy_params;
-  Lanelet2MapLoader core(dummy_params);
-  auto msg = core.create_map_bin_msg(map, lanelet2_filename);
+  auto msg = Lanelet2MapLoader::create_map_bin_msg(map, lanelet2_filename);
   msg.header.stamp = now;
   return msg;
 }
