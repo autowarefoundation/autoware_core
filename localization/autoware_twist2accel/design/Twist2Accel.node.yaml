@@ -1,0 +1,40 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: Twist2Accel.node
+package:
+  name: autoware_twist2accel
+  provider: autoware
+launch:
+  plugin: autoware::twist2accel::Twist2Accel
+  executable: autoware_twist2accel_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: odom
+    message_type: nav_msgs/msg/Odometry
+    remap_target: input/odom
+  - name: twist
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    remap_target: input/twist
+publishers:
+  - name: accel
+    message_type: geometry_msgs/msg/AccelWithCovarianceStamped
+    remap_target: output/accel
+# parameters
+param_files:
+  - name: twist2accel_param
+    default: $(find-pkg-share autoware_twist2accel)/config/twist2accel.param.yaml
+param_values:
+  - name: use_odom
+    type: bool
+    default: true
+  - name: accel_lowpass_gain
+    type: double
+    default: 0.9
+# processes
+processes:
+  - name: estimate_acceleration
+    trigger_conditions:
+      - on_input: twist
+    outcomes:
+      - to_output: accel
