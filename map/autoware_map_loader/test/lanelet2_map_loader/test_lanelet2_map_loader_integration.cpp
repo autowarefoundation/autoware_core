@@ -50,7 +50,7 @@ protected:
     const auto deadline = std::chrono::steady_clock::now() + timeout;
     while (projector_pub_->get_subscription_count() == 0) {
       if (std::chrono::steady_clock::now() > deadline) {
-        FAIL() << "Discovery timed out after 5 secs.";
+        FAIL() << "Pub/sub handshake & discovery timed out.";
       }
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
