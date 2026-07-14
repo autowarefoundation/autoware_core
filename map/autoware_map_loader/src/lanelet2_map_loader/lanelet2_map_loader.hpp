@@ -59,7 +59,7 @@ public:
   std::vector<std::string> errors;
 };
 
-struct Lanelet2MapLoaderParameters
+struct Lanelet2MapLoaderParams
 {
   std::string lanelet2_map_path;
   std::string lanelet2_map_metadata_path;
@@ -76,10 +76,10 @@ struct Lanelet2MapLoaderResult
   std::vector<std::string> infos;
 };
 
-class Lanelet2MapLoaderCore
+class Lanelet2MapLoader
 {
 public:
-  explicit Lanelet2MapLoaderCore(const Lanelet2MapLoaderParameters & params);
+  explicit Lanelet2MapLoader(const Lanelet2MapLoaderParams & params);
 
   [[nodiscard]] Lanelet2MapLoaderResult execute(
     const autoware_map_msgs::msg::MapProjectorInfo & projector_info) const;
@@ -93,7 +93,7 @@ public:
     const lanelet::LaneletMapPtr map, const std::string & lanelet2_filename) const;
 
 private:
-  Lanelet2MapLoaderParameters params_;
+  Lanelet2MapLoaderParams params_;
 };
 
 }  // namespace autoware::map_loader
