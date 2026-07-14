@@ -30,6 +30,42 @@ SelectedMapLoaderModule::SelectedMapLoaderModule(
 {
 }
 
+namespace
+{
+/// @brief Planning result for selected-map requests.
+struct SelectedMapLoadPlan
+{
+  /// @brief IDs found in the metadata dictionary and to be loaded.
+  std::vector<std::string> map_ids_to_load;
+  /// @brief Requested IDs not found in the metadata dictionary.
+  std::vector<std::string> missing_ids;
+};
+
+/// @brief Create a load plan from requested selected IDs and known metadata.
+/// @param request_ids Requested map IDs.
+/// @param pcd_file_metadata_dict Metadata dictionary keyed by map ID.
+/// @return Plan containing IDs to load and missing IDs.
+SelectedMapLoadPlan create_selected_map_load_plan(
+  const std::vector<std::string> & request_ids,
+  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
+{
+  SelectedMapLoadPlan plan;
+
+  for (const auto & request_id : request_ids) {
+    const auto selected_map_it = pcd_file_metadata_dict.find(request_id);
+    if (selected_map_it == pcd_file_metadata_dict.end()) {
+      plan.missing_ids.push_back(request_id);
+      continue;
+    }
+
+    const std::string & map_id = selected_map_it->first;
+    plan.map_ids_to_load.push_back(map_id);
+  }
+
+  return plan;
+}
+}  // namespace
+
 autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
   const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
 {
@@ -54,26 +90,6 @@ autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
   }
 
   return metadata_msg;
-}
-
-SelectedMapLoadPlan create_selected_map_load_plan(
-  const std::vector<std::string> & request_ids,
-  const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict)
-{
-  SelectedMapLoadPlan plan;
-
-  for (const auto & request_id : request_ids) {
-    const auto selected_map_it = pcd_file_metadata_dict.find(request_id);
-    if (selected_map_it == pcd_file_metadata_dict.end()) {
-      plan.missing_ids.push_back(request_id);
-      continue;
-    }
-
-    const std::string & map_id = selected_map_it->first;
-    plan.map_ids_to_load.push_back(map_id);
-  }
-
-  return plan;
 }
 
 bool SelectedMapLoaderModule::create_response(
