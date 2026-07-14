@@ -45,9 +45,13 @@ protected:
   void TearDown() override { test_node_.reset(); }
 
   // Helper to ensure pub/sub are linked before sending data
-  void wait_for_discovery()
+  void wait_for_discovery(std::chrono::seconds timeout = std::chrono::seconds(3))
   {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
     while (projector_pub_->get_subscription_count() == 0) {
+      if (std::chrono::steady_clock::now() > deadline) {
+        FAIL() << "Discovery timed out after 5 secs.";
+      }
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
   }
