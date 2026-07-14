@@ -84,13 +84,13 @@ public:
   [[nodiscard]] Lanelet2MapLoaderResult execute(
     const autoware_map_msgs::msg::MapProjectorInfo & projector_info) const;
 
-  lanelet::LaneletMapPtr load_map(
+  static lanelet::LaneletMapPtr load_map(
     const std::string & lanelet2_filename,
     const autoware_map_msgs::msg::MapProjectorInfo & projector_info,
-    std::vector<std::string> & warnings) const;
+    std::vector<std::string> & warnings);
 
-  [[nodiscard]] autoware_map_msgs::msg::LaneletMapBin create_map_bin_msg(
-    const lanelet::LaneletMapPtr map, const std::string & lanelet2_filename) const;
+  static autoware_map_msgs::msg::LaneletMapBin create_map_bin_msg(
+    const lanelet::LaneletMapPtr map, const std::string & lanelet2_filename);
 
 private:
   Lanelet2MapLoaderParams params_;

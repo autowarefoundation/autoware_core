@@ -142,7 +142,7 @@ Lanelet2MapLoaderResult Lanelet2MapLoader::execute(
 lanelet::LaneletMapPtr Lanelet2MapLoader::load_map(
   const std::string & lanelet2_filename,
   const autoware_map_msgs::msg::MapProjectorInfo & projector_info,
-  std::vector<std::string> & warnings) const
+  std::vector<std::string> & warnings)
 {
   lanelet::ErrorMessages errors{};
   if (projector_info.projector_type != autoware_map_msgs::msg::MapProjectorInfo::LOCAL) {
@@ -173,7 +173,7 @@ lanelet::LaneletMapPtr Lanelet2MapLoader::load_map(
 }
 
 autoware_map_msgs::msg::LaneletMapBin Lanelet2MapLoader::create_map_bin_msg(
-  const lanelet::LaneletMapPtr map, const std::string & lanelet2_filename) const
+  const lanelet::LaneletMapPtr map, const std::string & lanelet2_filename)
 {
   std::string format_version{};
   std::string map_version{};
