@@ -79,6 +79,19 @@ public:
     return client_->async_send_request(request).future;
   }
 
+  /// Send request with a response callback. The callback is wrapped in a
+  /// concrete-signature lambda so callers may pass a generic (auto-parameter)
+  /// callback, which rclcpp::Client::async_send_request would otherwise reject.
+  template <class CallbackT>
+  typename WrapType::SharedFuture async_send_request(
+    typename WrapType::SharedRequest request, CallbackT && callback)
+  {
+    return client_
+      ->async_send_request(
+        request, [callback](typename WrapType::SharedFuture future) { callback(future); })
+      .future;
+  }
+
   /// Check if the service is ready.
   bool service_is_ready() const { return client_->service_is_ready(); }
 

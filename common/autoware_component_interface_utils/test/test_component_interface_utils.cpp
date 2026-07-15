@@ -182,6 +182,24 @@ TEST(interface, service_wrappers_without_service_log)
   (void)cli;
 }
 
+TEST(interface, client_async_send_request_callback_overload)
+{
+  using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_async_callback");
+  autoware::component_interface_utils::NodeAdaptor adaptor(node.get());
+  auto cli = adaptor.create_client<ChangeOperationMode>();
+
+  // The two-argument async_send_request(request, callback) overload is part of the
+  // wrapper's public contract: universe consumers (e.g. the rviz panels,
+  // command_mode_switcher) pass a response callback. Pin that it exists and returns
+  // a valid shared future so it cannot be dropped again.
+  auto req = std::make_shared<ChangeOperationMode::Service::Request>();
+  auto future = cli->async_send_request(req, [](auto) {});
+  EXPECT_TRUE(future.valid());
+  rclcpp::shutdown();
+}
+
 TEST(interface, node_adaptor_create_publisher_qos)
 {
   using OperationModeState = autoware::component_interface_specs::system::OperationModeState;
