@@ -6,8 +6,8 @@ repositories:
     version: main
   autoware/autoware_universe:
     type: git
-    url: https://github.com/autowarefoundation/autoware_universe.git
-    version: main
+    url: https://github.com/youtalk/autoware_universe.git
+    version: refactor/finish-service-log-removal
   autoware/autoware_adapi_msgs:
     type: git
     url: https://github.com/autowarefoundation/autoware_adapi_msgs.git
