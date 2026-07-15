@@ -17,7 +17,16 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+// ROS 2 service introspection (rcl/service_introspection.h and
+// Client/Service::configure_introspection) is available from Iron onward; ROS 2
+// Humble does not ship it. Gate the feature on the header so this package builds
+// on both distributions — service introspection is simply unavailable on Humble.
+#if __has_include(<rcl/service_introspection.h>)
 #include <rcl/service_introspection.h>
+#define AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION 1
+#else
+#define AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION 0
+#endif
 
 #include <memory>
 #include <string>
@@ -25,18 +34,19 @@
 namespace autoware::component_interface_utils
 {
 
-/// Node-scoped adaptor context. Holds the node pointer and the resolved
-/// service-introspection state. Service tracing is provided by ROS 2 service
-/// introspection (see configure_introspection in the service wrappers), not a
-/// custom log topic. The state is read once from the
+/// Node-scoped adaptor context. Holds the node pointer and, where ROS 2 service
+/// introspection is available, the introspection state resolved once from the
 /// "component_interface.service_introspection" string parameter
-/// ("off" | "metadata" | "contents"), defaulting to "off".
+/// ("off" | "metadata" | "contents", default "off"). Service-call tracing is
+/// provided by ROS 2 service introspection (see the service wrappers), not a
+/// custom log topic.
 struct NodeInterface
 {
   using SharedPtr = std::shared_ptr<NodeInterface>;
 
   explicit NodeInterface(rclcpp::Node * node) : node(node)
   {
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
     const std::string param = "component_interface.service_introspection";
     const std::string mode = node->has_parameter(param)
                                ? node->get_parameter(param).as_string()
@@ -48,10 +58,13 @@ struct NodeInterface
     } else {
       introspection_state = RCL_SERVICE_INTROSPECTION_OFF;
     }
+#endif
   }
 
   rclcpp::Node * node;
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
   rcl_service_introspection_state_t introspection_state = RCL_SERVICE_INTROSPECTION_OFF;
+#endif
 };
 
 }  // namespace autoware::component_interface_utils

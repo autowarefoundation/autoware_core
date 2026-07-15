@@ -60,10 +60,12 @@ public:
   {
     service_ = interface_->node->create_service<typename SpecT::Service>(
       SpecT::name, wrap(callback), rclcpp::ServicesQoS(), group);
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
     if (interface_->introspection_state != RCL_SERVICE_INTROSPECTION_OFF) {
       service_->configure_introspection(
         interface_->node->get_clock(), rclcpp::QoS(1), interface_->introspection_state);
     }
+#endif
   }
 
   /// Create a service callback that converts exceptions into the response status.

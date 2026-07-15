@@ -127,11 +127,16 @@ TEST(interface, node_interface_no_service_log)
   auto node = std::make_shared<rclcpp::Node>("test_node_interface");
   autoware::component_interface_utils::NodeInterface interface(node.get());
   EXPECT_EQ(interface.node, node.get());
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
   // Service tracing is provided by ROS 2 service introspection, which defaults to OFF.
   EXPECT_EQ(interface.introspection_state, RCL_SERVICE_INTROSPECTION_OFF);
+#endif
   rclcpp::shutdown();
 }
 
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
+// Service introspection is Iron+; these cases exercise the introspection state
+// and the service-event topics, which do not exist on ROS 2 Humble.
 TEST(interface, node_interface_reads_introspection_parameter)
 {
   rclcpp::init(0, nullptr);
@@ -149,6 +154,7 @@ TEST(interface, node_interface_reads_introspection_parameter)
   EXPECT_EQ(second.introspection_state, RCL_SERVICE_INTROSPECTION_METADATA);
   rclcpp::shutdown();
 }
+#endif
 
 TEST(interface, service_wrappers_without_service_log)
 {
@@ -195,6 +201,9 @@ TEST(interface, node_adaptor_create_publisher_qos)
   (void)pub;
 }
 
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
+// Service-event topics only exist where ROS 2 service introspection is available
+// (Iron onward), so these cases do not run on ROS 2 Humble.
 TEST(interface, introspection_event_topic)
 {
   using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
@@ -232,3 +241,4 @@ TEST(interface, client_introspection_event_topic)
   rclcpp::shutdown();
   (void)cli;
 }
+#endif
