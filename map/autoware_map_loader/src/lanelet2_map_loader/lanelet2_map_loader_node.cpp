@@ -99,13 +99,13 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
       this, result.cell_metadata_dict, *msg, params.center_line_resolution, params.use_waypoints);
   }
 
-  auto map_bin_msg = result.map_bin_msg;
-  map_bin_msg.header.stamp = now();
-  map_bin_msg.header.frame_id = "map";
+  // Modify result in-place to avoid copying message
+  result.map_bin_msg.header.stamp = now();
+  result.map_bin_msg.header.frame_id = "map";
 
   pub_map_bin_ =
     create_publisher<VectorMap::Message>(VectorMap::name, rclcpp::QoS{1}.transient_local());
-  pub_map_bin_->publish(map_bin_msg);
+  pub_map_bin_->publish(result.map_bin_msg);
   RCLCPP_INFO(get_logger(), "Succeeded to load lanelet2_map. Map is published.");
 }
 
