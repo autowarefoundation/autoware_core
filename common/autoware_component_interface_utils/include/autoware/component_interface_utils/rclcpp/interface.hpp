@@ -17,15 +17,19 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-// ROS 2 service introspection (rcl/service_introspection.h and
-// Client/Service::configure_introspection) is available from Iron onward; ROS 2
-// Humble does not ship it. Gate the feature on the header so this package builds
-// on both distributions — service introspection is simply unavailable on Humble.
-#if __has_include(<rcl/service_introspection.h>)
+#include <rclcpp/version.h>
+
+// ROS 2 Iron (rclcpp 21) introduced both service introspection
+// (Client/Service::configure_introspection, rcl/service_introspection.h) and the
+// rclcpp::QoS overloads of create_client/create_service. ROS 2 Humble (rclcpp 16)
+// has neither: it ships no rcl/service_introspection.h and exposes only the
+// rmw_qos_profile_t QoS overload. Gate both on the rclcpp version so this package
+// builds on Humble and Jazzy alike; service introspection is unavailable on Humble.
+#if RCLCPP_VERSION_GTE(21, 0, 0)
 #include <rcl/service_introspection.h>
-#define AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION 1
+#define AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON 1
 #else
-#define AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION 0
+#define AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON 0
 #endif
 
 #include <memory>
@@ -46,7 +50,7 @@ struct NodeInterface
 
   explicit NodeInterface(rclcpp::Node * node) : node(node)
   {
-#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
     const std::string param = "component_interface.service_introspection";
     const std::string mode = node->has_parameter(param)
                                ? node->get_parameter(param).as_string()
@@ -62,7 +66,7 @@ struct NodeInterface
   }
 
   rclcpp::Node * node;
-#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
   rcl_service_introspection_state_t introspection_state = RCL_SERVICE_INTROSPECTION_OFF;
 #endif
 };

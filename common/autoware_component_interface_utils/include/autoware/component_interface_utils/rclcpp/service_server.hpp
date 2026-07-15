@@ -58,13 +58,17 @@ public:
     rclcpp::CallbackGroup::SharedPtr group)
   : interface_(interface)
   {
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
     service_ = interface_->node->create_service<typename SpecT::Service>(
       SpecT::name, wrap(callback), rclcpp::ServicesQoS(), group);
-#if AUTOWARE_COMPONENT_INTERFACE_UTILS_HAS_SERVICE_INTROSPECTION
     if (interface_->introspection_state != RCL_SERVICE_INTROSPECTION_OFF) {
       service_->configure_introspection(
         interface_->node->get_clock(), rclcpp::QoS(1), interface_->introspection_state);
     }
+#else
+    // ROS 2 Humble exposes only the (non-deprecated) rmw_qos_profile_t overload.
+    service_ = interface_->node->create_service<typename SpecT::Service>(
+      SpecT::name, wrap(callback), rmw_qos_profile_services_default, group);
 #endif
   }
 
