@@ -58,7 +58,7 @@ Lanelet2MapLoader::Lanelet2MapLoader(const Lanelet2MapLoaderParams & params) : p
 }
 
 Lanelet2MapLoaderResult Lanelet2MapLoader::execute(
-  const autoware_map_msgs::msg::MapProjectorInfo & projector_info) const
+  const autoware_map_msgs::msg::MapProjectorInfo & projector_info, const rclcpp::Time & now) const
 {
   Lanelet2MapLoaderResult result;
 
@@ -136,6 +136,9 @@ Lanelet2MapLoaderResult Lanelet2MapLoader::execute(
   }
 
   result.map_bin_msg = create_map_bin_msg(map, lanelet2_filename);
+  result.map_bin_msg.header.stamp = now;
+  result.map_bin_msg.header.frame_id = "map";
+
   return result;
 }
 
