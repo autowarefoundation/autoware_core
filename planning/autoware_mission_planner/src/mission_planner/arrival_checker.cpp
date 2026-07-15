@@ -19,9 +19,47 @@
 #include <tf2/utils.hpp>
 
 #include <cmath>
+#include <deque>
 
 namespace autoware::mission_planner
 {
+
+namespace
+{
+bool is_vehicle_stopped(
+  const std::deque<geometry_msgs::msg::TwistStamped> & twist_buffer, const double duration)
+{
+  if (twist_buffer.empty()) {
+    return false;
+  }
+
+  constexpr double squared_stop_velocity = 1e-3 * 1e-3;
+
+  const rclcpp::Time now(twist_buffer.front().header.stamp);
+  const auto time_buffer_back = now - rclcpp::Time(twist_buffer.back().header.stamp);
+  if (time_buffer_back.seconds() < duration) {
+    return false;
+  }
+
+  // Get velocities within the stop duration.
+  for (const auto & velocity : twist_buffer) {
+    const double x = velocity.twist.linear.x;
+    const double y = velocity.twist.linear.y;
+    const double z = velocity.twist.linear.z;
+    const double squared_velocity = (x * x) + (y * y) + (z * z);
+    if (squared_stop_velocity <= squared_velocity) {
+      return false;
+    }
+
+    const auto time_diff = now - rclcpp::Time(velocity.header.stamp);
+    if (time_diff.seconds() >= duration) {
+      break;
+    }
+  }
+
+  return true;
+}
+}  // namespace
 
 ArrivalChecker::ArrivalChecker(const ArrivalCheckerThreshold & threshold) : threshold_(threshold)
 {
@@ -91,39 +129,7 @@ bool ArrivalChecker::is_arrived() const
   }
 
   // Check vehicle stopped.
-  return is_vehicle_stopped(rclcpp::Time(odometry.header.stamp));
-}
-
-bool ArrivalChecker::is_vehicle_stopped(const rclcpp::Time & now) const
-{
-  if (twist_buffer_.empty()) {
-    return false;
-  }
-
-  constexpr double squared_stop_velocity = 1e-3 * 1e-3;
-
-  const auto time_buffer_back = now - rclcpp::Time(twist_buffer_.back().header.stamp);
-  if (time_buffer_back.seconds() < threshold_.duration) {
-    return false;
-  }
-
-  // Get velocities within the stop duration.
-  for (const auto & velocity : twist_buffer_) {
-    const double x = velocity.twist.linear.x;
-    const double y = velocity.twist.linear.y;
-    const double z = velocity.twist.linear.z;
-    const double squared_velocity = (x * x) + (y * y) + (z * z);
-    if (squared_stop_velocity <= squared_velocity) {
-      return false;
-    }
-
-    const auto time_diff = now - rclcpp::Time(velocity.header.stamp);
-    if (time_diff.seconds() >= threshold_.duration) {
-      break;
-    }
-  }
-
-  return true;
+  return is_vehicle_stopped(twist_buffer_, threshold_.duration);
 }
 
 }  // namespace autoware::mission_planner

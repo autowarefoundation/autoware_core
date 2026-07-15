@@ -57,8 +57,6 @@ public:
   bool is_arrived() const;
 
 private:
-  bool is_vehicle_stopped(const rclcpp::Time & now) const;
-
   ArrivalCheckerThreshold threshold_;
   std::optional<PoseWithUuidStamped> goal_with_uuid_;
   std::optional<Odometry> odometry_;
