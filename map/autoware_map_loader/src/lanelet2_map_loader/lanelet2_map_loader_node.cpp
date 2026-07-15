@@ -132,6 +132,8 @@ component_interface_specs::map::VectorMap::Message Lanelet2MapLoaderNode::create
 {
   auto msg = Lanelet2MapLoader::create_map_bin_msg(map, lanelet2_filename);
   msg.header.stamp = now;
+  msg.header.frame_id = "map";
+
   return msg;
 }
 
