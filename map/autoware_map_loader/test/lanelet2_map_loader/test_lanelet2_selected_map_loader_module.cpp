@@ -139,7 +139,12 @@ TEST_F(TestLanelet2SelectedMapLoaderModule, MetadataTopicPublished)
       received = true;
     });
 
-  rclcpp::spin_some(node_);
+  const auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+  while (!received && std::chrono::steady_clock::now() < timeout) {
+    rclcpp::spin_some(node_);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
+
   EXPECT_TRUE(received) << "LaneletMapMetaData was not received on output/lanelet2_map_metadata";
 }
 
