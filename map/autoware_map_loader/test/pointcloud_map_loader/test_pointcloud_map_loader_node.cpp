@@ -16,6 +16,8 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
+#include <autoware_map_msgs/srv/get_partial_point_cloud_map.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <gtest/gtest.h>
@@ -28,7 +30,10 @@
 #include <string>
 #include <vector>
 
-class TestPointcloudMapLoaderModule : public ::testing::Test
+using autoware_map_msgs::srv::GetDifferentialPointCloudMap;
+using autoware_map_msgs::srv::GetPartialPointCloudMap;
+
+class TestPointcloudMapLoaderNode : public ::testing::Test
 {
 protected:
   std::shared_ptr<autoware::map_loader::PointCloudMapLoaderNode> map_loader_node_;
@@ -69,7 +74,7 @@ protected:
   void TearDown() override { rclcpp::shutdown(); }
 };
 
-TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
+TEST_F(TestPointcloudMapLoaderNode, LoadPCDFilesNoDownsampleTest)
 {
   using namespace std::literals::chrono_literals;
 
@@ -111,6 +116,78 @@ TEST_F(TestPointcloudMapLoaderModule, LoadPCDFilesNoDownsampleTest)
     EXPECT_FLOAT_EQ(received_cloud.points[i].y, static_cast<float>(i * 2));
     EXPECT_FLOAT_EQ(received_cloud.points[i].z, static_cast<float>(i * 3));
   }
+}
+
+TEST_F(TestPointcloudMapLoaderNode, LoadDifferentialPCDFiles)
+{
+  auto client = map_loader_node_->create_client<GetDifferentialPointCloudMap>(
+    "service/get_differential_pcd_map");
+
+  ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(3)));
+
+  auto request = std::make_shared<GetDifferentialPointCloudMap::Request>();
+  request->area.center_x = 0;
+  request->area.center_y = 0;
+  request->area.radius = 2;
+  request->cached_ids.clear();
+
+  auto result_future = client->async_send_request(request);
+  ASSERT_EQ(
+    rclcpp::spin_until_future_complete(map_loader_node_, result_future),
+    rclcpp::FutureReturnCode::SUCCESS);
+
+  auto result = result_future.get();
+  ASSERT_EQ(static_cast<int>(result->new_pointcloud_with_ids.size()), 1);
+  EXPECT_EQ(result->new_pointcloud_with_ids[0].cell_id, temp_pcd_path);
+  EXPECT_EQ(static_cast<int>(result->ids_to_remove.size()), 0);
+}
+
+TEST(PointcloudMapLoaderNodePartial, LoadPartialPCDFiles)
+{
+  rclcpp::init(0, nullptr);
+
+  pcl::PointCloud<pcl::PointXYZ> dummy_cloud;
+  dummy_cloud.width = 3;
+  dummy_cloud.height = 1;
+  dummy_cloud.points.resize(dummy_cloud.width * dummy_cloud.height);
+  dummy_cloud.points[0] = pcl::PointXYZ(-1.0, -1.0, -1.0);
+  dummy_cloud.points[1] = pcl::PointXYZ(0.0, 0.0, 0.0);
+  dummy_cloud.points[2] = pcl::PointXYZ(1.0, 1.0, 1.0);
+
+  const std::string partial_test_pcd_path = "/tmp/test_pointcloud_map_loader_node_partial.pcd";
+  pcl::io::savePCDFileASCII(partial_test_pcd_path, dummy_cloud);
+
+  rclcpp::NodeOptions node_options;
+  node_options.append_parameter_override(
+    "pcd_paths_or_directory", std::vector<std::string>{partial_test_pcd_path});
+  node_options.append_parameter_override("pcd_metadata_path", std::string("/tmp/not_used.yaml"));
+  node_options.append_parameter_override("enable_whole_load", false);
+  node_options.append_parameter_override("enable_downsampled_whole_load", false);
+  node_options.append_parameter_override("enable_partial_load", true);
+  node_options.append_parameter_override("enable_selected_load", false);
+
+  auto map_loader_node =
+    std::make_shared<autoware::map_loader::PointCloudMapLoaderNode>(node_options);
+  auto client =
+    map_loader_node->create_client<GetPartialPointCloudMap>("service/get_partial_pcd_map");
+
+  ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(3)));
+
+  auto request = std::make_shared<GetPartialPointCloudMap::Request>();
+  request->area.center_x = 0;
+  request->area.center_y = 0;
+  request->area.radius = 2;
+
+  auto result_future = client->async_send_request(request);
+  ASSERT_EQ(
+    rclcpp::spin_until_future_complete(map_loader_node, result_future),
+    rclcpp::FutureReturnCode::SUCCESS);
+
+  auto result = result_future.get();
+  ASSERT_EQ(static_cast<int>(result->new_pointcloud_with_ids.size()), 1);
+  EXPECT_EQ(result->new_pointcloud_with_ids[0].cell_id, partial_test_pcd_path);
+
+  rclcpp::shutdown();
 }
 
 int main(int argc, char ** argv)

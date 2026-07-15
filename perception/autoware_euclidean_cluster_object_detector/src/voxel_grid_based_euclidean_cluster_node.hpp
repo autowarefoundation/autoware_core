@@ -12,19 +12,19 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef VOXEL_GRID_BASED_EUCLIDEAN_CLUSTER_NODE_HPP_
-#define VOXEL_GRID_BASED_EUCLIDEAN_CLUSTER_NODE_HPP_
+#pragma once
 
-#include "voxel_grid_based_euclidean_cluster.hpp"
+#include "euclidean_cluster_object_detector.hpp"
 
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <autoware_perception_msgs/msg/detected_objects.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include <chrono>
 #include <memory>
 
 namespace autoware::euclidean_cluster
@@ -35,19 +35,15 @@ public:
   explicit VoxelGridBasedEuclideanClusterNode(const rclcpp::NodeOptions & options);
 
 private:
-  void onPointCloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr input_msg);
+  void on_point_cloud(const sensor_msgs::msg::PointCloud2::ConstSharedPtr input_msg);
 
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr pointcloud_sub_;
   rclcpp::Publisher<autoware_perception_msgs::msg::DetectedObjects>::SharedPtr cluster_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr debug_pub_;
 
-  std::shared_ptr<VoxelGridBasedEuclideanCluster> cluster_;
+  std::shared_ptr<VoxelGridBasedEuclideanClusterDetector> detector_;
   std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
   std::unique_ptr<autoware_utils_debug::DebugPublisher> debug_publisher_;
-
   std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_interface_ptr_;
 };
-
 }  // namespace autoware::euclidean_cluster
-
-#endif  // VOXEL_GRID_BASED_EUCLIDEAN_CLUSTER_NODE_HPP_
