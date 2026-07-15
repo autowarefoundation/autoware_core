@@ -36,6 +36,8 @@
 
 #include "utils/lanelet2_map_cell_metadata.hpp"
 
+#include <rclcpp/time.hpp>
+
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 
@@ -82,7 +84,8 @@ public:
   explicit Lanelet2MapLoader(const Lanelet2MapLoaderParams & params);
 
   [[nodiscard]] Lanelet2MapLoaderResult execute(
-    const autoware_map_msgs::msg::MapProjectorInfo & projector_info) const;
+    const autoware_map_msgs::msg::MapProjectorInfo & projector_info,
+    const rclcpp::Time & now) const;
 
   static lanelet::LaneletMapPtr load_map(
     const std::string & lanelet2_filename,
