@@ -8,10 +8,10 @@ find_package(PCL REQUIRED COMPONENTS common io filters)
 
 ament_auto_add_library(pointcloud_map_loader_node SHARED
   src/pointcloud_map_loader/pointcloud_map_loader_node.cpp
-  src/pointcloud_map_loader/pointcloud_map_loader_module.cpp
-  src/pointcloud_map_loader/partial_map_loader_module.cpp
-  src/pointcloud_map_loader/differential_map_loader_module.cpp
-  src/pointcloud_map_loader/selected_map_loader_module.cpp
+  src/pointcloud_map_loader/pointcloud_map_loader.cpp
+  src/pointcloud_map_loader/partial_map_loader.cpp
+  src/pointcloud_map_loader/differential_map_loader.cpp
+  src/pointcloud_map_loader/selected_map_loader.cpp
   src/pointcloud_map_loader/utils.cpp
 )
 target_link_libraries(pointcloud_map_loader_node ${PCL_LIBRARIES})
@@ -62,16 +62,18 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   find_package(ament_index_cpp REQUIRED)
   ament_lint_auto_find_test_dependencies()
-  add_testcase(test/test_cylinder_box_overlap.cpp)
-  add_testcase(test/test_replace_with_absolute_path.cpp)
-  add_testcase(test/test_load_pcd_metadata.cpp)
-  add_testcase(test/test_pointcloud_map_loader_module.cpp)
-  add_testcase(test/test_partial_map_loader_module.cpp)
-  add_testcase(test/test_differential_map_loader_module.cpp)
-  add_testcase(test/test_selected_map_loader_module.cpp)
-  add_testcase(test/test_lanelet2_map_loader_utils.cpp)
-  add_testcase(test/test_lanelet2_map_cell_metadata.cpp)
-  add_testcase(test/test_lanelet2_selected_map_loader_module.cpp)
+  add_testcase(test/pointcloud_map_loader/test_cylinder_box_overlap.cpp)
+  add_testcase(test/pointcloud_map_loader/test_replace_with_absolute_path.cpp)
+  add_testcase(test/pointcloud_map_loader/test_load_pcd_metadata.cpp)
+  add_testcase(test/pointcloud_map_loader/test_pointcloud_map_loader_node.cpp)
+  add_testcase(test/pointcloud_map_loader/test_pointcloud_map_loader.cpp)
+  add_testcase(test/pointcloud_map_loader/test_partial_map_loader.cpp)
+  add_testcase(test/pointcloud_map_loader/test_differential_map_loader.cpp)
+  add_testcase(test/pointcloud_map_loader/test_selected_map_loader.cpp)
+  add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_utils.cpp)
+  add_testcase(test/lanelet2_map_loader/test_lanelet2_map_cell_metadata.cpp)
+  add_testcase(test/lanelet2_map_loader/test_lanelet2_selected_map_loader_module.cpp)
+  add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_integration.cpp)
 endif()
 
 install(PROGRAMS

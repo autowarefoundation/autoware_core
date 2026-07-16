@@ -1,4 +1,4 @@
-// Copyright 2024 The Autoware Contributors
+// Copyright 2020 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "service_utils.hpp"
+#ifndef PARAMETERS_HPP_
+#define PARAMETERS_HPP_
 
-#include <string>
-
-namespace service_utils
+namespace autoware::euclidean_cluster
 {
-
-ServiceException ServiceUnready(const std::string & message)
+struct EuclideanClusterParams
 {
-  return ServiceException(ResponseStatus::SERVICE_UNREADY, message, false);
-}
-
-ServiceException TransformError(const std::string & message)
-{
-  return ServiceException(ResponseStatus::TRANSFORM_ERROR, message, false);
+  bool use_height{false};
+  int min_cluster_size{1};
+  int max_cluster_size{500};
+  float tolerance{1.0f};
+  float voxel_leaf_size{0.0f};
+  int min_points_number_per_voxel{1};
 };
 
-}  // namespace service_utils
+}  // namespace autoware::euclidean_cluster
+
+#endif  // PARAMETERS_HPP_

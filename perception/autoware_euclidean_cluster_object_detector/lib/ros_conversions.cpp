@@ -11,23 +11,26 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-#include "utils.hpp"
 
-#include <autoware_perception_msgs/msg/object_classification.hpp>
+#include "ros_conversions.hpp"
+
 #include <sensor_msgs/msg/point_field.hpp>
 #include <sensor_msgs/point_cloud2_iterator.hpp>
+
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <vector>
 
 namespace autoware::euclidean_cluster
 {
-geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & pointcloud)
+geometry_msgs::msg::Point get_centroid(const sensor_msgs::msg::PointCloud2 & pointcloud)
 {
   geometry_msgs::msg::Point centroid;
   centroid.x = 0.0f;
   centroid.y = 0.0f;
   centroid.z = 0.0f;
   size_t size = 0;
+
   for (sensor_msgs::PointCloud2ConstIterator<float> iter_x(pointcloud, "x"),
        iter_y(pointcloud, "y"), iter_z(pointcloud, "z");
        iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
@@ -36,6 +39,7 @@ geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & poin
     centroid.z += *iter_z;
     size++;
   }
+
   // const size_t size = pointcloud.width * pointcloud.height;
   if (size == 0) {
     return centroid;
@@ -43,30 +47,34 @@ geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & poin
   centroid.x = centroid.x / static_cast<float>(size);
   centroid.y = centroid.y / static_cast<float>(size);
   centroid.z = centroid.z / static_cast<float>(size);
+
   return centroid;
 }
 
-void convertPointCloudClusters2Msg(
+void convert_clusters_to_detected_objects(
   const std_msgs::msg::Header & header,
   const std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters,
   autoware_perception_msgs::msg::DetectedObjects & msg)
 {
   msg.header = header;
+
   for (const auto & cluster : clusters) {
     sensor_msgs::msg::PointCloud2 ros_pointcloud;
     autoware_perception_msgs::msg::DetectedObject object;
     pcl::toROSMsg(cluster, ros_pointcloud);
+
     ros_pointcloud.header = header;
-    object.kinematics.pose_with_covariance.pose.position = getCentroid(ros_pointcloud);
+    object.kinematics.pose_with_covariance.pose.position = get_centroid(ros_pointcloud);
     autoware_perception_msgs::msg::ObjectClassification classification;
     classification.label = autoware_perception_msgs::msg::ObjectClassification::UNKNOWN;
     classification.probability = 1.0f;
     object.classification.emplace_back(classification);
+
     msg.objects.push_back(object);
   }
 }
 
-void convertClusters2SensorMsg(
+void convert_clusters_to_debug_point_cloud(
   const std_msgs::msg::Header & header, const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
   sensor_msgs::msg::PointCloud2 & output)
 {
@@ -92,6 +100,7 @@ void convertClusters2SensorMsg(
 
   constexpr uint8_t color_data[] = {200, 0,   0, 0,   200, 0,   0, 0,   200,
                                     200, 200, 0, 200, 0,   200, 0, 200, 200};  // 6 pattern
+
   size_t clusters_size = input.size();
   for (size_t i = 0; i < clusters_size; ++i) {
     const auto & cluster = input.at(i);
