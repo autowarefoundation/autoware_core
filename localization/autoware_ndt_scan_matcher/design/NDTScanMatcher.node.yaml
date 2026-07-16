@@ -1,0 +1,194 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: NDTScanMatcher.node
+package:
+  name: autoware_ndt_scan_matcher
+  provider: autoware
+launch:
+  plugin: autoware::ndt_scan_matcher::NDTScanMatcher
+  executable: autoware_ndt_scan_matcher_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: ekf_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: ekf_pose_with_covariance
+  - name: points_raw
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: points_raw
+  - name: regularization_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: regularization_pose_with_covariance
+publishers:
+  - name: points_aligned
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: points_aligned
+  - name: points_aligned_no_ground
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: points_aligned_no_ground
+  - name: ndt_pose
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: ndt_pose
+  - name: ndt_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: ndt_pose_with_covariance
+  - name: initial_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: initial_pose_with_covariance
+  - name: multi_ndt_pose
+    message_type: geometry_msgs/msg/PoseArray
+    remap_target: multi_ndt_pose
+  - name: multi_initial_pose
+    message_type: geometry_msgs/msg/PoseArray
+    remap_target: multi_initial_pose
+  - name: exe_time_ms
+    message_type: autoware_internal_debug_msgs/msg/Float32Stamped
+    remap_target: exe_time_ms
+  - name: transform_probability
+    message_type: autoware_internal_debug_msgs/msg/Float32Stamped
+    remap_target: transform_probability
+  - name: nearest_voxel_transformation_likelihood
+    message_type: autoware_internal_debug_msgs/msg/Float32Stamped
+    remap_target: nearest_voxel_transformation_likelihood
+  - name: voxel_score_points
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: voxel_score_points
+  - name: no_ground_transform_probability
+    message_type: autoware_internal_debug_msgs/msg/Float32Stamped
+    remap_target: no_ground_transform_probability
+  - name: no_ground_nearest_voxel_transformation_likelihood
+    message_type: autoware_internal_debug_msgs/msg/Float32Stamped
+    remap_target: no_ground_nearest_voxel_transformation_likelihood
+  - name: iteration_num
+    message_type: autoware_internal_debug_msgs/msg/Int32Stamped
+    remap_target: iteration_num
+  - name: initial_to_result_relative_pose
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: initial_to_result_relative_pose
+  - name: initial_to_result_distance
+    message_type: autoware_internal_debug_msgs/msg/Float32Stamped
+    remap_target: initial_to_result_distance
+  - name: initial_to_result_distance_old
+    message_type: autoware_internal_debug_msgs/msg/Float32Stamped
+    remap_target: initial_to_result_distance_old
+  - name: initial_to_result_distance_new
+    message_type: autoware_internal_debug_msgs/msg/Float32Stamped
+    remap_target: initial_to_result_distance_new
+  - name: ndt_marker
+    message_type: visualization_msgs/msg/MarkerArray
+    remap_target: ndt_marker
+  - name: monte_carlo_initial_pose_marker
+    message_type: visualization_msgs/msg/MarkerArray
+    remap_target: monte_carlo_initial_pose_marker
+  - name: loaded_pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: debug/loaded_pointcloud_map
+servers:
+  - name: ndt_align_srv
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    remap_target: ndt_align_srv
+  - name: trigger_node_srv
+    message_type: std_srvs/srv/SetBool
+    remap_target: trigger_node_srv
+clients:
+  - name: pcd_loader_service
+    message_type: autoware_map_msgs/srv/GetDifferentialPointCloudMap
+    remap_target: pcd_loader_service
+# parameters
+param_files:
+  - name: ndt_scan_matcher_param
+    default: $(find-pkg-share autoware_ndt_scan_matcher)/config/ndt_scan_matcher.param.yaml
+param_values:
+  - name: frame.base_frame
+    type: string
+    default: base_link
+  - name: frame.ndt_base_frame
+    type: string
+    default: ndt_base_link
+  - name: frame.map_frame
+    type: string
+    default: map
+  - name: sensor_points.timeout_sec
+    type: double
+    default: 1.0
+  - name: sensor_points.required_distance
+    type: double
+    default: 10.0
+  - name: ndt.trans_epsilon
+    type: double
+    default: 0.01
+  - name: ndt.step_size
+    type: double
+    default: 0.1
+  - name: ndt.resolution
+    type: double
+    default: 2.0
+  - name: ndt.max_iterations
+    type: int
+    default: 30
+  - name: ndt.num_threads
+    type: int
+    default: 4
+  - name: ndt.regularization.enable
+    type: bool
+    default: false
+  - name: ndt.regularization.scale_factor
+    type: double
+    default: 0.01
+  - name: initial_pose_estimation.particles_num
+    type: int
+    default: 200
+  - name: initial_pose_estimation.n_startup_trials
+    type: int
+    default: 100
+  - name: validation.initial_pose_timeout_sec
+    type: double
+    default: 1.0
+  - name: validation.initial_pose_distance_tolerance_m
+    type: double
+    default: 10.0
+  - name: validation.initial_to_result_distance_tolerance_m
+    type: double
+    default: 3.0
+  - name: validation.critical_upper_bound_exe_time_ms
+    type: double
+    default: 100.0
+  - name: validation.skipping_publish_num
+    type: int
+    default: 5
+  - name: score_estimation.converged_param_type
+    type: int
+    default: 1
+  - name: score_estimation.converged_param_transform_probability
+    type: double
+    default: 3.0
+  - name: score_estimation.no_ground_points.enable
+    type: bool
+    default: false
+  - name: covariance.covariance_estimation.temperature
+    type: double
+    default: 0.05
+  - name: covariance.covariance_estimation.scale_factor
+    type: double
+    default: 1.0
+  - name: dynamic_map_loading.update_distance
+    type: double
+    default: 20.0
+  - name: dynamic_map_loading.map_radius
+    type: double
+    default: 150.0
+  - name: dynamic_map_loading.lidar_radius
+    type: double
+    default: 100.0
+  - name: dynamic_map_loading.publish_loaded_map
+    type: bool
+    default: false
+# processes
+processes:
+  - name: ndt_scan_matching
+    trigger_conditions:
+      - on_input: points_raw
+    outcomes:
+      - to_output: ndt_pose
+      - to_output: ndt_pose_with_covariance
+      - to_output: points_aligned
