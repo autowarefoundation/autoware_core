@@ -15,6 +15,7 @@
 #ifndef WARNING_HPP_
 #define WARNING_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <chrono>
@@ -27,7 +28,7 @@ namespace autoware::ekf_localizer
 class Warning
 {
 public:
-  explicit Warning(rclcpp::Node * node) : node_(node) {}
+  explicit Warning(autoware::agnocast_wrapper::Node * node) : node_(node) {}
 
   // Additive seam: an explicitly-requested no-op logger constructed without a node, so EKFModule
   // can be unit-tested outside of a ROS runtime. When node_ is null, warn/warn_throttle silently
@@ -55,7 +56,7 @@ public:
   }
 
 private:
-  rclcpp::Node * node_;
+  autoware::agnocast_wrapper::Node * node_;
 };
 
 }  // namespace autoware::ekf_localizer
