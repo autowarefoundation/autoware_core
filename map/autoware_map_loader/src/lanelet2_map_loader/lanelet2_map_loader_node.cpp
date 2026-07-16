@@ -96,7 +96,20 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
 
   if (get_parameter("enable_selected_map_loading").as_bool()) {
     selected_map_loader_module_ = std::make_unique<Lanelet2SelectedMapLoaderModule>(
-      this, result.cell_metadata_dict, *msg, params.center_line_resolution, params.use_waypoints);
+      result.cell_metadata_dict, *msg, params.center_line_resolution, params.use_waypoints);
+
+    pub_metadata_ = create_publisher<autoware_map_msgs::msg::LaneletMapMetaData>(
+      "output/lanelet2_map_metadata", rclcpp::QoS{1}.transient_local());
+
+    auto meta_msg = selected_map_loader_module_->build_metadata_msg();
+    meta_msg.header.stamp = now();
+    meta_msg.header.frame_id = "map";
+    pub_metadata_->publish(meta_msg);
+
+    srv_get_selected_lanelet2_map_ = create_service<autoware_map_msgs::srv::GetSelectedLanelet2Map>(
+      "service/get_selected_lanelet2_map", std::bind(
+                                             &Lanelet2MapLoaderNode::on_get_selected_lanelet2_map,
+                                             this, std::placeholders::_1, std::placeholders::_2));
   }
 
   pub_map_bin_ =
@@ -104,6 +117,33 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   pub_map_bin_->publish(result.map_bin_msg);
 
   RCLCPP_INFO(get_logger(), "Succeeded to load lanelet2_map. Map is published.");
+}
+
+void Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
+  const autoware_map_msgs::srv::GetSelectedLanelet2Map::Request::ConstSharedPtr req,
+  const autoware_map_msgs::srv::GetSelectedLanelet2Map::Response::SharedPtr res)
+{
+  if (!selected_map_loader_module_) {
+    return;
+  }
+
+  const auto current_time = now();
+
+  // Retrieve payload from pure C++ core
+  res->lanelet2_cells = selected_map_loader_module_->execute(req->cell_ids);
+
+  if (res->lanelet2_cells.data.empty()) {
+    RCLCPP_ERROR(get_logger(), "Failed to load selected cells or map is empty.");
+    return;
+  }
+
+  // Explicitly apply outer header
+  res->header.stamp = current_time;
+  res->header.frame_id = "map";
+
+  // Explicitly apply inner header
+  res->lanelet2_cells.header.stamp = current_time;
+  res->lanelet2_cells.header.frame_id = "map";
 }
 
 lanelet::LaneletMapPtr Lanelet2MapLoaderNode::load_map(
