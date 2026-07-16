@@ -53,9 +53,9 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   ekf_dt_(params_.ekf_dt),
   pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
   twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size),
-  merged_diagnostic_last_transition_time_(0, 0, RCL_ROS_TIME),
-  last_pose_callback_time_(0, 0, RCL_ROS_TIME),
-  last_twist_callback_time_(0, 0, RCL_ROS_TIME)
+  cb_group_pose_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
+  cb_group_twist_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
+  merged_diagnostic_last_transition_time_(0, 0, RCL_ROS_TIME)
 {
   is_activated_ = false;
   is_set_initialpose_ = false;
@@ -87,12 +87,17 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
     [this]() { publish_diagnostics(); });
   sub_initialpose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
     "initialpose", 1, std::bind(&EKFLocalizer::callback_initial_pose, this, _1));
+  rclcpp::SubscriptionOptions pose_sub_opt;
+  pose_sub_opt.callback_group = cb_group_pose_;
   sub_pose_with_cov_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "in_pose_with_covariance", 1,
-    std::bind(&EKFLocalizer::callback_pose_with_covariance, this, _1));
+    "in_pose_with_covariance", 1, std::bind(&EKFLocalizer::callback_pose_with_covariance, this, _1),
+    pose_sub_opt);
+
+  rclcpp::SubscriptionOptions twist_sub_opt;
+  twist_sub_opt.callback_group = cb_group_twist_;
   sub_twist_with_cov_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
     "in_twist_with_covariance", 1,
-    std::bind(&EKFLocalizer::callback_twist_with_covariance, this, _1));
+    std::bind(&EKFLocalizer::callback_twist_with_covariance, this, _1), twist_sub_opt);
 #if ROS_DISTRO_HUMBLE
   const auto service_trigger_qos = rclcpp::ServicesQoS().get_rmw_qos_profile();
 #else
@@ -145,6 +150,40 @@ void EKFLocalizer::update_predict_frequency(const rclcpp::Time & current_time)
 void EKFLocalizer::timer_callback()
 {
   stop_watch_timer_cb_.tic();
+
+  // Drain temporary queues (written by subscription callback threads) into main queues
+  {
+    std::lock_guard<std::mutex> lock(pose_mtx_);
+    while (!pose_queue_tmp_.empty()) {
+      pose_queue_.push(pose_queue_tmp_.front());
+      pose_queue_tmp_.pop();
+    }
+  }
+  if (pose_queue_.exceeded()) {
+    warning_->warn_throttle(
+      fmt::format(
+        "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+        "max_queue_size or reducing input frequency.",
+        pose_queue_.size(), pose_queue_.max_queue_size()),
+      2000);
+    pose_queue_.pop();
+  }
+  {
+    std::lock_guard<std::mutex> lock(twist_mtx_);
+    while (!twist_queue_tmp_.empty()) {
+      twist_queue_.push(twist_queue_tmp_.front());
+      twist_queue_tmp_.pop();
+    }
+  }
+  if (twist_queue_.exceeded()) {
+    warning_->warn_throttle(
+      fmt::format(
+        "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+        "max_queue_size or reducing input frequency.",
+        twist_queue_.size(), twist_queue_.max_queue_size()),
+      2000);
+    twist_queue_.pop();
+  }
 
   const rclcpp::Time current_time = this->now();
 
@@ -340,20 +379,12 @@ void EKFLocalizer::callback_pose_with_covariance(
     return;
   }
 
-  pose_queue_.push(msg);
-
-  // Warn if queue is exceeded
-  if (pose_queue_.exceeded()) {
-    warning_->warn_throttle(
-      fmt::format(
-        "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
-        "max_queue_size or reducing input frequency.",
-        pose_queue_.size(), pose_queue_.max_queue_size()),
-      2000);
-    pose_queue_.pop();
+  {
+    std::lock_guard<std::mutex> lock(pose_mtx_);
+    pose_queue_tmp_.push(msg);
   }
 
-  last_pose_callback_time_ = msg->header.stamp;
+  last_pose_callback_time_ns_.store(msg->header.stamp.nanosec);
 }
 
 /*
@@ -368,20 +399,12 @@ void EKFLocalizer::callback_twist_with_covariance(
     msg->twist.covariance[0 * 6 + 0] = 10000.0;
   }
 
-  twist_queue_.push(msg);
-
-  // Warn if queue is exceeded
-  if (twist_queue_.exceeded()) {
-    warning_->warn_throttle(
-      fmt::format(
-        "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
-        "max_queue_size or reducing input frequency.",
-        twist_queue_.size(), twist_queue_.max_queue_size()),
-      2000);
-    twist_queue_.pop();
+  {
+    std::lock_guard<std::mutex> lock(twist_mtx_);
+    twist_queue_tmp_.push(msg);
   }
 
-  last_twist_callback_time_ = msg->header.stamp;
+  last_twist_callback_time_ns_.store(msg->header.stamp.nanosec);
 }
 
 /*
@@ -461,7 +484,7 @@ void EKFLocalizer::publish_diagnostics()
   {
     diagnostic_msgs::msg::KeyValue kv;
     kv.key = "topic_time_stamp";
-    kv.value = std::to_string(last_pose_callback_time_.nanoseconds());
+    kv.value = std::to_string(last_pose_callback_time_ns_.load());
     pose_st.values.push_back(kv);
   }
 
@@ -473,7 +496,7 @@ void EKFLocalizer::publish_diagnostics()
   {
     diagnostic_msgs::msg::KeyValue kv;
     kv.key = "topic_time_stamp";
-    kv.value = std::to_string(last_twist_callback_time_.nanoseconds());
+    kv.value = std::to_string(last_twist_callback_time_ns_.load());
     twist_st.values.push_back(kv);
   }
 
@@ -534,6 +557,14 @@ void EKFLocalizer::service_trigger_node(
   std_srvs::srv::SetBool::Response::SharedPtr res)
 {
   if (req->data) {
+    {
+      std::lock_guard<std::mutex> lock(pose_mtx_);
+      pose_queue_tmp_ = {};
+    }
+    {
+      std::lock_guard<std::mutex> lock(twist_mtx_);
+      twist_queue_tmp_ = {};
+    }
     pose_queue_.clear();
     twist_queue_.clear();
     is_activated_ = true;
