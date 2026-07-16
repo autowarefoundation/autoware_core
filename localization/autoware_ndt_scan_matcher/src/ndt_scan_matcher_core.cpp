@@ -501,10 +501,10 @@ bool NDTScanMatcher::callback_sensor_points_main(
     }
 
     const ScoreEvaluationInput score_evaluation_input{
-      score_metric,
-      param_.score_estimation.converged_param_transform_probability,
+      score_metric, param_.score_estimation.converged_param_transform_probability,
       param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood};
-    const ScoreEvaluationResult score_evaluation = evaluate_score(ndt_result, score_evaluation_input);
+    const ScoreEvaluationResult score_evaluation =
+      evaluate_score(ndt_result, score_evaluation_input);
     if (!score_evaluation.is_supported_metric) {
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::ERROR,

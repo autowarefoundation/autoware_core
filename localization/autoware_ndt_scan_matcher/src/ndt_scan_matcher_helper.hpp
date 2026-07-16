@@ -17,12 +17,11 @@
 
 #include <Eigen/Core>
 
-#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
+#include <geometry_msgs/msg/pose.hpp>
 
+#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-
-#include <geometry_msgs/msg/pose.hpp>
 
 #include <array>
 #include <cstddef>

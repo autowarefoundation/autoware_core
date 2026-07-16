@@ -124,8 +124,7 @@ pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> extract_no_ground_points(
   const pcl::PointCloud<pcl::PointXYZ> & sensor_points_in_map, const double result_pose_z,
   const double z_margin_for_ground_removal)
 {
-  auto no_ground_points_in_map_ptr =
-    pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
+  auto no_ground_points_in_map_ptr = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   no_ground_points_in_map_ptr->points.reserve(sensor_points_in_map.size());
 
   for (const auto & point : sensor_points_in_map.points) {
