@@ -1,0 +1,44 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: MapHeightFitter.node
+package:
+  name: autoware_map_height_fitter
+  provider: autoware
+launch:
+  plugin: autoware::map_height_fitter::MapHeightFitterNode
+  executable: autoware_map_height_fitter_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: ~/pointcloud_map
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    remap_target: ~/vector_map
+publishers: []
+servers:
+  - name: service
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    remap_target: ~/service
+clients:
+  - name: partial_map_load
+    message_type: autoware_map_msgs/srv/GetPartialPointCloudMap
+    remap_target: ~/partial_map_load
+# parameters
+param_files:
+  - name: map_height_fitter_param
+    default: $(find-pkg-share autoware_map_height_fitter)/config/map_height_fitter.param.yaml
+param_values:
+  - name: map_height_fitter.map_loader_name
+    type: string
+    default: /map/pointcloud_map_loader
+  - name: map_height_fitter.target
+    type: string
+    default: pointcloud_map
+# processes
+processes:
+  - name: fit_pose_height_to_map
+    trigger_conditions:
+      - on_input: service
+    outcomes: []
