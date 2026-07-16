@@ -17,6 +17,7 @@
 
 #include "vehicle_velocity_converter.hpp"
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_vehicle_msgs/msg/velocity_report.hpp>
@@ -24,18 +25,18 @@
 
 namespace autoware::vehicle_velocity_converter
 {
-class VehicleVelocityConverterNode : public rclcpp::Node
+class VehicleVelocityConverterNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit VehicleVelocityConverterNode(const rclcpp::NodeOptions & options);
 
 private:
-  void callback_velocity_report(const autoware_vehicle_msgs::msg::VelocityReport::SharedPtr msg);
+  void callback_velocity_report(
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_vehicle_msgs::msg::VelocityReport) & msg);
 
-  rclcpp::Subscription<autoware_vehicle_msgs::msg::VelocityReport>::SharedPtr vehicle_report_sub_;
+  AUTOWARE_SUBSCRIPTION_PTR(autoware_vehicle_msgs::msg::VelocityReport) vehicle_report_sub_;
 
-  rclcpp::Publisher<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
-    twist_with_covariance_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) twist_with_covariance_pub_;
 
   VehicleVelocityConverter converter_;
 };
