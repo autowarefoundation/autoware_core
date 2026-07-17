@@ -14,7 +14,6 @@
 
 #include "ndt_scan_matcher.hpp"
 
-#include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/tree_structured_parzen_estimator.hpp>
 #include <autoware/localization_util/util_func.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
@@ -44,7 +43,6 @@
 
 namespace autoware::ndt_scan_matcher
 {
-using autoware::localization_util::exchange_color_crc;
 using autoware::localization_util::matrix4f_to_pose;
 using autoware::localization_util::pose_to_matrix4f;
 
@@ -821,25 +819,9 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
   const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
 {
-  pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
-  nvs_points_in_map_ptr_i = ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
-    new pcl::PointCloud<pcl::PointXYZRGB>};
-
-  const float range = upper_nvs - lower_nvs;
-  for (std::size_t i = 0; i < nvs_points_in_map_ptr_i.size(); i++) {
-    pcl::PointXYZRGB point;
-    point.x = nvs_points_in_map_ptr_i.points[i].x;
-    point.y = nvs_points_in_map_ptr_i.points[i].y;
-    point.z = nvs_points_in_map_ptr_i.points[i].z;
-    std_msgs::msg::ColorRGBA color =
-      exchange_color_crc((nvs_points_in_map_ptr_i.points[i].intensity - lower_nvs) / range);
-    point.r = static_cast<std::uint8_t>(color.r * 255);
-    point.g = static_cast<std::uint8_t>(color.g * 255);
-    point.b = static_cast<std::uint8_t>(color.b * 255);
-    nvs_points_in_map_ptr_rgb->points.push_back(point);
-  }
-  return nvs_points_in_map_ptr_rgb;
+  const pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_i =
+    ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
+  return colorize_points_by_score(nvs_points_in_map_i, lower_nvs, upper_nvs);
 }
 
 void NDTScanMatcher::add_regularization_pose(
@@ -988,29 +970,14 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
 
-  const auto base_rpy = autoware::localization_util::get_rpy(initial_pose_with_cov);
-  const Eigen::Map<const autoware::localization_util::RowMatrixXd> covariance = {
-    initial_pose_with_cov.pose.covariance.data(), 6, 6};
-  const double stddev_x = std::sqrt(covariance(0, 0));
-  const double stddev_y = std::sqrt(covariance(1, 1));
-  const double stddev_z = std::sqrt(covariance(2, 2));
-  const double stddev_roll = std::sqrt(covariance(3, 3));
-  const double stddev_pitch = std::sqrt(covariance(4, 4));
-
-  // Since only yaw is uniformly sampled, we define the mean and standard deviation for the others.
-  const std::vector<double> sample_mean{
-    initial_pose_with_cov.pose.pose.position.x,  // trans_x
-    initial_pose_with_cov.pose.pose.position.y,  // trans_y
-    initial_pose_with_cov.pose.pose.position.z,  // trans_z
-    base_rpy.x,                                  // angle_x
-    base_rpy.y                                   // angle_y
-  };
-  const std::vector<double> sample_stddev{stddev_x, stddev_y, stddev_z, stddev_roll, stddev_pitch};
+  const TpeSampleDistribution sample_distribution =
+    create_tpe_sample_distribution(initial_pose_with_cov);
 
   // Optimizing (x, y, z, roll, pitch, yaw) 6 dimensions.
   TreeStructuredParzenEstimator tpe(
     TreeStructuredParzenEstimator::Direction::MAXIMIZE,
-    param_.initial_pose_estimation.n_startup_trials, sample_mean, sample_stddev);
+    param_.initial_pose_estimation.n_startup_trials, sample_distribution.mean,
+    sample_distribution.stddev);
 
   std::vector<Particle> particle_array;
   auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
@@ -1024,25 +991,16 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   for (int64_t i = 0; i < param_.initial_pose_estimation.particles_num; i++) {
     const TreeStructuredParzenEstimator::Input input = tpe.get_next_input();
 
-    geometry_msgs::msg::Pose initial_pose;
-    initial_pose.position.x = input[0];
-    initial_pose.position.y = input[1];
-    initial_pose.position.z = input[2];
-    geometry_msgs::msg::Vector3 init_rpy;
-    init_rpy.x = input[3];
-    init_rpy.y = input[4];
-    init_rpy.z = input[5];
-    tf2::Quaternion tf_quaternion;
-    tf_quaternion.setRPY(init_rpy.x, init_rpy.y, init_rpy.z);
-    initial_pose.orientation = tf2::toMsg(tf_quaternion);
+    const geometry_msgs::msg::Pose initial_pose = pose_from_optimization_variables(input);
 
     const Eigen::Matrix4f initial_pose_matrix = pose_to_matrix4f(initial_pose);
     ndt_ref.align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
     const pclomp::NdtResult ndt_result = ndt_ref.getResult();
 
+    const geometry_msgs::msg::Pose result_pose = matrix4f_to_pose(ndt_result.pose);
     Particle particle(
-      initial_pose, matrix4f_to_pose(ndt_result.pose),
-      ndt_result.nearest_voxel_transformation_likelihood, ndt_result.iteration_num);
+      initial_pose, result_pose, ndt_result.nearest_voxel_transformation_likelihood,
+      ndt_result.iteration_num);
     particle_array.push_back(particle);
     push_debug_markers(marker_array, get_clock()->now(), param_.frame.map_frame, particle, i);
 
@@ -1052,17 +1010,8 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
       marker_array.markers.clear();
     }
 
-    const geometry_msgs::msg::Pose pose = matrix4f_to_pose(ndt_result.pose);
-    const geometry_msgs::msg::Vector3 rpy = autoware::localization_util::get_rpy(pose);
-
-    TreeStructuredParzenEstimator::Input result(6);
-    result[0] = pose.position.x;
-    result[1] = pose.position.y;
-    result[2] = pose.position.z;
-    result[3] = rpy.x;
-    result[4] = rpy.y;
-    result[5] = rpy.z;
-    tpe.add_trial(TreeStructuredParzenEstimator::Trial{result, ndt_result.transform_probability});
+    tpe.add_trial(TreeStructuredParzenEstimator::Trial{
+      optimization_variables_from_pose(result_pose), ndt_result.transform_probability});
 
     auto sensor_points_in_map_ptr = std::make_shared<pcl::PointCloud<PointSource>>();
     autoware_utils_pcl::transform_pointcloud(

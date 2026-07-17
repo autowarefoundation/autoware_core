@@ -14,14 +14,28 @@
 
 #include "ndt_scan_matcher.hpp"
 
+#include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/util_func.hpp>
 #include <autoware/ndt_scan_matcher/hyper_parameters.hpp>
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include <autoware_utils_visualization/marker_helper.hpp>
 
+#include <geometry_msgs/msg/vector3.hpp>
+
+// TODO(sasakisasaki): remove this include after adding tests for core logic
+#ifdef ROS_DISTRO_GALACTIC
+#include <tf2_geometry_msgs/tf2_geometry_msgs.h>
+#else
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+#endif
+
+#include <tf2/LinearMath/Quaternion.h>
+
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <cstddef>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -189,6 +203,72 @@ visualization_msgs::msg::MarkerArray create_marker_array(
     marker_array.markers.push_back(marker);
   }
   return marker_array;
+}
+
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr colorize_points_by_score(
+  const pcl::PointCloud<pcl::PointXYZI> & scored_points, const float lower_nvs,
+  const float upper_nvs)
+{
+  auto colored_points = pcl::make_shared<pcl::PointCloud<pcl::PointXYZRGB>>();
+
+  const float range = upper_nvs - lower_nvs;
+  for (std::size_t i = 0; i < scored_points.size(); i++) {
+    pcl::PointXYZRGB point;
+    point.x = scored_points.points[i].x;
+    point.y = scored_points.points[i].y;
+    point.z = scored_points.points[i].z;
+    const std_msgs::msg::ColorRGBA color =
+      exchange_color_crc((scored_points.points[i].intensity - lower_nvs) / range);
+    point.r = static_cast<std::uint8_t>(color.r * 255);
+    point.g = static_cast<std::uint8_t>(color.g * 255);
+    point.b = static_cast<std::uint8_t>(color.b * 255);
+    colored_points->points.push_back(point);
+  }
+  return colored_points;
+}
+
+TpeSampleDistribution create_tpe_sample_distribution(
+  const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov)
+{
+  const auto base_rpy = autoware::localization_util::get_rpy(initial_pose_with_cov);
+  const Eigen::Map<const autoware::localization_util::RowMatrixXd> covariance = {
+    initial_pose_with_cov.pose.covariance.data(), 6, 6};
+  const double stddev_x = std::sqrt(covariance(0, 0));
+  const double stddev_y = std::sqrt(covariance(1, 1));
+  const double stddev_z = std::sqrt(covariance(2, 2));
+  const double stddev_roll = std::sqrt(covariance(3, 3));
+  const double stddev_pitch = std::sqrt(covariance(4, 4));
+
+  // Since only yaw is uniformly sampled, we define the mean and standard deviation for the others.
+  TpeSampleDistribution distribution;
+  distribution.mean = {
+    initial_pose_with_cov.pose.pose.position.x,  // trans_x
+    initial_pose_with_cov.pose.pose.position.y,  // trans_y
+    initial_pose_with_cov.pose.pose.position.z,  // trans_z
+    base_rpy.x,                                  // angle_x
+    base_rpy.y                                   // angle_y
+  };
+  distribution.stddev = {stddev_x, stddev_y, stddev_z, stddev_roll, stddev_pitch};
+  return distribution;
+}
+
+geometry_msgs::msg::Pose pose_from_optimization_variables(const std::vector<double> & variables)
+{
+  geometry_msgs::msg::Pose pose;
+  pose.position.x = variables[0];
+  pose.position.y = variables[1];
+  pose.position.z = variables[2];
+
+  tf2::Quaternion tf_quaternion;
+  tf_quaternion.setRPY(variables[3], variables[4], variables[5]);
+  pose.orientation = tf2::toMsg(tf_quaternion);
+  return pose;
+}
+
+std::vector<double> optimization_variables_from_pose(const geometry_msgs::msg::Pose & pose)
+{
+  const geometry_msgs::msg::Vector3 rpy = autoware::localization_util::get_rpy(pose);
+  return {pose.position.x, pose.position.y, pose.position.z, rpy.x, rpy.y, rpy.z};
 }
 
 ScoreEvaluationResult evaluate_score(

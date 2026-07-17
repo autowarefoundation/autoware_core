@@ -20,6 +20,7 @@
 #include <builtin_interfaces/msg/time.hpp>
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
@@ -97,6 +98,32 @@ int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_
 visualization_msgs::msg::MarkerArray create_marker_array(
   const builtin_interfaces::msg::Time & stamp, const std::string & frame_id,
   const std::vector<geometry_msgs::msg::Pose> & pose_array, int max_iteration_num);
+
+/** \brief Convert a point cloud whose per-point intensity holds a nearest-voxel score into an RGB
+ * point cloud, mapping each score linearly from the [lower_nvs, upper_nvs] range onto the color
+ * scale. Point positions are copied unchanged. */
+pcl::PointCloud<pcl::PointXYZRGB>::Ptr colorize_points_by_score(
+  const pcl::PointCloud<pcl::PointXYZI> & scored_points, float lower_nvs, float upper_nvs);
+
+/** \brief Mean and standard deviation of the (x, y, z, roll, pitch) sampling distribution used to
+ * seed the initial-pose optimizer. Yaw is sampled uniformly and is therefore not included. */
+struct TpeSampleDistribution
+{
+  std::vector<double> mean;
+  std::vector<double> stddev;
+};
+
+/** \brief Build the sampling distribution from an initial pose: the means are the pose position
+ * and roll/pitch, and the standard deviations are the square roots of the diagonal of the pose
+ * covariance (x, y, z, roll, pitch). */
+TpeSampleDistribution create_tpe_sample_distribution(
+  const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov);
+
+/** \brief Build a pose from a 6-DoF optimization vector (x, y, z, roll, pitch, yaw). */
+geometry_msgs::msg::Pose pose_from_optimization_variables(const std::vector<double> & variables);
+
+/** \brief Decompose a pose into a 6-DoF optimization vector (x, y, z, roll, pitch, yaw). */
+std::vector<double> optimization_variables_from_pose(const geometry_msgs::msg::Pose & pose);
 
 enum class ScoreMetric {
   TRANSFORM_PROBABILITY = 0,
