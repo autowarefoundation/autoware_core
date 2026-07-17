@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NDT_SCAN_MATCHER_HELPER_HPP_
-#define NDT_SCAN_MATCHER_HELPER_HPP_
+#ifndef NDT_SCAN_MATCHER_HPP_
+#define NDT_SCAN_MATCHER_HPP_
 
 #include <Eigen/Core>
 
@@ -36,6 +36,15 @@ namespace autoware::ndt_scan_matcher
  * remaining entries untouched. */
 std::array<double, 36> rotate_covariance(
   const std::array<double, 36> & src_covariance, const Eigen::Matrix3d & rotation);
+
+/** \brief Compose the final 6x6 (row-major, 36-element) output pose covariance from an estimated
+ * 2D (xy) covariance. The estimated covariance is scaled by `scale_factor`, its diagonal is
+ * adjusted against the default xx/yy variances, and the resulting xx/xy/yx/yy values are written
+ * into the position block of `base_covariance`. All other entries are left untouched. */
+std::array<double, 36> compose_output_covariance(
+  const std::array<double, 36> & base_covariance, const Eigen::Matrix2d & estimated_covariance_2d,
+  const Eigen::Matrix4f & ndt_pose, double scale_factor, double default_cov_xx,
+  double default_cov_yy);
 
 /** \brief Count the maximum number of consecutive direction inversions ("oscillations") in a
  * sequence of poses. A step is counted as an inversion when the cosine between consecutive motion

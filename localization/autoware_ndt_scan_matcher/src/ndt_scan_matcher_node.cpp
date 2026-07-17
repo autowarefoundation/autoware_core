@@ -583,16 +583,10 @@ bool NDTScanMatcher::callback_sensor_points_main(
       CovarianceEstimationType::FIXED_VALUE) {
       const Eigen::Matrix2d estimated_covariance_2d =
         estimate_covariance(ndt_result, initial_pose_matrix, sensor_ros_time, *ndt_ptr);
-      const Eigen::Matrix2d estimated_covariance_2d_scaled =
-        estimated_covariance_2d * param_.covariance.covariance_estimation.scale_factor;
-      const double default_cov_xx = param_.covariance.output_pose_covariance[0];
-      const double default_cov_yy = param_.covariance.output_pose_covariance[7];
-      const Eigen::Matrix2d estimated_covariance_2d_adj = pclomp::adjust_diagonal_covariance(
-        estimated_covariance_2d_scaled, ndt_result.pose, default_cov_xx, default_cov_yy);
-      ndt_covariance[0 + 6 * 0] = estimated_covariance_2d_adj(0, 0);
-      ndt_covariance[1 + 6 * 1] = estimated_covariance_2d_adj(1, 1);
-      ndt_covariance[1 + 6 * 0] = estimated_covariance_2d_adj(1, 0);
-      ndt_covariance[0 + 6 * 1] = estimated_covariance_2d_adj(0, 1);
+      ndt_covariance = compose_output_covariance(
+        ndt_covariance, estimated_covariance_2d, ndt_result.pose,
+        param_.covariance.covariance_estimation.scale_factor,
+        param_.covariance.output_pose_covariance[0], param_.covariance.output_pose_covariance[7]);
     }
 
     // check distance_initial_to_result

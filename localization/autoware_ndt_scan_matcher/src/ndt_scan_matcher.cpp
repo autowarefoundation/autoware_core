@@ -15,6 +15,7 @@
 #include "ndt_scan_matcher.hpp"
 
 #include <autoware/localization_util/util_func.hpp>
+#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 
 #include <algorithm>
 #include <array>
@@ -45,6 +46,25 @@ std::array<double, 36> rotate_covariance(
   }
 
   return ret_covariance;
+}
+
+std::array<double, 36> compose_output_covariance(
+  const std::array<double, 36> & base_covariance, const Eigen::Matrix2d & estimated_covariance_2d,
+  const Eigen::Matrix4f & ndt_pose, const double scale_factor, const double default_cov_xx,
+  const double default_cov_yy)
+{
+  std::array<double, 36> ndt_covariance = base_covariance;
+
+  const Eigen::Matrix2d estimated_covariance_2d_scaled = estimated_covariance_2d * scale_factor;
+  const Eigen::Matrix2d estimated_covariance_2d_adj = pclomp::adjust_diagonal_covariance(
+    estimated_covariance_2d_scaled, ndt_pose, default_cov_xx, default_cov_yy);
+
+  ndt_covariance[0 + 6 * 0] = estimated_covariance_2d_adj(0, 0);
+  ndt_covariance[1 + 6 * 1] = estimated_covariance_2d_adj(1, 1);
+  ndt_covariance[1 + 6 * 0] = estimated_covariance_2d_adj(1, 0);
+  ndt_covariance[0 + 6 * 1] = estimated_covariance_2d_adj(0, 1);
+
+  return ndt_covariance;
 }
 
 int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array)
