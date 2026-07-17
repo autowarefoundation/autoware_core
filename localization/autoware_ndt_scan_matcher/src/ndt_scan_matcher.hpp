@@ -17,7 +17,9 @@
 
 #include <Eigen/Core>
 
+#include <builtin_interfaces/msg/time.hpp>
 #include <geometry_msgs/msg/pose.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
 #include <pcl/point_cloud.h>
@@ -26,6 +28,7 @@
 #include <array>
 #include <cstddef>
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace autoware::ndt_scan_matcher
@@ -50,6 +53,13 @@ std::array<double, 36> compose_output_covariance(
  * sequence of poses. A step is counted as an inversion when the cosine between consecutive motion
  * vectors falls below an internal threshold. */
 int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
+
+/** \brief Build the arrow MarkerArray visualizing the NDT optimization pose sequence. One ARROW
+ * marker is created per pose in `pose_array`, and the remaining ids up to `max_iteration_num + 2`
+ * are filled with blank markers (to overwrite stale markers from previous iterations). */
+visualization_msgs::msg::MarkerArray create_marker_array(
+  const builtin_interfaces::msg::Time & stamp, const std::string & frame_id,
+  const std::vector<geometry_msgs::msg::Pose> & pose_array, int max_iteration_num);
 
 enum class ScoreMetric {
   TRANSFORM_PROBABILITY = 0,

@@ -16,14 +16,17 @@
 
 #include <autoware/localization_util/util_func.hpp>
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
+#include <autoware_utils_visualization/marker_helper.hpp>
 
 #include <algorithm>
 #include <array>
 #include <cstddef>
+#include <string>
 #include <vector>
 
 namespace autoware::ndt_scan_matcher
 {
+using autoware::localization_util::exchange_color_crc;
 using autoware::localization_util::point_to_vector3d;
 
 std::array<double, 36> rotate_covariance(
@@ -97,6 +100,37 @@ int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_
     max_oscillation_cnt = std::max(max_oscillation_cnt, oscillation_cnt);
   }
   return max_oscillation_cnt;
+}
+
+visualization_msgs::msg::MarkerArray create_marker_array(
+  const builtin_interfaces::msg::Time & stamp, const std::string & frame_id,
+  const std::vector<geometry_msgs::msg::Pose> & pose_array, const int max_iteration_num)
+{
+  visualization_msgs::msg::MarkerArray marker_array;
+  visualization_msgs::msg::Marker marker;
+  marker.header.stamp = stamp;
+  marker.header.frame_id = frame_id;
+  marker.type = visualization_msgs::msg::Marker::ARROW;
+  marker.action = visualization_msgs::msg::Marker::ADD;
+  marker.scale = autoware_utils_visualization::create_marker_scale(0.3, 0.1, 0.1);
+  int i = 0;
+  marker.ns = "result_pose_matrix_array";
+  marker.action = visualization_msgs::msg::Marker::ADD;
+  for (const auto & pose_msg : pose_array) {
+    marker.id = i++;
+    marker.pose = pose_msg;
+    marker.color = exchange_color_crc((1.0 * i) / 15.0);
+    marker_array.markers.push_back(marker);
+  }
+
+  // TODO(Tier IV): delete old marker
+  for (; i < max_iteration_num + 2;) {
+    marker.id = i++;
+    marker.pose = geometry_msgs::msg::Pose();
+    marker.color = exchange_color_crc(0);
+    marker_array.markers.push_back(marker);
+  }
+  return marker_array;
 }
 
 ScoreEvaluationResult evaluate_score(

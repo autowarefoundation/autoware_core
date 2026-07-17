@@ -751,30 +751,9 @@ void NDTScanMatcher::publish_marker(
   const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
   NormalDistributionsTransform & ndt_ref)
 {
-  visualization_msgs::msg::MarkerArray marker_array;
-  visualization_msgs::msg::Marker marker;
-  marker.header.stamp = sensor_ros_time;
-  marker.header.frame_id = param_.frame.map_frame;
-  marker.type = visualization_msgs::msg::Marker::ARROW;
-  marker.action = visualization_msgs::msg::Marker::ADD;
-  marker.scale = autoware_utils_visualization::create_marker_scale(0.3, 0.1, 0.1);
-  int i = 0;
-  marker.ns = "result_pose_matrix_array";
-  marker.action = visualization_msgs::msg::Marker::ADD;
-  for (const auto & pose_msg : pose_array) {
-    marker.id = i++;
-    marker.pose = pose_msg;
-    marker.color = exchange_color_crc((1.0 * i) / 15.0);
-    marker_array.markers.push_back(marker);
-  }
+  const auto marker_array = create_marker_array(
+    sensor_ros_time, param_.frame.map_frame, pose_array, ndt_ref.getMaximumIterations());
 
-  // TODO(Tier IV): delete old marker
-  for (; i < ndt_ref.getMaximumIterations() + 2;) {
-    marker.id = i++;
-    marker.pose = geometry_msgs::msg::Pose();
-    marker.color = exchange_color_crc(0);
-    marker_array.markers.push_back(marker);
-  }
   ndt_marker_pub_->publish(marker_array);
 }
 
