@@ -17,9 +17,10 @@
 
 #include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/component_interface_specs/version.hpp>
-#include <rclcpp/qos.hpp>
 
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::perception
 {

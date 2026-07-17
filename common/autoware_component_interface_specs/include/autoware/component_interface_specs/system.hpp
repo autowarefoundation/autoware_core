@@ -16,12 +16,13 @@
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__SYSTEM_HPP_
 
 #include <autoware/component_interface_specs/version.hpp>
-#include <rclcpp/qos.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/mrm_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_system_msgs/srv/change_autoware_control.hpp>
 #include <autoware_system_msgs/srv/change_operation_mode.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::system
 {

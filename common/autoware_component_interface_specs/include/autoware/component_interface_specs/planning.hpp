@@ -17,7 +17,6 @@
 
 #include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/component_interface_specs/version.hpp>
-#include <rclcpp/qos.hpp>
 
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <autoware_planning_msgs/msg/route_state.hpp>
@@ -25,6 +24,8 @@
 #include <autoware_planning_msgs/srv/clear_route.hpp>
 #include <autoware_planning_msgs/srv/set_lanelet_route.hpp>
 #include <autoware_planning_msgs/srv/set_waypoint_route.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::planning
 {

@@ -17,11 +17,12 @@
 
 #include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/component_interface_specs/version.hpp>
-#include <rclcpp/qos.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::map
 {

@@ -19,12 +19,13 @@
 
 #include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/component_interface_specs/version.hpp>
-#include <rclcpp/qos.hpp>
 
 #include <autoware_vehicle_msgs/msg/gear_report.hpp>
 #include <autoware_vehicle_msgs/msg/hazard_lights_report.hpp>
 #include <autoware_vehicle_msgs/msg/steering_report.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_report.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::vehicle
 {

@@ -17,9 +17,10 @@
 
 #include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/component_interface_specs/version.hpp>
-#include <rclcpp/qos.hpp>
 
 #include <autoware_control_msgs/msg/control.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::control
 {

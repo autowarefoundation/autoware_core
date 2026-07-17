@@ -17,12 +17,13 @@
 
 #include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/component_interface_specs/version.hpp>
-#include <rclcpp/qos.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/localization_initialization_state.hpp>
 #include <autoware_localization_msgs/srv/initialize_localization.hpp>
 #include <geometry_msgs/msg/accel_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::localization
 {
