@@ -19,6 +19,7 @@
 
 #include <builtin_interfaces/msg/time.hpp>
 #include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
@@ -48,6 +49,42 @@ std::array<double, 36> compose_output_covariance(
   const std::array<double, 36> & base_covariance, const Eigen::Matrix2d & estimated_covariance_2d,
   const Eigen::Matrix4f & ndt_pose, double scale_factor, double default_cov_xx,
   double default_cov_yy);
+
+// Defined in hyper_parameters.hpp. Forward-declared here so the core interface stays free of the
+// (rclcpp-dependent) hyper_parameters / ROS node headers.
+enum class CovarianceEstimationType;
+
+/** \brief Parameters controlling covariance estimation. Mirrors the relevant fields of the node's
+ * HyperParameters so that the estimation logic itself does not depend on the parameter headers. */
+struct CovarianceEstimationConfig
+{
+  CovarianceEstimationType type{};
+  std::vector<double> initial_pose_offset_model_x{};
+  std::vector<double> initial_pose_offset_model_y{};
+  double temperature{};
+  double fixed_covariance_value{};  // covariance used when type == FIXED_VALUE
+};
+
+/** \brief Result of estimate_covariance(): the estimated 2D (xy) covariance plus the optional
+ * debug pose arrays for visualization. A pose array is present only when the estimation type
+ * produces it (MULTI_NDT fills both, MULTI_NDT_SCORE fills only the initial poses, the others
+ * leave both empty), and the caller is expected to publish whichever arrays are present. */
+struct CovarianceEstimationResult
+{
+  Eigen::Matrix2d covariance;
+  std::optional<geometry_msgs::msg::PoseArray> multi_ndt_result_poses;
+  std::optional<geometry_msgs::msg::PoseArray> multi_initial_poses;
+};
+
+/** \brief Estimate the 2D (xy) covariance of an NDT result according to `config.type`. This is
+ * pure computation: it performs no publishing. The debug pose arrays that the node visualizes are
+ * returned in the result (with the given `stamp` / `frame_id`) instead of being published here. */
+CovarianceEstimationResult estimate_covariance(
+  const CovarianceEstimationConfig & config, const pclomp::NdtResult & ndt_result,
+  const Eigen::Matrix4f & initial_pose_matrix, const builtin_interfaces::msg::Time & stamp,
+  const std::string & frame_id,
+  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & sensor_points);
 
 /** \brief Count the maximum number of consecutive direction inversions ("oscillations") in a
  * sequence of poses. A step is counted as an inversion when the cosine between consecutive motion
