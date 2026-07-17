@@ -384,7 +384,7 @@ void EKFLocalizer::callback_pose_with_covariance(
     pose_queue_tmp_.push(msg);
   }
 
-  last_pose_callback_time_ns_.store(msg->header.stamp.nanosec);
+  last_pose_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
 /*
@@ -404,7 +404,7 @@ void EKFLocalizer::callback_twist_with_covariance(
     twist_queue_tmp_.push(msg);
   }
 
-  last_twist_callback_time_ns_.store(msg->header.stamp.nanosec);
+  last_twist_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
 /*
