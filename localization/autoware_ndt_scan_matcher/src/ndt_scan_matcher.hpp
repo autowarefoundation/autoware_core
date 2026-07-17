@@ -16,8 +16,8 @@
 #define NDT_SCAN_MATCHER_HPP_
 
 #include <Eigen/Core>
-
 #include <builtin_interfaces/msg/time.hpp>
+
 #include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -168,4 +168,4 @@ pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> extract_no_ground_points(
 
 }  // namespace autoware::ndt_scan_matcher
 
-#endif  // NDT_SCAN_MATCHER_HELPER_HPP_
+#endif  // NDT_SCAN_MATCHER_HPP_

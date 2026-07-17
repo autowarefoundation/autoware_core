@@ -105,14 +105,13 @@ CovarianceEstimationResult estimate_covariance(
   multi_initial_pose_msg.poses.push_back(matrix4f_to_pose(initial_pose_matrix));
 
   if (config.type == CovarianceEstimationType::LAPLACE_APPROXIMATION) {
-    result.covariance =
-      pclomp::estimate_xy_covariance_by_laplace_approximation(ndt_result.hessian);
+    result.covariance = pclomp::estimate_xy_covariance_by_laplace_approximation(ndt_result.hessian);
   } else if (config.type == CovarianceEstimationType::MULTI_NDT) {
     const std::vector<Eigen::Matrix4f> poses_to_search = pclomp::propose_poses_to_search(
       ndt_result, config.initial_pose_offset_model_x, config.initial_pose_offset_model_y);
     const pclomp::ResultOfMultiNdtCovarianceEstimation result_of_multi_ndt_covariance_estimation =
-      pclomp::estimate_xy_covariance_by_multi_ndt(ndt_result, ndt_ref, poses_to_search,
-        sensor_points);
+      pclomp::estimate_xy_covariance_by_multi_ndt(
+        ndt_result, ndt_ref, poses_to_search, sensor_points);
     for (size_t i = 0; i < result_of_multi_ndt_covariance_estimation.ndt_initial_poses.size();
          i++) {
       multi_ndt_result_msg.poses.push_back(

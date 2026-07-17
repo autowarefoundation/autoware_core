@@ -1010,8 +1010,9 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
       marker_array.markers.clear();
     }
 
-    tpe.add_trial(TreeStructuredParzenEstimator::Trial{
-      optimization_variables_from_pose(result_pose), ndt_result.transform_probability});
+    tpe.add_trial(
+      TreeStructuredParzenEstimator::Trial{
+        optimization_variables_from_pose(result_pose), ndt_result.transform_probability});
 
     auto sensor_points_in_map_ptr = std::make_shared<pcl::PointCloud<PointSource>>();
     autoware_utils_pcl::transform_pointcloud(
