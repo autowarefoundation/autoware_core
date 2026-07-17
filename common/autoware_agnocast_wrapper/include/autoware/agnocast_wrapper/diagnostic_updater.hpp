@@ -307,6 +307,12 @@ public:
   {
   }
 
+  /// @brief Register a diagnostic task by name and callable.
+  ///
+  /// Dispatches to ::diagnostic_updater::Updater::add().
+  ///
+  /// @param name Diagnostic task name surfaced in the published DiagnosticStatus.
+  /// @param f    Callable invoked each update cycle to fill in a DiagnosticStatusWrapper.
   void add(const std::string & name, ::diagnostic_updater::TaskFunction f) { impl_.add(name, f); }
 
   /// @brief Register a diagnostic task object by reference.
@@ -316,6 +322,12 @@ public:
   /// task types such as FrequencyStatus, TimeStampStatus, or Heartbeat.
   void add(::diagnostic_updater::DiagnosticTask & task) { impl_.add(task); }
 
+  /// @brief Register a diagnostic task by name and member function pointer.
+  ///
+  /// @tparam T   Class type owning the diagnostic method.
+  /// @param name Diagnostic task name.
+  /// @param c    Pointer to the owning instance; must outlive this Updater.
+  /// @param f    Member function called each update cycle.
   template <class T>
   void add(
     const std::string name, T * c, void (T::*f)(::diagnostic_updater::DiagnosticStatusWrapper &))
@@ -323,18 +335,41 @@ public:
     impl_.add(name, c, f);
   }
 
+  /// @brief Remove a previously added task by name.
+  /// @param name Task name passed to a prior add() call.
+  /// @return true if a task with that name was found and removed; false otherwise.
   bool removeByName(const std::string name) { return impl_.removeByName(name); }
 
+  /// @brief Get the current update period as rclcpp::Duration.
   auto getPeriod() const { return impl_.getPeriod(); }
 
+  /// @brief Set the update period from rclcpp::Duration.
+  ///
+  /// Resets the internal timer to the new period.
   void setPeriod(rclcpp::Duration period) { impl_.setPeriod(period); }
 
+  /// @brief Set the update period in seconds.
+  ///
+  /// Convenience overload that converts to rclcpp::Duration internally.
   void setPeriod(double period) { impl_.setPeriod(period); }
 
+  /// @brief Force an immediate update of all known DiagnosticStatus tasks,
+  ///        bypassing the period interval.
+  ///
+  /// Useful when something drastic happens (shutdown, self-test) and the latest
+  /// status must be published immediately rather than waiting for the next tick.
   void force_update() { impl_.force_update(); }
 
+  /// @brief Publish a single status with the given level and message across all
+  ///        known DiagnosticStatus tasks.
+  ///
+  /// @param lvl Diagnostic level
+  ///            (diagnostic_msgs::msg::DiagnosticStatus::OK / WARN / ERROR / STALE).
+  /// @param msg Status message attached to every task in the broadcast.
   void broadcast(unsigned char lvl, const std::string msg) { impl_.broadcast(lvl, msg); }
 
+  /// @brief Set the hardware ID embedded in every published DiagnosticStatus.
+  /// @param hwid Hardware identifier string (free-form).
   void setHardwareID(const std::string & hwid) { impl_.setHardwareID(hwid); }
 
   /// @brief printf-style variant of setHardwareID. See the Agnocast-build overload above for
