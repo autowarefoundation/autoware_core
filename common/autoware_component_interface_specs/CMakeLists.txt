@@ -8,10 +8,10 @@ if(BUILD_TESTING)
   # The manifest generator and the concepts test compile real C++20: the
   # `concept X = requires { ... }` syntax in concepts.hpp and tuple iteration. GCC ships
   # standard C++20 concepts only from GCC 10 -- GCC 8/9 have the older Concepts TS
-  # (`concept bool`), not this syntax. The Humble RHEL-8 binary buildfarm job runs GCC 8.5
+  # (`concept bool`), not this syntax. The Humble RHEL-8 binary build farm job runs GCC 8.5
   # and compiles BUILD_TESTING targets (unlike the Jazzy release jobs, it does not set
   # run_package_tests:false), so these targets would fail to build there. Gate them on a
-  # capable compiler so BUILD_TESTING degrades gracefully instead of FTBFS-ing.
+  # capable compiler so BUILD_TESTING degrades gracefully instead of breaking the build.
   set(AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CXX20 TRUE)
   if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 10)
     set(AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CXX20 FALSE)
@@ -62,7 +62,7 @@ if(BUILD_TESTING)
   # target on it. Pinned with the property rather than target_compile_features(cxx_std_17),
   # which only asks for *at least* C++17 and would silently follow a raised global default.
   # Deliberately outside the C++20 guard above: this is the surface the RHEL-8 GCC 8.5
-  # buildfarm job still exercises, so the domain headers stay compile-tested there.
+  # build farm job still exercises, so the domain headers stay compile-tested there.
   ament_auto_add_gtest(gtest_${PROJECT_NAME}_cxx17
     test/gtest_main.cpp
     test/test_cxx17_compat.cpp
