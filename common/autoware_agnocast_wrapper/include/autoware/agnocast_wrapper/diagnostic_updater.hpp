@@ -232,12 +232,19 @@ public:
   {
     va_list va;
     constexpr int kBufferSize = 1000;
-    char buff[kBufferSize];
+    char buff[kBufferSize] = {};
     va_start(va, format);
-    if (vsnprintf(buff, kBufferSize, format, va) >= kBufferSize) {
+    const int written = vsnprintf(buff, kBufferSize, format, va);
+    va_end(va);
+    // On encoding error vsnprintf returns negative and leaves buff unspecified, so the
+    // hardware ID is left untouched rather than built from an unterminated buffer.
+    if (written < 0) {
+      RCLCPP_DEBUG(logger_, "Encoding error in diagnostic_updater::setHardwareIDf.");
+      return;
+    }
+    if (written >= kBufferSize) {
       RCLCPP_DEBUG(logger_, "Really long string in diagnostic_updater::setHardwareIDf.");
     }
-    va_end(va);
     setHardwareID(std::string(buff));
   }
 
@@ -336,12 +343,19 @@ public:
   {
     va_list va;
     constexpr int kBufferSize = 1000;
-    char buff[kBufferSize];
+    char buff[kBufferSize] = {};
     va_start(va, format);
-    if (vsnprintf(buff, kBufferSize, format, va) >= kBufferSize) {
+    const int written = vsnprintf(buff, kBufferSize, format, va);
+    va_end(va);
+    // On encoding error vsnprintf returns negative and leaves buff unspecified, so the
+    // hardware ID is left untouched rather than built from an unterminated buffer.
+    if (written < 0) {
+      RCLCPP_DEBUG(logger_, "Encoding error in diagnostic_updater::setHardwareIDf.");
+      return;
+    }
+    if (written >= kBufferSize) {
       RCLCPP_DEBUG(logger_, "Really long string in diagnostic_updater::setHardwareIDf.");
     }
-    va_end(va);
     setHardwareID(std::string(buff));
   }
 
