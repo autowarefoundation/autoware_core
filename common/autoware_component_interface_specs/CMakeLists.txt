@@ -29,6 +29,15 @@ if(BUILD_TESTING)
     )
     target_compile_features(generate_interface_manifest PRIVATE cxx_std_20)
 
+    # Sibling of generate_interface_manifest: emits the committed RIHS01 type-hash lockfile.
+    # Also C++20 (walks the Specs tuples) and producer-side/CI only, so it lives under the same
+    # BUILD_TESTING + C++20-compiler guard. Its hash-emitting body is additionally gated on the
+    # Jazzy-only type-hash API at compile time, so on Humble/gcc-11 it builds as a no-op.
+    ament_auto_add_executable(generate_type_hashes
+      src/generate_type_hashes.cpp
+    )
+    target_compile_features(generate_type_hashes PRIVATE cxx_std_20)
+
     # This gtest bundles the C++20-only tests (test_concepts, and test_manifest which drives
     # the generator above) with the plain domain value tests. On GCC 8.5 it is skipped
     # wholesale: the value tests assert compile-time constants identical on every compiler
@@ -47,6 +56,7 @@ if(BUILD_TESTING)
       test/test_concepts.cpp
       test/test_manifest.cpp
       test/test_service_qos.cpp
+      test/test_type_hashes.cpp
     )
     # test_concepts.cpp exercises the C++20 concepts header.
     target_compile_features(gtest_${PROJECT_NAME} PRIVATE cxx_std_20)
@@ -55,7 +65,9 @@ if(BUILD_TESTING)
     target_compile_definitions(gtest_${PROJECT_NAME}
       PRIVATE
         GENERATE_TOOL="$<TARGET_FILE:generate_interface_manifest>"
-        COMMITTED_MANIFEST="${CMAKE_CURRENT_SOURCE_DIR}/interface_manifest.json")
+        COMMITTED_MANIFEST="${CMAKE_CURRENT_SOURCE_DIR}/interface_manifest.json"
+        GENERATE_HASHES_TOOL="$<TARGET_FILE:generate_type_hashes>"
+        COMMITTED_HASHES="${CMAKE_CURRENT_SOURCE_DIR}/interface_type_hashes.jazzy.lock")
   endif()
 
   # Consumers of the domain headers get the C++17 that autoware_package() sets, so keep one
