@@ -112,3 +112,21 @@ colcon build --symlink-install --packages-select autoware_component_interface_sp
 ```
 
 The generator emits the same layout Prettier produces, so the committed file is stable across regenerations. Adjust the output path to match where the package lives in your workspace. `test_manifest.cpp` diffs the generator's output against the committed file, so a stale manifest fails the build rather than reaching consumers.
+
+## Interface type-hash lockfile
+
+`interface_type_hashes.jazzy.lock` records the [RIHS01 type hash](https://github.com/ros-infrastructure/rep/pull/358) (the ROS Interface Hashing Standard, proposed in REP-2011) of every registered message and service type. A RIHS01 hash is a deterministic function of the full type description — transitively including every nested `.msg` include — so a change to a type's definition in _any_ repository changes its hash. This is the drift tripwire that complements the same-PR version bump: it catches a forgotten bump, and it is the only mechanism for the types owned by other repositories.
+
+RIHS01 hashes exist only on ROS 2 Iron and newer, so the lockfile is Jazzy-specific and the generator's hash-emitting path is `#if __has_include(<rosidl_runtime_c/type_hash.h>)`-guarded — on Humble the tool is a no-op and the freshness test skips.
+
+Regenerate it (Jazzy only) after changing any registered spec or after an intentional upstream type change:
+
+```bash
+colcon build --symlink-install --packages-select autoware_component_interface_specs
+./build/autoware_component_interface_specs/generate_type_hashes \
+  src/autoware_component_interface_specs/interface_type_hashes.jazzy.lock
+```
+
+`test_type_hashes.cpp` diffs the generator's output against the committed file, but only when `AUTOWARE_CIS_CHECK_TYPE_HASHES` is set — this repo's own GitHub Actions sets it, while the ROS buildfarm's devel jobs do not, so a dependency-version skew on the buildfarm can never turn those jobs red. The always-on `covers_every_manifest_type` test still guarantees the lockfile and `interface_manifest.json` describe the same set of types.
+
+**Coverage limit.** A RIHS01 hash does **not** cover message constants or field default values, so an enum-only `.msg` edit or a default-value change does not change the hash. The lockfile is therefore a _structural/wire_ tripwire — the **secondary** check. The **primary** enforcement is a path-based gate that requires a domain version bump when a registered type's `.msg`/`.srv` changes in the same repository; it becomes fully effective once the message definitions and this package live together (tracked in autoware_msgs#169). Until then, the lockfile is the available mechanism for every row.
