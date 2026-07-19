@@ -38,8 +38,6 @@
 #include "lanelet2_map_loader_utils.hpp"
 #include "lanelet2_selected_map_loader_module.hpp"
 
-#include <cinttypes>
-
 #include <autoware/geography_utils/lanelet2_projector.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
@@ -53,6 +51,7 @@
 #include <lanelet2_io/Io.h>
 #include <lanelet2_projection/UTM.h>
 
+#include <cinttypes>
 #include <filesystem>
 #include <map>
 #include <memory>
@@ -174,7 +173,8 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
     if (map_major_ver > static_cast<uint64_t>(lanelet::autoware::version)) {
       RCLCPP_WARN(
         get_logger(),
-        "format_version(%" PRIu64 ") of the provided map(%s) is larger than the supported version(%" PRIu64 ")",
+        "format_version(%" PRIu64
+        ") of the provided map(%s) is larger than the supported version(%" PRIu64 ")",
         static_cast<uint64_t>(map_major_ver), lanelet2_filename.c_str(),
         static_cast<uint64_t>(lanelet::autoware::version));
       if (!allow_unsupported_version) {
