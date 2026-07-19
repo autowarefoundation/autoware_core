@@ -45,7 +45,7 @@
 
 #include <fmt/format.h>
 #include <pcl/point_types.h>
-#include <tf2/transform_datatypes.h>
+#include <tf2/transform_datatypes.hpp>
 
 #ifdef ROS_DISTRO_GALACTIC
 #include <tf2_sensor_msgs/tf2_sensor_msgs.h>
