@@ -30,6 +30,8 @@
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/utils.hpp>
 
+#include <cinttypes>
+
 #include <autoware_internal_planning_msgs/msg/path_point_with_lane_id.hpp>
 #include <autoware_planning_msgs/msg/lanelet_primitive.hpp>
 #include <autoware_planning_msgs/msg/lanelet_segment.hpp>
@@ -2472,8 +2474,8 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getGoalRoadLaneletForCheckpoi
           RCLCPP_WARN(
             logger_,
             "Failed to find reroute on previous preferred lanelets %s, but on previous route "
-            "segment %ld still",
-            preferred_lanelets_str.str().c_str(), closest_lanelet.id());
+            "segment %" PRId64 " still",
+            preferred_lanelets_str.str().c_str(), static_cast<int64_t>(closest_lanelet.id()));
           return closest_lanelet;
         }
       }
@@ -2548,8 +2550,8 @@ bool RouteHandler::planLaneletPathBetweenResolvedEndpoints(
     const double optional_route_length = optional_route->length2d();
     const double optional_route_cost = optional_route_length + angle_diff_weight * angle_diff;
     RCLCPP_DEBUG(
-      logger_, "Lanelet ID %ld: Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
-      st_llt.id(), optional_route_length, angle_diff, optional_route_cost);
+      logger_, "Lanelet ID %" PRId64 ": Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
+      static_cast<int64_t>(st_llt.id()), optional_route_length, angle_diff, optional_route_cost);
     if (optional_route_cost < min_route_cost) {
       min_route_cost = optional_route_cost;
       shortest_path = optional_route->shortestPath();
@@ -2639,8 +2641,8 @@ bool RouteHandler::planLaneletOrAreaPathBetweenResolvedEndpoints(
     }
     const double optional_route_cost = optional_path_length + angle_diff_weight * angle_diff;
     RCLCPP_DEBUG(
-      logger_, "Lanelet ID %ld: Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
-      st_llt.id(), optional_path_length, angle_diff, optional_route_cost);
+      logger_, "Lanelet ID %" PRId64 ": Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
+      static_cast<int64_t>(st_llt.id()), optional_path_length, angle_diff, optional_route_cost);
     if (optional_route_cost < min_route_cost) {
       min_route_cost = optional_route_cost;
       shortest_path = *optional_path;
