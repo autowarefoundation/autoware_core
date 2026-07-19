@@ -188,8 +188,7 @@ void GroundFilterComponent::subscribe()
 {
   if (use_indices_) {
     // Subscribe to the input using a filter
-    sub_input_filter_.subscribe(
-      this, "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_));
+    sub_input_filter_.subscribe(this, "input", rclcpp::SensorDataQoS().keep_last(max_queue_size_));
     sub_indices_filter_.subscribe(
       this, "indices", rclcpp::SensorDataQoS().keep_last(max_queue_size_));
 
