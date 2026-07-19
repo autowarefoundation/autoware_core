@@ -15,6 +15,7 @@
 #include "autoware/map_height_fitter/map_height_fitter.hpp"
 
 #include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/static_transform_broadcaster.hpp>
 
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -23,7 +24,6 @@
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
 #include <pcl_conversions/pcl_conversions.h>
-#include <tf2_ros/static_transform_broadcaster.hpp>
 
 #include <chrono>
 #include <cmath>
@@ -57,9 +57,10 @@ void add_ground_patch(
 {
   for (double dx = -3.0; dx <= 3.0; dx += 0.5) {
     for (double dy = -3.0; dy <= 3.0; dy += 0.5) {
-      cloud.push_back(pcl::PointXYZ(
-        static_cast<float>(center_x + dx), static_cast<float>(center_y + dy),
-        static_cast<float>(z)));
+      cloud.push_back(
+        pcl::PointXYZ(
+          static_cast<float>(center_x + dx), static_cast<float>(center_y + dy),
+          static_cast<float>(z)));
     }
   }
 }
