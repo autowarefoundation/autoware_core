@@ -82,9 +82,15 @@ autoware_map_msgs::msg::LaneletMapBin Lanelet2SelectedMapLoaderModule::execute(
   maps.reserve(paths.size());
   for (const auto & path : paths) {
     std::vector<std::string> warnings;
-    auto map = Lanelet2MapLoader::load_map(path, projector_info_, warnings);
-    if (map) {
-      maps.push_back(std::move(map));
+
+    try {
+      auto map = Lanelet2MapLoader::load_map(path, projector_info_, warnings);
+      if (map) {
+        maps.push_back(std::move(map));
+      }
+    } catch (const MapLoadException & e) {
+      // Here I catch exp and still continue so a single bad cell won't crash entire node
+      continue;
     }
   }
 
