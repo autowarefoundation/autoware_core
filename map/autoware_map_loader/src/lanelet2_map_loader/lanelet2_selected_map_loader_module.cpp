@@ -82,9 +82,10 @@ autoware_map_msgs::msg::LaneletMapBin Lanelet2SelectedMapLoaderModule::execute(
   std::vector<lanelet::LaneletMapPtr> maps;
   maps.reserve(paths.size());
   for (const auto & path : paths) {
-    std::vector<std::string> warnings;
-
+    
     try {
+      std::vector<std::string> warnings;
+
       auto map = Lanelet2MapLoader::load_map(path, projector_info_, warnings);
       if (map) {
         maps.push_back(std::move(map));
