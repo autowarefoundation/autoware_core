@@ -81,12 +81,15 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   try {
     result = core_logic.execute(*msg, now());
   } catch (const MapLoadException & e) {
+    // Here recoverable, so I log and wait for valid input
     for (const auto & err : e.errors) RCLCPP_ERROR_STREAM(get_logger(), err);
     return;
   } catch (const std::invalid_argument & e) {
+    // Here UNrecoverable, so I kill this node for users to fix their inputs
     RCLCPP_WARN(get_logger(), "%s", e.what());
     throw;
   } catch (const std::exception & e) {
+    // Here unknown error, so I log and still stay alive to avoid crash loops
     RCLCPP_ERROR(get_logger(), "%s", e.what());
     return;
   }
