@@ -14,8 +14,8 @@
 
 #include "lanelet2_selected_map_loader_module.hpp"
 
-#include "../lanelet2_map_loader.hpp"
-#include "lanelet2_map_loader_utils.hpp"
+#include "lanelet2_map_loader.hpp"
+#include "utils/lanelet2_map_loader_utils.hpp"
 
 #include <autoware/map_loader/lanelet2_map_loader_node.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
@@ -62,6 +62,7 @@ Lanelet2SelectedMapLoaderModule::Lanelet2SelectedMapLoaderModule(
 autoware_map_msgs::msg::LaneletMapBin Lanelet2SelectedMapLoaderModule::execute(
   const std::vector<std::string> & cell_ids) const
 {
+  // Resolve requested cell IDs to file paths.
   std::vector<std::string> paths;
   for (const auto & cell_id : cell_ids) {
     const auto it = all_cell_metadata_dict_.find(cell_id);

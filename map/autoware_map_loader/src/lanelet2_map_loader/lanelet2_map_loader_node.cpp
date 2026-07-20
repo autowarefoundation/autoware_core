@@ -34,7 +34,7 @@
 #include "autoware/map_loader/lanelet2_map_loader_node.hpp"  // NOLINT(build/include)
 
 #include "lanelet2_map_loader.hpp"
-#include "utils/lanelet2_selected_map_loader_module.hpp"
+#include "lanelet2_selected_map_loader_module.hpp"
 
 #include <memory>
 #include <string>
