@@ -21,7 +21,7 @@
       
       
       <link rel="icon" href="../../docs/assets/images/autoware-foundation.png">
-      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
@@ -29,7 +29,7 @@
       
     
     
-      <link rel="stylesheet" href="../../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -8236,6 +8236,66 @@ public:
 <blockquote>
 <p><strong>Note:</strong> <code>DiagnosticTask</code> subclasses (e.g. <code>FrequencyStatus</code>, <code>TimeStampStatus</code>, <code>Heartbeat</code>) defined in <code>diagnostic_updater</code> can be added via <code>updater_.add(task)</code> unchanged.</p>
 </blockquote>
+<h2 id="polling-subscriber-polling-namespace">Polling Subscriber (<code>polling::</code> namespace)<a class="headerlink" href="#polling-subscriber-polling-namespace" title="Permanent link">#</a></h2>
+<p><code>autoware::agnocast_wrapper::polling::create_polling_subscriber&lt;MessageT&gt;(node, topic, qos)</code> creates a polling (take-based) subscriber whose <code>take_data()</code> returns a plain <code>std::shared_ptr&lt;const MessageT&gt;</code> in <strong>both</strong> <code>ENABLE_AGNOCAST</code> modes. In agnocast mode the message stays in shared memory and is aliased into the returned <code>shared_ptr</code> (zero-copy, no payload copy); in rclcpp mode it reuses <code>autoware_utils_rclcpp::InterProcessPollingSubscriber</code>.</p>
+<h3 id="take_data-contract"><code>take_data()</code> contract<a class="headerlink" href="#take_data-contract" title="Permanent link">#</a></h3>
+<ul>
+<li>Returns the latest message, or <code>nullptr</code> when none is available.</li>
+<li>Re-delivery is governed by the <strong>policy tag</strong> and is identical across backends:<ul>
+<li><code>polling_policy::Latest</code> (default): re-delivers the cached message.</li>
+<li><code>polling_policy::Newest</code>: returns <code>nullptr</code> until a new message arrives.</li>
+</ul>
+</li>
+<li><code>polling_policy::All</code> is rejected at compile time (<code>take_data()</code> returns a single message, not a vector).</li>
+<li>The returned <code>std::shared_ptr</code> has the same lifetime semantics in both modes.</li>
+</ul>
+<h3 id="usage-example_3">Usage example<a class="headerlink" href="#usage-example_3" title="Permanent link">#</a></h3>
+<p>```cpp</p>
+<h1 id="include_6">include <autoware agnocast_wrapper polling_subscriber.hpp><a class="headerlink" href="#include_6" title="Permanent link">#</a></autoware></h1>
+<p>class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit MyNode(const rclcpp::NodeOptions &amp; options) : Node("my_node", options)
+  {
+    namespace polling = autoware::agnocast_wrapper::polling;
+    sub_ = polling::create_polling_subscriber<nav_msgs::msg::odometry>(this, "~/input/odometry", 1);
+  }</nav_msgs::msg::odometry></p>
+<p>void on_timer()
+  {
+    const std::shared_ptr<const nav_msgs::msg::odometry> msg = sub_-&gt;take_data();
+    if (!msg) {
+      return;
+    }
+    // use msg-&gt;...
+  }</const></p>
+<p>private:
+  autoware::agnocast_wrapper::polling::PollingSubscriber<nav_msgs::msg::odometry>::SharedPtr sub_;
+};
+```</nav_msgs::msg::odometry></p>
+<h3 id="when-to-use-this-vs-the-existing-member-api">When to use this vs the existing member API<a class="headerlink" href="#when-to-use-this-vs-the-existing-member-api" title="Permanent link">#</a></h3>
+<p>This package currently exposes two polling APIs:</p>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Returns</th>
+<th>Form</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>Node::create_polling_subscriber</code> / <code>AUTOWARE_POLLING_SUBSCRIBER_PTR</code> (top-level)</td>
+<td><code>message_ptr</code></td>
+<td><code>Node</code> member</td>
+</tr>
+<tr>
+<td><code>polling::create_polling_subscriber</code> (this section)</td>
+<td>plain <code>std::shared_ptr&lt;const MessageT&gt;</code></td>
+<td>free function</td>
+</tr>
+</tbody>
+</table>
+<p>Prefer <code>polling::</code> for new code: it returns a plain <code>std::shared_ptr</code> (no <code>message_ptr</code>), is node-independent, and confines the <code>autoware_utils_rclcpp</code> dependency to a single header. The top-level member API is kept for backward compatibility with already-merged consumers and is planned to be removed once they are migrated to <code>polling::</code>.</p>
 <h2 id="how-to-enabledisable-agnocast-on-build">How to Enable/Disable Agnocast on Build<a class="headerlink" href="#how-to-enabledisable-agnocast-on-build" title="Permanent link">#</a></h2>
 <p>To build Autoware <strong>with</strong> Agnocast:</p>
 <p><code>bash
@@ -8543,7 +8603,7 @@ return LaunchDescription([agnocast_env, container])
       <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.expand", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.footer"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
         <script src="../../docs/assets/js/mathjax.js"></script>
       
