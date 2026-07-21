@@ -226,7 +226,7 @@ public:
   {
     va_list va;
     constexpr int kBufferSize = 1000;
-    char buff[kBufferSize] = {};
+    char buff[kBufferSize];
     va_start(va, format);
     const int written = vsnprintf(buff, kBufferSize, format, va);
     va_end(va);
@@ -378,7 +378,7 @@ public:
   {
     va_list va;
     constexpr int kBufferSize = 1000;
-    char buff[kBufferSize] = {};
+    char buff[kBufferSize];
     va_start(va, format);
     const int written = vsnprintf(buff, kBufferSize, format, va);
     va_end(va);
