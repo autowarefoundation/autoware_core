@@ -22,7 +22,7 @@
 namespace autoware::ekf_localizer
 {
 
-HyperParameters load_hyper_parameters(rclcpp::Node * node)
+HyperParameters load_hyper_parameters(autoware::agnocast_wrapper::Node * node)
 {
   HyperParameters p;
   p.show_debug_info = node->declare_parameter<bool>("node.show_debug_info");
