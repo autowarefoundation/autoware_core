@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__MAP_PROJECTION_LOADER__MAP_PROJECTION_LOADER_HPP_
 #define AUTOWARE__MAP_PROJECTION_LOADER__MAP_PROJECTION_LOADER_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/component_interface_specs/map.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -26,14 +27,14 @@ autoware_map_msgs::msg::MapProjectorInfo load_info_from_yaml(const std::string &
 autoware_map_msgs::msg::MapProjectorInfo load_map_projector_info(
   const std::string & yaml_filename, const std::string & lanelet2_map_filename);
 
-class MapProjectionLoader : public rclcpp::Node
+class MapProjectionLoader : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit MapProjectionLoader(const rclcpp::NodeOptions & options);
 
 private:
   using MapProjectorInfo = autoware::component_interface_specs::map::MapProjectorInfo;
-  rclcpp::Publisher<MapProjectorInfo::Message>::SharedPtr publisher_;
+  AUTOWARE_PUBLISHER_PTR(MapProjectorInfo::Message) publisher_;
 };
 }  // namespace autoware::map_projection_loader
 

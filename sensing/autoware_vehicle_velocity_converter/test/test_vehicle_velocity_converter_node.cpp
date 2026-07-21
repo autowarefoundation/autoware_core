@@ -83,7 +83,7 @@ protected:
     options.parameter_overrides(parameter_overrides);
     converter_node_ =
       std::make_shared<autoware::vehicle_velocity_converter::VehicleVelocityConverterNode>(options);
-    executor_->add_node(converter_node_);
+    executor_->add_node(converter_node_->get_node_base_interface());
     executor_thread_ = std::thread([this]() { executor_->spin(); });
 
     // Poll until both endpoints have discovered each other instead of sleeping a fixed duration,

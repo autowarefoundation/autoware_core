@@ -1,10 +1,12 @@
 <launch>
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
   <arg name="param_path" default="$(find-pkg-share autoware_map_projection_loader)/config/map_projection_loader.param.yaml"/>
 
   <arg name="map_projector_info_path" description="Path to the yaml file"/>
   <arg name="lanelet2_map_path" description="Path to the lanelet2 map file"/>
 
   <node pkg="autoware_map_projection_loader" exec="autoware_map_projection_loader_node" output="both">
+    <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
     <param from="$(var param_path)" allow_substs="true"/>
   </node>
 </launch>

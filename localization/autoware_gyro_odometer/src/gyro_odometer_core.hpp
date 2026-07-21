@@ -15,6 +15,8 @@
 #ifndef GYRO_ODOMETER_CORE_HPP_
 #define GYRO_ODOMETER_CORE_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
@@ -34,7 +36,7 @@
 namespace autoware::gyro_odometer
 {
 
-class GyroOdometerNode : public rclcpp::Node
+class GyroOdometerNode : public autoware::agnocast_wrapper::Node
 {
 private:
   using COV_IDX = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
@@ -44,28 +46,33 @@ public:
 
 private:
   void callback_vehicle_twist(
-    const geometry_msgs::msg::TwistWithCovarianceStamped::ConstSharedPtr vehicle_twist_msg_ptr);
-  void callback_imu(const sensor_msgs::msg::Imu::ConstSharedPtr imu_msg_ptr);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
+      vehicle_twist_msg_ptr);
+  void callback_imu(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Imu) imu_msg_ptr);
   void concat_gyro_and_odometer();
   void publish_data(const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
   void publish_diagnostics();
 
-  rclcpp::Subscription<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
-    vehicle_twist_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
+  AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) vehicle_twist_sub_;
+  AUTOWARE_SUBSCRIPTION_PTR(sensor_msgs::msg::Imu) imu_sub_;
 
-  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr twist_raw_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
-    twist_with_covariance_raw_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::TwistStamped) twist_raw_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
+  twist_with_covariance_raw_pub_;
 
-  rclcpp::Publisher<geometry_msgs::msg::TwistStamped>::SharedPtr twist_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::TwistWithCovarianceStamped>::SharedPtr
-    twist_with_covariance_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::TwistStamped) twist_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
+  twist_with_covariance_pub_;
 
-  rclcpp::TimerBase::SharedPtr timer_;
+  AUTOWARE_TIMER_PTR timer_;
 
-  std::shared_ptr<autoware_utils_tf::TransformListener> transform_listener_;
-  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
+  using TransformListener = autoware_utils_tf::TransformListenerT<
+    autoware::agnocast_wrapper::Node, autoware::agnocast_wrapper::Buffer,
+    autoware::agnocast_wrapper::TransformListener>;
+  std::shared_ptr<TransformListener> transform_listener_;
+  std::unique_ptr<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
+    logger_configure_;
 
   std::string output_frame_;
   double message_timeout_sec_;
@@ -82,7 +89,9 @@ private:
   std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
   std::deque<sensor_msgs::msg::Imu> gyro_queue_;
 
-  std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_;
+  std::unique_ptr<
+    autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>
+    diagnostics_;
 };
 
 }  // namespace autoware::gyro_odometer

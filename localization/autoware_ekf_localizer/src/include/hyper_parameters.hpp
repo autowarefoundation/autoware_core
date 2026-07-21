@@ -15,13 +15,10 @@
 #ifndef HYPER_PARAMETERS_HPP_
 #define HYPER_PARAMETERS_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
+
 #include <cstddef>
 #include <string>
-
-namespace rclcpp
-{
-class Node;
-}  // namespace rclcpp
 
 namespace autoware::ekf_localizer
 {
@@ -69,7 +66,7 @@ struct HyperParameters
 
 // Declares all of the node parameters and returns a fully-populated HyperParameters. This is the
 // only place that touches rclcpp, keeping HyperParameters itself a plain data struct.
-HyperParameters load_hyper_parameters(rclcpp::Node * node);
+HyperParameters load_hyper_parameters(autoware::agnocast_wrapper::Node * node);
 
 }  // namespace autoware::ekf_localizer
 
