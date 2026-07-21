@@ -451,10 +451,10 @@ private:
 
 This package currently exposes two polling APIs:
 
-| API | Returns | Form |
-| --- | --- | --- |
-| `Node::create_polling_subscriber` / `AUTOWARE_POLLING_SUBSCRIBER_PTR` (top-level) | `message_ptr` | `Node` member |
-| `polling::create_polling_subscriber` (this section) | plain `std::shared_ptr<const MessageT>` | free function |
+| API                                                                               | Returns                                 | Form          |
+| --------------------------------------------------------------------------------- | --------------------------------------- | ------------- |
+| `Node::create_polling_subscriber` / `AUTOWARE_POLLING_SUBSCRIBER_PTR` (top-level) | `message_ptr`                           | `Node` member |
+| `polling::create_polling_subscriber` (this section)                               | plain `std::shared_ptr<const MessageT>` | free function |
 
 Prefer `polling::` for new code: it returns a plain `std::shared_ptr` (no `message_ptr`), is node-independent, and confines the `autoware_utils_rclcpp` dependency to a single header. The top-level member API is kept for backward compatibility with already-merged consumers and is planned to be removed once they are migrated to `polling::`.
 
