@@ -76,12 +76,6 @@ namespace diagnostic_updater
 class Updater
 {
 public:
-  /// @brief Heap-allocated rclcpp-backed implementation held inside impl_.
-  using RclcppImpl = std::unique_ptr<::diagnostic_updater::Updater>;
-
-  /// @brief Heap-allocated agnocast-backed implementation held inside impl_.
-  using AgnocastImpl = std::unique_ptr<::agnocast::Updater>;
-
   /// @brief Construct an Updater bound to a wrapper Node.
   ///
   /// Selects the backend from use_agnocast() at construction; the choice is
@@ -234,10 +228,17 @@ public:
     constexpr int kBufferSize = 1000;
     char buff[kBufferSize];
     va_start(va, format);
-    if (vsnprintf(buff, kBufferSize, format, va) >= kBufferSize) {
+    const int written = vsnprintf(buff, kBufferSize, format, va);
+    va_end(va);
+    // On encoding error vsnprintf returns negative and leaves buff unspecified, so the
+    // hardware ID is left untouched rather than built from an unterminated buffer.
+    if (written < 0) {
+      RCLCPP_DEBUG(logger_, "Encoding error in diagnostic_updater::setHardwareIDf.");
+      return;
+    }
+    if (written >= kBufferSize) {
       RCLCPP_DEBUG(logger_, "Really long string in diagnostic_updater::setHardwareIDf.");
     }
-    va_end(va);
     setHardwareID(std::string(buff));
   }
 
@@ -250,6 +251,12 @@ public:
   Updater & operator=(Updater &&) = delete;
 
 private:
+  /// @brief Heap-allocated rclcpp-backed implementation held inside impl_.
+  using RclcppImpl = std::unique_ptr<::diagnostic_updater::Updater>;
+
+  /// @brief Heap-allocated agnocast-backed implementation held inside impl_.
+  using AgnocastImpl = std::unique_ptr<::agnocast::Updater>;
+
   rclcpp::Logger logger_;
   std::variant<RclcppImpl, AgnocastImpl> impl_;
 
@@ -270,14 +277,15 @@ namespace autoware::agnocast_wrapper
 namespace diagnostic_updater
 {
 
-/// @brief Pass-through Updater for the non-Agnocast build.
+/// @brief Curated Updater for the non-Agnocast build.
 ///
-/// Inherits from ::diagnostic_updater::Updater and re-declares only the
-/// `Updater(Node*, double)` constructor; base-class constructors are not
-/// implicitly inherited in C++, so the upstream template and interface-pointer
-/// constructors stay hidden. This keeps the supported signature identical to
-/// the agnocast-enabled build. All other public members are inherited as-is.
-class Updater : public ::diagnostic_updater::Updater
+/// Holds a ::diagnostic_updater::Updater by value and forwards only the curated member set
+/// shared with the Agnocast build, instead of deriving from it. This keeps the public surface
+/// identical to the Agnocast-build Updater, so code that compiles under ENABLE_AGNOCAST=0 also
+/// compiles under =1. Deriving from ::diagnostic_updater::Updater would instead leak its full API
+/// (e.g. the upstream template / interface-pointer constructors, setVerbose, etc.) into the =0
+/// build, allowing =0-only code that breaks under =1.
+class Updater
 {
 public:
   /// @brief Construct from a wrapper Node and update period.
@@ -295,9 +303,113 @@ public:
   ///       `::agnocast::Updater` does not support it, and the wrapper keeps a
   ///       single signature shared by both backends.
   explicit Updater(autoware::agnocast_wrapper::Node * node, double period = 1.0)
-  : ::diagnostic_updater::Updater(node->get_rclcpp_node(), period)
+  : logger_(node->get_logger()), impl_(node->get_rclcpp_node(), period), verbose_(impl_.verbose_)
   {
   }
+
+  /// @brief Register a diagnostic task by name and callable.
+  ///
+  /// Dispatches to ::diagnostic_updater::Updater::add().
+  ///
+  /// @param name Diagnostic task name surfaced in the published DiagnosticStatus.
+  /// @param f    Callable invoked each update cycle to fill in a DiagnosticStatusWrapper.
+  void add(const std::string & name, ::diagnostic_updater::TaskFunction f) { impl_.add(name, f); }
+
+  /// @brief Register a diagnostic task object by reference.
+  ///
+  /// The task is stored by reference inside the underlying Updater; the caller
+  /// must ensure the task outlives this Updater. Useful for adding pre-built
+  /// task types such as FrequencyStatus, TimeStampStatus, or Heartbeat.
+  void add(::diagnostic_updater::DiagnosticTask & task) { impl_.add(task); }
+
+  /// @brief Register a diagnostic task by name and member function pointer.
+  ///
+  /// @tparam T   Class type owning the diagnostic method.
+  /// @param name Diagnostic task name.
+  /// @param c    Pointer to the owning instance; must outlive this Updater.
+  /// @param f    Member function called each update cycle.
+  template <class T>
+  void add(
+    const std::string name, T * c, void (T::*f)(::diagnostic_updater::DiagnosticStatusWrapper &))
+  {
+    impl_.add(name, c, f);
+  }
+
+  /// @brief Remove a previously added task by name.
+  /// @param name Task name passed to a prior add() call.
+  /// @return true if a task with that name was found and removed; false otherwise.
+  bool removeByName(const std::string name) { return impl_.removeByName(name); }
+
+  /// @brief Get the current update period as rclcpp::Duration.
+  auto getPeriod() const { return impl_.getPeriod(); }
+
+  /// @brief Set the update period from rclcpp::Duration.
+  ///
+  /// Resets the internal timer to the new period.
+  void setPeriod(rclcpp::Duration period) { impl_.setPeriod(period); }
+
+  /// @brief Set the update period in seconds.
+  ///
+  /// Convenience overload that converts to rclcpp::Duration internally.
+  void setPeriod(double period) { impl_.setPeriod(period); }
+
+  /// @brief Force an immediate update of all known DiagnosticStatus tasks,
+  ///        bypassing the period interval.
+  ///
+  /// Useful when something drastic happens (shutdown, self-test) and the latest
+  /// status must be published immediately rather than waiting for the next tick.
+  void force_update() { impl_.force_update(); }
+
+  /// @brief Publish a single status with the given level and message across all
+  ///        known DiagnosticStatus tasks.
+  ///
+  /// @param lvl Diagnostic level
+  ///            (diagnostic_msgs::msg::DiagnosticStatus::OK / WARN / ERROR / STALE).
+  /// @param msg Status message attached to every task in the broadcast.
+  void broadcast(unsigned char lvl, const std::string msg) { impl_.broadcast(lvl, msg); }
+
+  /// @brief Set the hardware ID embedded in every published DiagnosticStatus.
+  /// @param hwid Hardware identifier string (free-form).
+  void setHardwareID(const std::string & hwid) { impl_.setHardwareID(hwid); }
+
+  /// @brief printf-style variant of setHardwareID. See the Agnocast-build overload above for
+  ///        why this pre-formats instead of forwarding varargs.
+  void setHardwareIDf(const char * format, ...)
+  {
+    va_list va;
+    constexpr int kBufferSize = 1000;
+    char buff[kBufferSize];
+    va_start(va, format);
+    const int written = vsnprintf(buff, kBufferSize, format, va);
+    va_end(va);
+    // On encoding error vsnprintf returns negative and leaves buff unspecified, so the
+    // hardware ID is left untouched rather than built from an unterminated buffer.
+    if (written < 0) {
+      RCLCPP_DEBUG(logger_, "Encoding error in diagnostic_updater::setHardwareIDf.");
+      return;
+    }
+    if (written >= kBufferSize) {
+      RCLCPP_DEBUG(logger_, "Really long string in diagnostic_updater::setHardwareIDf.");
+    }
+    setHardwareID(std::string(buff));
+  }
+
+  // Non-copyable and non-movable: matches the Agnocast-build Updater, whose `verbose_` is a
+  // reference bound to the underlying impl and cannot be reseated.
+  Updater(const Updater &) = delete;
+  Updater & operator=(const Updater &) = delete;
+  Updater(Updater &&) = delete;
+  Updater & operator=(Updater &&) = delete;
+
+private:
+  rclcpp::Logger logger_;
+  ::diagnostic_updater::Updater impl_;
+
+public:
+  /// Mirrors ::diagnostic_updater::Updater::verbose_. Bound by reference so
+  /// `updater.verbose_ = true;` writes through to the underlying impl, matching the
+  /// field-access idiom of the Agnocast-build Updater.
+  bool & verbose_;
 };
 
 }  // namespace diagnostic_updater
