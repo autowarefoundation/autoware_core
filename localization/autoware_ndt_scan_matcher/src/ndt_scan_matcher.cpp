@@ -305,12 +305,6 @@ ScoreEvaluationResult evaluate_score(
   return result;
 }
 
-bool is_scan_matching_converged(
-  bool is_ok_iteration_num, bool is_local_optimal_solution_oscillation, bool is_ok_score)
-{
-  return (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
-}
-
 pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> extract_no_ground_points(
   const pcl::PointCloud<pcl::PointXYZ> & sensor_points_in_map, const double result_pose_z,
   const double z_margin_for_ground_removal)

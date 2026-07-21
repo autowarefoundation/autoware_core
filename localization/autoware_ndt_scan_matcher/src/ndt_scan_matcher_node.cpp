@@ -563,8 +563,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     }
 
     // check is_converged
-    const bool is_converged = is_scan_matching_converged(
-      is_ok_iteration_num, is_local_optimal_solution_oscillation, is_ok_score);
+    const bool is_converged = (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
 
     // covariance estimation
     const Eigen::Quaterniond map_to_base_link_quat = Eigen::Quaterniond(
