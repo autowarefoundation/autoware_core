@@ -319,6 +319,9 @@ pcl::shared_ptr<pcl::PointCloud<pcl::PointXYZ>> extract_no_ground_points(
   auto no_ground_points_in_map_ptr = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   no_ground_points_in_map_ptr->points.reserve(sensor_points_in_map.size());
 
+  // The aligned pose z is constant over the loop; the translation z of the 4x4 matrix equals
+  // matrix4f_to_pose(ndt_result.pose).position.z. Hoist it to avoid rebuilding a full Pose
+  // (including a quaternion extraction) for every point in the scan.
   for (const auto & point : sensor_points_in_map.points) {
     if (point.z - result_pose_z > z_margin_for_ground_removal) {
       no_ground_points_in_map_ptr->points.push_back(point);

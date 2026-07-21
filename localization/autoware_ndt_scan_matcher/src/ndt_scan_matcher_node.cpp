@@ -583,6 +583,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
       ndt_covariance = compose_output_covariance(
         ndt_covariance, estimated_covariance_2d, ndt_result.pose,
         param_.covariance.covariance_estimation.scale_factor,
+        /* Index 0 and 7 are covariance elements for x and y */
         param_.covariance.output_pose_covariance[0], param_.covariance.output_pose_covariance[7]);
     }
 
