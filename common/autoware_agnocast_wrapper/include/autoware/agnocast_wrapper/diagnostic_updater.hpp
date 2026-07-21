@@ -76,12 +76,6 @@ namespace diagnostic_updater
 class Updater
 {
 public:
-  /// @brief Heap-allocated rclcpp-backed implementation held inside impl_.
-  using RclcppImpl = std::unique_ptr<::diagnostic_updater::Updater>;
-
-  /// @brief Heap-allocated agnocast-backed implementation held inside impl_.
-  using AgnocastImpl = std::unique_ptr<::agnocast::Updater>;
-
   /// @brief Construct an Updater bound to a wrapper Node.
   ///
   /// Selects the backend from use_agnocast() at construction; the choice is
@@ -257,6 +251,12 @@ public:
   Updater & operator=(Updater &&) = delete;
 
 private:
+  /// @brief Heap-allocated rclcpp-backed implementation held inside impl_.
+  using RclcppImpl = std::unique_ptr<::diagnostic_updater::Updater>;
+
+  /// @brief Heap-allocated agnocast-backed implementation held inside impl_.
+  using AgnocastImpl = std::unique_ptr<::agnocast::Updater>;
+
   rclcpp::Logger logger_;
   std::variant<RclcppImpl, AgnocastImpl> impl_;
 
