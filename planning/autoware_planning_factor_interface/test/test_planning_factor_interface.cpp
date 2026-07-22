@@ -63,17 +63,16 @@ std::vector<TrajectoryPoint> make_straight_trajectory(const size_t num_points)
 }
 }  // namespace
 
-// Run the suite over the agnocast wrapper node PlanningFactorInterfaceT is instantiated with.
 class PlanningFactorInterfaceTest : public ::testing::Test
 {
 protected:
-  using NodeT = autoware::agnocast_wrapper::Node;
-  using InterfaceT = PlanningFactorInterfaceT<NodeT>;
+  using InterfaceT = PlanningFactorInterfaceT<autoware::agnocast_wrapper::Node>;
 
   void SetUp() override
   {
     rclcpp::init(0, nullptr);
-    node_ = std::make_shared<NodeT>("planning_factor_interface_test_node");
+    node_ =
+      std::make_shared<autoware::agnocast_wrapper::Node>("planning_factor_interface_test_node");
     interface_ = std::make_unique<InterfaceT>(node_.get(), "test_module");
   }
 
@@ -84,7 +83,7 @@ protected:
     rclcpp::shutdown();
   }
 
-  std::shared_ptr<NodeT> node_;
+  std::shared_ptr<autoware::agnocast_wrapper::Node> node_;
   std::unique_ptr<InterfaceT> interface_;
 };
 
