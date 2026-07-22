@@ -40,8 +40,22 @@ public:
     double over_a_weight;
   };
 
+  template <typename NodeT>
   explicit L2PseudoJerkSmoother(
-    rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
+    NodeT & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+  : SmootherBase(node, time_keeper)
+  {
+    auto & p = smoother_param_;
+    p.pseudo_jerk_weight = node.template declare_parameter<double>("pseudo_jerk_weight");
+    p.over_v_weight = node.template declare_parameter<double>("over_v_weight");
+    p.over_a_weight = node.template declare_parameter<double>("over_a_weight");
+
+    qp_solver_.updateMaxIter(4000);
+    qp_solver_.updateRhoInterval(0);  // 0 means automatic
+    qp_solver_.updateEpsRel(1.0e-4);  // def: 1.0e-4
+    qp_solver_.updateEpsAbs(1.0e-4);  // def: 1.0e-4
+    qp_solver_.updateVerbose(false);
+  }
 
   bool apply(
     const double initial_vel, const double initial_acc, const TrajectoryPoints & input,

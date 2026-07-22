@@ -28,6 +28,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "tf2/utils.hpp"
 
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/polling_subscriber.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_debug/time_keeper.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
@@ -63,7 +65,8 @@ using autoware_adapi_v1_msgs::msg::OperationModeState;
 using autoware_internal_debug_msgs::msg::Float32Stamped;
 using autoware_internal_debug_msgs::msg::Float64Stamped;
 using autoware_internal_planning_msgs::msg::VelocityLimit;  // temporary
-using autoware_utils_diagnostics::DiagnosticsInterface;
+using DiagnosticsInterface =
+  autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>;
 using geometry_msgs::msg::AccelWithCovarianceStamped;
 using geometry_msgs::msg::Pose;
 using geometry_msgs::msg::PoseStamped;
@@ -79,34 +82,32 @@ struct Motion
   Motion(const double v, const double a) : vel(v), acc(a) {}
 };
 
-class VelocitySmootherNode : public rclcpp::Node
+class VelocitySmootherNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit VelocitySmootherNode(const rclcpp::NodeOptions & node_options);
 
 private:
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_;
-  rclcpp::Publisher<MarkerArray>::SharedPtr pub_virtual_wall_;
-  rclcpp::Subscription<Trajectory>::SharedPtr sub_current_trajectory_;
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<Odometry> sub_current_odometry_{
-    this, "/localization/kinematic_state"};
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<AccelWithCovarianceStamped>
-    sub_current_acceleration_{this, "~/input/acceleration"};
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<
-    VelocityLimit, autoware_utils_rclcpp::polling_policy::Newest>
-    sub_external_velocity_limit_{this, "~/input/external_velocity_limit_mps"};
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<OperationModeState> sub_operation_mode_{
-    this, "~/input/operation_mode_state", rclcpp::QoS{1}.transient_local()};
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_trajectory_;
+  AUTOWARE_PUBLISHER_PTR(MarkerArray) pub_virtual_wall_;
+  AUTOWARE_SUBSCRIPTION_PTR(Trajectory) sub_current_trajectory_;
+  autoware::agnocast_wrapper::polling::PollingSubscriber<Odometry>::SharedPtr sub_current_odometry_;
+  autoware::agnocast_wrapper::polling::PollingSubscriber<AccelWithCovarianceStamped>::SharedPtr
+    sub_current_acceleration_;
+  autoware::agnocast_wrapper::polling::PollingSubscriber<
+    VelocityLimit, autoware_utils_rclcpp::polling_policy::Newest>::SharedPtr
+    sub_external_velocity_limit_;
+  autoware::agnocast_wrapper::polling::PollingSubscriber<OperationModeState>::SharedPtr
+    sub_operation_mode_;
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
   AccelWithCovarianceStamped::ConstSharedPtr current_acceleration_ptr_;
-  VelocityLimit::ConstSharedPtr external_velocity_limit_ptr_{
-    nullptr};                                     // external velocity limit message
-  Trajectory::ConstSharedPtr base_traj_raw_ptr_;  // current base_waypoints
-  double max_velocity_with_deceleration_;         // maximum velocity with deceleration
-                                                  // for external velocity limit
-  double wheelbase_;                              // wheelbase
-  double base_link2front_;                        // base_link to front
+  VelocityLimit::ConstSharedPtr external_velocity_limit_ptr_;  // external velocity limit message
+  AUTOWARE_MESSAGE_CONST_SHARED_PTR(Trajectory) base_traj_raw_ptr_;  // current base_waypoints
+  double max_velocity_with_deceleration_;  // maximum velocity with deceleration
+                                           // for external velocity limit
+  double wheelbase_;                       // wheelbase
+  double base_link2front_;                 // base_link to front
 
   TrajectoryPoints prev_output_;  // previously published trajectory
 
@@ -188,12 +189,12 @@ private:
   void setupSmoother(const double wheelbase);
 
   // parameter update
-  OnSetParametersCallbackHandle::SharedPtr set_param_res_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr set_param_res_;
   rcl_interfaces::msg::SetParametersResult onParameter(
     const std::vector<rclcpp::Parameter> & parameters);
 
   // topic callback
-  void onCurrentTrajectory(const Trajectory::ConstSharedPtr msg);
+  void onCurrentTrajectory(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Trajectory) & msg);
 
   void calcExternalVelocityLimit();
 
@@ -240,7 +241,7 @@ private:
 
   void publishClosestVelocity(
     const TrajectoryPoints & trajectory, const Pose & current_pose,
-    const rclcpp::Publisher<Float32Stamped>::SharedPtr pub) const;
+    const AUTOWARE_PUBLISHER_PTR(Float32Stamped) pub) const;
 
   Trajectory toTrajectoryMsg(
     const TrajectoryPoints & points, const std_msgs::msg::Header * header = nullptr) const;
@@ -256,26 +257,25 @@ private:
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   std::shared_ptr<rclcpp::Time> prev_time_;
   double prev_acc_;
-  rclcpp::Publisher<Float32Stamped>::SharedPtr pub_dist_to_stopline_;
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_raw_;
-  rclcpp::Publisher<VelocityLimit>::SharedPtr pub_velocity_limit_;
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_vel_lim_;
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_latacc_filtered_;
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_steering_rate_limited_;
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_trajectory_resampled_;
-  rclcpp::Publisher<Float32Stamped>::SharedPtr debug_closest_velocity_;
-  rclcpp::Publisher<Float32Stamped>::SharedPtr debug_closest_acc_;
-  rclcpp::Publisher<Float32Stamped>::SharedPtr debug_closest_jerk_;
-  rclcpp::Publisher<Float64Stamped>::SharedPtr debug_calculation_time_;
-  rclcpp::Publisher<Float32Stamped>::SharedPtr debug_closest_max_velocity_;
-  rclcpp::Publisher<autoware_utils_debug::ProcessingTimeDetail>::SharedPtr
-    debug_processing_time_detail_;
+  AUTOWARE_PUBLISHER_PTR(Float32Stamped) pub_dist_to_stopline_;
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_trajectory_raw_;
+  AUTOWARE_PUBLISHER_PTR(VelocityLimit) pub_velocity_limit_;
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_trajectory_vel_lim_;
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_trajectory_latacc_filtered_;
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_trajectory_steering_rate_limited_;
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_trajectory_resampled_;
+  AUTOWARE_PUBLISHER_PTR(Float32Stamped) debug_closest_velocity_;
+  AUTOWARE_PUBLISHER_PTR(Float32Stamped) debug_closest_acc_;
+  AUTOWARE_PUBLISHER_PTR(Float32Stamped) debug_closest_jerk_;
+  AUTOWARE_PUBLISHER_PTR(Float64Stamped) debug_calculation_time_;
+  AUTOWARE_PUBLISHER_PTR(Float32Stamped) debug_closest_max_velocity_;
+  AUTOWARE_PUBLISHER_PTR(autoware_utils_debug::ProcessingTimeDetail) debug_processing_time_detail_;
 
   // For Jerk Filtered Algorithm Debug
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_forward_filtered_trajectory_;
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_backward_filtered_trajectory_;
-  rclcpp::Publisher<Trajectory>::SharedPtr pub_merged_filtered_trajectory_;
-  rclcpp::Publisher<Float32Stamped>::SharedPtr pub_closest_merged_velocity_;
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_forward_filtered_trajectory_;
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_backward_filtered_trajectory_;
+  AUTOWARE_PUBLISHER_PTR(Trajectory) pub_merged_filtered_trajectory_;
+  AUTOWARE_PUBLISHER_PTR(Float32Stamped) pub_closest_merged_velocity_;
 
   // helper functions
   size_t findNearestIndexFromEgo(const TrajectoryPoints & points) const;
@@ -283,8 +283,12 @@ private:
   void flipVelocity(TrajectoryPoints & points) const;
   void publishStopWatchTime();
 
-  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
-  std::unique_ptr<autoware_utils_debug::PublishedTimePublisher> published_time_publisher_;
+  std::unique_ptr<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
+    logger_configure_;
+  std::unique_ptr<
+    autoware_utils_debug::BasicPublishedTimePublisher<autoware::agnocast_wrapper::Node>>
+    published_time_publisher_;
 
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{nullptr};
 

@@ -71,9 +71,37 @@ public:
     } backward;
   };
 
+  template <typename NodeT>
   explicit AnalyticalJerkConstrainedSmoother(
-    rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper =
-                           std::make_shared<autoware_utils_debug::TimeKeeper>());
+    NodeT & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper =
+                    std::make_shared<autoware_utils_debug::TimeKeeper>())
+  : SmootherBase(node, time_keeper),
+    logger_(node.get_logger().get_child("analytical_jerk_constrained_smoother"))
+  {
+    auto & p = smoother_param_;
+    p.resample.ds_resample = node.template declare_parameter<double>("resample.ds_resample");
+    p.resample.num_resample =
+      static_cast<int>(node.template declare_parameter<int>("resample.num_resample"));
+    p.resample.delta_yaw_threshold =
+      node.template declare_parameter<double>("resample.delta_yaw_threshold");
+    p.latacc.enable_constant_velocity_while_turning =
+      node.template declare_parameter<bool>("latacc.enable_constant_velocity_while_turning");
+    p.latacc.constant_velocity_dist_threshold =
+      node.template declare_parameter<double>("latacc.constant_velocity_dist_threshold");
+    p.forward.max_acc = node.template declare_parameter<double>("forward.max_acc");
+    p.forward.min_acc = node.template declare_parameter<double>("forward.min_acc");
+    p.forward.max_jerk = node.template declare_parameter<double>("forward.max_jerk");
+    p.forward.min_jerk = node.template declare_parameter<double>("forward.min_jerk");
+    p.forward.kp = node.template declare_parameter<double>("forward.kp");
+    p.backward.start_jerk = node.template declare_parameter<double>("backward.start_jerk");
+    p.backward.min_jerk_mild_stop =
+      node.template declare_parameter<double>("backward.min_jerk_mild_stop");
+    p.backward.min_jerk = node.template declare_parameter<double>("backward.min_jerk");
+    p.backward.min_acc_mild_stop =
+      node.template declare_parameter<double>("backward.min_acc_mild_stop");
+    p.backward.min_acc = node.template declare_parameter<double>("backward.min_acc");
+    p.backward.span_jerk = node.template declare_parameter<double>("backward.span_jerk");
+  }
 
   bool apply(
     const double initial_vel, const double initial_acc, const TrajectoryPoints & input,

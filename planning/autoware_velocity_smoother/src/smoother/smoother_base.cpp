@@ -64,41 +64,6 @@ TrajectoryPoints applyPreProcess(
 }
 }  // namespace
 
-SmootherBase::SmootherBase(
-  rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
-: time_keeper_(time_keeper)
-{
-  auto & p = base_param_;
-  p.max_accel = node.declare_parameter<double>("normal.max_acc");
-  p.min_decel = node.declare_parameter<double>("normal.min_acc");
-  p.stop_decel = node.declare_parameter<double>("stop_decel");
-  p.max_jerk = node.declare_parameter<double>("normal.max_jerk");
-  p.min_jerk = node.declare_parameter<double>("normal.min_jerk");
-  p.min_decel_for_lateral_acc_lim_filter =
-    node.declare_parameter<double>("min_decel_for_lateral_acc_lim_filter");
-  p.sample_ds = node.declare_parameter<double>("resample_ds");
-  p.curvature_threshold = node.declare_parameter<double>("curvature_threshold");
-  p.lateral_acceleration_limits =
-    node.declare_parameter<std::vector<double>>("lateral_acceleration_limits");
-  p.velocity_thresholds = node.declare_parameter<std::vector<double>>("velocity_thresholds");
-  p.steering_angle_rate_limits =
-    node.declare_parameter<std::vector<double>>("steering_angle_rate_limits");
-  p.curvature_calculation_distance =
-    node.declare_parameter<double>("curvature_calculation_distance");
-  p.decel_distance_before_curve = node.declare_parameter<double>("decel_distance_before_curve");
-  p.decel_distance_after_curve = node.declare_parameter<double>("decel_distance_after_curve");
-  p.min_curve_velocity = node.declare_parameter<double>("min_curve_velocity");
-  p.resample_param.max_trajectory_length = node.declare_parameter<double>("max_trajectory_length");
-  p.resample_param.min_trajectory_length = node.declare_parameter<double>("min_trajectory_length");
-  p.resample_param.resample_time = node.declare_parameter<double>("resample_time");
-  p.resample_param.dense_resample_dt = node.declare_parameter<double>("dense_resample_dt");
-  p.resample_param.dense_min_interval_distance =
-    node.declare_parameter<double>("dense_min_interval_distance");
-  p.resample_param.sparse_resample_dt = node.declare_parameter<double>("sparse_resample_dt");
-  p.resample_param.sparse_min_interval_distance =
-    node.declare_parameter<double>("sparse_min_interval_distance");
-}
-
 void SmootherBase::setWheelBase(const double wheel_base)
 {
   base_param_.wheel_base = wheel_base;
