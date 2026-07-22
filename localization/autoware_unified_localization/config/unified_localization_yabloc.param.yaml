@@ -1,0 +1,57 @@
+# Same as unified_localization.param.yaml but with YabLoc align enabled for AUTO.
+# Use this when pose source is YabLoc (e.g. universe launch with use_yabloc_pose).
+# Pass as param_file when launching, or use launch arg use_yabloc_align:=true.
+/**:
+  ros__parameters:
+    pose_frame_id: "map"
+    child_frame_id: "base_link"
+
+    node:
+      predict_frequency: 50.0
+      enable_yaw_bias_estimation: true
+      extend_state_step: 50
+
+    pose_measurement:
+      pose_additional_delay: 0.0
+      pose_gate_dist: 49.5
+      pose_smoothing_steps: 5
+      max_pose_queue_size: 5
+
+    twist_measurement:
+      twist_additional_delay: 0.0
+      twist_gate_dist: 46.1
+      twist_smoothing_steps: 2
+      max_twist_queue_size: 2
+
+    process_noise:
+      proc_stddev_vx_c: 10.0
+      proc_stddev_wz_c: 5.0
+      proc_stddev_yaw_c: 0.005
+
+    simple_1d_filter_parameters:
+      z_filter_proc_dev: 5.0
+      roll_filter_proc_dev: 0.1
+      pitch_filter_proc_dev: 0.1
+
+    stop_filter:
+      linear_x_threshold: 0.1
+      angular_z_threshold: 0.02
+
+    twist2accel:
+      accel_lowpass_gain: 0.2
+
+    initialize:
+      auto_stop_check_enabled: false
+      auto_stop_check_duration_sec: 3.0
+      auto_stop_velocity_threshold: 0.1
+      auto_ndt_align_enabled: false
+      auto_ndt_align_service_name: "/localization/pose_estimator/ndt_align_srv"
+      auto_ndt_align_timeout_sec: 10.0
+      auto_yabloc_align_enabled: true
+      # Remap in launch if YabLoc node uses a different service name (e.g. yabloc_pose_initializer).
+      auto_yabloc_align_service_name: "/localization/pose_estimator/yabloc_align_srv"
+      auto_yabloc_align_timeout_sec: 10.0
+      trigger_timeout_sec: 5.0
+      auto_gnss_pose_topic: ""
+      initial_pose_covariance_override_enabled: false
+      initial_pose_covariance: [0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01]
