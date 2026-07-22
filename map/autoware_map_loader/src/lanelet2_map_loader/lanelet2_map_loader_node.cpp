@@ -88,10 +88,6 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
     // Here UNrecoverable, so I kill this node for users to fix their inputs
     RCLCPP_WARN(get_logger(), "%s", e.what());
     throw;
-  } catch (const std::exception & e) {
-    // Here unknown error, so I log and still stay alive to avoid crash loops
-    RCLCPP_ERROR(get_logger(), "%s", e.what());
-    return;
   }
 
   for (const auto & warn : result.warnings) RCLCPP_WARN(get_logger(), "%s", warn.c_str());
@@ -132,8 +128,15 @@ void Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
 
   const auto current_time = now();
 
-  // Retrieve payload from pure C++ core
-  res->lanelet2_cells = selected_map_loader_module_->execute(req->cell_ids);
+  try {
+    // Retrieve payload from pure C++ core
+    res->lanelet2_cells = selected_map_loader_module_->execute(req->cell_ids);
+  } catch (const MapLoadException & e) {
+    for (const auto & err : e.errors) {
+      RCLCPP_ERROR_STREAM(get_logger(), err);
+    }
+    return;
+  }
 
   if (res->lanelet2_cells.data.empty()) {
     RCLCPP_ERROR(get_logger(), "Failed to load selected cells or map is empty.");
@@ -166,6 +169,7 @@ lanelet::LaneletMapPtr Lanelet2MapLoaderNode::load_map(
     for (const auto & err : e.errors) {
       RCLCPP_ERROR_STREAM(rclcpp::get_logger("map_loader"), err);
     }
+
     return nullptr;
   }
 }
