@@ -82,6 +82,8 @@ public:
   {
   }
 
+  // allow_same_message is unused: upstream autoware_utils_rclcpp has no take_data(bool);
+  // re-delivery is already governed by the PollingPolicy tag (Latest re-delivers, Newest only new).
   std::shared_ptr<const MessageT> take_data_impl(bool allow_same_message) override
   {
     (void)allow_same_message;
