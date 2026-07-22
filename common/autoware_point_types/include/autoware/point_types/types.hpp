@@ -166,6 +166,36 @@ using PointXYZIRCAEDTGenerator = std::tuple<
   field_return_type_generator, field_channel_generator, field_azimuth_generator,
   field_elevation_generator, field_distance_generator, field_time_stamp_generator>;
 
+struct PointXYZCPE
+{
+  float x{0.0F};
+  float y{0.0F};
+  float z{0.0F};
+  std::uint8_t class_id{0U};
+  float probability{0.0F};
+  float entropy{0.0F};
+
+  friend bool operator==(const PointXYZCPE & p1, const PointXYZCPE & p2)
+  {
+    return autoware::point_types::float_eq<float>(p1.x, p2.x) &&
+           autoware::point_types::float_eq<float>(p1.y, p2.y) &&
+           autoware::point_types::float_eq<float>(p1.z, p2.z) && p1.class_id == p2.class_id &&
+           autoware::point_types::float_eq<float>(p1.probability, p2.probability) &&
+           autoware::point_types::float_eq<float>(p1.entropy, p2.entropy);
+  }
+};
+
+enum class PointXYZCPEIndex { X, Y, Z, ClassId, Probability, Entropy };
+
+LIDAR_UTILS__DEFINE_FIELD_GENERATOR_FOR_MEMBER(class_id);
+LIDAR_UTILS__DEFINE_FIELD_GENERATOR_FOR_MEMBER(probability);
+LIDAR_UTILS__DEFINE_FIELD_GENERATOR_FOR_MEMBER(entropy);
+
+using PointXYZCPEFieldGenerator = std::tuple<
+  point_cloud_msg_wrapper::field_x_generator, point_cloud_msg_wrapper::field_y_generator,
+  point_cloud_msg_wrapper::field_z_generator, field_class_id_generator, field_probability_generator,
+  field_entropy_generator>;
+
 }  // namespace autoware::point_types
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(
@@ -185,4 +215,9 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
     std::uint8_t, return_type,
     return_type)(std::uint16_t, channel, channel)(float, azimuth, azimuth)(
     float, elevation, elevation)(float, distance, distance)(std::uint32_t, time_stamp, time_stamp))
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(
+  autoware::point_types::PointXYZCPE,
+  (float, x, x)(float, y, y)(float, z, z)(std::uint8_t, class_id, class_id)(
+    float, probability, probability)(float, entropy, entropy))
 #endif  // AUTOWARE__POINT_TYPES__TYPES_HPP_
