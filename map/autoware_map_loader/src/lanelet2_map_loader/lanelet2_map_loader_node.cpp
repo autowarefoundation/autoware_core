@@ -118,18 +118,19 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
   RCLCPP_INFO(get_logger(), "Succeeded to load lanelet2_map. Map is published.");
 }
 
-void Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
+bool Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
   const autoware_map_msgs::srv::GetSelectedLanelet2Map::Request::ConstSharedPtr req,
   const autoware_map_msgs::srv::GetSelectedLanelet2Map::Response::SharedPtr res)
 {
   if (!selected_map_loader_module_) {
-    return;
+    return false;
   }
 
   const auto current_time = now();
-  std::vector<std::string> warnings;
 
   try {
+    std::vector<std::string> warnings;
+
     // Retrieve payload from pure C++ core
     res->lanelet2_cells = selected_map_loader_module_->execute(req->cell_ids, warnings);
 
@@ -137,16 +138,20 @@ void Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
     for (const auto & w : warnings) {
       RCLCPP_WARN(get_logger(), "%s", w.c_str());
     }
+
+    if (res->lanelet2_cells.data.empty()) {
+      if (!req->cell_ids.empty() && warnings.size() == req->cell_ids.size()) {
+        RCLCPP_ERROR(get_logger(), "No valid cell IDs in GetSelectedLanelet2Map request.");
+      } else {
+        RCLCPP_ERROR(get_logger(), "Failed to load selected cells or map is empty.");
+      }
+      return false;
+    }
   } catch (const MapLoadException & e) {
     for (const auto & err : e.errors) {
       RCLCPP_ERROR_STREAM(get_logger(), err);
     }
-    return;
-  }
-
-  if (res->lanelet2_cells.data.empty()) {
-    RCLCPP_ERROR(get_logger(), "Failed to load selected cells or map is empty.");
-    return;
+    return false;
   }
 
   // Explicitly apply outer header
@@ -156,6 +161,8 @@ void Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
   // Explicitly apply inner header
   res->lanelet2_cells.header.stamp = current_time;
   res->lanelet2_cells.header.frame_id = "map";
+
+  return true;
 }
 
 lanelet::LaneletMapPtr Lanelet2MapLoaderNode::load_map(

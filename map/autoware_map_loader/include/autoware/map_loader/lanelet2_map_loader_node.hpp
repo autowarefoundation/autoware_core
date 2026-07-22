@@ -57,7 +57,7 @@ private:
 
   void on_map_projector_info(const MapProjectorInfo::Message::ConstSharedPtr msg);
 
-  void on_get_selected_lanelet2_map(
+  bool on_get_selected_lanelet2_map(
     const autoware_map_msgs::srv::GetSelectedLanelet2Map::Request::ConstSharedPtr req,
     const autoware_map_msgs::srv::GetSelectedLanelet2Map::Response::SharedPtr res);
 
