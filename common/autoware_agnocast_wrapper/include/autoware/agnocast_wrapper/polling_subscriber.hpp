@@ -63,17 +63,6 @@ public:
     return take_data_impl(polling_default_allow_same_message_v<MessageT, PollingPolicy>);
   }
 
-  /// @brief (Latest only) When allow_same_message is false, returns nullptr if no new message has
-  /// arrived since the last take. Not declared for Newest/All (passing the flag there is a compile
-  /// error), matching autoware_utils_rclcpp.
-  template <
-    template <typename> class P = PollingPolicy,
-    std::enable_if_t<std::is_same_v<P<MessageT>, polling_policy::Latest<MessageT>>, int> = 0>
-  std::shared_ptr<const MessageT> take_data(bool allow_same_message)
-  {
-    return take_data_impl(allow_same_message);
-  }
-
 protected:
   virtual std::shared_ptr<const MessageT> take_data_impl(bool allow_same_message) = 0;
 };
@@ -95,12 +84,8 @@ public:
 
   std::shared_ptr<const MessageT> take_data_impl(bool allow_same_message) override
   {
-    if constexpr (std::is_same_v<PollingPolicy<MessageT>, polling_policy::Latest<MessageT>>) {
-      return subscriber_->take_data(allow_same_message);
-    } else {
-      (void)allow_same_message;
-      return subscriber_->take_data();
-    }
+    (void)allow_same_message;
+    return subscriber_->take_data();
   }
 };
 
