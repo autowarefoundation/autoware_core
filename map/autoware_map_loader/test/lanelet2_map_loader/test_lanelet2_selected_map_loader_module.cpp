@@ -144,10 +144,10 @@ TEST_F(TestLanelet2SelectedMapLoaderModule, MetadataTopicPublished)
   bool received = false;
   auto sub = node_->create_subscription<autoware_map_msgs::msg::LaneletMapMetaData>(
     "output/lanelet2_map_metadata", rclcpp::QoS{1}.transient_local(),
-    [&received, this](const autoware_map_msgs::msg::LaneletMapMetaData::SharedPtr msg) {
-      EXPECT_EQ(msg->header.frame_id, "map");
-      EXPECT_EQ(msg->metadata_list.size(), 1u);
-      EXPECT_EQ(msg->metadata_list[0].cell_id, test_map_path());
+    [&received, this](const autoware_map_msgs::msg::LaneletMapMetaData & msg) {
+      EXPECT_EQ(msg.header.frame_id, "map");
+      EXPECT_EQ(msg.metadata_list.size(), 1u);
+      EXPECT_EQ(msg.metadata_list[0].cell_id, test_map_path());
       received = true;
     });
 
