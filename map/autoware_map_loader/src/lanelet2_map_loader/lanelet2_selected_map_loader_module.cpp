@@ -60,16 +60,18 @@ Lanelet2SelectedMapLoaderModule::Lanelet2SelectedMapLoaderModule(
 }
 
 autoware_map_msgs::msg::LaneletMapBin Lanelet2SelectedMapLoaderModule::execute(
-  const std::vector<std::string> & cell_ids) const
+  const std::vector<std::string> & cell_ids, std::vector<std::string> & warnings) const
 {
   // Resolve requested cell IDs to file paths.
   std::vector<std::string> paths;
   for (const auto & cell_id : cell_ids) {
     const auto it = all_cell_metadata_dict_.find(cell_id);
     if (it == all_cell_metadata_dict_.end()) {
+      warnings.push_back("Requested cell ID not found in metadata: " + cell_id);
       continue;
     }
     if (!std::filesystem::exists(cell_id)) {
+      warnings.push_back("Map file no longer exists on disk: " + cell_id);
       continue;
     }
     paths.push_back(cell_id);

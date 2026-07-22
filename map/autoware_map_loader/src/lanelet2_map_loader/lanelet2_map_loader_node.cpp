@@ -127,10 +127,16 @@ void Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
   }
 
   const auto current_time = now();
+  std::vector<std::string> warnings;
 
   try {
     // Retrieve payload from pure C++ core
-    res->lanelet2_cells = selected_map_loader_module_->execute(req->cell_ids);
+    res->lanelet2_cells = selected_map_loader_module_->execute(req->cell_ids, warnings);
+
+    // Log warnings
+    for (const auto & w : warnings) {
+      RCLCPP_WARN(get_logger(), "%s", w.c_str());
+    }
   } catch (const MapLoadException & e) {
     for (const auto & err : e.errors) {
       RCLCPP_ERROR_STREAM(get_logger(), err);

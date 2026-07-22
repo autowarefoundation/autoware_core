@@ -53,7 +53,8 @@ public:
 
   autoware_map_msgs::msg::LaneletMapMetaData build_metadata_msg() const;
 
-  autoware_map_msgs::msg::LaneletMapBin execute(const std::vector<std::string> & cell_ids) const;
+  autoware_map_msgs::msg::LaneletMapBin execute(
+    const std::vector<std::string> & cell_ids, std::vector<std::string> & warnings) const;
 
 private:
   std::map<std::string, Lanelet2FileMetaData> all_cell_metadata_dict_;

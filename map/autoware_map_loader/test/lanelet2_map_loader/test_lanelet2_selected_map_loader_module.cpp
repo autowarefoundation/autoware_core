@@ -97,7 +97,8 @@ TEST_F(TestLanelet2SelectedMapLoaderModule, TestCreateMetadataMsg)
 TEST_F(TestLanelet2SelectedMapLoaderModule, TestExecuteWithInvalidCells)
 {
   std::vector<std::string> invalid_cells = {"missing_cell_1", "missing_cell_2"};
-  const auto result_bin = module_->execute(invalid_cells);
+  std::vector<std::string> warnings;  // Here I just use dummy warnings so the test still compiles
+  const auto result_bin = module_->execute(invalid_cells, warnings);
 
   EXPECT_TRUE(result_bin.data.empty());
 }
