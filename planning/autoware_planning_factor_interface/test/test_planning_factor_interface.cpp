@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/planning_factor_interface/planning_factor_interface.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -62,14 +63,19 @@ std::vector<TrajectoryPoint> make_straight_trajectory(const size_t num_points)
 }
 }  // namespace
 
+// Run the suite over both node types PlanningFactorInterfaceT is instantiated with:
+// rclcpp::Node and the agnocast wrapper node.
+template <typename NodeT>
 class PlanningFactorInterfaceTest : public ::testing::Test
 {
 protected:
+  using InterfaceT = PlanningFactorInterfaceT<NodeT>;
+
   void SetUp() override
   {
     rclcpp::init(0, nullptr);
-    node_ = std::make_shared<rclcpp::Node>("planning_factor_interface_test_node");
-    interface_ = std::make_unique<PlanningFactorInterface>(node_.get(), "test_module");
+    node_ = std::make_shared<NodeT>("planning_factor_interface_test_node");
+    interface_ = std::make_unique<InterfaceT>(node_.get(), "test_module");
   }
 
   void TearDown() override
@@ -79,23 +85,26 @@ protected:
     rclcpp::shutdown();
   }
 
-  std::shared_ptr<rclcpp::Node> node_;
-  std::unique_ptr<PlanningFactorInterface> interface_;
+  std::shared_ptr<NodeT> node_;
+  std::unique_ptr<InterfaceT> interface_;
 };
+
+using NodeTypes = ::testing::Types<rclcpp::Node, autoware::agnocast_wrapper::Node>;
+TYPED_TEST_SUITE(PlanningFactorInterfaceTest, NodeTypes);
 
 // add(distance, ...) populates exactly one ControlPoint with the supplied fields and
 // the PlanningFactor metadata (module name, behavior, detail, driving direction).
-TEST_F(PlanningFactorInterfaceTest, AddSingleControlPoint)
+TYPED_TEST(PlanningFactorInterfaceTest, AddSingleControlPoint)
 {
   const auto control_pose = make_pose(3.0, 4.0);
   SafetyFactorArray safety_factors;
   safety_factors.is_safe = true;
 
-  interface_->add(
+  this->interface_->add(
     /*distance=*/12.5, control_pose, PlanningFactor::STOP, safety_factors,
     /*is_driving_forward=*/false, /*velocity=*/2.0, /*shift_length=*/-1.5, "detail-text");
 
-  const auto & factors = interface_->get_factors();
+  const auto & factors = this->interface_->get_factors();
   ASSERT_EQ(factors.size(), 1u);
 
   const auto & factor = factors.front();
@@ -115,18 +124,18 @@ TEST_F(PlanningFactorInterfaceTest, AddSingleControlPoint)
 }
 
 // add(start_distance, end_distance, ...) populates two ControlPoints in start->end order.
-TEST_F(PlanningFactorInterfaceTest, AddTwoControlPoints)
+TYPED_TEST(PlanningFactorInterfaceTest, AddTwoControlPoints)
 {
   const auto start_pose = make_pose(1.0, 0.0);
   const auto end_pose = make_pose(5.0, 0.0);
   const SafetyFactorArray safety_factors;
 
-  interface_->add(
+  this->interface_->add(
     /*start_distance=*/1.0, /*end_distance=*/5.0, start_pose, end_pose, PlanningFactor::SLOW_DOWN,
     safety_factors, /*is_driving_forward=*/true, /*start_velocity=*/3.0, /*end_velocity=*/4.0,
     /*start_shift_length=*/0.5, /*end_shift_length=*/0.7, "section");
 
-  const auto & factors = interface_->get_factors();
+  const auto & factors = this->interface_->get_factors();
   ASSERT_EQ(factors.size(), 1u);
 
   const auto & factor = factors.front();
@@ -152,23 +161,23 @@ TEST_F(PlanningFactorInterfaceTest, AddTwoControlPoints)
 // The templated single-point add() forwards the calcSignedArcLength result into
 // ControlPoint.distance. With a 1 m-spaced straight trajectory the signed arc length
 // from the origin to (x, 0) is exactly x.
-TEST_F(PlanningFactorInterfaceTest, AddTemplatedSinglePointForwardsArcLength)
+TYPED_TEST(PlanningFactorInterfaceTest, AddTemplatedSinglePointForwardsArcLength)
 {
   const auto points = make_straight_trajectory(6);
   const auto ego_pose = make_pose(0.0, 0.0);
   const auto control_pose = make_pose(4.0, 0.0);
   const SafetyFactorArray safety_factors;
 
-  interface_->add(points, ego_pose, control_pose, PlanningFactor::STOP, safety_factors);
+  this->interface_->add(points, ego_pose, control_pose, PlanningFactor::STOP, safety_factors);
 
-  const auto & factors = interface_->get_factors();
+  const auto & factors = this->interface_->get_factors();
   ASSERT_EQ(factors.size(), 1u);
   ASSERT_EQ(factors.front().control_points.size(), 1u);
   EXPECT_FLOAT_EQ(factors.front().control_points.front().distance, 4.0f);
 }
 
 // The templated two-point add() forwards both calcSignedArcLength results in order.
-TEST_F(PlanningFactorInterfaceTest, AddTemplatedTwoPointsForwardsArcLength)
+TYPED_TEST(PlanningFactorInterfaceTest, AddTemplatedTwoPointsForwardsArcLength)
 {
   const auto points = make_straight_trajectory(8);
   const auto ego_pose = make_pose(0.0, 0.0);
@@ -176,10 +185,10 @@ TEST_F(PlanningFactorInterfaceTest, AddTemplatedTwoPointsForwardsArcLength)
   const auto end_pose = make_pose(6.0, 0.0);
   const SafetyFactorArray safety_factors;
 
-  interface_->add(
+  this->interface_->add(
     points, ego_pose, start_pose, end_pose, PlanningFactor::SLOW_DOWN, safety_factors);
 
-  const auto & factors = interface_->get_factors();
+  const auto & factors = this->interface_->get_factors();
   ASSERT_EQ(factors.size(), 1u);
   ASSERT_EQ(factors.front().control_points.size(), 2u);
   EXPECT_FLOAT_EQ(factors.front().control_points.at(0).distance, 2.0f);
@@ -187,14 +196,14 @@ TEST_F(PlanningFactorInterfaceTest, AddTemplatedTwoPointsForwardsArcLength)
 }
 
 // Multiple add() calls accumulate into factors_ in insertion order.
-TEST_F(PlanningFactorInterfaceTest, MultipleAddAccumulates)
+TYPED_TEST(PlanningFactorInterfaceTest, MultipleAddAccumulates)
 {
   const SafetyFactorArray safety_factors;
-  interface_->add(1.0, make_pose(1.0, 0.0), PlanningFactor::STOP, safety_factors);
-  interface_->add(2.0, make_pose(2.0, 0.0), PlanningFactor::SLOW_DOWN, safety_factors);
-  interface_->add(3.0, make_pose(3.0, 0.0), PlanningFactor::NONE, safety_factors);
+  this->interface_->add(1.0, make_pose(1.0, 0.0), PlanningFactor::STOP, safety_factors);
+  this->interface_->add(2.0, make_pose(2.0, 0.0), PlanningFactor::SLOW_DOWN, safety_factors);
+  this->interface_->add(3.0, make_pose(3.0, 0.0), PlanningFactor::NONE, safety_factors);
 
-  const auto & factors = interface_->get_factors();
+  const auto & factors = this->interface_->get_factors();
   ASSERT_EQ(factors.size(), 3u);
   EXPECT_EQ(factors.at(0).behavior, PlanningFactor::STOP);
   EXPECT_EQ(factors.at(1).behavior, PlanningFactor::SLOW_DOWN);
@@ -206,26 +215,27 @@ TEST_F(PlanningFactorInterfaceTest, MultipleAddAccumulates)
 
 // publish() stamps frame_id='map', forwards the accumulated factors into the message,
 // and clears the internal buffer afterwards.
-TEST_F(PlanningFactorInterfaceTest, PublishStampsAndForwardsFactors)
+TYPED_TEST(PlanningFactorInterfaceTest, PublishStampsAndForwardsFactors)
 {
   const SafetyFactorArray safety_factors;
-  interface_->add(7.0, make_pose(7.0, 0.0), PlanningFactor::STOP, safety_factors, true, 1.0, 0.0);
+  this->interface_->add(
+    7.0, make_pose(7.0, 0.0), PlanningFactor::STOP, safety_factors, true, 1.0, 0.0);
 
   PlanningFactorArray received;
   bool got_msg = false;
-  auto sub = node_->create_subscription<PlanningFactorArray>(
+  auto sub = this->node_->template create_subscription<PlanningFactorArray>(
     "/planning/planning_factors/test_module", rclcpp::QoS{1},
     [&](const PlanningFactorArray::ConstSharedPtr msg) {
       received = *msg;
       got_msg = true;
     });
 
-  interface_->publish();
+  this->interface_->publish();
 
   // Spin until the subscription receives the published message (bounded wait).
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
   while (!got_msg && std::chrono::steady_clock::now() < deadline) {
-    rclcpp::spin_some(node_);
+    rclcpp::spin_some(this->node_->get_node_base_interface());
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 
@@ -239,19 +249,19 @@ TEST_F(PlanningFactorInterfaceTest, PublishStampsAndForwardsFactors)
 
 // publish() clears the internal factor buffer so the next cycle starts empty
 // (the clear-after-publish contract).
-TEST_F(PlanningFactorInterfaceTest, PublishClearsFactors)
+TYPED_TEST(PlanningFactorInterfaceTest, PublishClearsFactors)
 {
   const SafetyFactorArray safety_factors;
-  interface_->add(1.0, make_pose(1.0, 0.0), PlanningFactor::STOP, safety_factors);
-  ASSERT_EQ(interface_->get_factors().size(), 1u);
+  this->interface_->add(1.0, make_pose(1.0, 0.0), PlanningFactor::STOP, safety_factors);
+  ASSERT_EQ(this->interface_->get_factors().size(), 1u);
 
-  interface_->publish();
+  this->interface_->publish();
 
-  EXPECT_TRUE(interface_->get_factors().empty());
+  EXPECT_TRUE(this->interface_->get_factors().empty());
 
   // A subsequent add starts from an empty buffer.
-  interface_->add(2.0, make_pose(2.0, 0.0), PlanningFactor::SLOW_DOWN, safety_factors);
-  EXPECT_EQ(interface_->get_factors().size(), 1u);
+  this->interface_->add(2.0, make_pose(2.0, 0.0), PlanningFactor::SLOW_DOWN, safety_factors);
+  EXPECT_EQ(this->interface_->get_factors().size(), 1u);
 }
 
 }  // namespace autoware::planning_factor_interface
