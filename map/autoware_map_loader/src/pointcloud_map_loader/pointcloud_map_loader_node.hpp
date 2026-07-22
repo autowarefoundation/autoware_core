@@ -15,12 +15,15 @@
 #ifndef POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_NODE_HPP_
 #define POINTCLOUD_MAP_LOADER__POINTCLOUD_MAP_LOADER_NODE_HPP_
 
-#include "differential_map_loader_module.hpp"
-#include "partial_map_loader_module.hpp"
-#include "pointcloud_map_loader_module.hpp"
-#include "selected_map_loader_module.hpp"
+#include "differential_map_loader.hpp"
+#include "partial_map_loader.hpp"
+#include "pointcloud_map_loader.hpp"
+#include "selected_map_loader.hpp"
 
 #include <rclcpp/rclcpp.hpp>
+
+#include <autoware_map_msgs/msg/point_cloud_map_meta_data.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <pcl/common/common.h>
 #include <pcl/point_cloud.h>
@@ -37,20 +40,25 @@ namespace autoware::map_loader
 {
 class PointCloudMapLoaderNode : public rclcpp::Node
 {
+  using GetPartialPointCloudMap = autoware_map_msgs::srv::GetPartialPointCloudMap;
+  using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;
+  using GetSelectedPointCloudMap = autoware_map_msgs::srv::GetSelectedPointCloudMap;
+
 public:
   explicit PointCloudMapLoaderNode(const rclcpp::NodeOptions & options);
 
 private:
   std::unique_ptr<PointcloudMapLoaderModule> pcd_map_loader_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_pointcloud_map_;
   std::unique_ptr<PointcloudMapLoaderModule> downsampled_pcd_map_loader_;
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr pub_downsampled_pointcloud_map_;
   std::unique_ptr<PartialMapLoaderModule> partial_map_loader_;
+  rclcpp::Service<GetPartialPointCloudMap>::SharedPtr get_partial_pcd_maps_service_;
   std::unique_ptr<DifferentialMapLoaderModule> differential_map_loader_;
+  rclcpp::Service<GetDifferentialPointCloudMap>::SharedPtr get_differential_pcd_maps_service_;
   std::unique_ptr<SelectedMapLoaderModule> selected_map_loader_;
-
-  std::vector<std::string> get_pcd_paths(
-    const std::vector<std::string> & pcd_paths_or_directory) const;
-  std::map<std::string, PCDFileMetadata> get_pcd_metadata(
-    const std::string & pcd_metadata_path, const std::vector<std::string> & pcd_paths) const;
+  rclcpp::Service<GetSelectedPointCloudMap>::SharedPtr get_selected_pcd_maps_service_;
+  rclcpp::Publisher<autoware_map_msgs::msg::PointCloudMapMetaData>::SharedPtr pub_metadata_;
 };
 }  // namespace autoware::map_loader
 

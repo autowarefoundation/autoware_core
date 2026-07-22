@@ -1,4 +1,4 @@
-// Copyright 2021 Tier IV, Inc.
+// Copyright 2020 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,30 +12,27 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef UTILS_HPP_
-#define UTILS_HPP_
+#pragma once
 
 #include <autoware_perception_msgs/msg/detected_objects.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
+#include <std_msgs/msg/header.hpp>
 
 #include <pcl/point_cloud.h>
 #include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
 
 #include <vector>
 
 namespace autoware::euclidean_cluster
 {
-geometry_msgs::msg::Point getCentroid(const sensor_msgs::msg::PointCloud2 & pointcloud);
-void convertPointCloudClusters2Msg(
+geometry_msgs::msg::Point get_centroid(const sensor_msgs::msg::PointCloud2 & pointcloud);
+
+void convert_clusters_to_detected_objects(
   const std_msgs::msg::Header & header,
   const std::vector<pcl::PointCloud<pcl::PointXYZ>> & clusters,
   autoware_perception_msgs::msg::DetectedObjects & msg);
 
-void convertClusters2SensorMsg(
+void convert_clusters_to_debug_point_cloud(
   const std_msgs::msg::Header & header, const std::vector<pcl::PointCloud<pcl::PointXYZ>> & input,
   sensor_msgs::msg::PointCloud2 & output);
 }  // namespace autoware::euclidean_cluster
-
-#endif  // UTILS_HPP_

@@ -71,10 +71,11 @@ public:
   TwistWithCovarianceStamped::ConstSharedPtr received_latest_twist_ptr;
 };
 
-void wait_spin_some(rclcpp::Node::SharedPtr node_ptr)
+template <typename NodePtrT>
+void wait_spin_some(NodePtrT node_ptr)
 {
   for (int i = 0; i < 50; ++i) {
-    rclcpp::spin_some(node_ptr);
+    rclcpp::spin_some(node_ptr->get_node_base_interface());
     rclcpp::WallRate(100).sleep();
   }
 }

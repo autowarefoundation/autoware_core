@@ -18,6 +18,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <chrono>
 #include <memory>
