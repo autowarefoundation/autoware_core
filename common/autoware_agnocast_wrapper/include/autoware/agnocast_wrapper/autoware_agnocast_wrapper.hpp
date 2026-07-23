@@ -1212,16 +1212,16 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 #define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
   this->create_subscription<message_type>(topic, qos, callback, options)
 #define AUTOWARE_CREATE_SUBSCRIPTION_ON_NODE(message_type, node, topic, qos, callback, options) \
-  node->create_subscription<message_type>(topic, qos, callback, options)
+  (node)->create_subscription<message_type>(topic, qos, callback, options)
 
 #define AUTOWARE_CREATE_PUBLISHER2(message_type, arg1, arg2) \
   this->create_publisher<message_type>(arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3(message_type, arg1, arg2, arg3) \
   this->create_publisher<message_type>(arg1, arg2, arg3)
 #define AUTOWARE_CREATE_PUBLISHER2_ON_NODE(message_type, node, arg1, arg2) \
-  node->create_publisher<message_type>(arg1, arg2)
+  (node)->create_publisher<message_type>(arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
-  node->create_publisher<message_type>(arg1, arg2, arg3)
+  (node)->create_publisher<message_type>(arg1, arg2, arg3)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
