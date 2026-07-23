@@ -20,6 +20,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <rcl/timer.h>
+#include <rclcpp/version.h>
 
 #include <chrono>
 #include <functional>
