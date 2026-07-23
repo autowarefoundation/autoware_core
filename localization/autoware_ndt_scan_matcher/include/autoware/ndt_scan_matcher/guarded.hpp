@@ -79,6 +79,35 @@ private:
   T value_;
 };
 
+// A drop-in, lock-free counterpart to Guarded<T> with the same `.with(f)` interface but NO mutex.
+// Kept as a small utility for compatibility scaffolding; the production Rust-enabled node no longer
+// uses this as an external engine holder because its live engine is owned by NdtScanMatcherRs.
+template <typename T>
+class Unguarded
+{
+public:
+  Unguarded() = default;
+
+  template <typename... Args>
+  explicit Unguarded(Args &&... args) : value_(std::forward<Args>(args)...)
+  {
+  }
+
+  template <typename F>
+  auto with(F && f)
+  {
+    return f(value_);
+  }
+  template <typename F>
+  auto with(F && f) const
+  {
+    return f(value_);
+  }
+
+private:
+  T value_;
+};
+
 }  // namespace autoware::ndt_scan_matcher
 
 #endif  // AUTOWARE__NDT_SCAN_MATCHER__GUARDED_HPP_

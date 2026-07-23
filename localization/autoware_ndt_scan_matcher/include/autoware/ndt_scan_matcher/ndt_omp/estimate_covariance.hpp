@@ -19,6 +19,8 @@
 
 #include <Eigen/Core>
 
+#include <pcl/common/transforms.h>
+
 #include <memory>
 #include <utility>
 #include <vector>
@@ -37,17 +39,8 @@ struct ResultOfMultiNdtCovarianceEstimation
 /** \brief Estimate functions */
 Eigen::Matrix2d estimate_xy_covariance_by_laplace_approximation(
   const Eigen::Matrix<double, 6, 6> & hessian);
-ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
-  const NdtResult & ndt_result,
-  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
-
-  const std::vector<Eigen::Matrix4f> & poses_to_search,
-  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source);
-ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
-  const NdtResult & ndt_result,
-  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
-  const std::vector<Eigen::Matrix4f> & poses_to_search,
-  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source, const double temperature);
+// estimate_xy_covariance_by_multi_ndt[_score] are declared below (after the pure-helper
+// declarations) and defined in estimate_covariance.cpp; they drive the concrete pclomp engine.
 
 /** \brief Propose poses to search.
  * (1) Compute covariance by Laplace approximation
@@ -77,6 +70,25 @@ Eigen::Matrix2d rotate_covariance_to_map(
 Eigen::Matrix2d adjust_diagonal_covariance(
   const Eigen::Matrix2d & covariance, const Eigen::Matrix4f & pose, const double fixed_cov00,
   const double fixed_cov11);
+
+// --- Engine-driving estimators (concrete pclomp engine; definitions in estimate_covariance.cpp)
+// ---
+
+/** \brief Multi-NDT covariance: re-align from each candidate pose; uniform weights; unbiased
+ * (n-1)/n covariance. */
+ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
+  const NdtResult & ndt_result,
+  MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const std::vector<Eigen::Matrix4f> & poses_to_search,
+  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source);
+
+/** \brief Multi-NDT-score covariance: score (no re-align) each candidate; temperature softmax
+ * weights. */
+ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
+  const NdtResult & ndt_result,
+  MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const std::vector<Eigen::Matrix4f> & poses_to_search,
+  const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source, const double temperature);
 
 }  // namespace pclomp
 

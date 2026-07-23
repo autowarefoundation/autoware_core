@@ -17,6 +17,7 @@
 
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
+#include "ndt_backend.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 #include "particle.hpp"
 
@@ -41,6 +42,8 @@
 #include <thread>
 #include <vector>
 
+struct AwNdtScanMatcher;
+
 namespace autoware::ndt_scan_matcher
 {
 using DiagnosticsInterface = autoware_utils_diagnostics::DiagnosticsInterface;
@@ -49,18 +52,21 @@ class MapUpdateModule
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
-  using NdtType = pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
+  // The engine type is selected in one place (ndt_backend.hpp).
+  using NdtType = NdtBackend;
   using NdtPtrType = std::shared_ptr<NdtType>;
 
   struct BuilderState
   {
     bool need_rebuild{true};
-    NdtPtrType secondary_ndt_ptr;
   };
+  struct LegacyState;
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param);
+    rclcpp::Node * node, EngineHolder * legacy_ndt_ptr, HyperParameters::DynamicMapLoading param,
+    AwNdtScanMatcher * rs_handle);
+  ~MapUpdateModule();
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
@@ -79,7 +85,7 @@ private:
     BuilderState & builder_state, const geometry_msgs::msg::Point & position,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
 
-  // Do not call this function while holding the lock for ndt_ptr_.
+  // Do not call this function while holding the legacy engine lock.
   void update_map(
     const geometry_msgs::msg::Point & position,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
@@ -87,6 +93,24 @@ private:
   bool update_ndt(
     const geometry_msgs::msg::Point & position, NdtType & ndt,
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+
+  // Map-update via the portable Rust `apply_map_update` (the `MapSource` Host port). The Rust FFI
+  // owns the staging + atomic commit double-buffer; we only supply the tiles. `build_map_delta`
+  // runs the pcd-loader fetch and pushes the add/remove delta into the Rust-owned `builder`
+  // (returns whether anything changed); `map_source_fill` is the C-ABI trampoline the FFI calls
+  // back (ctx == MapSourceContext*), mirroring the make_host/make_diagnostics vtable pattern.
+  struct MapSourceContext
+  {
+    MapUpdateModule * self;
+    bool rebuild;
+    DiagnosticsInterface * diagnostics;
+    bool updated;
+  };
+  static void map_source_fill(void * ctx, double cx, double cy, double radius, void * builder);
+  bool build_map_delta(
+    void * builder, double cx, double cy, double radius, bool rebuild,
+    DiagnosticsInterface & diagnostics);
+
   void publish_partial_pcd_map();
 
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr loaded_pcd_pub_;
@@ -94,11 +118,14 @@ private:
   rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
     pcd_loader_client_;
 
-  // To prevent deadlocks, acquire locks in the following order:
-  // 1. builder_state_ -> ndt_ptr_
-  // 2. builder_state_ -> last_update_position_
-  Guarded<NdtPtrType> & ndt_ptr_;
+  // Lock ordering (OFF, where these are real mutexes): builder_state_ -> legacy_->ndt_ptr and
+  // builder_state_ -> last_update_position_. Under NDT_USE_RUST the live engine is owned by the
+  // Rust node handle, so only builder_state_/last_update_position_ are real locks here.
+  std::unique_ptr<LegacyState> legacy_;
   Guarded<BuilderState> builder_state_;
+  // The map-update decision state (last-update position + need-rebuild) lives Rust-side on
+  // the node handle; this module reads/updates it through the `..._map_update_*` FFIs.
+  AwNdtScanMatcher * rs_handle_;
   Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
 
   rclcpp::Logger logger_;
