@@ -393,9 +393,7 @@ public:
 
 #else
 
-namespace autoware
-{
-namespace agnocast_wrapper
+namespace autoware::agnocast_wrapper
 {
 namespace message_filters
 {
@@ -438,7 +436,6 @@ template <typename Policy>
 using Synchronizer = ::message_filters::Synchronizer<Policy>;
 
 }  // namespace message_filters
-}  // namespace agnocast_wrapper
-}  // namespace autoware
+}  // namespace autoware::agnocast_wrapper
 
 #endif
