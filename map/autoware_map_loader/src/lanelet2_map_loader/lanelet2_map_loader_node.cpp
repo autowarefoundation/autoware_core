@@ -51,6 +51,7 @@
 #include <lanelet2_io/Io.h>
 #include <lanelet2_projection/UTM.h>
 
+#include <cinttypes>
 #include <filesystem>
 #include <map>
 #include <memory>
@@ -174,8 +175,9 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
     if (map_major_ver > static_cast<uint64_t>(lanelet::autoware::version)) {
       RCLCPP_WARN(
         get_logger(),
-        "format_version(%ld) of the provided map(%s) is larger than the supported version(%ld)",
-        map_major_ver, lanelet2_filename.c_str(),
+        "format_version(%" PRIu64
+        ") of the provided map(%s) is larger than the supported version(%" PRIu64 ")",
+        static_cast<uint64_t>(map_major_ver), lanelet2_filename.c_str(),
         static_cast<uint64_t>(lanelet::autoware::version));
       if (!allow_unsupported_version) {
         throw std::invalid_argument(
