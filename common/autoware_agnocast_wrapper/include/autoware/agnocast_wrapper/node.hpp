@@ -144,15 +144,19 @@ public:
 
   // ===== Parameters (template) =====
   template <typename ParameterT>
-  ParameterT declare_parameter(
+  auto declare_parameter(
     const std::string & name, const ParameterT & default_value,
     const rcl_interfaces::msg::ParameterDescriptor & descriptor =
       rcl_interfaces::msg::ParameterDescriptor{},
     bool ignore_override = false)
   {
-    return declare_parameter(
-             name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
-      .get<ParameterT>();
+    try {
+      return declare_parameter(
+               name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
+        .get<ParameterT>();
+    } catch (const rclcpp::ParameterTypeException & ex) {
+      throw rclcpp::exceptions::InvalidParameterTypeException(name, ex.what());
+    }
   }
 
   template <typename ParameterT>
@@ -603,15 +607,19 @@ public:
 
   // ===== Parameters (template) =====
   template <typename ParameterT>
-  ParameterT declare_parameter(
+  auto declare_parameter(
     const std::string & name, const ParameterT & default_value,
     const rcl_interfaces::msg::ParameterDescriptor & descriptor =
       rcl_interfaces::msg::ParameterDescriptor{},
     bool ignore_override = false)
   {
-    return declare_parameter(
-             name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
-      .get<ParameterT>();
+    try {
+      return declare_parameter(
+               name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
+        .get<ParameterT>();
+    } catch (const rclcpp::ParameterTypeException & ex) {
+      throw rclcpp::exceptions::InvalidParameterTypeException(name, ex.what());
+    }
   }
 
   template <typename ParameterT>
