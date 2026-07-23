@@ -1,6 +1,7 @@
 <launch>
   <arg name="lidar_input_topic" default="/sensing/lidar/top/pointcloud_raw_ex"/>
-  <arg name="vehicle_info_param_file" default="$(find-pkg-share $(var vehicle_model)_description)/config/vehicle_info.param.yaml"/>
+  <arg name="vehicle_info_param_file"/>
+
   <group>
     <push-ros-namespace namespace="perception"/>
     <include file="$(find-pkg-share autoware_ground_filter)/launch/ground_filter.launch.xml">

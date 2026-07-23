@@ -6,7 +6,7 @@
 
   <!-- common parameters -->
   <arg name="common_param_path" default="$(find-pkg-share autoware_core_planning)/config/common.param.yaml"/>
-  <arg name="vehicle_param_file" default="$(find-pkg-share $(var vehicle_model)_description)/config/vehicle_info.param.yaml"/>
+  <arg name="vehicle_info_param_file"/>
   <arg name="nearest_search_param_path" default="$(find-pkg-share autoware_core_planning)/config/nearest_search.param.yaml"/>
 
   <!-- behavior planning module config path -->
@@ -76,7 +76,7 @@
         <param name="is_simulation" value="$(var is_simulation)"/>
         <!-- load config -->
         <param from="$(var common_param_path)"/>
-        <param from="$(var vehicle_param_file)"/>
+        <param from="$(var vehicle_info_param_file)"/>
         <param from="$(var nearest_search_param_path)"/>
         <param from="$(var velocity_smoother_param_path)"/>
         <param from="$(var behavior_velocity_smoother_type_param_path)"/>
@@ -114,7 +114,7 @@
         <!-- params -->
         <param name="launch_modules" value="$(var motion_velocity_planner_launch_modules)"/>
         <param from="$(var common_param_path)"/>
-        <param from="$(var vehicle_param_file)"/>
+        <param from="$(var vehicle_info_param_file)"/>
         <param from="$(var nearest_search_param_path)"/>
         <param from="$(var velocity_smoother_param_path)"/>
         <param from="$(var motion_velocity_planner_velocity_smoother_type_param_path)"/>
