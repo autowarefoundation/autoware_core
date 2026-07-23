@@ -11,8 +11,15 @@ ament_auto_add_library(autoware_test_utils SHARED
   src/mock_data_parser.cpp
 )
 target_link_libraries(autoware_test_utils
-  yaml-cpp
+  yaml-cpp::yaml-cpp
 )
+
+if(NOT MSVC)
+  target_compile_options(autoware_test_utils
+    PUBLIC
+      -Wno-deprecated-declarations
+  )
+endif()
 
 ament_auto_add_executable(topic_snapshot_saver src/topic_snapshot_saver.cpp)
 
