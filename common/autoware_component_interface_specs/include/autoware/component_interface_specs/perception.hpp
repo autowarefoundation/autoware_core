@@ -16,9 +16,11 @@
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__PERCEPTION_HPP_
 
 #include <autoware/component_interface_specs/utils.hpp>
-#include <rclcpp/qos.hpp>
+#include <autoware/component_interface_specs/version.hpp>
 
 #include <autoware_perception_msgs/msg/predicted_objects.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::perception
 {
@@ -31,6 +33,8 @@ struct ObjectRecognition
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
+
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(0, 1, 0, ObjectRecognition)
 
 }  // namespace autoware::component_interface_specs::perception
 

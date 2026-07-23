@@ -131,6 +131,11 @@ jobs:
         run: du -sh ${CCACHE_DIR} && ccache -s
         shell: bash
 
+      - name: Enable interface type-hash freshness gate (Jazzy only)
+        if: ${{ inputs.rosdistro == 'jazzy' }}
+        run: echo "AUTOWARE_CIS_CHECK_TYPE_HASHES=1" >> "${GITHUB_ENV}"
+        shell: bash
+
       - name: Test
         id: test
         if: ${{ steps.get-modified-packages.outputs.modified-packages != '' }}
