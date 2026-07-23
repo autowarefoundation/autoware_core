@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
@@ -58,7 +59,10 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
     if (loaded_pcd.width == 0) {
       RCLCPP_ERROR(get_logger(), "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
     } else {
-      pub_pointcloud_map_->publish(loaded_pcd);
+      AUTOWARE_MESSAGE_UNIQUE_PTR(sensor_msgs::msg::PointCloud2)
+      out = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pointcloud_map_);
+      *out = loaded_pcd;
+      pub_pointcloud_map_->publish(std::move(out));
     }
   }
 
@@ -77,7 +81,10 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
     if (loaded_pcd.width == 0) {
       RCLCPP_ERROR(get_logger(), "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
     } else {
-      pub_downsampled_pointcloud_map_->publish(loaded_pcd);
+      AUTOWARE_MESSAGE_UNIQUE_PTR(sensor_msgs::msg::PointCloud2)
+      out = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_downsampled_pointcloud_map_);
+      *out = loaded_pcd;
+      pub_downsampled_pointcloud_map_->publish(std::move(out));
     }
   }
 
@@ -121,7 +128,10 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
     durable_qos.transient_local();
     pub_metadata_ = create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
       "output/pointcloud_map_metadata", durable_qos);
-    pub_metadata_->publish(create_metadata(pcd_metadata_dict));
+    AUTOWARE_MESSAGE_UNIQUE_PTR(autoware_map_msgs::msg::PointCloudMapMetaData)
+    metadata_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_metadata_);
+    *metadata_msg = create_metadata(pcd_metadata_dict);
+    pub_metadata_->publish(std::move(metadata_msg));
   }
 }
 }  // namespace autoware::map_loader
