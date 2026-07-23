@@ -26,11 +26,11 @@ def launch_setup(context, *args, **kwargs):
     # use_sim_time
     set_use_sim_time = SetParameter(name="use_sim_time", value=LaunchConfiguration("use_sim_time"))
 
-    # vehicle_info
     vehicle_description_pkg = FindPackageShare(
         [LaunchConfiguration("vehicle_model"), "_description"]
     ).perform(context)
 
+    # vehicle_info
     load_vehicle_info = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             [FindPackageShare("autoware_vehicle_info_utils"), "/launch/vehicle_info.launch.py"]
@@ -40,16 +40,28 @@ def launch_setup(context, *args, **kwargs):
         }.items(),
     )
 
-    return [
-        set_use_sim_time,
-        load_vehicle_info,
-    ]
+    actions = [set_use_sim_time, load_vehicle_info]
+
+    # control_unit_info (only when is_redundant is true)
+    if LaunchConfiguration("is_redundant").perform(context).lower() == "true":
+        load_control_unit_info = IncludeLaunchDescription(
+            PythonLaunchDescriptionSource(
+                [FindPackageShare("autoware_global_parameter_loader"), "/launch/loader.launch.py"]
+            ),
+            launch_arguments={
+                "param_file": [vehicle_description_pkg, "/config/control_unit_info.param.yaml"]
+            }.items(),
+        )
+        actions.append(load_control_unit_info)
+
+    return actions
 
 
 def generate_launch_description():
     return LaunchDescription(
         [
             DeclareLaunchArgument("use_sim_time", default_value="false"),
+            DeclareLaunchArgument("is_redundant", default_value="false"),
             OpaqueFunction(function=launch_setup),
         ]
     )
