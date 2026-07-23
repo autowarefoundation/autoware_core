@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__COMPONENT_INTERFACE_SPECS__SYSTEM_HPP_
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__SYSTEM_HPP_
 
+#include <autoware/component_interface_specs/version.hpp>
 #include <rclcpp/qos.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/mrm_state.hpp>
@@ -45,6 +46,9 @@ struct OperationModeState
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
 };
+
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
+  0, 1, 0, ChangeAutowareControl, ChangeOperationMode, OperationModeState)
 
 }  // namespace autoware::component_interface_specs::system
 

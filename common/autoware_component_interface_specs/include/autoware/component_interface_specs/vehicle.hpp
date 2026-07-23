@@ -18,6 +18,7 @@
 #include "utils.hpp"
 
 #include <autoware/component_interface_specs/utils.hpp>
+#include <autoware/component_interface_specs/version.hpp>
 #include <rclcpp/qos.hpp>
 
 #include <autoware_vehicle_msgs/msg/gear_report.hpp>
@@ -63,6 +64,9 @@ struct HazardLightStatus
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
+
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
+  0, 1, 0, SteeringStatus, GearStatus, TurnIndicatorStatus, HazardLightStatus)
 
 }  // namespace autoware::component_interface_specs::vehicle
 

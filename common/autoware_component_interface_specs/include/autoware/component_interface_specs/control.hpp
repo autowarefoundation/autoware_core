@@ -16,6 +16,7 @@
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__CONTROL_HPP_
 
 #include <autoware/component_interface_specs/utils.hpp>
+#include <autoware/component_interface_specs/version.hpp>
 #include <rclcpp/qos.hpp>
 
 #include <autoware_control_msgs/msg/control.hpp>
@@ -31,6 +32,8 @@ struct ControlCommand
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
+
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(0, 1, 0, ControlCommand)
 
 }  // namespace autoware::component_interface_specs::control
 
