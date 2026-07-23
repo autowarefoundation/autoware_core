@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__VELOCITY_SMOOTHER__SMOOTHER__SMOOTHER_BASE_HPP_
 #define AUTOWARE__VELOCITY_SMOOTHER__SMOOTHER__SMOOTHER_BASE_HPP_
 
+#include "autoware/trajectory/trajectory_point.hpp"
 #include "autoware/velocity_smoother/resample.hpp"
 #include "rclcpp/rclcpp.hpp"
 
@@ -30,6 +31,8 @@ namespace autoware::velocity_smoother
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
 using TrajectoryPoints = std::vector<TrajectoryPoint>;
+using TrajectoryExperimental =
+  autoware::experimental::trajectory::Trajectory<autoware_planning_msgs::msg::TrajectoryPoint>;
 
 class SmootherBase
 {
@@ -67,6 +70,11 @@ public:
     TrajectoryPoints & output, std::vector<TrajectoryPoints> & debug_trajectories,
     const bool publish_debug_trajs) = 0;
 
+  virtual bool apply(
+    const double initial_vel, const double initial_acc, const TrajectoryExperimental & input,
+    TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
+    const bool publish_debug_trajs) = 0;
+
   virtual TrajectoryPoints resampleTrajectory(
     const TrajectoryPoints & input, const double v0, const geometry_msgs::msg::Pose & current_pose,
     const double nearest_dist_threshold, const double nearest_yaw_threshold) const = 0;
@@ -76,8 +84,17 @@ public:
     [[maybe_unused]] const double a0 = 0.0, [[maybe_unused]] const bool enable_smooth_limit = false,
     const bool use_resampling = true, const double input_points_interval = 1.0) const;
 
+  TrajectoryExperimental applyLateralAccelerationFilter(
+    const TrajectoryExperimental & input, [[maybe_unused]] const double v0 = 0.0,
+    [[maybe_unused]] const double a0 = 0.0, [[maybe_unused]] const bool enable_smooth_limit = false,
+    const bool use_resampling = true, const double input_points_interval = 1.0) const;
+
   TrajectoryPoints applySteeringRateLimit(
     const TrajectoryPoints & input, const bool use_resampling = true,
+    const double input_points_interval = 1.0) const;
+
+  TrajectoryExperimental applySteeringRateLimit(
+    const TrajectoryExperimental & input, const bool use_resampling = true,
     const double input_points_interval = 1.0) const;
 
   double getMaxAccel() const;
