@@ -91,9 +91,10 @@ private:
   AUTOWARE_PUBLISHER_PTR(Trajectory) pub_trajectory_;
   AUTOWARE_PUBLISHER_PTR(MarkerArray) pub_virtual_wall_;
   AUTOWARE_SUBSCRIPTION_PTR(Trajectory) sub_current_trajectory_;
-  autoware::agnocast_wrapper::polling::PollingSubscriber<Odometry>::SharedPtr sub_current_odometry_ =
-    autoware::agnocast_wrapper::polling::create_polling_subscriber<Odometry>(
-      this, "/localization/kinematic_state");
+  autoware::agnocast_wrapper::polling::PollingSubscriber<Odometry>::SharedPtr
+    sub_current_odometry_ =
+      autoware::agnocast_wrapper::polling::create_polling_subscriber<Odometry>(
+        this, "/localization/kinematic_state");
   autoware::agnocast_wrapper::polling::PollingSubscriber<AccelWithCovarianceStamped>::SharedPtr
     sub_current_acceleration_ =
       autoware::agnocast_wrapper::polling::create_polling_subscriber<AccelWithCovarianceStamped>(
