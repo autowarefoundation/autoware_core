@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_NODE_HPP_
-#define AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_NODE_HPP_
+#ifndef PATH_TO_TRAJECTORY_NODE_HPP_
+#define PATH_TO_TRAJECTORY_NODE_HPP_
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -39,4 +39,4 @@ private:
 
 }  // namespace autoware::planning_topic_converter
 
-#endif  // AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_NODE_HPP_
+#endif  // PATH_TO_TRAJECTORY_NODE_HPP_

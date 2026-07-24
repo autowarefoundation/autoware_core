@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
-#define AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
+#ifndef PATH_TO_TRAJECTORY_HPP_
+#define PATH_TO_TRAJECTORY_HPP_
 
 #include <autoware_planning_msgs/msg/path.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
@@ -28,4 +28,4 @@ autoware_planning_msgs::msg::Trajectory convert(const autoware_planning_msgs::ms
 
 }  // namespace autoware::planning_topic_converter::path_to_trajectory
 
-#endif  // AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
+#endif  // PATH_TO_TRAJECTORY_HPP_
