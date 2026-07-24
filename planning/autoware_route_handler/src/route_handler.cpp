@@ -14,6 +14,7 @@
 
 #include "autoware/route_handler/route_handler.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
@@ -769,7 +770,7 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceAfter(
 
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
-  while (rclcpp::ok() && length < min_length) {
+  while (autoware::agnocast_wrapper::ok() && length < min_length) {
     lanelet::ConstLanelet next_lanelet;
     if (!getNextLaneletWithinRoute(current_lanelet, &next_lanelet)) {
       break;
@@ -819,7 +820,7 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceUpTo(
       [&lanelet_to_check](auto & backward) { return (backward.id() == lanelet_to_check.id()); });
   };
 
-  while (rclcpp::ok() && length < min_length) {
+  while (autoware::agnocast_wrapper::ok() && length < min_length) {
     previous_lanelets.clear();
     if (!getPreviousLaneletsWithinRoute(current_lanelet, &previous_lanelets)) {
       break;
@@ -1011,7 +1012,7 @@ lanelet::ConstLanelets RouteHandler::getShoulderLaneletSequenceAfter(
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
   std::set<lanelet::Id> searched_ids{};
-  while (rclcpp::ok() && length < min_length) {
+  while (autoware::agnocast_wrapper::ok() && length < min_length) {
     const auto next_lanelet = getFollowingShoulderLanelet(current_lanelet);
     if (!next_lanelet) break;
     lanelet_sequence_forward.push_back(*next_lanelet);
@@ -1053,7 +1054,7 @@ lanelet::ConstLanelets RouteHandler::getShoulderLaneletSequenceUpTo(
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
   std::set<lanelet::Id> searched_ids{};
-  while (rclcpp::ok() && length < min_length) {
+  while (autoware::agnocast_wrapper::ok() && length < min_length) {
     const auto prev_lanelet = getPreviousShoulderLanelet(current_lanelet);
     if (!prev_lanelet) break;
 

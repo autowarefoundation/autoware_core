@@ -8,6 +8,8 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/route_handler.cpp
 )
 
+autoware_agnocast_wrapper_setup(${PROJECT_NAME})
+
 if(BUILD_TESTING)
   set(fmt_TARGETS fmt::fmt)
 
