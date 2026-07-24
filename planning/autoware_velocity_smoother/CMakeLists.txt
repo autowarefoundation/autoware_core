@@ -41,9 +41,11 @@ target_link_libraries(${PROJECT_NAME}_node
   smoother
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}_node
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_node
   PLUGIN "autoware::velocity_smoother::VelocitySmootherNode"
   EXECUTABLE velocity_smoother_node
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 if(BUILD_TESTING)

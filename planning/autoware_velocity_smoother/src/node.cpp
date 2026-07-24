@@ -96,8 +96,10 @@ VelocitySmootherNode::VelocitySmootherNode(const rclcpp::NodeOptions & node_opti
 
   clock_ = get_clock();
 
-  logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
-  published_time_publisher_ = std::make_unique<autoware_utils_debug::PublishedTimePublisher>(this);
+  logger_configure_ = std::make_unique<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
+  published_time_publisher_ = std::make_unique<
+    autoware_utils_debug::BasicPublishedTimePublisher<autoware::agnocast_wrapper::Node>>(this);
 }
 
 void VelocitySmootherNode::setupSmoother(const double wheelbase)
@@ -322,9 +324,9 @@ void VelocitySmootherNode::publishTrajectory(const TrajectoryPoints & trajectory
 {
   Trajectory publishing_trajectory = autoware::motion_utils::convertToTrajectory(trajectory);
   publishing_trajectory.header = base_traj_raw_ptr_->header;
+  const auto stamp = publishing_trajectory.header.stamp;
   pub_trajectory_->publish(publishing_trajectory);
-  published_time_publisher_->publish_if_subscribed(
-    pub_trajectory_, publishing_trajectory.header.stamp);
+  published_time_publisher_->publish_if_subscribed(pub_trajectory_, stamp);
 }
 
 void VelocitySmootherNode::calcExternalVelocityLimit()
@@ -449,7 +451,8 @@ bool VelocitySmootherNode::checkData() const
   return true;
 }
 
-void VelocitySmootherNode::onCurrentTrajectory(const Trajectory::ConstSharedPtr msg)
+void VelocitySmootherNode::onCurrentTrajectory(
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Trajectory) & msg)
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
@@ -460,10 +463,10 @@ void VelocitySmootherNode::onCurrentTrajectory(const Trajectory::ConstSharedPtr 
   base_traj_raw_ptr_ = msg;
 
   // receive data
-  current_odometry_ptr_ = sub_current_odometry_.take_data();
-  current_acceleration_ptr_ = sub_current_acceleration_.take_data();
-  external_velocity_limit_ptr_ = sub_external_velocity_limit_.take_data();
-  const auto operation_mode_ptr = sub_operation_mode_.take_data();
+  current_odometry_ptr_ = sub_current_odometry_->take_data();
+  current_acceleration_ptr_ = sub_current_acceleration_->take_data();
+  external_velocity_limit_ptr_ = sub_external_velocity_limit_->take_data();
+  const auto operation_mode_ptr = sub_operation_mode_->take_data();
   if (operation_mode_ptr) {
     operation_mode_ = *operation_mode_ptr;
   }
@@ -1014,7 +1017,7 @@ void VelocitySmootherNode::publishDebugTrajectories(
 
 void VelocitySmootherNode::publishClosestVelocity(
   const TrajectoryPoints & trajectory, const Pose & current_pose,
-  const rclcpp::Publisher<Float32Stamped>::SharedPtr pub) const
+  const AUTOWARE_PUBLISHER_PTR(Float32Stamped) pub) const
 {
   const auto closest_point = calcProjectedTrajectoryPoint(trajectory, current_pose);
 
