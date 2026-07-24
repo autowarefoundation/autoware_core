@@ -121,8 +121,8 @@ void Lanelet2MapLoaderNode::on_map_projector_info(
 }
 
 bool Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
-  const autoware_map_msgs::srv::GetSelectedLanelet2Map::Request::ConstSharedPtr req,
-  const autoware_map_msgs::srv::GetSelectedLanelet2Map::Response::SharedPtr res)
+  AUTOWARE_SERVER_REQUEST_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map) req,
+  AUTOWARE_SERVER_RESPONSE_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map) res)
 {
   if (!selected_map_loader_module_) {
     return false;

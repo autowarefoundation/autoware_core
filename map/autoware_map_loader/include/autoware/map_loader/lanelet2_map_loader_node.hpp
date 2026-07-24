@@ -55,18 +55,19 @@ private:
   using MapProjectorInfo = autoware::component_interface_specs::map::MapProjectorInfo;
   using VectorMap = autoware::component_interface_specs::map::VectorMap;
 
-  void on_map_projector_info(const MapProjectorInfo::Message::ConstSharedPtr msg);
+  void on_map_projector_info(
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(MapProjectorInfo::Message) & msg);
 
   bool on_get_selected_lanelet2_map(
-    const autoware_map_msgs::srv::GetSelectedLanelet2Map::Request::ConstSharedPtr req,
-    const autoware_map_msgs::srv::GetSelectedLanelet2Map::Response::SharedPtr res);
+    AUTOWARE_SERVER_REQUEST_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map) res);
 
-  rclcpp::Subscription<MapProjectorInfo::Message>::SharedPtr sub_map_projector_info_;
-  rclcpp::Publisher<VectorMap::Message>::SharedPtr pub_map_bin_;
+  AUTOWARE_SUBSCRIPTION_PTR(MapProjectorInfo::Message) sub_map_projector_info_;
+  AUTOWARE_PUBLISHER_PTR(VectorMap::Message) pub_map_bin_;
 
   // ROS interfaces, moved from utility module into Node wrapper
-  rclcpp::Publisher<autoware_map_msgs::msg::LaneletMapMetaData>::SharedPtr pub_metadata_;
-  rclcpp::Service<autoware_map_msgs::srv::GetSelectedLanelet2Map>::SharedPtr
+  AUTOWARE_PUBLISHER_PTR(autoware_map_msgs::msg::LaneletMapMetaData) pub_metadata_;
+  AUTOWARE_SERVICE_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map)
     srv_get_selected_lanelet2_map_;
 
   std::unique_ptr<Lanelet2SelectedMapLoaderModule> selected_map_loader_module_;
