@@ -31,39 +31,18 @@
  *
  */
 
-#include "autoware/map_loader/lanelet2_map_loader_node.hpp"
+#include "autoware/map_loader/lanelet2_map_loader_node.hpp"  // NOLINT(build/include)
 
-#include "lanelet2_local_projector.hpp"
-#include "lanelet2_map_cell_metadata.hpp"
-#include "lanelet2_map_loader_utils.hpp"
+#include "lanelet2_map_loader.hpp"
 #include "lanelet2_selected_map_loader_module.hpp"
 
-#include <autoware/geography_utils/lanelet2_projector.hpp>
-#include <autoware/lanelet2_utils/conversion.hpp>
-#include <autoware_lanelet2_extension/io/autoware_osm_parser.hpp>
-#include <autoware_lanelet2_extension/projection/mgrs_projector.hpp>
-#include <autoware_lanelet2_extension/projection/transverse_mercator_projector.hpp>
-#include <autoware_lanelet2_extension/utility/utilities.hpp>
-#include <rclcpp/rclcpp.hpp>
-
-#include <lanelet2_core/LaneletMap.h>
-#include <lanelet2_core/geometry/LineString.h>
-#include <lanelet2_io/Io.h>
-#include <lanelet2_projection/UTM.h>
-
-#include <filesystem>
-#include <map>
 #include <memory>
-#include <optional>
-#include <stdexcept>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
 {
 
-using autoware_map_msgs::msg::LaneletMapBin;
 using autoware_map_msgs::msg::MapProjectorInfo;
 
 Lanelet2MapLoaderNode::Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options)
@@ -91,183 +70,135 @@ Lanelet2MapLoaderNode::~Lanelet2MapLoaderNode() = default;
 void Lanelet2MapLoaderNode::on_map_projector_info(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(MapProjectorInfo::Message) & msg)
 {
-  const auto allow_unsupported_version = get_parameter("allow_unsupported_version").as_bool();
-  const auto lanelet2_map_path = get_parameter("lanelet2_map_path").as_string();
-  const auto center_line_resolution = get_parameter("center_line_resolution").as_double();
-  const auto use_waypoints = get_parameter("use_waypoints").as_bool();
-  const auto enable_selected_map_loading = get_parameter("enable_selected_map_loading").as_bool();
-  const auto lanelet2_map_metadata_path = get_parameter("lanelet2_map_metadata_path").as_string();
+  Lanelet2MapLoaderParams params;
+  params.lanelet2_map_path = get_parameter("lanelet2_map_path").as_string();
+  params.lanelet2_map_metadata_path = get_parameter("lanelet2_map_metadata_path").as_string();
+  params.center_line_resolution = get_parameter("center_line_resolution").as_double();
+  params.use_waypoints = get_parameter("use_waypoints").as_bool();
+  params.allow_unsupported_version = get_parameter("allow_unsupported_version").as_bool();
 
-  // get lanelet2 file paths (handles both a single .osm file and a directory)
-  const std::vector<std::string> lanelet2_paths = utils::get_lanelet2_paths(lanelet2_map_path);
-  if (lanelet2_paths.empty()) {
-    RCLCPP_ERROR(get_logger(), "No lanelet2 map files found from %s", lanelet2_map_path.c_str());
+  Lanelet2MapLoader core_logic(params);
+  Lanelet2MapLoaderResult result;
+
+  try {
+    result = core_logic.execute(*msg, now());
+  } catch (const MapLoadException & e) {
+    // Here recoverable, so I log and wait for valid input
+    for (const auto & err : e.errors) RCLCPP_ERROR_STREAM(get_logger(), err);
     return;
+  } catch (const std::invalid_argument & e) {
+    // Here UNrecoverable, so I kill this node for users to fix their inputs
+    RCLCPP_WARN(get_logger(), "%s", e.what());
+    throw;
   }
 
-  // load maps from files
-  // Note: we cannot destroy loaded maps even after merging because lanelets expire when the map
-  // object is destructed
-  std::vector<lanelet::LaneletMapPtr> maps;
-  for (const auto & path : lanelet2_paths) {
-    auto map_tmp = load_map(path, *msg);
-    if (!map_tmp) {
-      RCLCPP_ERROR(get_logger(), "Failed to load lanelet2_map: %s", path.c_str());
-      return;
-    }
-    maps.push_back(map_tmp);
-  }
+  for (const auto & warn : result.warnings) RCLCPP_WARN(get_logger(), "%s", warn.c_str());
+  for (const auto & info : result.infos) RCLCPP_INFO(get_logger(), "%s", info.c_str());
 
-  // Load cell metadata unconditionally so that all downstream loaders
-  // (selected / future differential / etc.) can share the same dictionary.
-  std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict;
-  const auto yaml_metadata = utils::load_cell_metadata_from_yaml(lanelet2_map_metadata_path);
-  if (yaml_metadata) {
-    cell_metadata_dict = *yaml_metadata;
-    RCLCPP_INFO(get_logger(), "Loaded cell metadata from %s.", lanelet2_map_metadata_path.c_str());
-  } else if (lanelet2_paths.size() == 1) {
-    // An exception when using a single lanelet2 map so that the users do not have to provide
-    // a metadata file.
-    // Note that this should ideally be avoided and thus eventually be removed by someone, until
-    // Autoware users get used to handling the lanelet2 file(s) with metadata.
-    RCLCPP_DEBUG_STREAM(
-      get_logger(), "Create lanelet2 cell metadata, as the map is a single file.");
-    cell_metadata_dict[lanelet2_paths[0]] =
-      utils::compute_cell_metadata(lanelet2_paths[0], *maps[0]);
-  } else {
-    throw std::runtime_error("Lanelet2 metadata file not found: " + lanelet2_map_metadata_path);
-  }
-
-  if (enable_selected_map_loading) {
+  if (get_parameter("enable_selected_map_loading").as_bool()) {
     selected_map_loader_module_ = std::make_unique<Lanelet2SelectedMapLoaderModule>(
-      this, std::move(cell_metadata_dict), *msg, center_line_resolution, use_waypoints);
+      result.cell_metadata_dict, *msg, params.center_line_resolution, params.use_waypoints);
 
-    RCLCPP_INFO(get_logger(), "Selected lanelet2 map loading is enabled.");
+    pub_metadata_ = create_publisher<autoware_map_msgs::msg::LaneletMapMetaData>(
+      "output/lanelet2_map_metadata", rclcpp::QoS{1}.transient_local());
+
+    auto meta_msg = selected_map_loader_module_->build_metadata_msg();
+    meta_msg.header.stamp = now();
+    meta_msg.header.frame_id = "map";
+    pub_metadata_->publish(meta_msg);
+
+    srv_get_selected_lanelet2_map_ = create_service<autoware_map_msgs::srv::GetSelectedLanelet2Map>(
+      "service/get_selected_lanelet2_map", std::bind(
+                                             &Lanelet2MapLoaderNode::on_get_selected_lanelet2_map,
+                                             this, std::placeholders::_1, std::placeholders::_2));
   }
 
-  // merge all loaded maps into a new empty map
-  auto map = std::make_shared<lanelet::LaneletMap>();
-  for (auto & loaded_map : maps) {
-    utils::merge_lanelet2_maps(*map, *loaded_map);
-  }
-
-  // TODO(Yamato Ando): perform a format/version consistency check on all lanelet files.
-
-  // use the first file path for format/version metadata
-  const auto & lanelet2_filename = lanelet2_paths.front();
-
-  std::string format_version{"null"}, map_version{""};
-  lanelet::io_handlers::AutowareOsmParser::parseVersions(
-    lanelet2_filename, &format_version, &map_version);
-  if (format_version == "null" || format_version.empty() || !isdigit(format_version[0])) {
-    RCLCPP_WARN(
-      get_logger(),
-      "%s has no format_version(null) or non semver-style format_version(%s) information",
-      lanelet2_filename.c_str(), format_version.c_str());
-    if (!allow_unsupported_version) {
-      throw std::invalid_argument(
-        "allow_unsupported_version is false, so stop loading lanelet map");
-    }
-  } else if (const auto map_major_ver_opt = lanelet::io_handlers::parseMajorVersion(format_version);
-             map_major_ver_opt.has_value()) {
-    const auto map_major_ver = map_major_ver_opt.value();
-    if (map_major_ver > static_cast<uint64_t>(lanelet::autoware::version)) {
-      RCLCPP_WARN(
-        get_logger(),
-        "format_version(%ld) of the provided map(%s) is larger than the supported version(%ld)",
-        map_major_ver, lanelet2_filename.c_str(),
-        static_cast<uint64_t>(lanelet::autoware::version));
-      if (!allow_unsupported_version) {
-        throw std::invalid_argument(
-          "allow_unsupported_version is false, so stop loading lanelet map");
-      }
-    }
-  }
-  RCLCPP_INFO(get_logger(), "Loaded map format_version: %s", format_version.c_str());
-
-  // overwrite centerline
-  if (use_waypoints) {
-    lanelet::utils::overwriteLaneletsCenterlineWithWaypoints(map, center_line_resolution, false);
-  } else {
-    lanelet::utils::overwriteLaneletsCenterline(map, center_line_resolution, false);
-  }
-
-  // create map bin msg
-  const auto map_bin_msg = create_map_bin_msg(map, lanelet2_filename, now());
-
-  // create publisher and publish
   pub_map_bin_ =
     create_publisher<VectorMap::Message>(VectorMap::name, rclcpp::QoS{1}.transient_local());
-  pub_map_bin_->publish(map_bin_msg);
+  pub_map_bin_->publish(result.map_bin_msg);
+
   RCLCPP_INFO(get_logger(), "Succeeded to load lanelet2_map. Map is published.");
+}
+
+bool Lanelet2MapLoaderNode::on_get_selected_lanelet2_map(
+  const autoware_map_msgs::srv::GetSelectedLanelet2Map::Request::ConstSharedPtr req,
+  const autoware_map_msgs::srv::GetSelectedLanelet2Map::Response::SharedPtr res)
+{
+  if (!selected_map_loader_module_) {
+    return false;
+  }
+
+  const auto current_time = now();
+
+  try {
+    std::vector<std::string> warnings;
+
+    // Retrieve payload from pure C++ core
+    res->lanelet2_cells = selected_map_loader_module_->execute(req->cell_ids, warnings);
+
+    // Log warnings
+    for (const auto & w : warnings) {
+      RCLCPP_WARN(get_logger(), "%s", w.c_str());
+    }
+
+    if (res->lanelet2_cells.data.empty()) {
+      if (!req->cell_ids.empty() && warnings.size() == req->cell_ids.size()) {
+        RCLCPP_ERROR(get_logger(), "No valid cell IDs in GetSelectedLanelet2Map request.");
+      } else {
+        RCLCPP_ERROR(get_logger(), "Failed to load selected cells or map is empty.");
+      }
+      return false;
+    }
+  } catch (const MapLoadException & e) {
+    for (const auto & err : e.errors) {
+      RCLCPP_ERROR_STREAM(get_logger(), err);
+    }
+    return false;
+  }
+
+  // Explicitly apply outer header
+  res->header.stamp = current_time;
+  res->header.frame_id = "map";
+
+  // Explicitly apply inner header
+  res->lanelet2_cells.header.stamp = current_time;
+  res->lanelet2_cells.header.frame_id = "map";
+
+  return true;
 }
 
 lanelet::LaneletMapPtr Lanelet2MapLoaderNode::load_map(
   const std::string & lanelet2_filename,
   const autoware_map_msgs::msg::MapProjectorInfo & projector_info)
 {
-  lanelet::ErrorMessages errors{};
-  if (projector_info.projector_type != autoware_map_msgs::msg::MapProjectorInfo::LOCAL) {
-    std::unique_ptr<lanelet::Projector> projector =
-      autoware::geography_utils::get_lanelet2_projector(projector_info);
-    lanelet::LaneletMapPtr map = lanelet::load(lanelet2_filename, *projector, &errors);
-    if (errors.empty()) {
-      return map;
-    }
-  } else {
-    const autoware::map_loader::LocalProjector projector;
-    lanelet::LaneletMapPtr map = lanelet::load(lanelet2_filename, projector, &errors);
+  try {
+    std::vector<std::string> warnings;
 
-    if (!errors.empty()) {
-      for (const auto & error : errors) {
-        RCLCPP_ERROR_STREAM(rclcpp::get_logger("map_loader"), error);
-      }
-    }
-
-    // overwrite local_x, local_y
-    for (lanelet::Point3d point : map->pointLayer) {
-      if (point.hasAttribute("local_x")) {
-        point.x() = point.attribute("local_x").asDouble().value();
-      }
-      if (point.hasAttribute("local_y")) {
-        point.y() = point.attribute("local_y").asDouble().value();
-      }
-    }
-
-    // realign lanelet borders using updated points
-    for (lanelet::Lanelet lanelet : map->laneletLayer) {
-      auto left = lanelet.leftBound();
-      auto right = lanelet.rightBound();
-      std::tie(left, right) = lanelet::geometry::align(left, right);
-      lanelet.setLeftBound(left);
-      lanelet.setRightBound(right);
+    auto map = Lanelet2MapLoader::load_map(lanelet2_filename, projector_info, warnings);
+    for (const auto & w : warnings) {
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("map_loader"), w);
     }
 
     return map;
-  }
+  } catch (const MapLoadException & e) {
+    for (const auto & err : e.errors) {
+      RCLCPP_ERROR_STREAM(rclcpp::get_logger("map_loader"), err);
+    }
 
-  for (const auto & error : errors) {
-    RCLCPP_ERROR_STREAM(rclcpp::get_logger("map_loader"), error);
+    return nullptr;
   }
-  return nullptr;
 }
 
-LaneletMapBin Lanelet2MapLoaderNode::create_map_bin_msg(
+component_interface_specs::map::VectorMap::Message Lanelet2MapLoaderNode::create_map_bin_msg(
   const lanelet::LaneletMapPtr map, const std::string & lanelet2_filename, const rclcpp::Time & now)
 {
-  std::string format_version{};
-  std::string map_version{};
-  lanelet::io_handlers::AutowareOsmParser::parseVersions(
-    lanelet2_filename, &format_version, &map_version);
+  auto msg = Lanelet2MapLoader::create_map_bin_msg(map, lanelet2_filename);
+  msg.header.stamp = now;
+  msg.header.frame_id = "map";
 
-  LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
-  map_bin_msg.header.stamp = now;
-  map_bin_msg.header.frame_id = "map";
-  map_bin_msg.version_map_format = format_version;
-  map_bin_msg.version_map = map_version;
-
-  return map_bin_msg;
+  return msg;
 }
+
 }  // namespace autoware::map_loader
 
 #include <rclcpp_components/register_node_macro.hpp>

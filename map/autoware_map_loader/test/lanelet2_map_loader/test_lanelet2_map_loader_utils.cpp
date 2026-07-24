@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/lanelet2_map_loader/lanelet2_map_loader_utils.hpp"
+#include "../src/lanelet2_map_loader/utils/lanelet2_map_loader_utils.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 

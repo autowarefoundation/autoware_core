@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/lanelet2_map_loader/lanelet2_map_cell_metadata.hpp"
+#include "../src/lanelet2_map_loader/utils/lanelet2_map_cell_metadata.hpp"
 
 #include <gtest/gtest.h>
 #include <lanelet2_core/LaneletMap.h>

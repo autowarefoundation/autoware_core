@@ -15,7 +15,7 @@
 #ifndef LANELET2_MAP_LOADER__LANELET2_SELECTED_MAP_LOADER_MODULE_HPP_
 #define LANELET2_MAP_LOADER__LANELET2_SELECTED_MAP_LOADER_MODULE_HPP_
 
-#include "lanelet2_map_cell_metadata.hpp"
+#include "utils/lanelet2_map_cell_metadata.hpp"
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
@@ -27,6 +27,7 @@
 
 #include <map>
 #include <string>
+#include <vector>
 
 namespace autoware::map_loader
 {
@@ -42,35 +43,26 @@ namespace autoware::map_loader
 /// applies centerline overwriting, and returns the serialised `LaneletMapBin`.
 class Lanelet2SelectedMapLoaderModule
 {
-  using GetSelectedLanelet2Map = autoware_map_msgs::srv::GetSelectedLanelet2Map;
-
 public:
-  /// @param node                  Owning node (used to create publisher and service).
   /// @param cell_metadata_dict    Pre-computed bounding boxes keyed by file path.
   /// @param projector_info        Projector used when reloading cells from disk.
   /// @param center_line_resolution  Passed to `overwriteLaneletsCenterline`.
   /// @param use_waypoints         If true, use waypoint-based centerline overwrite.
   Lanelet2SelectedMapLoaderModule(
-    autoware::agnocast_wrapper::Node * node,
     std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict,
     const autoware_map_msgs::msg::MapProjectorInfo & projector_info, double center_line_resolution,
     bool use_waypoints);
 
-private:
-  rclcpp::Logger logger_;
-  rclcpp::Clock::SharedPtr clock_;
+  autoware_map_msgs::msg::LaneletMapMetaData build_metadata_msg() const;
 
+  autoware_map_msgs::msg::LaneletMapBin execute(
+    const std::vector<std::string> & cell_ids, std::vector<std::string> & warnings) const;
+
+private:
   std::map<std::string, Lanelet2FileMetaData> all_cell_metadata_dict_;
   autoware_map_msgs::msg::MapProjectorInfo projector_info_;
   double center_line_resolution_;
   bool use_waypoints_;
-
-  AUTOWARE_SERVICE_PTR(GetSelectedLanelet2Map) service_;
-  AUTOWARE_PUBLISHER_PTR(autoware_map_msgs::msg::LaneletMapMetaData) pub_metadata_;
-
-  [[nodiscard]] bool on_service_get_selected_lanelet2_map(
-    AUTOWARE_SERVER_REQUEST_PTR(GetSelectedLanelet2Map) req,
-    AUTOWARE_SERVER_RESPONSE_PTR(GetSelectedLanelet2Map) res) const;
 };
 
 }  // namespace autoware::map_loader
