@@ -17,6 +17,7 @@
 #include "reroute_safety.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware_utils_math/unit_conversion.hpp>
 
 #include <autoware_common_msgs/msg/response_status.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
@@ -56,11 +57,21 @@ void set_success_response(
   res->status.code = code;
   res->status.message = message;
 }
+
+ArrivalCheckerThreshold get_arrival_checker_threshold(rclcpp::Node & node)
+{
+  ArrivalCheckerThreshold threshold;
+  threshold.angle =
+    autoware_utils_math::deg2rad(node.declare_parameter<double>("arrival_check_angle_deg"));
+  threshold.distance = node.declare_parameter<double>("arrival_check_distance");
+  threshold.duration = node.declare_parameter<double>("arrival_check_duration");
+  return threshold;
+}
 }  // namespace
 
 MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
 : Node("mission_planner", options),
-  arrival_checker_(this),
+  arrival_checker_(get_arrival_checker_threshold(*this)),
   plugin_loader_("autoware_mission_planner", "autoware::mission_planner::PlannerPlugin"),
   tf_buffer_(get_clock()),
   tf_listener_(tf_buffer_),
@@ -160,13 +171,11 @@ void MissionPlanner::check_initialization()
 void MissionPlanner::on_odometry(const Odometry::ConstSharedPtr msg)
 {
   odometry_ = msg;
+  arrival_checker_.update(*msg);
 
   // NOTE: Do not check in the other states as goal may change.
   if (state_.state == RouteState::SET) {
-    PoseStamped pose;
-    pose.header = odometry_->header;
-    pose.pose = odometry_->pose.pose;
-    if (arrival_checker_.is_arrived(pose)) {
+    if (arrival_checker_.is_arrived()) {
       change_state(RouteState::ARRIVED);
     }
   }
@@ -348,7 +357,7 @@ void MissionPlanner::change_route()
 {
   current_route_ = nullptr;
   planner_->clearRoute();
-  arrival_checker_.set_goal();
+  arrival_checker_.clear_goal();
 
   // TODO(Takagi, Isamu): publish an empty route here
   // pub_route_->publish();
