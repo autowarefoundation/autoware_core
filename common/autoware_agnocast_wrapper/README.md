@@ -406,6 +406,58 @@ The `add()` / `removeByName()` / `setHardwareID()` / `setHardwareIDf()` / `broad
 
 > **Note:** `DiagnosticTask` subclasses (e.g. `FrequencyStatus`, `TimeStampStatus`, `Heartbeat`) defined in `diagnostic_updater` can be added via `updater_.add(task)` unchanged.
 
+## Polling Subscriber (`polling::` namespace)
+
+`autoware::agnocast_wrapper::polling::create_polling_subscriber<MessageT>(node, topic, qos)` creates a polling (take-based) subscriber whose `take_data()` returns a plain `std::shared_ptr<const MessageT>` in **both** `ENABLE_AGNOCAST` modes. In agnocast mode the message stays in shared memory and is aliased into the returned `shared_ptr` (zero-copy, no payload copy); in rclcpp mode it reuses `autoware_utils_rclcpp::InterProcessPollingSubscriber`.
+
+### `take_data()` contract
+
+- Returns the latest message, or `nullptr` when none is available.
+- Re-delivery is governed by the **policy tag** and is identical across backends:
+  - `polling_policy::Latest` (default): re-delivers the cached message.
+  - `polling_policy::Newest`: returns `nullptr` until a new message arrives.
+- `polling_policy::All` is rejected at compile time (`take_data()` returns a single message, not a vector).
+- The returned `std::shared_ptr` has the same lifetime semantics in both modes.
+
+### Usage example
+
+```cpp
+#include <autoware/agnocast_wrapper/polling_subscriber.hpp>
+
+class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit MyNode(const rclcpp::NodeOptions & options) : Node("my_node", options)
+  {
+    namespace polling = autoware::agnocast_wrapper::polling;
+    sub_ = polling::create_polling_subscriber<nav_msgs::msg::Odometry>(this, "~/input/odometry", 1);
+  }
+
+  void on_timer()
+  {
+    const std::shared_ptr<const nav_msgs::msg::Odometry> msg = sub_->take_data();
+    if (!msg) {
+      return;
+    }
+    // use msg->...
+  }
+
+private:
+  autoware::agnocast_wrapper::polling::PollingSubscriber<nav_msgs::msg::Odometry>::SharedPtr sub_;
+};
+```
+
+### When to use this vs the existing member API
+
+This package currently exposes two polling APIs:
+
+| API                                                                               | Returns                                 | Form          |
+| --------------------------------------------------------------------------------- | --------------------------------------- | ------------- |
+| `Node::create_polling_subscriber` / `AUTOWARE_POLLING_SUBSCRIBER_PTR` (top-level) | `message_ptr`                           | `Node` member |
+| `polling::create_polling_subscriber` (this section)                               | plain `std::shared_ptr<const MessageT>` | free function |
+
+Prefer `polling::` for new code: it returns a plain `std::shared_ptr` (no `message_ptr`), is node-independent, and confines the `autoware_utils_rclcpp` dependency to a single header. The top-level member API is kept for backward compatibility with already-merged consumers and is planned to be removed once they are migrated to `polling::`.
+
 ## How to Enable/Disable Agnocast on Build
 
 To build Autoware **with** Agnocast:

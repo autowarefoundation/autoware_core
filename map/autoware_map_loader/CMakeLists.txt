@@ -34,16 +34,20 @@ ament_auto_add_library(lanelet2_map_loader_node SHARED
   src/lanelet2_map_loader/lanelet2_selected_map_loader_module.cpp
 )
 
-rclcpp_components_register_node(lanelet2_map_loader_node
+autoware_agnocast_wrapper_register_node(lanelet2_map_loader_node
   PLUGIN "autoware::map_loader::Lanelet2MapLoaderNode"
   EXECUTABLE autoware_lanelet2_map_loader
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 if(BUILD_TESTING)
-  add_launch_test(
-    test/lanelet2_map_loader_launch.test.py
-    TIMEOUT "30"
-  )
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    add_launch_test(
+      test/lanelet2_map_loader_launch.test.py
+      TIMEOUT "30"
+    )
+  endif()
   install(DIRECTORY
     test/data/
     DESTINATION share/${PROJECT_NAME}/test/data/
@@ -72,8 +76,11 @@ if(BUILD_TESTING)
   add_testcase(test/pointcloud_map_loader/test_selected_map_loader.cpp)
   add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_utils.cpp)
   add_testcase(test/lanelet2_map_loader/test_lanelet2_map_cell_metadata.cpp)
-  add_testcase(test/lanelet2_map_loader/test_lanelet2_selected_map_loader_module.cpp)
-  add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_integration.cpp)
+  # These node-based pub/sub and service tests are skipped when ENABLE_AGNOCAST=1.
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    add_testcase(test/lanelet2_map_loader/test_lanelet2_selected_map_loader_module.cpp)
+    add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_integration.cpp)
+  endif()
 endif()
 
 install(PROGRAMS
