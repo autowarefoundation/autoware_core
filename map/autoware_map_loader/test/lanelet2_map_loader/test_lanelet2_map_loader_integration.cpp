@@ -59,7 +59,7 @@ protected:
 
   struct ReceivedMessages
   {
-    rclcpp::Node::SharedPtr target_node;
+    std::shared_ptr<autoware::map_loader::Lanelet2MapLoaderNode> target_node;
     autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr map_msg;
     autoware_map_msgs::msg::LaneletMapMetaData::ConstSharedPtr meta_msg;
   };
@@ -71,7 +71,7 @@ protected:
 
     // Must reset executor each time to prevent zombie nodes
     executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
-    executor_->add_node(target_node);
+    executor_->add_node(target_node->get_node_base_interface());
 
     test_node_ = std::make_shared<rclcpp::Node>("test_lanelet2_map_loader_client");
     projector_pub_ = test_node_->create_publisher<MapProjectorInfo::Message>(

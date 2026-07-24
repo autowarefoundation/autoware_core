@@ -41,15 +41,16 @@ using autoware_internal_planning_msgs::msg::PlanningFactorArray;
 using autoware_internal_planning_msgs::msg::SafetyFactorArray;
 using geometry_msgs::msg::Pose;
 
-class PlanningFactorInterface
+template <typename NodeT>
+class PlanningFactorInterfaceT
 {
 public:
-  PlanningFactorInterface(
-    rclcpp::Node * node, const std::string & name, bool enable_console_output = false,
+  PlanningFactorInterfaceT(
+    NodeT * node, const std::string & name, bool enable_console_output = false,
     int throttle_duration_ms = 1000)
   : name_{name},
-    pub_factors_{
-      node->create_publisher<PlanningFactorArray>("/planning/planning_factors/" + name, 1)},
+    pub_factors_{node->template create_publisher<PlanningFactorArray>(
+      "/planning/planning_factors/" + name, 1)},
     clock_{node->get_clock()},
     enable_console_output_{enable_console_output},
     throttle_duration_ms_{throttle_duration_ms}
@@ -238,9 +239,13 @@ private:
     }
   }
 
+  using PublisherPtr =
+    decltype(std::declval<NodeT &>().template create_publisher<PlanningFactorArray>(
+      std::declval<const std::string &>(), 1));
+
   std::string name_;
 
-  rclcpp::Publisher<PlanningFactorArray>::SharedPtr pub_factors_;
+  PublisherPtr pub_factors_;
 
   rclcpp::Clock::SharedPtr clock_;
 
@@ -250,30 +255,36 @@ private:
   int throttle_duration_ms_{0};
 };
 
-extern template void
-PlanningFactorInterface::add<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
+using PlanningFactorInterface = PlanningFactorInterfaceT<rclcpp::Node>;
+
+extern template void PlanningFactorInterfaceT<rclcpp::Node>::add<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &, const Pose &,
   const Pose &, const uint16_t behavior, const SafetyFactorArray &, const bool, const double,
   const double, const std::string &);
-extern template void PlanningFactorInterface::add<autoware_planning_msgs::msg::PathPoint>(
+extern template void
+PlanningFactorInterfaceT<rclcpp::Node>::add<autoware_planning_msgs::msg::PathPoint>(
   const std::vector<autoware_planning_msgs::msg::PathPoint> &, const Pose &, const Pose &,
   const uint16_t behavior, const SafetyFactorArray &, const bool, const double, const double,
   const std::string &);
-extern template void PlanningFactorInterface::add<autoware_planning_msgs::msg::TrajectoryPoint>(
+extern template void
+PlanningFactorInterfaceT<rclcpp::Node>::add<autoware_planning_msgs::msg::TrajectoryPoint>(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> &, const Pose &, const Pose &,
   const uint16_t behavior, const SafetyFactorArray &, const bool, const double, const double,
   const std::string &);
 
-extern template void
-PlanningFactorInterface::add<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
+extern template void PlanningFactorInterfaceT<rclcpp::Node>::add<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &, const Pose &,
   const Pose &, const Pose &, const uint16_t behavior, const SafetyFactorArray &, const bool,
   const double, const double, const double, const double, const std::string &);
-extern template void PlanningFactorInterface::add<autoware_planning_msgs::msg::PathPoint>(
+extern template void
+PlanningFactorInterfaceT<rclcpp::Node>::add<autoware_planning_msgs::msg::PathPoint>(
   const std::vector<autoware_planning_msgs::msg::PathPoint> &, const Pose &, const Pose &,
   const Pose &, const uint16_t behavior, const SafetyFactorArray &, const bool, const double,
   const double, const double, const double, const std::string &);
-extern template void PlanningFactorInterface::add<autoware_planning_msgs::msg::TrajectoryPoint>(
+extern template void
+PlanningFactorInterfaceT<rclcpp::Node>::add<autoware_planning_msgs::msg::TrajectoryPoint>(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> &, const Pose &, const Pose &,
   const Pose &, const uint16_t behavior, const SafetyFactorArray &, const bool, const double,
   const double, const double, const double, const std::string &);

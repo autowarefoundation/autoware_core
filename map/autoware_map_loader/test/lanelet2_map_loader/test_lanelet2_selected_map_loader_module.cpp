@@ -15,6 +15,8 @@
 #include "../src/lanelet2_map_loader/lanelet2_selected_map_loader_module.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/map_loader/lanelet2_map_loader_node.hpp>
 #include <rclcpp/rclcpp.hpp>
 

@@ -22,9 +22,11 @@ target_include_directories(pointcloud_map_loader_node
   ${PCL_INCLUDE_DIRS}
 )
 
-rclcpp_components_register_node(pointcloud_map_loader_node
+autoware_agnocast_wrapper_register_node(pointcloud_map_loader_node
   PLUGIN "autoware::map_loader::PointCloudMapLoaderNode"
   EXECUTABLE autoware_pointcloud_map_loader
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 ament_auto_add_library(lanelet2_map_loader_node SHARED
@@ -35,16 +37,20 @@ ament_auto_add_library(lanelet2_map_loader_node SHARED
   src/lanelet2_map_loader/lanelet2_selected_map_loader_module.cpp
 )
 
-rclcpp_components_register_node(lanelet2_map_loader_node
+autoware_agnocast_wrapper_register_node(lanelet2_map_loader_node
   PLUGIN "autoware::map_loader::Lanelet2MapLoaderNode"
   EXECUTABLE autoware_lanelet2_map_loader
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 if(BUILD_TESTING)
-  add_launch_test(
-    test/lanelet2_map_loader_launch.test.py
-    TIMEOUT "30"
-  )
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    add_launch_test(
+      test/lanelet2_map_loader_launch.test.py
+      TIMEOUT "30"
+    )
+  endif()
   install(DIRECTORY
     test/data/
     DESTINATION share/${PROJECT_NAME}/test/data/
@@ -66,15 +72,20 @@ if(BUILD_TESTING)
   add_testcase(test/pointcloud_map_loader/test_cylinder_box_overlap.cpp)
   add_testcase(test/pointcloud_map_loader/test_replace_with_absolute_path.cpp)
   add_testcase(test/pointcloud_map_loader/test_load_pcd_metadata.cpp)
-  add_testcase(test/pointcloud_map_loader/test_pointcloud_map_loader_node.cpp)
   add_testcase(test/pointcloud_map_loader/test_pointcloud_map_loader.cpp)
   add_testcase(test/pointcloud_map_loader/test_partial_map_loader.cpp)
   add_testcase(test/pointcloud_map_loader/test_differential_map_loader.cpp)
   add_testcase(test/pointcloud_map_loader/test_selected_map_loader.cpp)
+  if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+    add_testcase(test/pointcloud_map_loader/test_pointcloud_map_loader_node.cpp)
+  endif()
   add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_utils.cpp)
   add_testcase(test/lanelet2_map_loader/test_lanelet2_map_cell_metadata.cpp)
-  add_testcase(test/lanelet2_map_loader/test_lanelet2_selected_map_loader_module.cpp)
-  add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_integration.cpp)
+  # These node-based pub/sub and service tests are skipped when ENABLE_AGNOCAST=1.
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    add_testcase(test/lanelet2_map_loader/test_lanelet2_selected_map_loader_module.cpp)
+    add_testcase(test/lanelet2_map_loader/test_lanelet2_map_loader_integration.cpp)
+  endif()
 endif()
 
 install(PROGRAMS

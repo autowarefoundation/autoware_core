@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__MAP_LOADER__LANELET2_MAP_LOADER_NODE_HPP_
 #define AUTOWARE__MAP_LOADER__LANELET2_MAP_LOADER_NODE_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/component_interface_specs/map.hpp>
 #include <autoware_lanelet2_extension/version.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -31,11 +32,10 @@
 
 namespace autoware::map_loader
 {
-
 // Forward declaration — full definition lives in the private source directory.
 class Lanelet2SelectedMapLoaderModule;
 
-class Lanelet2MapLoaderNode : public rclcpp::Node
+class Lanelet2MapLoaderNode : public autoware::agnocast_wrapper::Node
 {
 public:
   static constexpr lanelet::autoware::Version version = lanelet::autoware::version;

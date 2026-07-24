@@ -17,6 +17,8 @@
 
 #include "utils/lanelet2_map_cell_metadata.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_meta_data.hpp>
