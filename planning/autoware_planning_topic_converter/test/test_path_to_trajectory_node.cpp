@@ -25,8 +25,8 @@
 namespace
 {
 autoware_planning_msgs::msg::PathPoint make_path_point(
-  const double x, const double y, const float longitudinal_velocity,
-  const float lateral_velocity, const float heading_rate)
+  const double x, const double y, const float longitudinal_velocity, const float lateral_velocity,
+  const float heading_rate)
 {
   autoware_planning_msgs::msg::PathPoint point;
   point.pose.position.x = x;
@@ -68,8 +68,8 @@ protected:
           std::lock_guard<std::mutex> lock(message_mutex_);
           received_trajectory_ = message;
         });
-    path_publisher_ = test_control_node_->create_publisher<autoware_planning_msgs::msg::Path>(
-      "input/path", 10);
+    path_publisher_ =
+      test_control_node_->create_publisher<autoware_planning_msgs::msg::Path>("input/path", 10);
     executor_->add_node(test_control_node_);
   }
 
@@ -133,8 +133,7 @@ protected:
   std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
   std::thread executor_thread_;
   rclcpp::Node::SharedPtr test_control_node_;
-  rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr
-    trajectory_subscription_;
+  rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr trajectory_subscription_;
   rclcpp::Publisher<autoware_planning_msgs::msg::Path>::SharedPtr path_publisher_;
   std::shared_ptr<autoware::planning_topic_converter::PathToTrajectory> converter_node_;
 
