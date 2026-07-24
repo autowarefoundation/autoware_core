@@ -59,10 +59,7 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
     if (loaded_pcd.width == 0) {
       RCLCPP_ERROR(get_logger(), "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
     } else {
-      AUTOWARE_MESSAGE_UNIQUE_PTR(sensor_msgs::msg::PointCloud2)
-      out = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pointcloud_map_);
-      *out = loaded_pcd;
-      pub_pointcloud_map_->publish(std::move(out));
+      pub_pointcloud_map_->publish(loaded_pcd);
     }
   }
 
@@ -81,10 +78,7 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
     if (loaded_pcd.width == 0) {
       RCLCPP_ERROR(get_logger(), "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
     } else {
-      AUTOWARE_MESSAGE_UNIQUE_PTR(sensor_msgs::msg::PointCloud2)
-      out = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_downsampled_pointcloud_map_);
-      *out = loaded_pcd;
-      pub_downsampled_pointcloud_map_->publish(std::move(out));
+      pub_downsampled_pointcloud_map_->publish(loaded_pcd);
     }
   }
 
