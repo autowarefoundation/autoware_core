@@ -32,10 +32,11 @@ std::optional<LaneSequence> LaneSequence::create(
   for (const auto lane1_2 : ranges::views::zip(lanelets, lanelets | ranges::views::drop(1))) {
     const auto lane1 = std::get<0>(lane1_2);
     const auto lane2 = std::get<1>(lane1_2);
-    if (const auto nexts = following_lanelets(lane1, routing_graph);
-        std::find_if(nexts.begin(), nexts.end(), [&](const auto & lane) {
-          return lane.id() == lane2.id();
-        }) == nexts.end()) {
+    if (
+      const auto nexts = following_lanelets(lane1, routing_graph);
+      std::find_if(nexts.begin(), nexts.end(), [&](const auto & lane) {
+        return lane.id() == lane2.id();
+      }) == nexts.end()) {
       return std::nullopt;
     }
   }
