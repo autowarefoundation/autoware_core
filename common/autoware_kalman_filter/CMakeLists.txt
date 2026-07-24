@@ -1,11 +1,12 @@
 cmake_minimum_required(VERSION 3.14)
 project(autoware_kalman_filter)
 
+find_package(eigen3_cmake_module REQUIRED)
+find_package(Eigen3 REQUIRED)
+get_target_property(EIGEN3_INCLUDE_DIR Eigen3::Eigen INTERFACE_INCLUDE_DIRECTORIES)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
-find_package(eigen3_cmake_module REQUIRED)
-find_package(Eigen3 REQUIRED)
 
 include_directories(
   SYSTEM
