@@ -246,32 +246,6 @@ public:
       options);
   }
 
-  // ===== Polling Subscriber =====
-  template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
-  typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
-    const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
-  {
-    return visit_node(
-      [&](auto & n) -> typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr {
-        using NodeT = std::decay_t<decltype(*n)>;
-        if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
-          return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
-            n.get(), topic_name, qos);
-        } else {
-          return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
-            n.get(), topic_name, qos);
-        }
-      });
-  }
-
-  template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
-  typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
-    const std::string & topic_name, size_t qos_history_depth)
-  {
-    return create_polling_subscriber<MessageT, PollingPolicy>(
-      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
-  }
-
   // ===== Client / Service =====
   template <typename ServiceT>
   AUTOWARE_CLIENT_PTR(ServiceT)
@@ -693,34 +667,6 @@ public:
     return node_->create_subscription<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
       options);
-  }
-
-  // ===== Polling Subscriber =====
-  template <
-    typename MessageT,
-    template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::SharedPtr
-  create_polling_subscriber(
-    const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
-  {
-    static_assert(
-      !std::is_same_v<
-        PollingPolicy<MessageT>, autoware_utils_rclcpp::polling_policy::All<MessageT>>,
-      "polling_policy::All is not supported by "
-      "autoware::agnocast_wrapper::Node::create_polling_subscriber; use polling_policy::Latest or "
-      "polling_policy::Newest (or use InterProcessPollingSubscriber directly for the All policy).");
-    return autoware_utils_rclcpp::InterProcessPollingSubscriber<
-      MessageT, PollingPolicy>::create_subscription(node_.get(), topic_name, qos);
-  }
-
-  template <
-    typename MessageT,
-    template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::SharedPtr
-  create_polling_subscriber(const std::string & topic_name, size_t qos_history_depth)
-  {
-    return create_polling_subscriber<MessageT, PollingPolicy>(
-      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
   // ===== Client =====

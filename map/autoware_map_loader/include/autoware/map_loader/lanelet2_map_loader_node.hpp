@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__MAP_LOADER__LANELET2_MAP_LOADER_NODE_HPP_
 #define AUTOWARE__MAP_LOADER__LANELET2_MAP_LOADER_NODE_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/component_interface_specs/map.hpp>
 #include <autoware_lanelet2_extension/version.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -29,11 +30,10 @@
 
 namespace autoware::map_loader
 {
-
 // Forward declaration — full definition lives in the private source directory.
 class Lanelet2SelectedMapLoaderModule;
 
-class Lanelet2MapLoaderNode : public rclcpp::Node
+class Lanelet2MapLoaderNode : public autoware::agnocast_wrapper::Node
 {
 public:
   static constexpr lanelet::autoware::Version version = lanelet::autoware::version;
@@ -52,10 +52,11 @@ public:
 private:
   using MapProjectorInfo = autoware::component_interface_specs::map::MapProjectorInfo;
   using VectorMap = autoware::component_interface_specs::map::VectorMap;
-  void on_map_projector_info(const MapProjectorInfo::Message::ConstSharedPtr msg);
+  void on_map_projector_info(
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(MapProjectorInfo::Message) & msg);
 
-  rclcpp::Subscription<MapProjectorInfo::Message>::SharedPtr sub_map_projector_info_;
-  rclcpp::Publisher<VectorMap::Message>::SharedPtr pub_map_bin_;
+  AUTOWARE_SUBSCRIPTION_PTR(MapProjectorInfo::Message) sub_map_projector_info_;
+  AUTOWARE_PUBLISHER_PTR(VectorMap::Message) pub_map_bin_;
 
   std::unique_ptr<Lanelet2SelectedMapLoaderModule> selected_map_loader_module_;
 };
