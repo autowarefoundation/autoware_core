@@ -91,14 +91,22 @@ private:
   AUTOWARE_PUBLISHER_PTR(Trajectory) pub_trajectory_;
   AUTOWARE_PUBLISHER_PTR(MarkerArray) pub_virtual_wall_;
   AUTOWARE_SUBSCRIPTION_PTR(Trajectory) sub_current_trajectory_;
-  autoware::agnocast_wrapper::polling::PollingSubscriber<Odometry>::SharedPtr sub_current_odometry_;
+  autoware::agnocast_wrapper::polling::PollingSubscriber<Odometry>::SharedPtr sub_current_odometry_ =
+    autoware::agnocast_wrapper::polling::create_polling_subscriber<Odometry>(
+      this, "/localization/kinematic_state");
   autoware::agnocast_wrapper::polling::PollingSubscriber<AccelWithCovarianceStamped>::SharedPtr
-    sub_current_acceleration_;
+    sub_current_acceleration_ =
+      autoware::agnocast_wrapper::polling::create_polling_subscriber<AccelWithCovarianceStamped>(
+        this, "~/input/acceleration");
   autoware::agnocast_wrapper::polling::PollingSubscriber<
     VelocityLimit, autoware_utils_rclcpp::polling_policy::Newest>::SharedPtr
-    sub_external_velocity_limit_;
+    sub_external_velocity_limit_ = autoware::agnocast_wrapper::polling::create_polling_subscriber<
+      VelocityLimit, autoware_utils_rclcpp::polling_policy::Newest>(
+      this, "~/input/external_velocity_limit_mps");
   autoware::agnocast_wrapper::polling::PollingSubscriber<OperationModeState>::SharedPtr
-    sub_operation_mode_;
+    sub_operation_mode_ =
+      autoware::agnocast_wrapper::polling::create_polling_subscriber<OperationModeState>(
+        this, "~/input/operation_mode_state", rclcpp::QoS{1}.transient_local());
 
   Odometry::ConstSharedPtr current_odometry_ptr_;  // current odometry
   AccelWithCovarianceStamped::ConstSharedPtr current_acceleration_ptr_;

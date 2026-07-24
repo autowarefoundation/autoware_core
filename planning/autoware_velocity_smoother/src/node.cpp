@@ -65,18 +65,6 @@ VelocitySmootherNode::VelocitySmootherNode(const rclcpp::NodeOptions & node_opti
   sub_current_trajectory_ = create_subscription<Trajectory>(
     "~/input/trajectory", 1, std::bind(&VelocitySmootherNode::onCurrentTrajectory, this, _1));
 
-  sub_current_odometry_ = autoware::agnocast_wrapper::polling::create_polling_subscriber<Odometry>(
-    this, "/localization/kinematic_state");
-  sub_current_acceleration_ =
-    autoware::agnocast_wrapper::polling::create_polling_subscriber<AccelWithCovarianceStamped>(
-      this, "~/input/acceleration");
-  sub_external_velocity_limit_ = autoware::agnocast_wrapper::polling::create_polling_subscriber<
-    VelocityLimit, autoware_utils_rclcpp::polling_policy::Newest>(
-    this, "~/input/external_velocity_limit_mps");
-  sub_operation_mode_ =
-    autoware::agnocast_wrapper::polling::create_polling_subscriber<OperationModeState>(
-      this, "~/input/operation_mode_state", rclcpp::QoS{1}.transient_local());
-
   // parameter update
   set_param_res_ =
     this->add_on_set_parameters_callback(std::bind(&VelocitySmootherNode::onParameter, this, _1));
