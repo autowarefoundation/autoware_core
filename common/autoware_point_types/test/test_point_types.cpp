@@ -48,6 +48,16 @@ TEST(PointEquality, PointXYZIRCAEDT)
   EXPECT_TRUE(pt0 == pt1);
 }
 
+TEST(PointEquality, PointXYZCPE)
+{
+  using autoware::point_types::PointXYZCPE;
+
+  PointXYZCPE pt0{0, 1, 2, 3, 4, 5};
+  PointXYZCPE pt1{0, 1, 2, 3, 4, 5};
+  EXPECT_EQ(pt0, pt1);
+  EXPECT_TRUE(pt0 == pt1);
+}
+
 TEST(PointEquality, FloatEq)
 {
   // test template
