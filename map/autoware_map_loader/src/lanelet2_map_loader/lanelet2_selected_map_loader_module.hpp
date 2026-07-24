@@ -17,6 +17,8 @@
 
 #include "lanelet2_map_cell_metadata.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_meta_data.hpp>
@@ -49,7 +51,8 @@ public:
   /// @param center_line_resolution  Passed to `overwriteLaneletsCenterline`.
   /// @param use_waypoints         If true, use waypoint-based centerline overwrite.
   Lanelet2SelectedMapLoaderModule(
-    rclcpp::Node * node, std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict,
+    autoware::agnocast_wrapper::Node * node,
+    std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict,
     const autoware_map_msgs::msg::MapProjectorInfo & projector_info, double center_line_resolution,
     bool use_waypoints);
 
@@ -62,12 +65,12 @@ private:
   double center_line_resolution_;
   bool use_waypoints_;
 
-  rclcpp::Service<GetSelectedLanelet2Map>::SharedPtr service_;
-  rclcpp::Publisher<autoware_map_msgs::msg::LaneletMapMetaData>::SharedPtr pub_metadata_;
+  AUTOWARE_SERVICE_PTR(GetSelectedLanelet2Map) service_;
+  AUTOWARE_PUBLISHER_PTR(autoware_map_msgs::msg::LaneletMapMetaData) pub_metadata_;
 
   [[nodiscard]] bool on_service_get_selected_lanelet2_map(
-    GetSelectedLanelet2Map::Request::SharedPtr req,
-    GetSelectedLanelet2Map::Response::SharedPtr res) const;
+    AUTOWARE_SERVER_REQUEST_PTR(GetSelectedLanelet2Map) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(GetSelectedLanelet2Map) res) const;
 };
 
 }  // namespace autoware::map_loader
