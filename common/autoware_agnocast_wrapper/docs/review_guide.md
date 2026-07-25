@@ -148,7 +148,7 @@ Once identified, proceed to the corresponding review procedure below.
 
 - [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc.
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR`
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -303,7 +303,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR`
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -415,12 +415,12 @@ All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github
 
 ### Publisher/Subscriber Creation
 
-| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                                 | ENABLE_AGNOCAST=0 (ROS 2)                                 |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
-| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)`       | `this->create_subscription<msg_type>(...)`                |
-| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`          | `this->create_publisher<msg_type>(...)`                   |
-| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`          | `this->create_publisher<msg_type>(...)`                   |
-| `AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, topic, qos)`              | `agnocast_wrapper::create_polling_subscriber<msg_type>(...)` | `InterProcessPollingSubscriber::create_subscription(...)` |
+| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                                         | ENABLE_AGNOCAST=0 (ROS 2)                                                   |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)`               | `this->create_subscription<msg_type>(...)`                                  |
+| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`                  | `this->create_publisher<msg_type>(...)`                                     |
+| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`                  | `this->create_publisher<msg_type>(...)`                                     |
+| `AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, policy, topic, qos)`      | `agnocast_wrapper::create_polling_subscriber<msg_type, policy>(...)` | `InterProcessPollingSubscriber<msg_type, policy>::create_subscription(...)` |
 
 &nbsp;
 

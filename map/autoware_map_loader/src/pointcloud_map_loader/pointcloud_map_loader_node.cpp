@@ -14,140 +14,115 @@
 
 #include "pointcloud_map_loader_node.hpp"
 
-#include <glob.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl_conversions/pcl_conversions.h>
+#include "pointcloud_map_loader.hpp"
 
-#include <filesystem>
+#include <boost/optional.hpp>
+
 #include <map>
 #include <memory>
-#include <set>
 #include <string>
 #include <vector>
 
 namespace autoware::map_loader
 {
-namespace fs = std::filesystem;
-
-namespace
-{
-bool is_pcd_file(const std::string & p)
-{
-  if (fs::is_directory(p)) {
-    return false;
-  }
-
-  const std::string ext = fs::path(p).extension();
-
-  return !(ext != ".pcd" && ext != ".PCD");
-}
-}  // namespace
-
 PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & options)
 : Node("pointcloud_map_loader", options)
 {
-  const auto pcd_paths =
-    get_pcd_paths(declare_parameter<std::vector<std::string>>("pcd_paths_or_directory"));
+  const auto pcd_paths = resolve_pcd_paths(
+    declare_parameter<std::vector<std::string>>("pcd_paths_or_directory"),
+    [this](const std::string & msg) { RCLCPP_ERROR_STREAM(get_logger(), msg); });
   std::string pcd_metadata_path = declare_parameter<std::string>("pcd_metadata_path");
   bool enable_whole_load = declare_parameter<bool>("enable_whole_load");
   bool enable_downsample_whole_load = declare_parameter<bool>("enable_downsampled_whole_load");
   bool enable_partial_load = declare_parameter<bool>("enable_partial_load");
   bool enable_selected_load = declare_parameter<bool>("enable_selected_load");
 
+  const auto on_progress = [this](size_t processed, size_t total, const std::string & path) {
+    RCLCPP_DEBUG_STREAM(
+      get_logger(), "Load " << path << " (" << processed << " out of " << total << ")");
+  };
+  const auto on_whole_load_error = [this](const std::string & msg) {
+    RCLCPP_ERROR_STREAM(get_logger(), msg);
+  };
+
   if (enable_whole_load) {
-    std::string publisher_name = "output/pointcloud_map";
-    pcd_map_loader_ =
-      std::make_unique<PointcloudMapLoaderModule>(this, pcd_paths, publisher_name, false);
+    pcd_map_loader_ = std::make_unique<PointcloudMapLoaderModule>();
+
+    rclcpp::QoS durable_qos{1};
+    durable_qos.transient_local();
+    pub_pointcloud_map_ =
+      create_publisher<sensor_msgs::msg::PointCloud2>("output/pointcloud_map", durable_qos);
+
+    const auto loaded_pcd =
+      pcd_map_loader_->create_map_message(pcd_paths, boost::none, on_progress, on_whole_load_error);
+    if (loaded_pcd.width == 0) {
+      RCLCPP_ERROR(get_logger(), "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
+    } else {
+      pub_pointcloud_map_->publish(loaded_pcd);
+    }
   }
 
   if (enable_downsample_whole_load) {
-    std::string publisher_name = "output/debug/downsampled_pointcloud_map";
-    downsampled_pcd_map_loader_ =
-      std::make_unique<PointcloudMapLoaderModule>(this, pcd_paths, publisher_name, true);
+    downsampled_pcd_map_loader_ = std::make_unique<PointcloudMapLoaderModule>();
+
+    rclcpp::QoS durable_qos{1};
+    durable_qos.transient_local();
+    pub_downsampled_pointcloud_map_ = create_publisher<sensor_msgs::msg::PointCloud2>(
+      "output/debug/downsampled_pointcloud_map", durable_qos);
+
+    const auto leaf_size =
+      boost::make_optional(static_cast<float>(declare_parameter<float>("leaf_size")));
+    const auto loaded_pcd = downsampled_pcd_map_loader_->create_map_message(
+      pcd_paths, leaf_size, on_progress, on_whole_load_error);
+    if (loaded_pcd.width == 0) {
+      RCLCPP_ERROR(get_logger(), "No PCD was loaded: pcd_paths.size() = %zu", pcd_paths.size());
+    } else {
+      pub_downsampled_pointcloud_map_->publish(loaded_pcd);
+    }
   }
 
   // Parse the metadata file and get the map of (absolute pcd path, pcd file metadata)
-  auto pcd_metadata_dict = get_pcd_metadata(pcd_metadata_path, pcd_paths);
+  auto pcd_metadata_dict = build_pcd_metadata_dict(pcd_metadata_path, pcd_paths);
+  const auto on_cell_load_error = [this](const std::string & msg) {
+    RCLCPP_WARN_STREAM(get_logger(), msg);
+  };
 
   if (enable_partial_load) {
-    partial_map_loader_ = std::make_unique<PartialMapLoaderModule>(this, pcd_metadata_dict);
+    partial_map_loader_ =
+      std::make_unique<PartialMapLoaderModule>(pcd_metadata_dict, on_cell_load_error);
+    get_partial_pcd_maps_service_ = create_service<GetPartialPointCloudMap>(
+      "service/get_partial_pcd_map", [this](
+                                       GetPartialPointCloudMap::Request::SharedPtr req,
+                                       GetPartialPointCloudMap::Response::SharedPtr res) {
+        return partial_map_loader_->create_response(req, res);
+      });
   }
 
-  differential_map_loader_ = std::make_unique<DifferentialMapLoaderModule>(this, pcd_metadata_dict);
+  differential_map_loader_ =
+    std::make_unique<DifferentialMapLoaderModule>(pcd_metadata_dict, on_cell_load_error);
+  get_differential_pcd_maps_service_ = create_service<GetDifferentialPointCloudMap>(
+    "service/get_differential_pcd_map", [this](
+                                          GetDifferentialPointCloudMap::Request::SharedPtr req,
+                                          GetDifferentialPointCloudMap::Response::SharedPtr res) {
+      return differential_map_loader_->create_response(req, res);
+    });
 
   if (enable_selected_load) {
-    selected_map_loader_ = std::make_unique<SelectedMapLoaderModule>(this, pcd_metadata_dict);
+    selected_map_loader_ =
+      std::make_unique<SelectedMapLoaderModule>(pcd_metadata_dict, on_cell_load_error);
+    get_selected_pcd_maps_service_ = create_service<GetSelectedPointCloudMap>(
+      "service/get_selected_pcd_map", [this](
+                                        GetSelectedPointCloudMap::Request::SharedPtr req,
+                                        GetSelectedPointCloudMap::Response::SharedPtr res) {
+        return selected_map_loader_->create_response(req, res);
+      });
+
+    rclcpp::QoS durable_qos{1};
+    durable_qos.transient_local();
+    pub_metadata_ = create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
+      "output/pointcloud_map_metadata", durable_qos);
+    pub_metadata_->publish(create_metadata(pcd_metadata_dict));
   }
-}
-
-std::map<std::string, PCDFileMetadata> PointCloudMapLoaderNode::get_pcd_metadata(
-  const std::string & pcd_metadata_path, const std::vector<std::string> & pcd_paths) const
-{
-  if (fs::exists(pcd_metadata_path)) {
-    std::set<std::string> missing_pcd_names;
-    auto pcd_metadata_dict = load_pcd_metadata(pcd_metadata_path);
-
-    pcd_metadata_dict = replace_with_absolute_path(pcd_metadata_dict, pcd_paths, missing_pcd_names);
-
-    // Warning if some segments are missing
-    if (!missing_pcd_names.empty()) {
-      std::ostringstream oss;
-
-      oss << "The following segment(s) are missing from the input PCDs: ";
-
-      for (const auto & fname : missing_pcd_names) {
-        oss << std::endl << fname;
-      }
-
-      RCLCPP_ERROR_STREAM(get_logger(), oss.str());
-      throw std::runtime_error("Missing PCD segments. Exiting map loader...");
-    }
-
-    return pcd_metadata_dict;
-  }
-
-  if (pcd_paths.size() == 1) {
-    // An exception when using a single file PCD map so that the users do not have to provide
-    // a metadata file.
-    // Note that this should ideally be avoided and thus eventually be removed by someone, until
-    // Autoware users get used to handling the PCD file(s) with metadata.
-    RCLCPP_DEBUG_STREAM(get_logger(), "Create PCD metadata, as the pointcloud is a single file.");
-    pcl::PointCloud<pcl::PointXYZ> single_pcd;
-    const auto & pcd_path = pcd_paths.front();
-    if (pcl::io::loadPCDFile(pcd_path, single_pcd) == -1) {
-      throw std::runtime_error("PCD load failed: " + pcd_path);
-    }
-    PCDFileMetadata metadata = {};
-    pcl::getMinMax3D(single_pcd, metadata.min, metadata.max);
-    return std::map<std::string, PCDFileMetadata>{{pcd_path, metadata}};
-  }
-  throw std::runtime_error("PCD metadata file not found: " + pcd_metadata_path);
-}
-
-std::vector<std::string> PointCloudMapLoaderNode::get_pcd_paths(
-  const std::vector<std::string> & pcd_paths_or_directory) const
-{
-  std::vector<std::string> pcd_paths;
-  for (const auto & p : pcd_paths_or_directory) {
-    if (!fs::exists(p)) {
-      RCLCPP_ERROR_STREAM(get_logger(), "invalid path: " << p);
-    }
-
-    if (is_pcd_file(p)) {
-      pcd_paths.push_back(p);
-    }
-
-    if (fs::is_directory(p)) {
-      for (const auto & file : fs::directory_iterator(p)) {
-        const auto filename = file.path().string();
-        if (is_pcd_file(filename)) {
-          pcd_paths.push_back(filename);
-        }
-      }
-    }
-  }
-  return pcd_paths;
 }
 }  // namespace autoware::map_loader
 

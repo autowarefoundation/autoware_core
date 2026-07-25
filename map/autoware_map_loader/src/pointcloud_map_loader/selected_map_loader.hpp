@@ -12,22 +12,13 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef POINTCLOUD_MAP_LOADER__SELECTED_MAP_LOADER_MODULE_HPP_
-#define POINTCLOUD_MAP_LOADER__SELECTED_MAP_LOADER_MODULE_HPP_
+#ifndef POINTCLOUD_MAP_LOADER__SELECTED_MAP_LOADER_HPP_
+#define POINTCLOUD_MAP_LOADER__SELECTED_MAP_LOADER_HPP_
 
 #include "utils.hpp"
 
-#include <rclcpp/rclcpp.hpp>
-
 #include <autoware_map_msgs/msg/point_cloud_map_meta_data.hpp>
 #include <autoware_map_msgs/srv/get_selected_point_cloud_map.hpp>
-
-#include <pcl/common/common.h>
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/io/pcd_io.h>
-#include <pcl/point_cloud.h>
-#include <pcl/point_types.h>
-#include <pcl_conversions/pcl_conversions.h>
 
 #include <map>
 #include <string>
@@ -35,8 +26,9 @@
 
 namespace autoware::map_loader
 {
-// Build the durable map-metadata message published on construction from the PCD metadata dict.
-// Declared here so it can be unit-tested directly without instantiating the module.
+/// @brief Build metadata message published for map cell bounds.
+/// @param pcd_file_metadata_dict Metadata dictionary keyed by map ID.
+/// @return PointCloudMapMetaData message for all known map cells.
 autoware_map_msgs::msg::PointCloudMapMetaData create_metadata(
   const std::map<std::string, PCDFileMetadata> & pcd_file_metadata_dict);
 
@@ -46,20 +38,17 @@ class SelectedMapLoaderModule
 
 public:
   explicit SelectedMapLoaderModule(
-    rclcpp::Node * node, std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict);
+    std::map<std::string, PCDFileMetadata> pcd_file_metadata_dict,
+    PointcloudLoaderLogFunction on_error = PointcloudLoaderLogFunction{});
 
-private:
-  rclcpp::Logger logger_;
-
-  std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
-  rclcpp::Service<GetSelectedPointCloudMap>::SharedPtr get_selected_pcd_maps_service_;
-
-  rclcpp::Publisher<autoware_map_msgs::msg::PointCloudMapMetaData>::SharedPtr pub_metadata_;
-
-  [[nodiscard]] bool on_service_get_selected_point_cloud_map(
+  [[nodiscard]] bool create_response(
     GetSelectedPointCloudMap::Request::SharedPtr req,
     GetSelectedPointCloudMap::Response::SharedPtr res) const;
+
+private:
+  std::map<std::string, PCDFileMetadata> all_pcd_file_metadata_dict_;
+  PointcloudLoaderLogFunction on_error_;
 };
 }  // namespace autoware::map_loader
 
-#endif  // POINTCLOUD_MAP_LOADER__SELECTED_MAP_LOADER_MODULE_HPP_
+#endif  // POINTCLOUD_MAP_LOADER__SELECTED_MAP_LOADER_HPP_

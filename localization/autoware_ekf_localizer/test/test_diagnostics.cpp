@@ -972,7 +972,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
 
   rclcpp::ExecutorOptions options;
   rclcpp::executors::SingleThreadedExecutor executor(options);
-  executor.add_node(ekf_localizer);
+  executor.add_node(ekf_localizer->get_node_base_interface());
 
   const auto spin_duration = std::chrono::milliseconds(250);
   const auto start = std::chrono::steady_clock::now();
@@ -981,7 +981,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 
-  executor.remove_node(ekf_localizer);
+  executor.remove_node(ekf_localizer->get_node_base_interface());
 
   EXPECT_GE(diag_count, 1) << "Expected at least one /diagnostics message within 250 ms at 10 Hz";
 }
@@ -1027,7 +1027,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_message_names)
 
   rclcpp::ExecutorOptions options;
   rclcpp::executors::SingleThreadedExecutor executor(options);
-  executor.add_node(ekf_localizer);
+  executor.add_node(ekf_localizer->get_node_base_interface());
 
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
   while (!full_diag_msg && std::chrono::steady_clock::now() < deadline && rclcpp::ok()) {
@@ -1035,7 +1035,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_message_names)
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 
-  executor.remove_node(ekf_localizer);
+  executor.remove_node(ekf_localizer->get_node_base_interface());
 
   ASSERT_NE(full_diag_msg, nullptr)
     << "Expected a /diagnostics message with three tasks (main, callback_pose, callback_twist)";
@@ -1130,7 +1130,7 @@ TEST_F(
 
   rclcpp::ExecutorOptions options;
   rclcpp::executors::SingleThreadedExecutor executor(options);
-  executor.add_node(ekf_localizer);
+  executor.add_node(ekf_localizer->get_node_base_interface());
 
   geometry_msgs::msg::PoseWithCovarianceStamped pose_msg;
   pose_msg.header.stamp = ekf_localizer->now();
@@ -1150,7 +1150,7 @@ TEST_F(
     std::this_thread::sleep_for(std::chrono::milliseconds(5));
   }
 
-  executor.remove_node(ekf_localizer);
+  executor.remove_node(ekf_localizer->get_node_base_interface());
 
   EXPECT_TRUE(received_callback_pose_diag)
     << "Expected at least one callback_pose diagnostic at diagnostics period when period > 0";
@@ -1219,7 +1219,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_parameter_period)
 
   rclcpp::ExecutorOptions options;
   rclcpp::executors::SingleThreadedExecutor executor(options);
-  executor.add_node(ekf_localizer);
+  executor.add_node(ekf_localizer->get_node_base_interface());
 
   const double spin_seconds = 1.15;
   const auto spin_end =
@@ -1236,7 +1236,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_parameter_period)
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 
-  executor.remove_node(ekf_localizer);
+  executor.remove_node(ekf_localizer->get_node_base_interface());
 
   const size_t min_expected = static_cast<size_t>(spin_seconds / diagnostics_publish_period) > 2
                                 ? static_cast<size_t>(spin_seconds / diagnostics_publish_period) - 2
@@ -1319,7 +1319,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_immediately_on_severit
 
   rclcpp::ExecutorOptions options;
   rclcpp::executors::SingleThreadedExecutor executor(options);
-  executor.add_node(ekf_localizer);
+  executor.add_node(ekf_localizer->get_node_base_interface());
 
   for (int i = 0; i < 40 && rclcpp::ok(); ++i) {
     executor.spin_some(std::chrono::milliseconds(10));
@@ -1340,7 +1340,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_immediately_on_severit
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 
-  executor.remove_node(ekf_localizer);
+  executor.remove_node(ekf_localizer->get_node_base_interface());
 
   EXPECT_GT(diag_count, count_before)
     << "Severity increase should trigger an immediate /diagnostics publish even "

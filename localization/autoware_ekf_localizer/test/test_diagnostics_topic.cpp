@@ -93,7 +93,7 @@ TEST(DiagnosticsTopicTest, logs_published_diagnostic_status_names)
     });
 
   rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(ekf);
+  executor.add_node(ekf->get_node_base_interface());
 
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(500);
   while (message_count == 0 && std::chrono::steady_clock::now() < deadline && rclcpp::ok()) {
@@ -101,7 +101,7 @@ TEST(DiagnosticsTopicTest, logs_published_diagnostic_status_names)
     std::this_thread::sleep_for(std::chrono::milliseconds(2));
   }
 
-  executor.remove_node(ekf);
+  executor.remove_node(ekf->get_node_base_interface());
 
   EXPECT_GE(message_count, 1u)
     << "Expected at least one /diagnostics message (timer publishes when not activated)";

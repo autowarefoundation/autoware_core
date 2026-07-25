@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/planning_factor_interface/planning_factor_interface.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -65,11 +66,14 @@ std::vector<TrajectoryPoint> make_straight_trajectory(const size_t num_points)
 class PlanningFactorInterfaceTest : public ::testing::Test
 {
 protected:
+  using InterfaceT = PlanningFactorInterfaceT<autoware::agnocast_wrapper::Node>;
+
   void SetUp() override
   {
     rclcpp::init(0, nullptr);
-    node_ = std::make_shared<rclcpp::Node>("planning_factor_interface_test_node");
-    interface_ = std::make_unique<PlanningFactorInterface>(node_.get(), "test_module");
+    node_ =
+      std::make_shared<autoware::agnocast_wrapper::Node>("planning_factor_interface_test_node");
+    interface_ = std::make_unique<InterfaceT>(node_.get(), "test_module");
   }
 
   void TearDown() override
@@ -79,8 +83,8 @@ protected:
     rclcpp::shutdown();
   }
 
-  std::shared_ptr<rclcpp::Node> node_;
-  std::unique_ptr<PlanningFactorInterface> interface_;
+  std::shared_ptr<autoware::agnocast_wrapper::Node> node_;
+  std::unique_ptr<InterfaceT> interface_;
 };
 
 // add(distance, ...) populates exactly one ControlPoint with the supplied fields and
@@ -225,7 +229,7 @@ TEST_F(PlanningFactorInterfaceTest, PublishStampsAndForwardsFactors)
   // Spin until the subscription receives the published message (bounded wait).
   const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
   while (!got_msg && std::chrono::steady_clock::now() < deadline) {
-    rclcpp::spin_some(node_);
+    rclcpp::spin_some(node_->get_node_base_interface());
     std::this_thread::sleep_for(std::chrono::milliseconds(10));
   }
 

@@ -56,7 +56,8 @@ autoware_map_msgs::msg::LaneletMapMetaData build_metadata_msg(
 }  // namespace
 
 Lanelet2SelectedMapLoaderModule::Lanelet2SelectedMapLoaderModule(
-  rclcpp::Node * node, std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict,
+  autoware::agnocast_wrapper::Node * node,
+  std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict,
   const autoware_map_msgs::msg::MapProjectorInfo & projector_info,
   const double center_line_resolution, const bool use_waypoints)
 : logger_(node->get_logger()),
@@ -68,7 +69,10 @@ Lanelet2SelectedMapLoaderModule::Lanelet2SelectedMapLoaderModule(
   pub_metadata_(node->create_publisher<autoware_map_msgs::msg::LaneletMapMetaData>(
     "output/lanelet2_map_metadata", rclcpp::QoS{1}.transient_local()))
 {
-  pub_metadata_->publish(build_metadata_msg(all_cell_metadata_dict_, node->now()));
+  AUTOWARE_MESSAGE_UNIQUE_PTR(autoware_map_msgs::msg::LaneletMapMetaData)
+  metadata_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_metadata_);
+  *metadata_msg = build_metadata_msg(all_cell_metadata_dict_, node->now());
+  pub_metadata_->publish(std::move(metadata_msg));
 
   service_ = node->create_service<GetSelectedLanelet2Map>(
     "service/get_selected_lanelet2_map",
@@ -78,8 +82,8 @@ Lanelet2SelectedMapLoaderModule::Lanelet2SelectedMapLoaderModule(
 }
 
 bool Lanelet2SelectedMapLoaderModule::on_service_get_selected_lanelet2_map(
-  GetSelectedLanelet2Map::Request::SharedPtr req,
-  GetSelectedLanelet2Map::Response::SharedPtr res) const
+  AUTOWARE_SERVER_REQUEST_PTR(GetSelectedLanelet2Map) req,
+  AUTOWARE_SERVER_RESPONSE_PTR(GetSelectedLanelet2Map) res) const
 {
   // Resolve requested cell IDs to file paths.
   std::vector<std::string> paths;

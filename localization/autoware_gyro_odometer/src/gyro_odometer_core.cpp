@@ -20,6 +20,7 @@
 
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <chrono>
 #include <cmath>
 #include <memory>
 #include <string>
@@ -28,14 +29,15 @@ namespace autoware::gyro_odometer
 {
 
 GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
-: Node("gyro_odometer", node_options),
+: autoware::agnocast_wrapper::Node("gyro_odometer", node_options),
   output_frame_(declare_parameter<std::string>("output_frame")),
   message_timeout_sec_(declare_parameter<double>("message_timeout_sec")),
   vehicle_twist_arrived_(false),
   imu_arrived_(false)
 {
-  transform_listener_ = std::make_shared<autoware_utils_tf::TransformListener>(this);
-  logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
+  transform_listener_ = std::make_shared<TransformListener>(this);
+  logger_configure_ = std::make_unique<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
 
   vehicle_twist_sub_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
     "vehicle/twist_with_covariance", rclcpp::QoS{10},
@@ -53,16 +55,18 @@ GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
   twist_with_covariance_pub_ = create_publisher<geometry_msgs::msg::TwistWithCovarianceStamped>(
     "twist_with_covariance", rclcpp::QoS{10});
 
-  diagnostics_ = std::make_unique<autoware_utils_diagnostics::DiagnosticsInterface>(
+  diagnostics_ = std::make_unique<
+    autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>(
     this, "gyro_odometer_status");
 
-  timer_ = rclcpp::create_timer(
+  timer_ = autoware::agnocast_wrapper::create_timer(
     this, this->get_clock(), std::chrono::milliseconds(100),
     std::bind(&GyroOdometerNode::publish_diagnostics, this));
 }
 
 void GyroOdometerNode::callback_vehicle_twist(
-  const geometry_msgs::msg::TwistWithCovarianceStamped::ConstSharedPtr vehicle_twist_msg_ptr)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
+    vehicle_twist_msg_ptr)
 {
   vehicle_twist_arrived_ = true;
   latest_vehicle_twist_ros_time_ = vehicle_twist_msg_ptr->header.stamp;
@@ -70,7 +74,8 @@ void GyroOdometerNode::callback_vehicle_twist(
   concat_gyro_and_odometer();
 }
 
-void GyroOdometerNode::callback_imu(const sensor_msgs::msg::Imu::ConstSharedPtr imu_msg_ptr)
+void GyroOdometerNode::callback_imu(
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Imu) imu_msg_ptr)
 {
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg_ptr->header.stamp;
