@@ -68,7 +68,7 @@ private:
   // ROS interfaces, moved from utility module into Node wrapper
   AUTOWARE_PUBLISHER_PTR(autoware_map_msgs::msg::LaneletMapMetaData) pub_metadata_;
   AUTOWARE_SERVICE_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map)
-    srv_get_selected_lanelet2_map_;
+  srv_get_selected_lanelet2_map_;
 
   std::unique_ptr<Lanelet2SelectedMapLoaderModule> selected_map_loader_module_;
 };
