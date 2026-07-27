@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include <autoware/planning_topic_converter/path_to_trajectory.hpp>
+#include "../src/path_to_trajectory_node.hpp"
 
 #include <gtest/gtest.h>
 
@@ -91,7 +91,7 @@ protected:
     options.parameter_overrides(
       {{"input_topic", "input/path"}, {"output_topic", "output/trajectory"}});
     converter_node_ =
-      std::make_shared<autoware::planning_topic_converter::PathToTrajectory>(options);
+      std::make_shared<autoware::planning_topic_converter::PathToTrajectoryNode>(options);
     executor_->add_node(converter_node_->get_node_base_interface());
     executor_thread_ = std::thread([this]() { executor_->spin(); });
 
@@ -135,7 +135,7 @@ protected:
   rclcpp::Node::SharedPtr test_control_node_;
   rclcpp::Subscription<autoware_planning_msgs::msg::Trajectory>::SharedPtr trajectory_subscription_;
   rclcpp::Publisher<autoware_planning_msgs::msg::Path>::SharedPtr path_publisher_;
-  std::shared_ptr<autoware::planning_topic_converter::PathToTrajectory> converter_node_;
+  std::shared_ptr<autoware::planning_topic_converter::PathToTrajectoryNode> converter_node_;
 
   std::mutex message_mutex_;
   autoware_planning_msgs::msg::Trajectory::SharedPtr received_trajectory_;
