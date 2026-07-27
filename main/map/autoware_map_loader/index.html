@@ -7904,6 +7904,9 @@ The node projects lat/lon coordinates into the frame defined in <code>/map/map_p
 Please see <a href="https://github.com/autowarefoundation/autoware_msgs/blob/main/autoware_map_msgs/msg/MapProjectorInfo.msg">autoware_map_msgs/msg/MapProjectorInfo.msg</a> for supported projector types.</p>
 <p><code>lanelet2_map_path</code> can point to either a single <code>.osm</code> file or a directory.
 When a directory is given, all <code>.osm</code> files inside are loaded and merged into a single map before publishing.</p>
+<p>If no <code>.osm</code> file is found at <code>lanelet2_map_path</code>, the node throws and exits.
+Invalid configuration is treated as fail-fast so that operators notice and
+fix it (consistent with the missing-metadata and unsupported-version cases).</p>
 <h4 id="cell-metadata">Cell metadata<a class="headerlink" href="#cell-metadata" title="Permanent link">#</a></h4>
 <p>The node always builds a per-cell bounding-box dictionary at startup so that
 downstream loaders (such as selected map loading, and future differential
