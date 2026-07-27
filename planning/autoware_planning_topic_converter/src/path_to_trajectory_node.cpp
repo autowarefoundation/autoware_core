@@ -23,9 +23,10 @@ namespace autoware::planning_topic_converter
 
 PathToTrajectoryNode::PathToTrajectoryNode(const rclcpp::NodeOptions & options)
 : rclcpp::Node("path_to_trajectory_converter", options),
-  sub_(create_subscription<Path>(
-    declare_parameter<std::string>("input_topic"), 1,
-    std::bind(&PathToTrajectoryNode::process, this, std::placeholders::_1))),
+  sub_(
+    create_subscription<Path>(
+      declare_parameter<std::string>("input_topic"), 1,
+      std::bind(&PathToTrajectoryNode::process, this, std::placeholders::_1))),
   pub_(create_publisher<Trajectory>(declare_parameter<std::string>("output_topic"), 1))
 {
 }
