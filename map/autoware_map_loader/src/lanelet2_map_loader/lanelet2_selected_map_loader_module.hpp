@@ -30,15 +30,13 @@
 namespace autoware::map_loader
 {
 
-/// @brief Provides on-demand loading of lanelet2 map cells via a ROS 2 service.
+/// @brief Pure-logic helper for selected lanelet2 map loading (no ROS deps).
 ///
-/// On construction the module publishes a `LaneletMapMetaData` message with
-/// transient-local durability so any subscriber — including late-joiners — can
-/// discover all available cells and their bounding boxes.
-///
-/// The `service/get_selected_lanelet2_map` service accepts a list of cell IDs,
-/// loads the corresponding OSM files from disk, merges them into a single map,
-/// applies centerline overwriting, and returns the serialised `LaneletMapBin`.
+/// Given a pre-computed per-cell bounding-box dictionary, this class:
+///   - builds a `LaneletMapMetaData` message for all known cells
+///     (`build_metadata_msg`), and
+///   - resolves a set of requested cell IDs into a merged, centerline-overwritten
+///     `LaneletMapBin` (`execute`).
 class Lanelet2SelectedMapLoaderModule
 {
 public:
