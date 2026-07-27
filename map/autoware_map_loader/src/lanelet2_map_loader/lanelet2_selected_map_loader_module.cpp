@@ -17,7 +17,6 @@
 #include "lanelet2_map_loader.hpp"
 #include "utils/lanelet2_map_loader_utils.hpp"
 
-#include <autoware/map_loader/lanelet2_map_loader_node.hpp>
 #include <autoware_lanelet2_extension/utility/utilities.hpp>
 
 #include <filesystem>
