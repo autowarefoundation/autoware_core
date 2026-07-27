@@ -33,6 +33,8 @@ ament_auto_add_library(smoother SHARED
   ${SMOOTHER_SRC}
 )
 
+autoware_agnocast_wrapper_setup(smoother)
+
 ament_auto_add_library(${PROJECT_NAME}_node SHARED
   ${MOTION_VELOCITY_SMOOTHER_SRC}
 )

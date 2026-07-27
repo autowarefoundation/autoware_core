@@ -104,9 +104,10 @@ VelocitySmootherNode::VelocitySmootherNode(const rclcpp::NodeOptions & node_opti
 
 void VelocitySmootherNode::setupSmoother(const double wheelbase)
 {
+  autoware::agnocast_wrapper::Node & node = *this;
   switch (node_param_.algorithm_type) {
     case AlgorithmType::JERK_FILTERED: {
-      smoother_ = std::make_shared<JerkFilteredSmoother>(*this, time_keeper_);
+      smoother_ = std::make_shared<JerkFilteredSmoother>(node, time_keeper_);
 
       // Set Publisher for jerk filtered algorithm
       pub_forward_filtered_trajectory_ =
@@ -120,15 +121,15 @@ void VelocitySmootherNode::setupSmoother(const double wheelbase)
       break;
     }
     case AlgorithmType::L2: {
-      smoother_ = std::make_shared<L2PseudoJerkSmoother>(*this, time_keeper_);
+      smoother_ = std::make_shared<L2PseudoJerkSmoother>(node, time_keeper_);
       break;
     }
     case AlgorithmType::LINF: {
-      smoother_ = std::make_shared<LinfPseudoJerkSmoother>(*this, time_keeper_);
+      smoother_ = std::make_shared<LinfPseudoJerkSmoother>(node, time_keeper_);
       break;
     }
     case AlgorithmType::ANALYTICAL: {
-      smoother_ = std::make_shared<AnalyticalJerkConstrainedSmoother>(*this, time_keeper_);
+      smoother_ = std::make_shared<AnalyticalJerkConstrainedSmoother>(node, time_keeper_);
       break;
     }
     default:
