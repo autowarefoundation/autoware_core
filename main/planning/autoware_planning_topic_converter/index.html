@@ -7686,7 +7686,7 @@
 <p>The tools in this package are provided as composable ROS 2 component nodes, so that they can be spawned into an existing process, launched from launch files, or invoked from the command line.</p>
 <p>```xml
 <load_composable_node target="container_name">
-  <composable_node pkg="planning_topic_converter" plugin="autoware::planning_topic_converter::PathToTrajectory" name="path_to_trajectory_converter" namespace="">
+  <composable_node pkg="planning_topic_converter" plugin="autoware::planning_topic_converter::PathToTrajectoryNode" name="path_to_trajectory_converter" namespace="">
   <!-- params --></composable_node></load_composable_node></p>
 <p><param name="input_topic" value="foo">
   <param name="output_topic" value="bar">
