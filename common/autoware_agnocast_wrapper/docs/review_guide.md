@@ -752,7 +752,7 @@ ros2 launch autoware_launch ...
 
 - [Agnocast Autoware Integration Guide](https://github.com/autowarefoundation/agnocast/blob/main/docs/autoware_integration.md) - Detailed documentation on integrating Agnocast into Autoware
 
-- [Agnocast message_filters User Guide](https://github.com/autowarefoundation/agnocast/blob/main/docs/message_filters_user_guide.md) - How to use Agnocast's message_filters
+- [Agnocast message_filters Migration Guide](https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/message-filters/) - How to use Agnocast's message_filters
 
 - [Agnocast ROS 2 Bridge](https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_ros2_bridge.md) - Bridge communication between Agnocast nodes and standard ROS 2 nodes
 
