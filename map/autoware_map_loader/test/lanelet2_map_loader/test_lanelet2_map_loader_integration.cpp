@@ -20,6 +20,7 @@
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_meta_data.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
+#include <autoware_map_msgs/srv/get_selected_lanelet2_map.hpp>
 
 #include <gtest/gtest.h>
 #include <lanelet2_core/LaneletMap.h>
@@ -193,7 +194,7 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesStandardCenterlineInjection)
   }
 }
 
-// TEST 3. Confirms when enable_selected_map_loading is set to true, node publishes metadata upon
+// TEST 3. Confirms when in mode GetSelectedLanelet2Map, node publishes metadata upon
 // initialization. Expects:
 // - Node publishes LaneletMapMetaData message (with 3 secs)
 // - LaneletMapMetaData message has 1 metadata entry with cell_id matching the map
@@ -221,7 +222,68 @@ TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesMetadataPublishedWhenSelecte
   EXPECT_EQ(received.meta_msg->metadata_list[0].cell_id, map_path);
 }
 
-// TEST 4. Confirms when allow_unsupported_version = false and loading a map with an unsupported
+// TEST 4. Confirms GetSelectedLanelet2Map service operates correctly.
+// Should returns  dynamically loaded map cells, and properly assigns nested headers.
+TEST_F(Lanelet2MapLoaderIntegrationHarness, VerifiesGetSelectedLanelet2MapService)
+{
+  // Re-init node options with enable_selected_map_loading = true
+  rclcpp::NodeOptions options;
+  options.append_parameter_override("lanelet2_map_path", map_path_);
+  options.append_parameter_override("center_line_resolution", 5.0);
+  options.append_parameter_override("use_waypoints", true);
+  options.append_parameter_override("allow_unsupported_version", true);
+  options.append_parameter_override("lanelet2_map_metadata_path", "");
+  // TEST TARGET enable_selected_map_loading = true
+  options.append_parameter_override("enable_selected_map_loading", true);
+
+  auto received = receive_map_and_metadata(options);
+
+  // Expected node init well
+  ASSERT_NE(received.target_node, nullptr) << "Target node failed to initialize.";
+
+  // Expected service client init well
+  auto client = test_node_->create_client<autoware_map_msgs::srv::GetSelectedLanelet2Map>(
+    "service/get_selected_lanelet2_map");
+  ASSERT_TRUE(client->wait_for_service(std::chrono::seconds(3)))
+    << "Service 'service/get_selected_lanelet2_map' not ready.";
+
+  // Prepare request using known cell_id from test map
+  auto req = std::make_shared<autoware_map_msgs::srv::GetSelectedLanelet2Map::Request>();
+  req->cell_ids.push_back(map_path_);
+
+  // Call service, spin executor, wait for response
+  auto future = client->async_send_request(req);
+
+  const auto timeout = std::chrono::steady_clock::now() + std::chrono::seconds(3);
+  std::future_status status = std::future_status::timeout;
+
+  while (std::chrono::steady_clock::now() < timeout) {
+    executor_->spin_some();
+    status = future.wait_for(std::chrono::milliseconds(10));
+    if (status == std::future_status::ready) {
+      break;
+    }
+  }
+
+  // Expected good response
+  ASSERT_EQ(status, std::future_status::ready) << "Service call timed out.";
+  auto res = future.get();
+  ASSERT_NE(res, nullptr);
+
+  // Expected nested headers
+  EXPECT_EQ(res->header.frame_id, "map");
+  EXPECT_EQ(res->lanelet2_cells.header.frame_id, "map");
+  EXPECT_GT(rclcpp::Time(res->header.stamp).nanoseconds(), 0);
+  EXPECT_EQ(res->header.stamp, res->lanelet2_cells.header.stamp);
+
+  // 6. Expected logically-sounded payload
+  ASSERT_FALSE(res->lanelet2_cells.data.empty()) << "Service returned an empty map payload.";
+  auto decoded_map =
+    autoware::experimental::lanelet2_utils::from_autoware_map_msgs(res->lanelet2_cells);
+  EXPECT_EQ(decoded_map->laneletLayer.size(), 4U) << "Decoded service map should have 4 lanelets.";
+}
+
+// TEST 5. Confirms when allow_unsupported_version = false and loading a map with an unsupported
 // version, node will throw an error and terminate.
 TEST_F(Lanelet2MapLoaderIntegrationHarness, RejectsWeirdVersion)
 {
