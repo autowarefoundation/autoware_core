@@ -21,7 +21,9 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
+#include <autoware_map_msgs/msg/lanelet_map_meta_data.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
+#include <autoware_map_msgs/srv/get_selected_lanelet2_map.hpp>
 
 #include <lanelet2_projection/UTM.h>
 
@@ -40,7 +42,7 @@ public:
 
 public:
   explicit Lanelet2MapLoaderNode(const rclcpp::NodeOptions & options);
-  ~Lanelet2MapLoaderNode();  // defined in .cpp so unique_ptr can see the full module type
+  ~Lanelet2MapLoaderNode() override;  // defined in .cpp so unique_ptr can see the full module type
 
   static lanelet::LaneletMapPtr load_map(
     const std::string & lanelet2_filename,
@@ -52,11 +54,21 @@ public:
 private:
   using MapProjectorInfo = autoware::component_interface_specs::map::MapProjectorInfo;
   using VectorMap = autoware::component_interface_specs::map::VectorMap;
+
   void on_map_projector_info(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(MapProjectorInfo::Message) & msg);
 
+  bool on_get_selected_lanelet2_map(
+    AUTOWARE_SERVER_REQUEST_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map) req,
+    AUTOWARE_SERVER_RESPONSE_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map) res);
+
   AUTOWARE_SUBSCRIPTION_PTR(MapProjectorInfo::Message) sub_map_projector_info_;
   AUTOWARE_PUBLISHER_PTR(VectorMap::Message) pub_map_bin_;
+
+  // ROS interfaces, moved from utility module into Node wrapper
+  AUTOWARE_PUBLISHER_PTR(autoware_map_msgs::msg::LaneletMapMetaData) pub_metadata_;
+  AUTOWARE_SERVICE_PTR(autoware_map_msgs::srv::GetSelectedLanelet2Map)
+  srv_get_selected_lanelet2_map_;
 
   std::unique_ptr<Lanelet2SelectedMapLoaderModule> selected_map_loader_module_;
 };
