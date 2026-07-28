@@ -7640,6 +7640,50 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#versioning" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Versioning
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#quality-of-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Quality of service
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#c-standard" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        C++ standard
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interface-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interface manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -7701,7 +7745,50 @@
  autoware::component_interface_specs::get_qos&lt;KinematicState&gt;(),
  std::bind(&amp;YourClass::callback, this, std::placeholders::1));</code></p>
 </li>
-</ol></div>
+</ol>
+<h2 id="versioning">Versioning<a class="headerlink" href="#versioning" title="Permanent link">#</a></h2>
+<p>Each domain namespace declares a semantic <code>Version</code> (<code>version.hpp</code>) and a <code>Specs</code> tuple listing every interface it owns. <code>0.x</code> denotes an unstable interface while the standard is stabilizing. Compatibility is decided on the <code>MAJOR</code> field only; <code>is_compatible</code> is the reference encoding of that rule for consumers that compile against this package. The deploy-time admission gate in <code>autoware_component_interface_admission</code> is a no-dependency leaf package, so it restates the same relation rather than calling <code>is_compatible</code> — the two must be changed together.</p>
+<p>A domain declares its version, its <code>Specs</code> registry, and the ADL hook that <code>spec_version&lt;Spec&gt;()</code> resolves through in one macro, so the three cannot drift apart:</p>
+<p>```cpp
+namespace autoware::component_interface_specs::control
+{
+struct ControlCommand { /<em> ... </em>/ };</p>
+<p>AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(0, 1, 0, ControlCommand)
+}  // namespace autoware::component_interface_specs::control
+```</p>
+<h2 id="quality-of-service">Quality of service<a class="headerlink" href="#quality-of-service" title="Permanent link">#</a></h2>
+<p>Topic specs carry the QoS their endpoints are created with (<code>depth</code>, <code>reliability</code>, <code>durability</code>); <code>get_qos&lt;Spec&gt;()</code> turns that into an <code>rclcpp::QoS</code>.</p>
+<p>Services have a QoS profile too, but not a per-spec one. Every <code>create_service</code> and <code>create_client</code> call takes ROS 2's <code>rmw_qos_profile_services_default</code> — <code>KEEP_LAST(10)</code>, <code>RELIABLE</code>, <code>VOLATILE</code> — unmodified, so all services really do run under identical conditions. Rather than repeat that profile on every <code>ServiceSpec</code>, it is declared once as <code>service_qos</code> in <code>utils.hpp</code> and returned by <code>get_service_qos()</code>. <code>test_service_qos.cpp</code> asserts it still equals the RMW default it mirrors, so a change to that default surfaces as a test failure instead of as silent drift between the specs and the wire.</p>
+<h2 id="c-standard">C++ standard<a class="headerlink" href="#c-standard" title="Permanent link">#</a></h2>
+<p>The domain headers, <code>version.hpp</code> and <code>utils.hpp</code> are C++17, matching the <code>CMAKE_CXX_STANDARD 17</code> that <code>autoware_package()</code> gives every Autoware target.</p>
+<p><code>concepts.hpp</code> needs C++20, because the standard library only exposes <code>&lt;concepts&gt;</code> in C++20 mode. A target that wants it opts in:</p>
+<p><code>cmake
+target_compile_features(&lt;target&gt; PRIVATE cxx_std_20)</code></p>
+<p>CMake raises that one target to <code>-std=c++20</code> and leaves every other target — and every C++17 consumer of the domain headers — on <code>-std=c++17</code>. This is what the package's own <code>generate_interface_manifest</code> and gtest targets do, and it builds on Humble / gcc-11 (Ubuntu 22.04) as well as on Jazzy. Both targets are <code>BUILD_TESTING</code>-gated, so a C++20 compile failure in either could never break the header-only package for its C++17 consumers.</p>
+<p>Below C++20, <code>concepts.hpp</code> is an empty header rather than a hard error, so including it is always safe. Test <code>AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CONCEPTS</code> before naming anything it declares.</p>
+<h2 id="interface-manifest">Interface manifest<a class="headerlink" href="#interface-manifest" title="Permanent link">#</a></h2>
+<p><code>interface_manifest.json</code> is a machine-readable list of every registered interface: its domain, interface name, message or service type, kind, version, and the QoS its endpoints are created with. It is generated from the <code>Specs</code> tuples by the <code>generate_interface_manifest</code> tool and committed to the repository as the source of truth.</p>
+<p><code>json
+{
+  "domain": "control",
+  "interface": "/control/command/control_cmd",
+  "type": "autoware_control_msgs/msg/Control",
+  "kind": "topic",
+  "version": "0.1.0",
+  "qos": {
+    "history": "keep_last",
+    "depth": 1,
+    "reliability": "reliable",
+    "durability": "volatile"
+  }
+}</code></p>
+<p><code>reliability</code> and <code>durability</code> are the two axes ROS 2 checks when it decides whether a publisher and a subscription may talk at all, which is why a deploy-time gate needs them alongside the type and the version. Service entries carry the shared <code>service_qos</code> profile.</p>
+<p>Regenerate the manifest by hand after changing any domain's specs, QoS or versions:</p>
+<p><code>bash
+colcon build --symlink-install --packages-select autoware_component_interface_specs
+./build/autoware_component_interface_specs/generate_interface_manifest \
+  src/autoware_component_interface_specs/interface_manifest.json</code></p>
+<p>The generator emits the same layout Prettier produces, so the committed file is stable across regenerations. Adjust the output path to match where the package lives in your workspace. <code>test_manifest.cpp</code> diffs the generator's output against the committed file, so a stale manifest fails the build rather than reaching consumers.</p></div>
 
 
 
