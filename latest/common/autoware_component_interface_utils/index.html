@@ -8,13 +8,13 @@
       
       
       
-        <link rel="canonical" href="https://autowarefoundation.github.io/autoware_core/latest/common/autoware_qos_utils/">
+        <link rel="canonical" href="https://autowarefoundation.github.io/autoware_core/latest/common/autoware_component_interface_utils/">
       
       
-        <link rel="prev" href="../autoware_point_types/">
+        <link rel="prev" href="../autoware_component_interface_specs/">
       
       
-        <link rel="next" href="../autoware_qp_interface/design/qp_interface-design/">
+        <link rel="next" href="../autoware_geography_utils/">
       
       
         
@@ -25,7 +25,7 @@
     
     
       
-        <title>autoware_qos_utils - Autoware Core Documentation</title>
+        <title>autoware_component_interface_utils - Autoware Core Documentation</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#autoware_qos_utils" class="md-skip">
+        <a href="#autoware_component_interface_utils" class="md-skip">
           Skip to content
         </a>
       
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              autoware_qos_utils
+              autoware_component_interface_utils
             
           </span>
         </div>
@@ -1557,8 +1557,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -1578,17 +1580,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_3" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_3" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../autoware_component_interface_utils/" class="md-nav__link ">
+            <a href="./" class="md-nav__link md-nav__link--active">
               
   
   
@@ -1607,7 +1607,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_3_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_3">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2659,8 +2659,6 @@
                 
   
   
-    
-  
   
   
     
@@ -2682,15 +2680,17 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_14" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_14" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="./" class="md-nav__link md-nav__link--active">
+            <a href="../autoware_qos_utils/" class="md-nav__link ">
               
   
   
@@ -2709,7 +2709,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_14_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_14_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_14">
             <span class="md-nav__icon md-icon"></span>
             
@@ -7685,17 +7685,6 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#overview" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
   <a href="#features" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7707,30 +7696,57 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#usage" class="md-nav__link">
+  <a href="#design" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Usage
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Usage">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#service-qos" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Service QoS
+        Design
       
     </span>
   </a>
   
 </li>
-        
-      </ul>
-    </nav>
+      
+        <li class="md-nav__item">
+  <a href="#instantiation-of-the-wrapper-class" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Instantiation of the wrapper class
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#opt-in-service-introspection-for-service-and-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Opt-in service introspection for service and client
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-exception-for-response" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service exception for response
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#relays-for-topic-and-service" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Relays for topic and service
+      
+    </span>
+  </a>
   
 </li>
       
@@ -7754,90 +7770,122 @@
   
 
 
-<div><h1 id="autoware_qos_utils">autoware_qos_utils<a class="headerlink" href="#autoware_qos_utils" title="Permanent link">#</a></h1>
-<p>Autoware QoS Utils provides QoS compatibility utilities for different ROS 2 distributions.</p>
-<h2 id="overview">Overview<a class="headerlink" href="#overview" title="Permanent link">#</a></h2>
-<p>This package provides compatibility functions for QoS (Quality of Service) configuration across different ROS 2 distributions, particularly addressing the API changes introduced in ROS 2 Jazzy.</p>
+<div><h1 id="autoware_component_interface_utils">autoware_component_interface_utils<a class="headerlink" href="#autoware_component_interface_utils" title="Permanent link">#</a></h1>
 <h2 id="features">Features<a class="headerlink" href="#features" title="Permanent link">#</a></h2>
+<p>This is a utility package that provides the following features:</p>
 <ul>
-<li><strong>QoS Compatibility</strong>: Provides unified QoS configuration functions that work across ROS 2 distributions</li>
-<li><strong>Service QoS</strong>: Compatible service QoS configuration for both old and new ROS 2 APIs</li>
-<li><strong>Topic QoS</strong>: Compatible default topic QoS configuration</li>
-<li><strong>Header-Only</strong>: Pure header-only library with no compilation overhead</li>
+<li>Instantiation of the wrapper class</li>
+<li>Opt-in service introspection for service and client</li>
+<li>Service exception for response</li>
+<li>Relays for topic and service</li>
 </ul>
-<h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
-<h3 id="service-qos">Service QoS<a class="headerlink" href="#service-qos" title="Permanent link">#</a></h3>
-<p>```cpp</p>
-<h1 id="include">include <autoware qos_utils qos_compatibility.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware></h1>
-<p>// Create a service client with compatible QoS
-auto client = node-&gt;create_client<myservice>(
-  "my_service",
-  AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE()
-);</myservice></p>
-<p>// Create a service with compatible QoS
-auto service = node-&gt;create_service<myservice>(
-  "my_service",
-  callback,
-  AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE()
-);
-```</myservice></p>
-<h3 id="topic-qos">Topic QoS<a class="headerlink" href="#topic-qos" title="Permanent link">#</a></h3>
-<p>```cpp</p>
-<h1 id="include_1">include <autoware qos_utils qos_compatibility.hpp><a class="headerlink" href="#include_1" title="Permanent link">#</a></autoware></h1>
-<p>// Create a publisher with compatible QoS
-auto publisher = node-&gt;create_publisher<mymessage>(
-  "my_topic",
-  AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE()
-);</mymessage></p>
-<p>// Create a subscription with compatible QoS
-auto subscription = node-&gt;create_subscription<mymessage>(
-  "my_topic",
-  10,
-  callback,
-  AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE()
-);
-```</mymessage></p>
-<h2 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">#</a></h2>
-<h3 id="macros">Macros<a class="headerlink" href="#macros" title="Permanent link">#</a></h3>
-<ul>
-<li><code>AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE()</code>: Expands to service QoS profile compatible with current ROS 2 distribution</li>
-<li><code>AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE()</code>: Expands to topic QoS profile compatible with current ROS 2 distribution</li>
-</ul>
-<h2 id="ros-2-distribution-compatibility">ROS 2 Distribution Compatibility<a class="headerlink" href="#ros-2-distribution-compatibility" title="Permanent link">#</a></h2>
+<h2 id="design">Design<a class="headerlink" href="#design" title="Permanent link">#</a></h2>
+<p>This package provides the wrappers for the interface classes of rclcpp.
+The wrappers limit the usage of the original class to enforce the processing recommended by the component interface.
+Do not inherit the class of rclcpp, and forward or wrap the member function that is allowed to be used.</p>
+<h2 id="instantiation-of-the-wrapper-class">Instantiation of the wrapper class<a class="headerlink" href="#instantiation-of-the-wrapper-class" title="Permanent link">#</a></h2>
+<p>The wrapper class requires interface information in this format.</p>
+<p>```cpp
+struct SampleService
+{
+  using Service = sample_msgs::srv::ServiceType;
+  static constexpr char name[] = "/sample/service";
+};</p>
+<p>struct SampleMessage
+{
+  using Message = sample_msgs::msg::MessageType;
+  static constexpr char name[] = "/sample/message";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
+};
+```</p>
+<p>Create the wrapper using the above definition as follows.</p>
+<p>```cpp
+// header file
+autoware::component_interface_utils::Service<sampleservice>::SharedPtr srv_;
+autoware::component_interface_utils::Client<sampleservice>::SharedPtr cli_;
+autoware::component_interface_utils::Publisher<samplemessage>::SharedPtr pub_;
+autoware::component_interface_utils::Subscription<samplemessage>::SharedPtr sub_;</samplemessage></samplemessage></sampleservice></sampleservice></p>
+<p>// source file
+const auto node = autoware::component_interface_utils::NodeAdaptor(this);
+node.init_srv(srv_, callback);
+node.init_cli(cli_);
+node.init_pub(pub_);
+node.init_sub(sub_, callback);
+```</p>
+<p>The adaptor also provides returning forms that take the specification as an explicit template argument instead of deducing it from the output variable.
+They create the same wrappers as the <code>init_*</code> methods, so the two styles can be mixed.
+These are non-const member functions, so the adaptor must not be declared <code>const</code> when they are used.</p>
+<p><code>cpp
+// source file
+auto node = autoware::component_interface_utils::NodeAdaptor(this);
+srv_ = node.create_service&lt;SampleService&gt;(callback);
+cli_ = node.create_client&lt;SampleService&gt;();
+pub_ = node.create_publisher&lt;SampleMessage&gt;();
+sub_ = node.create_subscription&lt;SampleMessage&gt;(callback);</code></p>
+<h2 id="opt-in-service-introspection-for-service-and-client">Opt-in service introspection for service and client<a class="headerlink" href="#opt-in-service-introspection-for-service-and-client" title="Permanent link">#</a></h2>
+<p>This package does not trace service calls by itself.
+What it provides is a single node-scoped switch that turns on the standard <a href="https://docs.ros.org/en/jazzy/Tutorials/Demos/Service-Introspection.html">ROS 2 service introspection</a> for every wrapper of that node, so the wrappers do not have to be configured one by one.
+Each node that creates wrappers through <code>NodeAdaptor</code> declares the following parameter, and its value is applied to all the <code>Service</code> and <code>Client</code> wrappers that the adaptor creates.</p>
 <table>
 <thead>
 <tr>
-<th>ROS 2 Distribution</th>
-<th>Service QoS</th>
-<th>Topic QoS</th>
+<th>Name</th>
+<th>Type</th>
+<th>Default</th>
+<th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Humble and earlier</td>
-<td><code>rclcpp::ServicesQoS().get_rmw_qos_profile()</code></td>
-<td><code>rmw_qos_profile_default</code></td>
-</tr>
-<tr>
-<td>Jazzy and later</td>
-<td><code>rclcpp::ServicesQoS()</code></td>
-<td><code>rclcpp::QoS(rclcpp::KeepLast(10))</code></td>
+<td><code>component_interface.service_introspection</code></td>
+<td><code>string</code></td>
+<td><code>off</code></td>
+<td>Introspection mode of the service wrappers. One of <code>off</code>, <code>metadata</code>, <code>contents</code>.</td>
 </tr>
 </tbody>
 </table>
-<h3 id="implementation-details">Implementation Details<a class="headerlink" href="#implementation-details" title="Permanent link">#</a></h3>
-<p>The package uses conditional compilation to provide the appropriate QoS configuration:</p>
-<ul>
-<li><strong>Service QoS</strong>: Uses C++ interface (<code>rclcpp::ServicesQoS()</code>) for better compatibility</li>
-<li><strong>Topic QoS</strong>: Uses appropriate interface based on ROS 2 distribution</li>
-<li><strong>Zero Runtime Overhead</strong>: All macros expand to direct expressions for optimal performance</li>
-</ul>
-<h2 id="dependencies">Dependencies<a class="headerlink" href="#dependencies" title="Permanent link">#</a></h2>
-<ul>
-<li><code>rclcpp</code>: ROS 2 C++ client library</li>
-</ul>
-<h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">#</a></h2>
-<p>Apache License 2.0</p></div>
+<p>Introspection is disabled by default, so nothing is recorded unless the parameter is set.
+When the mode is not <code>off</code>, each wrapper exposes the service event topic <code>&lt;service name&gt;/_service_event</code>, which is <code>/sample/service/_service_event</code> for the specification above.
+The <code>metadata</code> mode records the event types and timestamps, and the <code>contents</code> mode also records the request and response contents.</p>
+<p>Service introspection requires ROS 2 Iron (rclcpp 21) or later.
+On ROS 2 Humble the parameter is not declared and the wrappers are created without introspection.</p>
+<p>The <code>autoware_universe</code> version of this package published a <code>tier4_system_msgs/ServiceLog</code> message on a single <code>/service_log</code> topic for every request, response and error, and that tracer is not part of this package.
+Service introspection is not a drop-in replacement for it: the events are published per service instead of being aggregated on one topic, they use the event types that ROS 2 generates instead of <code>tier4_system_msgs/ServiceLog</code>, and they are off unless enabled.
+An unready service and a service timeout are still reported by <code>Client::call</code> as the <code>ServiceUnready</code> and <code>ServiceTimeout</code> exceptions.</p>
+<h2 id="service-exception-for-response">Service exception for response<a class="headerlink" href="#service-exception-for-response" title="Permanent link">#</a></h2>
+<p>If the wrapper class is used and the service response has status, throwing <code>ServiceException</code> will automatically catch and set it to status.
+This is useful when returning an error from a function called from the service callback.</p>
+<p>```cpp
+void service_callback(Request req, Response res)
+{
+   function();
+   res-&gt;status.success = true;
+}</p>
+<p>void function()
+{
+   throw ServiceException(ERROR_CODE, "message");
+}
+```</p>
+<p>If the wrapper class is not used or the service response has no status, manually catch the <code>ServiceException</code> as follows.</p>
+<p><code>cpp
+void service_callback(Request req, Response res)
+{
+   try {
+      function();
+      res-&gt;status.success = true;
+   } catch (const ServiceException &amp; error) {
+      res-&gt;status = error.status();
+   }
+}</code></p>
+<h2 id="relays-for-topic-and-service">Relays for topic and service<a class="headerlink" href="#relays-for-topic-and-service" title="Permanent link">#</a></h2>
+<p>There are utilities for relaying services and messages of the same type.</p>
+<p><code>cpp
+const auto node = autoware::component_interface_utils::NodeAdaptor(this);
+service_callback_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+node.relay_message(pub_, sub_);
+node.relay_service(cli_, srv_, service_callback_group_);  // group is for avoiding deadlocks</code></p></div>
 
 
 
@@ -7873,7 +7921,7 @@ auto subscription = node-&gt;create_subscription<mymessage>(
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../autoware_point_types/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Autoware Point Types">
+          <a href="../autoware_component_interface_specs/" class="md-footer__link md-footer__link--prev" aria-label="Previous: autoware_component_interface_specs">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -7883,20 +7931,20 @@ auto subscription = node-&gt;create_subscription<mymessage>(
                 Previous
               </span>
               <div class="md-ellipsis">
-                Autoware Point Types
+                autoware_component_interface_specs
               </div>
             </div>
           </a>
         
         
           
-          <a href="../autoware_qp_interface/design/qp_interface-design/" class="md-footer__link md-footer__link--next" aria-label="Next: Interface for QP solvers">
+          <a href="../autoware_geography_utils/" class="md-footer__link md-footer__link--next" aria-label="Next: autoware_geography_utils">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Interface for QP solvers
+                autoware_geography_utils
               </div>
             </div>
             <div class="md-footer__button md-icon">
