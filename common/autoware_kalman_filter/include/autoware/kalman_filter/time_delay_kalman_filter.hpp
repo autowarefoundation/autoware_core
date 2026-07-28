@@ -73,7 +73,7 @@ public:
    * @param Q covariance matrix for process model
    * @return bool to check matrix operations are being performed properly
    */
-  bool predictWithDelay(
+  [[nodiscard]] bool predictWithDelay(
     const Eigen::MatrixXd & x_next, const Eigen::MatrixXd & A, const Eigen::MatrixXd & Q);
 
   /**
@@ -85,7 +85,7 @@ public:
    * @param delay_step measurement delay
    * @return bool to check matrix operations are being performed properly
    */
-  bool updateWithDelay(
+  [[nodiscard]] bool updateWithDelay(
     const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R,
     const int delay_step);
 

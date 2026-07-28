@@ -430,6 +430,39 @@ TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
   EXPECT_GT(diag.mahalanobis_distance, 0.0);
 }
 
+TEST_F(MeasurementUpdatePose, RejectsOnKalmanUpdateFailure)
+{
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+
+  // A NaN in the measurement covariance passes the delay, NaN/Inf (measurement vector only) and
+  // Mahalanobis (EKF covariance only) gates, but makes the Kalman gain non-finite inside
+  // updateWithDelay, so the update itself fails and must be treated as no update.
+  auto pose = make_pose(1.0, 2.0, 0.0, "map", t_curr);
+  pose.pose.covariance[COV_IDX::X_X] = std::numeric_limits<double>::quiet_NaN();
+
+  const auto pose_before = module_->get_current_pose(t_curr, false);
+  const auto cov_before = module_->get_current_pose_covariance();
+
+  EKFDiagnosticInfo diag;
+  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+
+  EXPECT_FALSE(ok);
+  // The failure happens after the gates, so both gates are still marked passed.
+  EXPECT_TRUE(diag.is_passed_delay_gate);
+  EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
+
+  // The rejected measurement must leave the state and covariance untouched.
+  const auto pose_after = module_->get_current_pose(t_curr, false);
+  EXPECT_DOUBLE_EQ(pose_after.pose.position.x, pose_before.pose.position.x);
+  EXPECT_DOUBLE_EQ(pose_after.pose.position.y, pose_before.pose.position.y);
+  EXPECT_DOUBLE_EQ(pose_after.pose.position.z, pose_before.pose.position.z);
+  const auto cov_after = module_->get_current_pose_covariance();
+  EXPECT_DOUBLE_EQ(cov_after[COV_IDX::X_X], cov_before[COV_IDX::X_X]);
+  EXPECT_DOUBLE_EQ(cov_after[COV_IDX::Y_Y], cov_before[COV_IDX::Y_Y]);
+  EXPECT_DOUBLE_EQ(cov_after[COV_IDX::YAW_YAW], cov_before[COV_IDX::YAW_YAW]);
+}
+
 // ---------------------------------------------------------------------------
 // measurement_update_twist: success and safety-critical rejection branches
 // ---------------------------------------------------------------------------
@@ -544,6 +577,37 @@ TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_FALSE(diag.is_passed_mahalanobis_gate);
   EXPECT_GT(diag.mahalanobis_distance, 0.0);
+}
+
+TEST_F(MeasurementUpdateTwist, RejectsOnKalmanUpdateFailure)
+{
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+
+  // A NaN in the measurement covariance passes the delay, NaN/Inf (measurement vector only) and
+  // Mahalanobis (EKF covariance only) gates, but makes the Kalman gain non-finite inside
+  // updateWithDelay, so the update itself fails and must be treated as no update.
+  auto twist = make_twist(3.0, 1.0, "base_link", t_curr);
+  twist.twist.covariance[COV_IDX::X_X] = std::numeric_limits<double>::quiet_NaN();
+
+  const auto twist_before = module_->get_current_twist(t_curr);
+  const auto cov_before = module_->get_current_twist_covariance();
+
+  EKFDiagnosticInfo diag;
+  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+
+  EXPECT_FALSE(ok);
+  // The failure happens after the gates, so both gates are still marked passed.
+  EXPECT_TRUE(diag.is_passed_delay_gate);
+  EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
+
+  // The rejected measurement must leave the state and covariance untouched.
+  const auto twist_after = module_->get_current_twist(t_curr);
+  EXPECT_DOUBLE_EQ(twist_after.twist.linear.x, twist_before.twist.linear.x);
+  EXPECT_DOUBLE_EQ(twist_after.twist.angular.z, twist_before.twist.angular.z);
+  const auto cov_after = module_->get_current_twist_covariance();
+  EXPECT_DOUBLE_EQ(cov_after[COV_IDX::X_X], cov_before[COV_IDX::X_X]);
+  EXPECT_DOUBLE_EQ(cov_after[COV_IDX::YAW_YAW], cov_before[COV_IDX::YAW_YAW]);
 }
 
 }  // namespace autoware::ekf_localizer
