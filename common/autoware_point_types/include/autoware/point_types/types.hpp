@@ -21,6 +21,8 @@
 
 #include <cmath>
 #include <limits>
+#include <stdexcept>
+#include <string_view>
 #include <tuple>
 
 namespace autoware::point_types
@@ -172,13 +174,71 @@ using PointXYZIRCAEDTGenerator = std::tuple<
   field_return_type_generator, field_channel_generator, field_azimuth_generator,
   field_elevation_generator, field_distance_generator, field_time_stamp_generator>;
 
+/**
+ * @brief Classification labels for point cloud segmentation, stored in PointXYZCPE::class_id.
+ */
+enum class PointCloudClassification : std::uint8_t {
+  CAR = 0,
+  TRUCK = 1,
+  BUS = 2,
+  MOTORCYCLE = 3,
+  BICYCLE = 4,
+  PEDESTRIAN = 5,
+  ANIMAL = 6,
+  HAZARD = 7,
+  FLAT_SURFACE = 8,  ///< Flat surfaces that can be filtered out.
+  STRUCTURE = 9,     ///< Non-drivable structures, such as buildings and walls.
+  VEGETATION = 10,   ///< Vegetation, such as trees and bushes.
+  NOISE = 11,        ///< Noise points and outliers.
+  INVALID = 255,     ///< No classification assigned, e.g. a default-constructed point.
+};
+
+/**
+ * @brief Get the string representation of a point cloud classification.
+ * @param classification The classification to convert.
+ * @return String view of the classification name.
+ * @throws std::invalid_argument If the value does not correspond to any enumerator.
+ */
+constexpr std::string_view to_string(PointCloudClassification classification)
+{
+  switch (classification) {
+    case PointCloudClassification::CAR:
+      return "CAR";
+    case PointCloudClassification::TRUCK:
+      return "TRUCK";
+    case PointCloudClassification::BUS:
+      return "BUS";
+    case PointCloudClassification::MOTORCYCLE:
+      return "MOTORCYCLE";
+    case PointCloudClassification::BICYCLE:
+      return "BICYCLE";
+    case PointCloudClassification::PEDESTRIAN:
+      return "PEDESTRIAN";
+    case PointCloudClassification::ANIMAL:
+      return "ANIMAL";
+    case PointCloudClassification::HAZARD:
+      return "HAZARD";
+    case PointCloudClassification::FLAT_SURFACE:
+      return "FLAT_SURFACE";
+    case PointCloudClassification::STRUCTURE:
+      return "STRUCTURE";
+    case PointCloudClassification::VEGETATION:
+      return "VEGETATION";
+    case PointCloudClassification::NOISE:
+      return "NOISE";
+    case PointCloudClassification::INVALID:
+      return "INVALID";
+    default:
+      throw std::invalid_argument("Unknown point cloud classification");
+  }
+}
+
 struct PointXYZCPE
 {
   float x{0.0F};
   float y{0.0F};
   float z{0.0F};
-  std::uint8_t class_id{
-    255U};  //!< The default equals object_recognition_utils::PointCloudClassification::INVALID.
+  std::uint8_t class_id{static_cast<std::uint8_t>(PointCloudClassification::INVALID)};
   float probability{0.0F};
   float entropy{std::numeric_limits<float>::quiet_NaN()};
 

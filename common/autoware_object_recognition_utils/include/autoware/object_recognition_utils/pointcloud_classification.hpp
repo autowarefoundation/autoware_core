@@ -15,77 +15,18 @@
 #ifndef AUTOWARE__OBJECT_RECOGNITION_UTILS__POINTCLOUD_CLASSIFICATION_HPP_
 #define AUTOWARE__OBJECT_RECOGNITION_UTILS__POINTCLOUD_CLASSIFICATION_HPP_
 
+#include <autoware/point_types/types.hpp>
+
 #include <autoware_perception_msgs/msg/object_classification.hpp>
 
-#include <cstdint>
 #include <optional>
-#include <stdexcept>
-#include <string_view>
 
 namespace autoware::object_recognition_utils
 {
 
 using autoware_perception_msgs::msg::ObjectClassification;
 using ObjectLabel = ObjectClassification::_label_type;
-
-/**
- * @brief Classification labels for point cloud segmentation.
- */
-enum class PointCloudClassification : std::uint8_t {
-  CAR = 0,
-  TRUCK = 1,
-  BUS = 2,
-  MOTORCYCLE = 3,
-  BICYCLE = 4,
-  PEDESTRIAN = 5,
-  ANIMAL = 6,
-  HAZARD = 7,
-  FLAT_SURFACE = 8,  ///< Flat surfaces that can be filtered out.
-  STRUCTURE = 9,     ///< Non-drivable structures, such as buildings and walls.
-  VEGETATION = 10,   ///< Vegetation, such as trees and bushes.
-  NOISE = 11,        ///< Noise points and outliers.
-  INVALID = 255,     ///< No classification assigned, e.g. a default-constructed point.
-};
-
-/**
- * @brief Get the string representation of a point cloud classification.
- * @param classification The classification to convert.
- * @return String view of the classification name.
- * @throws std::invalid_argument If the value does not correspond to any enumerator.
- */
-constexpr std::string_view to_string(PointCloudClassification classification)
-{
-  switch (classification) {
-    case PointCloudClassification::CAR:
-      return "CAR";
-    case PointCloudClassification::TRUCK:
-      return "TRUCK";
-    case PointCloudClassification::BUS:
-      return "BUS";
-    case PointCloudClassification::MOTORCYCLE:
-      return "MOTORCYCLE";
-    case PointCloudClassification::BICYCLE:
-      return "BICYCLE";
-    case PointCloudClassification::PEDESTRIAN:
-      return "PEDESTRIAN";
-    case PointCloudClassification::ANIMAL:
-      return "ANIMAL";
-    case PointCloudClassification::HAZARD:
-      return "HAZARD";
-    case PointCloudClassification::FLAT_SURFACE:
-      return "FLAT_SURFACE";
-    case PointCloudClassification::STRUCTURE:
-      return "STRUCTURE";
-    case PointCloudClassification::VEGETATION:
-      return "VEGETATION";
-    case PointCloudClassification::NOISE:
-      return "NOISE";
-    case PointCloudClassification::INVALID:
-      return "INVALID";
-    default:
-      throw std::invalid_argument("Unknown point cloud classification");
-  }
-}
+using autoware::point_types::PointCloudClassification;
 
 /**
  * @brief Convert a point cloud classification to an ObjectClassification label.
@@ -127,7 +68,7 @@ inline std::optional<ObjectLabel> try_into_object(PointCloudClassification class
  * @param label The ObjectClassification label value.
  * @return The corresponding PointCloudClassification, or std::nullopt if not mapped.
  */
-inline std::optional<PointCloudClassification> try_into_semantic(ObjectLabel label) noexcept
+inline std::optional<PointCloudClassification> try_into_pointcloud(ObjectLabel label) noexcept
 {
   switch (label) {
     case ObjectClassification::CAR:

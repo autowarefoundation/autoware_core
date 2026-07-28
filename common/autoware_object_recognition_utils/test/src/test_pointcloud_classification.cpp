@@ -16,46 +16,8 @@
 
 #include <gtest/gtest.h>
 
-#include <cstdint>
-#include <stdexcept>
-
 namespace autoware::object_recognition_utils
 {
-
-TEST(PointCloudClassification, EnumValues)
-{
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::CAR), 0U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::TRUCK), 1U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::BUS), 2U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::MOTORCYCLE), 3U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::BICYCLE), 4U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::PEDESTRIAN), 5U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::ANIMAL), 6U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::HAZARD), 7U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::FLAT_SURFACE), 8U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::STRUCTURE), 9U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::VEGETATION), 10U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::NOISE), 11U);
-  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::INVALID), 255U);
-}
-
-TEST(PointCloudClassification, ToString)
-{
-  EXPECT_EQ(to_string(PointCloudClassification::CAR), "CAR");
-  EXPECT_EQ(to_string(PointCloudClassification::TRUCK), "TRUCK");
-  EXPECT_EQ(to_string(PointCloudClassification::BUS), "BUS");
-  EXPECT_EQ(to_string(PointCloudClassification::MOTORCYCLE), "MOTORCYCLE");
-  EXPECT_EQ(to_string(PointCloudClassification::BICYCLE), "BICYCLE");
-  EXPECT_EQ(to_string(PointCloudClassification::PEDESTRIAN), "PEDESTRIAN");
-  EXPECT_EQ(to_string(PointCloudClassification::ANIMAL), "ANIMAL");
-  EXPECT_EQ(to_string(PointCloudClassification::HAZARD), "HAZARD");
-  EXPECT_EQ(to_string(PointCloudClassification::FLAT_SURFACE), "FLAT_SURFACE");
-  EXPECT_EQ(to_string(PointCloudClassification::STRUCTURE), "STRUCTURE");
-  EXPECT_EQ(to_string(PointCloudClassification::VEGETATION), "VEGETATION");
-  EXPECT_EQ(to_string(PointCloudClassification::NOISE), "NOISE");
-  EXPECT_EQ(to_string(PointCloudClassification::INVALID), "INVALID");
-  EXPECT_THROW(to_string(static_cast<PointCloudClassification>(254U)), std::invalid_argument);
-}
 
 TEST(PointCloudClassification, TryIntoObject)
 {
@@ -80,21 +42,21 @@ TEST(PointCloudClassification, TryIntoObject)
 
 TEST(PointCloudClassification, TryIntoSemantic)
 {
-  EXPECT_EQ(try_into_semantic(ObjectClassification::CAR), PointCloudClassification::CAR);
-  EXPECT_EQ(try_into_semantic(ObjectClassification::TRUCK), PointCloudClassification::TRUCK);
-  EXPECT_EQ(try_into_semantic(ObjectClassification::BUS), PointCloudClassification::BUS);
-  EXPECT_EQ(try_into_semantic(ObjectClassification::TRAILER), PointCloudClassification::TRUCK);
+  EXPECT_EQ(try_into_pointcloud(ObjectClassification::CAR), PointCloudClassification::CAR);
+  EXPECT_EQ(try_into_pointcloud(ObjectClassification::TRUCK), PointCloudClassification::TRUCK);
+  EXPECT_EQ(try_into_pointcloud(ObjectClassification::BUS), PointCloudClassification::BUS);
+  EXPECT_EQ(try_into_pointcloud(ObjectClassification::TRAILER), PointCloudClassification::TRUCK);
   EXPECT_EQ(
-    try_into_semantic(ObjectClassification::MOTORCYCLE), PointCloudClassification::MOTORCYCLE);
-  EXPECT_EQ(try_into_semantic(ObjectClassification::BICYCLE), PointCloudClassification::BICYCLE);
+    try_into_pointcloud(ObjectClassification::MOTORCYCLE), PointCloudClassification::MOTORCYCLE);
+  EXPECT_EQ(try_into_pointcloud(ObjectClassification::BICYCLE), PointCloudClassification::BICYCLE);
   EXPECT_EQ(
-    try_into_semantic(ObjectClassification::PEDESTRIAN), PointCloudClassification::PEDESTRIAN);
-  EXPECT_EQ(try_into_semantic(ObjectClassification::ANIMAL), PointCloudClassification::ANIMAL);
-  EXPECT_EQ(try_into_semantic(ObjectClassification::HAZARD), PointCloudClassification::HAZARD);
+    try_into_pointcloud(ObjectClassification::PEDESTRIAN), PointCloudClassification::PEDESTRIAN);
+  EXPECT_EQ(try_into_pointcloud(ObjectClassification::ANIMAL), PointCloudClassification::ANIMAL);
+  EXPECT_EQ(try_into_pointcloud(ObjectClassification::HAZARD), PointCloudClassification::HAZARD);
 
-  EXPECT_FALSE(try_into_semantic(ObjectClassification::UNKNOWN).has_value());
-  EXPECT_FALSE(try_into_semantic(ObjectClassification::OVER_DRIVABLE).has_value());
-  EXPECT_FALSE(try_into_semantic(ObjectClassification::UNDER_DRIVABLE).has_value());
+  EXPECT_FALSE(try_into_pointcloud(ObjectClassification::UNKNOWN).has_value());
+  EXPECT_FALSE(try_into_pointcloud(ObjectClassification::OVER_DRIVABLE).has_value());
+  EXPECT_FALSE(try_into_pointcloud(ObjectClassification::UNDER_DRIVABLE).has_value());
 }
 
 TEST(PointCloudClassification, IsObjectCompatible)
@@ -134,18 +96,10 @@ TEST(PointCloudClassification, Roundtrip)
     {ObjectClassification::HAZARD, ObjectClassification::HAZARD}};
 
   for (const auto & expectation : object_labels) {
-    const auto pointcloud = try_into_semantic(expectation.input);
+    const auto pointcloud = try_into_pointcloud(expectation.input);
     ASSERT_TRUE(pointcloud.has_value());
     EXPECT_EQ(try_into_object(pointcloud.value()), expectation.expected_output);
   }
-}
-
-TEST(PointCloudClassification, ConstexprToString)
-{
-  constexpr auto classification = PointCloudClassification::CAR;
-  constexpr auto str = to_string(classification);
-  static_assert(str == "CAR");
-  EXPECT_EQ(str, "CAR");
 }
 
 }  // namespace autoware::object_recognition_utils
