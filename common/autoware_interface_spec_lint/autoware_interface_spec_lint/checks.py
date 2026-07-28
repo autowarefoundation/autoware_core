@@ -305,8 +305,7 @@ def _manifest_versions_by_domain(manifest) -> dict:
 def version_consistency(spec_dir: Path, manifest=None) -> list:
     """WARN on version-declaration problems in the domain headers.
 
-    Flags a domain that does not declare exactly one `version{...}`, a domain
-    whose MAJOR is not 0 (the standard is unstable while at 0.x), and a
+    Flags a domain that does not declare exactly one `version{...}`, and a
     manifest version that disagrees with the header version for that domain.
     """
     findings: list = []
@@ -327,17 +326,6 @@ def version_consistency(spec_dir: Path, manifest=None) -> list:
             )
             continue
         header_version = _version_str(h.versions[0])
-        major = header_version.split(".")[0] if header_version else ""
-        if major != "0":
-            findings.append(
-                Finding(
-                    "WARN",
-                    str(path),
-                    anchor,
-                    f"domain '{domain}' version '{header_version}' is not 0.x; the "
-                    f"interface standard is unstable (0.x)",
-                )
-            )
         for manifest_version in sorted(manifest_versions.get(domain, set())):
             if manifest_version != header_version:
                 findings.append(

@@ -10,7 +10,7 @@ Each gate's severity comes from the committed gate config (`config/interface_gat
 | ------------------------ | -------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `interface_spec_concept` | domain headers             | error    | a struct with a `name[]` that is neither a valid topic (`Message` + `depth` + `reliability` + `durability`) nor a valid service (`Service`)                                                         |
 | `spec_registered`        | domain headers             | error    | a spec struct not listed in its namespace's `using Specs = std::tuple<...>` (unless it carries the suppression marker)                                                                              |
-| `version_consistency`    | headers + manifest         | error    | a domain not declaring exactly one `version{...}`, a MAJOR that is not `0`, or a manifest version that disagrees with the header version                                                            |
+| `version_consistency`    | headers + manifest         | error    | a domain not declaring exactly one `version{...}`, or a manifest version that disagrees with the header version                                                                                     |
 | `qos_consistency`        | headers + manifest         | error    | a registered spec whose `history` / `depth` / `reliability` / `durability` disagrees with its manifest `qos` block, is missing from the manifest, or names a QoS policy the manifest cannot express |
 | `manifest_fresh`         | generator + committed JSON | error    | the rebuilt generator output differs from the committed `interface_manifest.json` (see the binding-gate note below)                                                                                 |
 | `owner_isolation`        | manifest(s)                | error    | a non-base-owner manifest entry whose interface name shadows a base-owner (`autowarefoundation`) entry                                                                                              |
@@ -26,12 +26,12 @@ The lint's `manifest_fresh` can only bind where the manifest generator binary is
 
 The following design gate-table entries are declared `off` in the committed config and are intentionally deferred; enabling one is rejected by the config loader because there is no implementation to run yet.
 
-| Gate                       | Why deferred                                                                                                        |
-| -------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Gate                       | Why deferred                                                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
 | `no_foreign_if_dependency` | needs per-component provided/required role manifests, which do not exist yet (they arrive with the deploy-time OCI-label manifest track) |
-| `profile_compat`           | needs a vendor-specific interface profile that does not exist in this package yet; out of scope for this change              |
-| `if_usage_coverage`        | runtime gate; needs runtime introspection data this static-analysis package does not have, deferred to future work           |
-| `admission_smoke`          | runtime gate; needs runtime introspection data this static-analysis package does not have, deferred to future work           |
+| `profile_compat`           | needs a vendor-specific interface profile that does not exist in this package yet; out of scope for this change                          |
+| `if_usage_coverage`        | runtime gate; needs runtime introspection data this static-analysis package does not have, deferred to future work                       |
+| `admission_smoke`          | runtime gate; needs runtime introspection data this static-analysis package does not have, deferred to future work                       |
 
 `owner_isolation` is wired and at `error` but binds only once a second (vendor-partition) manifest exists to cross-check against. Today the universe versioned surface is exactly the core re-exports (single version authority in core) and universe-owned specs are unversioned, so there is no separate universe-side gate wiring yet.
 
