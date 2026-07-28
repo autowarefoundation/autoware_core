@@ -20,6 +20,7 @@
 #include <pcl/point_types.h>
 
 #include <cmath>
+#include <limits>
 #include <tuple>
 
 namespace autoware::point_types
@@ -28,6 +29,11 @@ template <class T>
 bool float_eq(const T a, const T b, const T eps = 10e-6)
 {
   return std::fabs(a - b) < eps;
+}
+
+inline bool float_eq_or_both_nan(const float a, const float b)
+{
+  return float_eq<float>(a, b) || (std::isnan(a) && std::isnan(b));
 }
 
 struct PointXYZI
@@ -173,7 +179,7 @@ struct PointXYZCPE
   float z{0.0F};
   std::uint8_t class_id{0U};
   float probability{0.0F};
-  float entropy{0.0F};
+  float entropy{std::numeric_limits<float>::quiet_NaN()};
 
   friend bool operator==(const PointXYZCPE & p1, const PointXYZCPE & p2)
   {
@@ -181,7 +187,7 @@ struct PointXYZCPE
            autoware::point_types::float_eq<float>(p1.y, p2.y) &&
            autoware::point_types::float_eq<float>(p1.z, p2.z) && p1.class_id == p2.class_id &&
            autoware::point_types::float_eq<float>(p1.probability, p2.probability) &&
-           autoware::point_types::float_eq<float>(p1.entropy, p2.entropy);
+           autoware::point_types::float_eq_or_both_nan(p1.entropy, p2.entropy);
   }
 };
 

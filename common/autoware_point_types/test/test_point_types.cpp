@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <limits>
 
 TEST(PointEquality, PointXYZI)
@@ -52,10 +53,24 @@ TEST(PointEquality, PointXYZCPE)
 {
   using autoware::point_types::PointXYZCPE;
 
-  PointXYZCPE pt0{0, 1, 2, 3, 4, 5};
-  PointXYZCPE pt1{0, 1, 2, 3, 4, 5};
-  EXPECT_EQ(pt0, pt1);
-  EXPECT_TRUE(pt0 == pt1);
+  {
+    // test default entropy is NaN
+    PointXYZCPE pt0;
+    PointXYZCPE pt1;
+    EXPECT_TRUE(std::isnan(pt0.entropy));
+    EXPECT_EQ(pt0, pt1);
+
+    pt1.entropy = 0.0F;
+    EXPECT_FALSE(pt0 == pt1);
+  }
+
+  {
+    // test with specific values
+    PointXYZCPE pt0{0, 1, 2, 3, 4, 5};
+    PointXYZCPE pt1{0, 1, 2, 3, 4, 5};
+    EXPECT_EQ(pt0, pt1);
+    EXPECT_TRUE(pt0 == pt1);
+  }
 }
 
 TEST(PointEquality, FloatEq)
