@@ -19,9 +19,23 @@ ament_auto_add_library(planning_topic_converter SHARED
   src/path_to_trajectory.cpp
 )
 
-rclcpp_components_register_node(planning_topic_converter
-  PLUGIN "autoware::planning_topic_converter::PathToTrajectory"
+ament_auto_add_library(planning_topic_converter_ros SHARED
+  src/path_to_trajectory_node.cpp
+)
+target_link_libraries(planning_topic_converter_ros
+  planning_topic_converter
+)
+
+rclcpp_components_register_node(planning_topic_converter_ros
+  PLUGIN "autoware::planning_topic_converter::PathToTrajectoryNode"
   EXECUTABLE path_to_trajectory_converter
 )
+
+if(BUILD_TESTING)
+  ament_add_ros_isolated_gtest(test_path_to_trajectory_node
+    test/test_path_to_trajectory_node.cpp
+  )
+  target_link_libraries(test_path_to_trajectory_node planning_topic_converter_ros)
+endif()
 
 autoware_ament_auto_package()

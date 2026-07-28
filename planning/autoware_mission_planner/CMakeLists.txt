@@ -49,6 +49,13 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_component
   )
 
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_arrival_checker
+  test/test_arrival_checker.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_arrival_checker
+    ${PROJECT_NAME}_component
+  )
+
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node
   test/test_mission_planner_node.cpp
   )

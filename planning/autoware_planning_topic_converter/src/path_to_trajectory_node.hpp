@@ -12,34 +12,31 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
-#define AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
+#ifndef PATH_TO_TRAJECTORY_NODE_HPP_
+#define PATH_TO_TRAJECTORY_NODE_HPP_
 
-#include <autoware/planning_topic_converter/converter_base.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_planning_msgs/msg/path.hpp>
 #include <autoware_planning_msgs/msg/trajectory.hpp>
 
-#include <string>
-
 namespace autoware::planning_topic_converter
 {
 
 using autoware_planning_msgs::msg::Path;
-using autoware_planning_msgs::msg::PathPoint;
 using autoware_planning_msgs::msg::Trajectory;
-using autoware_planning_msgs::msg::TrajectoryPoint;
 
-class PathToTrajectory : public ConverterBase<Path, Trajectory>
+class PathToTrajectoryNode : public rclcpp::Node
 {
 public:
-  explicit PathToTrajectory(const rclcpp::NodeOptions & options);
+  explicit PathToTrajectoryNode(const rclcpp::NodeOptions & options);
 
 private:
-  void process(const Path::ConstSharedPtr msg) override;
+  void process(const Path::ConstSharedPtr msg);
+  rclcpp::Subscription<Path>::SharedPtr sub_;
+  rclcpp::Publisher<Trajectory>::SharedPtr pub_;
 };
 
 }  // namespace autoware::planning_topic_converter
 
-#endif  // AUTOWARE__PLANNING_TOPIC_CONVERTER__PATH_TO_TRAJECTORY_HPP_
+#endif  // PATH_TO_TRAJECTORY_NODE_HPP_

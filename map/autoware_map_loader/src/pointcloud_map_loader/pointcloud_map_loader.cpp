@@ -24,6 +24,7 @@
 #include <set>
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::map_loader
@@ -86,7 +87,7 @@ sensor_msgs::msg::PointCloud2 load_pointcloud_map(
     }
 
     if (whole_pcd.width == 0) {
-      whole_pcd = partial_pcd;
+      whole_pcd = std::move(partial_pcd);
     } else {
       whole_pcd.width += partial_pcd.width;
       whole_pcd.row_step += partial_pcd.row_step;
