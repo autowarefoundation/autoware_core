@@ -177,7 +177,8 @@ struct PointXYZCPE
   float x{0.0F};
   float y{0.0F};
   float z{0.0F};
-  std::uint8_t class_id{0U};
+  std::uint8_t class_id{
+    255U};  //!< The default equals object_recognition_utils::PointCloudClassification::INVALID.
   float probability{0.0F};
   float entropy{std::numeric_limits<float>::quiet_NaN()};
 

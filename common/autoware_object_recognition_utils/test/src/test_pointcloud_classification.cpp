@@ -17,6 +17,7 @@
 #include <gtest/gtest.h>
 
 #include <cstdint>
+#include <stdexcept>
 
 namespace autoware::object_recognition_utils
 {
@@ -35,6 +36,7 @@ TEST(PointCloudClassification, EnumValues)
   EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::STRUCTURE), 9U);
   EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::VEGETATION), 10U);
   EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::NOISE), 11U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::INVALID), 255U);
 }
 
 TEST(PointCloudClassification, ToString)
@@ -51,7 +53,8 @@ TEST(PointCloudClassification, ToString)
   EXPECT_EQ(to_string(PointCloudClassification::STRUCTURE), "STRUCTURE");
   EXPECT_EQ(to_string(PointCloudClassification::VEGETATION), "VEGETATION");
   EXPECT_EQ(to_string(PointCloudClassification::NOISE), "NOISE");
-  EXPECT_EQ(to_string(static_cast<PointCloudClassification>(255U)), "UNKNOWN");
+  EXPECT_EQ(to_string(PointCloudClassification::INVALID), "INVALID");
+  EXPECT_THROW(to_string(static_cast<PointCloudClassification>(254U)), std::invalid_argument);
 }
 
 TEST(PointCloudClassification, TryIntoObject)
@@ -71,7 +74,8 @@ TEST(PointCloudClassification, TryIntoObject)
   EXPECT_FALSE(try_into_object(PointCloudClassification::STRUCTURE).has_value());
   EXPECT_FALSE(try_into_object(PointCloudClassification::VEGETATION).has_value());
   EXPECT_FALSE(try_into_object(PointCloudClassification::NOISE).has_value());
-  EXPECT_FALSE(try_into_object(static_cast<PointCloudClassification>(255U)).has_value());
+  EXPECT_FALSE(try_into_object(PointCloudClassification::INVALID).has_value());
+  EXPECT_FALSE(try_into_object(static_cast<PointCloudClassification>(254U)).has_value());
 }
 
 TEST(PointCloudClassification, TryIntoSemantic)
@@ -107,6 +111,7 @@ TEST(PointCloudClassification, IsObjectCompatible)
   EXPECT_FALSE(is_object_compatible(PointCloudClassification::STRUCTURE));
   EXPECT_FALSE(is_object_compatible(PointCloudClassification::VEGETATION));
   EXPECT_FALSE(is_object_compatible(PointCloudClassification::NOISE));
+  EXPECT_FALSE(is_object_compatible(PointCloudClassification::INVALID));
 }
 
 TEST(PointCloudClassification, Roundtrip)

@@ -54,9 +54,10 @@ TEST(PointEquality, PointXYZCPE)
   using autoware::point_types::PointXYZCPE;
 
   {
-    // test default entropy is NaN
+    // test defaults are the unclassified/unset markers
     PointXYZCPE pt0;
     PointXYZCPE pt1;
+    EXPECT_EQ(pt0.class_id, 255U);
     EXPECT_TRUE(std::isnan(pt0.entropy));
     EXPECT_EQ(pt0, pt1);
 

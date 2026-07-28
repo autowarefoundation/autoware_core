@@ -19,6 +19,7 @@
 
 #include <cstdint>
 #include <optional>
+#include <stdexcept>
 #include <string_view>
 
 namespace autoware::object_recognition_utils
@@ -43,14 +44,16 @@ enum class PointCloudClassification : std::uint8_t {
   STRUCTURE = 9,     ///< Non-drivable structures, such as buildings and walls.
   VEGETATION = 10,   ///< Vegetation, such as trees and bushes.
   NOISE = 11,        ///< Noise points and outliers.
+  INVALID = 255,     ///< No classification assigned, e.g. a default-constructed point.
 };
 
 /**
  * @brief Get the string representation of a point cloud classification.
  * @param classification The classification to convert.
  * @return String view of the classification name.
+ * @throws std::invalid_argument If the value does not correspond to any enumerator.
  */
-constexpr std::string_view to_string(PointCloudClassification classification) noexcept
+constexpr std::string_view to_string(PointCloudClassification classification)
 {
   switch (classification) {
     case PointCloudClassification::CAR:
@@ -77,8 +80,10 @@ constexpr std::string_view to_string(PointCloudClassification classification) no
       return "VEGETATION";
     case PointCloudClassification::NOISE:
       return "NOISE";
+    case PointCloudClassification::INVALID:
+      return "INVALID";
     default:
-      return "UNKNOWN";
+      throw std::invalid_argument("Unknown point cloud classification");
   }
 }
 
@@ -110,6 +115,7 @@ inline std::optional<ObjectLabel> try_into_object(PointCloudClassification class
     case PointCloudClassification::STRUCTURE:
     case PointCloudClassification::VEGETATION:
     case PointCloudClassification::NOISE:
+    case PointCloudClassification::INVALID:
       return std::nullopt;
     default:
       return std::nullopt;
