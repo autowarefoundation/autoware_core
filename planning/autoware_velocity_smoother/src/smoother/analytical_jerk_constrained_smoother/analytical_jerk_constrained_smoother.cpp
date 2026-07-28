@@ -89,13 +89,11 @@ bool applyMaxVelocity(
 
 namespace autoware::velocity_smoother
 {
-template <typename NodeT>
-AnalyticalJerkConstrainedSmoother::AnalyticalJerkConstrainedSmoother(
-  NodeT & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
-: SmootherBase(node, time_keeper),
-  logger_(node.get_logger().get_child("analytical_jerk_constrained_smoother"))
+namespace
 {
-  auto & p = smoother_param_;
+template <typename NodeT>
+void declareSmootherParam(AnalyticalJerkConstrainedSmoother::Param & p, NodeT & node)
+{
   p.resample.ds_resample = node.template declare_parameter<double>("resample.ds_resample");
   p.resample.num_resample =
     static_cast<int>(node.template declare_parameter<int>("resample.num_resample"));
@@ -119,12 +117,24 @@ AnalyticalJerkConstrainedSmoother::AnalyticalJerkConstrainedSmoother(
   p.backward.min_acc = node.template declare_parameter<double>("backward.min_acc");
   p.backward.span_jerk = node.template declare_parameter<double>("backward.span_jerk");
 }
+}  // namespace
 
-template AnalyticalJerkConstrainedSmoother::AnalyticalJerkConstrainedSmoother(
-  rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
-template AnalyticalJerkConstrainedSmoother::AnalyticalJerkConstrainedSmoother(
+AnalyticalJerkConstrainedSmoother::AnalyticalJerkConstrainedSmoother(
+  rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+: SmootherBase(node, time_keeper),
+  logger_(node.get_logger().get_child("analytical_jerk_constrained_smoother"))
+{
+  declareSmootherParam(smoother_param_, node);
+}
+
+AnalyticalJerkConstrainedSmoother::AnalyticalJerkConstrainedSmoother(
   autoware::agnocast_wrapper::Node & node,
-  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
+  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+: SmootherBase(node, time_keeper),
+  logger_(node.get_logger().get_child("analytical_jerk_constrained_smoother"))
+{
+  declareSmootherParam(smoother_param_, node);
+}
 
 void AnalyticalJerkConstrainedSmoother::setParam(const Param & smoother_param)
 {

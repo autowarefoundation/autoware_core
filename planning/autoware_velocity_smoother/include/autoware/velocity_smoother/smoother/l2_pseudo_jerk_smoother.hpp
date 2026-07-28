@@ -40,9 +40,11 @@ public:
     double over_a_weight;
   };
 
-  template <typename NodeT>
   explicit L2PseudoJerkSmoother(
-    NodeT & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
+    rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
+  explicit L2PseudoJerkSmoother(
+    autoware::agnocast_wrapper::Node & node,
+    const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
 
   bool apply(
     const double initial_vel, const double initial_acc, const TrajectoryPoints & input,

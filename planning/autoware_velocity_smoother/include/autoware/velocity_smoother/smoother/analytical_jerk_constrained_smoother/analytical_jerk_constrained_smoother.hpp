@@ -71,10 +71,13 @@ public:
     } backward;
   };
 
-  template <typename NodeT>
   explicit AnalyticalJerkConstrainedSmoother(
-    NodeT & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper =
-                    std::make_shared<autoware_utils_debug::TimeKeeper>());
+    rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper =
+                           std::make_shared<autoware_utils_debug::TimeKeeper>());
+  explicit AnalyticalJerkConstrainedSmoother(
+    autoware::agnocast_wrapper::Node & node,
+    const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper =
+      std::make_shared<autoware_utils_debug::TimeKeeper>());
 
   bool apply(
     const double initial_vel, const double initial_acc, const TrajectoryPoints & input,

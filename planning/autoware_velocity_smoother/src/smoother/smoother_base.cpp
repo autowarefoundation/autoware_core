@@ -65,12 +65,11 @@ TrajectoryPoints applyPreProcess(
 }
 }  // namespace
 
-template <typename NodeT>
-SmootherBase::SmootherBase(
-  NodeT & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
-: time_keeper_(time_keeper)
+namespace
 {
-  auto & p = base_param_;
+template <typename NodeT>
+void declareBaseParam(SmootherBase::BaseParam & p, NodeT & node)
+{
   p.max_accel = node.template declare_parameter<double>("normal.max_acc");
   p.min_decel = node.template declare_parameter<double>("normal.min_acc");
   p.stop_decel = node.template declare_parameter<double>("stop_decel");
@@ -106,12 +105,22 @@ SmootherBase::SmootherBase(
   p.resample_param.sparse_min_interval_distance =
     node.template declare_parameter<double>("sparse_min_interval_distance");
 }
+}  // namespace
 
-template SmootherBase::SmootherBase(
-  rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
-template SmootherBase::SmootherBase(
+SmootherBase::SmootherBase(
+  rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+: time_keeper_(time_keeper)
+{
+  declareBaseParam(base_param_, node);
+}
+
+SmootherBase::SmootherBase(
   autoware::agnocast_wrapper::Node & node,
-  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
+  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+: time_keeper_(time_keeper)
+{
+  declareBaseParam(base_param_, node);
+}
 
 void SmootherBase::setWheelBase(const double wheel_base)
 {

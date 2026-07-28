@@ -27,15 +27,22 @@
 
 namespace autoware::velocity_smoother
 {
-template <typename NodeT>
-L2PseudoJerkSmoother::L2PseudoJerkSmoother(
-  NodeT & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
-: SmootherBase(node, time_keeper)
+namespace
 {
-  auto & p = smoother_param_;
+template <typename NodeT>
+void declareSmootherParam(L2PseudoJerkSmoother::Param & p, NodeT & node)
+{
   p.pseudo_jerk_weight = node.template declare_parameter<double>("pseudo_jerk_weight");
   p.over_v_weight = node.template declare_parameter<double>("over_v_weight");
   p.over_a_weight = node.template declare_parameter<double>("over_a_weight");
+}
+}  // namespace
+
+L2PseudoJerkSmoother::L2PseudoJerkSmoother(
+  rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+: SmootherBase(node, time_keeper)
+{
+  declareSmootherParam(smoother_param_, node);
 
   qp_solver_.updateMaxIter(4000);
   qp_solver_.updateRhoInterval(0);  // 0 means automatic
@@ -44,11 +51,19 @@ L2PseudoJerkSmoother::L2PseudoJerkSmoother(
   qp_solver_.updateVerbose(false);
 }
 
-template L2PseudoJerkSmoother::L2PseudoJerkSmoother(
-  rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
-template L2PseudoJerkSmoother::L2PseudoJerkSmoother(
+L2PseudoJerkSmoother::L2PseudoJerkSmoother(
   autoware::agnocast_wrapper::Node & node,
-  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
+  const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper)
+: SmootherBase(node, time_keeper)
+{
+  declareSmootherParam(smoother_param_, node);
+
+  qp_solver_.updateMaxIter(4000);
+  qp_solver_.updateRhoInterval(0);  // 0 means automatic
+  qp_solver_.updateEpsRel(1.0e-4);  // def: 1.0e-4
+  qp_solver_.updateEpsAbs(1.0e-4);  // def: 1.0e-4
+  qp_solver_.updateVerbose(false);
+}
 
 void L2PseudoJerkSmoother::setParam(const Param & smoother_param)
 {
