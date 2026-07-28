@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LANELET2_MAP_LOADER__LANELET2_LOCAL_PROJECTOR_HPP_
-#define LANELET2_MAP_LOADER__LANELET2_LOCAL_PROJECTOR_HPP_
+#ifndef LANELET2_MAP_LOADER__UTILS__LANELET2_LOCAL_PROJECTOR_HPP_
+#define LANELET2_MAP_LOADER__UTILS__LANELET2_LOCAL_PROJECTOR_HPP_
 
 #include <lanelet2_io/Projection.h>
 
@@ -37,4 +37,4 @@ public:
 };
 }  // namespace autoware::map_loader
 
-#endif  // LANELET2_MAP_LOADER__LANELET2_LOCAL_PROJECTOR_HPP_
+#endif  // LANELET2_MAP_LOADER__UTILS__LANELET2_LOCAL_PROJECTOR_HPP_
