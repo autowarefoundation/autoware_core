@@ -104,7 +104,7 @@ TEST(type_hashes, covers_every_manifest_type)
 
 // The committed lockfile must match the hashes the generator produces against the installed
 // messages. OPT-IN via AUTOWARE_CIS_CHECK_TYPE_HASHES: only this repo's own GitHub Actions sets
-// it. Buildfarm devel jobs build BUILD_TESTING but never set it, so they cannot redden when an
+// it. Build farm devel jobs build BUILD_TESTING but never set it, so they cannot redden when an
 // installed dependency's definition differs from the lockfile-generation environment -- a
 // failure no PR to this repo could fix. See README.md.
 TEST(type_hashes, committed_lockfile_is_up_to_date)
