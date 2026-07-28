@@ -59,7 +59,7 @@ namespace autoware::agnocast_wrapper
 ///            shared_ptr without throwing.
 /// @invariant `use_agnocast() == false` iff `get_rclcpp_node()`   returns a valid
 ///            shared_ptr without throwing.
-class Node
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
   using SharedPtr = std::shared_ptr<Node>;
@@ -244,32 +244,6 @@ public:
     return create_subscription<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
       options);
-  }
-
-  // ===== Polling Subscriber =====
-  template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
-  typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
-    const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
-  {
-    return visit_node(
-      [&](auto & n) -> typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr {
-        using NodeT = std::decay_t<decltype(*n)>;
-        if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
-          return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
-            n.get(), topic_name, qos);
-        } else {
-          return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
-            n.get(), topic_name, qos);
-        }
-      });
-  }
-
-  template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
-  typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_subscriber(
-    const std::string & topic_name, size_t qos_history_depth)
-  {
-    return create_polling_subscriber<MessageT, PollingPolicy>(
-      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
   // ===== Client / Service =====
@@ -469,7 +443,7 @@ namespace autoware::agnocast_wrapper
 /// from rclcpp::Node. This keeps the public surface identical to the Agnocast-build Node, so code
 /// compiles under both ENABLE_AGNOCAST=0 and =1. Deriving from rclcpp::Node would instead leak its
 /// full API into the =0 build, allowing =0-only code that breaks under =1.
-class Node
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
   using SharedPtr = std::shared_ptr<Node>;
@@ -693,34 +667,6 @@ public:
     return node_->create_subscription<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
       options);
-  }
-
-  // ===== Polling Subscriber =====
-  template <
-    typename MessageT,
-    template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::SharedPtr
-  create_polling_subscriber(
-    const std::string & topic_name, const rclcpp::QoS & qos = rclcpp::QoS{1})
-  {
-    static_assert(
-      !std::is_same_v<
-        PollingPolicy<MessageT>, autoware_utils_rclcpp::polling_policy::All<MessageT>>,
-      "polling_policy::All is not supported by "
-      "autoware::agnocast_wrapper::Node::create_polling_subscriber; use polling_policy::Latest or "
-      "polling_policy::Newest (or use InterProcessPollingSubscriber directly for the All policy).");
-    return autoware_utils_rclcpp::InterProcessPollingSubscriber<
-      MessageT, PollingPolicy>::create_subscription(node_.get(), topic_name, qos);
-  }
-
-  template <
-    typename MessageT,
-    template <typename> class PollingPolicy = autoware_utils_rclcpp::polling_policy::Latest>
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT, PollingPolicy>::SharedPtr
-  create_polling_subscriber(const std::string & topic_name, size_t qos_history_depth)
-  {
-    return create_polling_subscriber<MessageT, PollingPolicy>(
-      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
   // ===== Client =====
