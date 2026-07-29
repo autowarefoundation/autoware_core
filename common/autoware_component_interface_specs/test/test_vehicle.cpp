@@ -33,6 +33,7 @@ TEST(vehicle, version)
 
 TEST(vehicle, concept_and_registration)
 {
+  using specs::vehicle::ControlModeStatus;
   using specs::vehicle::GearStatus;
   using specs::vehicle::HazardLightStatus;
   using specs::vehicle::Specs;
@@ -45,13 +46,15 @@ TEST(vehicle, concept_and_registration)
   static_assert(specs::InterfaceSpec<GearStatus>);
   static_assert(specs::InterfaceSpec<TurnIndicatorStatus>);
   static_assert(specs::InterfaceSpec<HazardLightStatus>);
+  static_assert(specs::InterfaceSpec<ControlModeStatus>);
 
   static_assert(tu::has_type<VelocityStatus, Specs>::value);
   static_assert(tu::has_type<SteeringStatus, Specs>::value);
   static_assert(tu::has_type<GearStatus, Specs>::value);
   static_assert(tu::has_type<TurnIndicatorStatus, Specs>::value);
   static_assert(tu::has_type<HazardLightStatus, Specs>::value);
-  static_assert(std::tuple_size_v<Specs> == 5);
+  static_assert(tu::has_type<ControlModeStatus, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 6);
   SUCCEED();
 }
 
@@ -60,6 +63,14 @@ TEST(vehicle, velocity_status_qos)
   using specs::vehicle::VelocityStatus;
   tu::expect_topic_qos<VelocityStatus>(
     "/vehicle/status/velocity_status", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+    RMW_QOS_POLICY_DURABILITY_VOLATILE);
+}
+
+TEST(vehicle, control_mode_status_qos)
+{
+  using specs::vehicle::ControlModeStatus;
+  tu::expect_topic_qos<ControlModeStatus>(
+    "/vehicle/status/control_mode", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
     RMW_QOS_POLICY_DURABILITY_VOLATILE);
 }
 

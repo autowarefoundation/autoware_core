@@ -299,6 +299,19 @@
         "reliability": "reliable",
         "durability": "volatile"
       }
+    },
+    {
+      "domain": "vehicle",
+      "interface": "/vehicle/status/control_mode",
+      "type": "autoware_vehicle_msgs/msg/ControlModeReport",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
     }
   ]
 }
