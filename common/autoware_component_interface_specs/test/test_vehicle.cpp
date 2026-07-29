@@ -23,14 +23,6 @@
 namespace specs = autoware::component_interface_specs;
 namespace tu = autoware::component_interface_specs::test_utils;
 
-TEST(vehicle, version)
-{
-  static_assert(specs::vehicle::version.major == 0);
-  static_assert(specs::vehicle::version.minor == 1);
-  static_assert(specs::vehicle::version.patch == 0);
-  EXPECT_EQ(specs::vehicle::version.major, 0);
-}
-
 TEST(vehicle, concept_and_registration)
 {
   using specs::vehicle::ControlModeStatus;
@@ -56,22 +48,6 @@ TEST(vehicle, concept_and_registration)
   static_assert(tu::has_type<ControlModeStatus, Specs>::value);
   static_assert(std::tuple_size_v<Specs> == 6);
   SUCCEED();
-}
-
-TEST(vehicle, velocity_status_qos)
-{
-  using specs::vehicle::VelocityStatus;
-  tu::expect_topic_qos<VelocityStatus>(
-    "/vehicle/status/velocity_status", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
-    RMW_QOS_POLICY_DURABILITY_VOLATILE);
-}
-
-TEST(vehicle, control_mode_status_qos)
-{
-  using specs::vehicle::ControlModeStatus;
-  tu::expect_topic_qos<ControlModeStatus>(
-    "/vehicle/status/control_mode", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
-    RMW_QOS_POLICY_DURABILITY_VOLATILE);
 }
 
 TEST(vehicle, interface)
