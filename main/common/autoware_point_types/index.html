@@ -7792,12 +7792,17 @@
 <p>This package provides a variety of structures to represent different types of point cloud data, mainly used for point cloud processing and analysis.</p>
 <h2 id="design">Design<a class="headerlink" href="#design" title="Permanent link">#</a></h2>
 <h3 id="point-cloud-data-type-definition">Point cloud data type definition<a class="headerlink" href="#point-cloud-data-type-definition" title="Permanent link">#</a></h3>
-<p><code>autoware_point_types</code> defines multiple structures (such as PointXYZI, PointXYZIRC, PointXYZIRADRT, PointXYZIRCAEDT), each structure contains different attributes to adapt to different application scenarios.</p>
+<p><code>autoware_point_types</code> defines multiple structures (such as PointXYZI, PointXYZIRC, PointXYZIRADRT, PointXYZIRCAEDT, PointXYZCPE), each structure contains different attributes to adapt to different application scenarios.</p>
 <ul>
 <li><code>autoware::point_types::PointXYZI</code>: Point type with intensity information.</li>
 <li><code>autoware::point_types::PointXYZIRC</code>: Extended PointXYZI, adds return_type and channel information.</li>
 <li><code>autoware::point_types::PointXYZIRADRT</code>: Extended PointXYZI, adds ring, azimuth, distance, return_type and time_stamp information.</li>
 <li><code>autoware::point_types::PointXYZIRCAEDT</code>: Similar to PointXYZIRADRT, but adds elevation information and uses <code>std::uint32_t</code> as the data type for time_stamp.</li>
+<li><code>autoware::point_types::PointXYZCPE</code>: Point type for segmented points, adds class_id, probability, and entropy information.<ul>
+<li><code>PointXYZCPE::class_id</code> is initialized to <code>PointCloudClassification::INVALID=255</code> to represent an invalid or unset class_id value.</li>
+<li><code>PointXYZCPE::entropy</code> is initialized to <code>NaN</code> to represent an invalid or unset entropy value, then <code>PointXYZCPE</code> equality treats two <code>NaN</code> entropy values as equal, while a <code>NaN</code> entropy and a finite entropy are not equal.</li>
+</ul>
+</li>
 </ul>
 <h3 id="operator-overload">Operator overload<a class="headerlink" href="#operator-overload" title="Permanent link">#</a></h3>
 <p>Each structure overloads the <code>==</code> operator, allowing users to easily compare whether two points are equal, which is very useful for deduplication and matching of point cloud data.</p>
