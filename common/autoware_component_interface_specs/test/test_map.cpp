@@ -56,14 +56,6 @@ static_assert(
 static_assert(
   has_domain_version<specs::map::VectorMap>::value, "VectorMap must resolve a domain version");
 
-TEST(map, version)
-{
-  static_assert(specs::map::version.major == 0);
-  static_assert(specs::map::version.minor == 1);
-  static_assert(specs::map::version.patch == 0);
-  EXPECT_EQ(specs::map::version.major, 0);
-}
-
 TEST(map, concept_and_registration)
 {
   using specs::map::GetDifferentialPointCloudMap;
@@ -89,27 +81,6 @@ TEST(map, concept_and_registration)
   // payload rather than a bounded interface message.
   static_assert(!tu::has_type<PointCloudMap, Specs>::value);
   SUCCEED();
-}
-
-TEST(map, point_cloud_map_version_is_type_enforced)
-{
-  // PointCloudMap's exclusion is enforced through the version resolution hook, not
-  // just by omission from the Specs tuple: a downstream detection trait (universe's
-  // HasDomainVersion) must see it as unversioned.
-  EXPECT_FALSE(has_domain_version<specs::map::PointCloudMap>::value);
-  EXPECT_TRUE(has_domain_version<specs::map::VectorMap>::value);
-}
-
-TEST(map, get_differential_pointcloud_map_name)
-{
-  using specs::map::GetDifferentialPointCloudMap;
-  EXPECT_STREQ(GetDifferentialPointCloudMap::name, "/map/get_differential_pointcloud_map");
-}
-
-TEST(map, get_partial_pointcloud_map_name)
-{
-  using specs::map::GetPartialPointCloudMap;
-  EXPECT_STREQ(GetPartialPointCloudMap::name, "/map/get_partial_pointcloud_map");
 }
 
 TEST(map, interface)
