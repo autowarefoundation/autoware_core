@@ -21,6 +21,7 @@
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
+#include <autoware_map_msgs/srv/get_partial_point_cloud_map.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <rmw/qos_profiles.h>
@@ -62,11 +63,17 @@ struct GetDifferentialPointCloudMap
   static constexpr char name[] = "/map/get_differential_pointcloud_map";
 };
 
+struct GetPartialPointCloudMap  // new - companion PCD-map delivery path
+{
+  using Service = autoware_map_msgs::srv::GetPartialPointCloudMap;
+  static constexpr char name[] = "/map/get_partial_pointcloud_map";
+};
+
 // PointCloudMap is intentionally excluded: heavy-raw confinement (design section 5)
 // keeps the full point cloud map out of the versioned registration surface while
 // the struct itself stays available for existing consumers.
 AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
-  0, 1, 0, VectorMap, MapProjectorInfo, GetDifferentialPointCloudMap)
+  0, 1, 0, VectorMap, MapProjectorInfo, GetDifferentialPointCloudMap, GetPartialPointCloudMap)
 
 // Type-enforce PointCloudMap's exclusion from the versioned surface (heavy-raw
 // confinement, design section 5). This non-template exact match wins overload

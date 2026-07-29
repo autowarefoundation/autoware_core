@@ -66,6 +66,7 @@ TEST(map, version)
 TEST(map, concept_and_registration)
 {
   using specs::map::GetDifferentialPointCloudMap;
+  using specs::map::GetPartialPointCloudMap;
   using specs::map::MapProjectorInfo;
   using specs::map::PointCloudMap;
   using specs::map::Specs;
@@ -74,11 +75,13 @@ TEST(map, concept_and_registration)
   static_assert(specs::InterfaceSpec<MapProjectorInfo>);
   static_assert(specs::InterfaceSpec<VectorMap>);
   static_assert(specs::ServiceSpec<GetDifferentialPointCloudMap>);
+  static_assert(specs::ServiceSpec<GetPartialPointCloudMap>);
 
   static_assert(tu::has_type<MapProjectorInfo, Specs>::value);
   static_assert(tu::has_type<VectorMap, Specs>::value);
   static_assert(tu::has_type<GetDifferentialPointCloudMap, Specs>::value);
-  static_assert(std::tuple_size_v<Specs> == 3);
+  static_assert(tu::has_type<GetPartialPointCloudMap, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 4);
 
   // PointCloudMap stays available to existing consumers but is deliberately kept
   // out of the versioned registration surface (heavy-raw confinement, design section 5).
@@ -99,6 +102,12 @@ TEST(map, get_differential_pointcloud_map_name)
 {
   using specs::map::GetDifferentialPointCloudMap;
   EXPECT_STREQ(GetDifferentialPointCloudMap::name, "/map/get_differential_pointcloud_map");
+}
+
+TEST(map, get_partial_pointcloud_map_name)
+{
+  using specs::map::GetPartialPointCloudMap;
+  EXPECT_STREQ(GetPartialPointCloudMap::name, "/map/get_partial_pointcloud_map");
 }
 
 TEST(map, interface)
