@@ -14,7 +14,6 @@
 
 #include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/control.hpp"
-#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
 #include "spec_test_utils.hpp"
 
@@ -52,14 +51,8 @@ TEST(control, concept_and_registration)
 
 TEST(control, interface)
 {
-  using autoware::component_interface_specs::control::ControlCommand;
-  size_t depth = 1;
-  EXPECT_EQ(ControlCommand::depth, depth);
-  EXPECT_EQ(ControlCommand::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-  EXPECT_EQ(ControlCommand::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
-
-  const auto qos = autoware::component_interface_specs::get_qos<ControlCommand>();
-  EXPECT_EQ(qos.depth(), depth);
-  EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-  EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
+  using specs::control::ControlCommand;
+  tu::expect_topic_qos<ControlCommand>(
+    "/control/command/control_cmd", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+    RMW_QOS_POLICY_DURABILITY_VOLATILE);
 }
