@@ -14,7 +14,6 @@
 
 #include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/planning.hpp"
-#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
 #include "spec_test_utils.hpp"
 
@@ -53,28 +52,16 @@ TEST(planning, concept_and_registration)
 TEST(planning, interface)
 {
   {
-    using autoware::component_interface_specs::planning::LaneletRoute;
-    size_t depth = 1;
-    EXPECT_EQ(LaneletRoute::depth, depth);
-    EXPECT_EQ(LaneletRoute::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(LaneletRoute::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
-
-    const auto qos = autoware::component_interface_specs::get_qos<LaneletRoute>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
+    using specs::planning::LaneletRoute;
+    tu::expect_topic_qos<LaneletRoute>(
+      "/planning/route", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
   }
 
   {
-    using autoware::component_interface_specs::planning::Trajectory;
-    size_t depth = 1;
-    EXPECT_EQ(Trajectory::depth, depth);
-    EXPECT_EQ(Trajectory::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(Trajectory::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
-
-    const auto qos = autoware::component_interface_specs::get_qos<Trajectory>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
+    using specs::planning::Trajectory;
+    tu::expect_topic_qos<Trajectory>(
+      "/planning/trajectory", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_VOLATILE);
   }
 }
