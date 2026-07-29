@@ -54,6 +54,32 @@
       }
     },
     {
+      "domain": "control",
+      "interface": "/control/trajectory_follower/lateral/predicted_trajectory",
+      "type": "autoware_planning_msgs/msg/Trajectory",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "control",
+      "interface": "/control/control_mode_request",
+      "type": "autoware_vehicle_msgs/srv/ControlModeCommand",
+      "kind": "service",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 10,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
       "domain": "localization",
       "interface": "/localization/initialize",
       "type": "autoware_localization_msgs/srv/InitializeLocalization",

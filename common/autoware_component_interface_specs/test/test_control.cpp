@@ -34,8 +34,10 @@ TEST(control, version)
 TEST(control, concept_and_registration)
 {
   using specs::control::ControlCommand;
+  using specs::control::ControlModeRequest;
   using specs::control::GearCommand;
   using specs::control::HazardLightsCommand;
+  using specs::control::PredictedTrajectory;
   using specs::control::Specs;
   using specs::control::TurnIndicatorsCommand;
 
@@ -43,12 +45,16 @@ TEST(control, concept_and_registration)
   static_assert(specs::InterfaceSpec<GearCommand>);
   static_assert(specs::InterfaceSpec<TurnIndicatorsCommand>);
   static_assert(specs::InterfaceSpec<HazardLightsCommand>);
+  static_assert(specs::InterfaceSpec<PredictedTrajectory>);
+  static_assert(specs::ServiceSpec<ControlModeRequest>);
 
   static_assert(tu::has_type<ControlCommand, Specs>::value);
   static_assert(tu::has_type<GearCommand, Specs>::value);
   static_assert(tu::has_type<TurnIndicatorsCommand, Specs>::value);
   static_assert(tu::has_type<HazardLightsCommand, Specs>::value);
-  static_assert(std::tuple_size_v<Specs> == 4);
+  static_assert(tu::has_type<PredictedTrajectory, Specs>::value);
+  static_assert(tu::has_type<ControlModeRequest, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 6);
   SUCCEED();
 }
 
@@ -88,4 +94,18 @@ TEST(control, hazard_lights_command_qos)
   tu::expect_topic_qos<HazardLightsCommand>(
     "/control/command/hazard_lights_cmd", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
     RMW_QOS_POLICY_DURABILITY_VOLATILE);
+}
+
+TEST(control, predicted_trajectory_qos)
+{
+  using specs::control::PredictedTrajectory;
+  tu::expect_topic_qos<PredictedTrajectory>(
+    "/control/trajectory_follower/lateral/predicted_trajectory", 1,
+    RMW_QOS_POLICY_RELIABILITY_RELIABLE, RMW_QOS_POLICY_DURABILITY_VOLATILE);
+}
+
+TEST(control, control_mode_request_name)
+{
+  using specs::control::ControlModeRequest;
+  EXPECT_STREQ(ControlModeRequest::name, "/control/control_mode_request");
 }
