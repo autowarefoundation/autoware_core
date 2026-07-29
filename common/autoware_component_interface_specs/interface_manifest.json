@@ -204,7 +204,7 @@
       "version": "0.1.0",
       "qos": {
         "history": "keep_last",
-        "depth": 1,
+        "depth": 10,
         "reliability": "reliable",
         "durability": "volatile"
       }

@@ -28,7 +28,7 @@ struct VehicleVelocityConverterTwist
 {
   using Message = geometry_msgs::msg::TwistWithCovarianceStamped;
   static constexpr char name[] = "/sensing/vehicle_velocity_converter/twist_with_covariance";
-  static constexpr size_t depth = 1;
+  static constexpr size_t depth = 10;
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };

@@ -46,6 +46,6 @@ TEST(sensing, vehicle_velocity_converter_twist_qos)
 {
   using specs::sensing::VehicleVelocityConverterTwist;
   tu::expect_topic_qos<VehicleVelocityConverterTwist>(
-    "/sensing/vehicle_velocity_converter/twist_with_covariance", 1,
+    "/sensing/vehicle_velocity_converter/twist_with_covariance", 10,
     RMW_QOS_POLICY_RELIABILITY_RELIABLE, RMW_QOS_POLICY_DURABILITY_VOLATILE);
 }
