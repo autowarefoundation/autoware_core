@@ -36,7 +36,7 @@ autoware_planning_msgs::msg::PathPoint make_path_point(
   return point;
 }
 
-// Builds a PathPoint from raw pose + kinematics values so that
+// Builds a PathPoint from raw pose + kinematics values
 autoware_planning_msgs::msg::PathPoint make_boundary_path_point(
   const double x, const double y, const double z, const double qx, const double qy, const double qz,
   const double qw, const float longitudinal_velocity, const float lateral_velocity,
