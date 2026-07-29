@@ -25,12 +25,10 @@ namespace tu = autoware::component_interface_specs::test_utils;
 TEST(system, interface)
 {
   {
-    using autoware::component_interface_specs::system::OperationModeState;
-    OperationModeState state;
-    size_t depth = 1;
-    EXPECT_EQ(state.depth, depth);
-    EXPECT_EQ(state.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(state.durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+    using specs::system::OperationModeState;
+    tu::expect_topic_qos<OperationModeState>(
+      "/system/operation_mode/state", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
   }
 }
 
