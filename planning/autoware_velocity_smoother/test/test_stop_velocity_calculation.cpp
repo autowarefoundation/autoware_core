@@ -193,10 +193,17 @@ TEST_F(StopVelocityCalculationTest, DiscreteAndContinuousHelpersMatch)
 TEST_F(StopVelocityCalculationTest, EmptyTrajectoryCase)
 {
   TrajectoryPoints points;
+  {
+    auto maybe_trajectory = Trajectory::Builder().build(points);
+    // New trajectory cannot build empty trajectory
+    ASSERT_FALSE(maybe_trajectory);
+  }
+  // But it can build trajectory with empty TrajectoryPoint.
   points.push_back(TrajectoryPoint());
-  auto maybe_trajectory = Trajectory::Builder().build(points);
-  // New trajectory cannot build empty trajectory
-  ASSERT_FALSE(maybe_trajectory);
+  {
+    auto maybe_trajectory = Trajectory::Builder().build(points);
+    ASSERT_TRUE(maybe_trajectory);
+  }
 }
 
 TEST_F(StopVelocityCalculationTest, VelocityMonotonicity)

@@ -83,7 +83,7 @@ public:
   bool apply(
     const double initial_vel, const double initial_acc, const TrajectoryExperimental & input,
     TrajectoryExperimental & output, std::vector<TrajectoryExperimental> & debug_trajectories,
-    const bool publish_debug_trajs);
+    const bool publish_debug_trajs) override;
 
   TrajectoryPoints resampleTrajectory(
     const TrajectoryPoints & input, [[maybe_unused]] const double v0,
