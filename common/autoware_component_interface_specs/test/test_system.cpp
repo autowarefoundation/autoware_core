@@ -14,7 +14,6 @@
 
 #include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/system.hpp"
-#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
 #include "spec_test_utils.hpp"
 
@@ -54,5 +53,4 @@ TEST(system, concept_and_registration)
   static_assert(tu::has_type<MrmState, Specs>::value);
   static_assert(std::tuple_size_v<Specs> == 4);
   SUCCEED();
-}
 }
