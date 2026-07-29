@@ -12,8 +12,53 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/map.hpp"
+#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
+#include "spec_test_utils.hpp"
+
+#include <tuple>
+
+namespace specs = autoware::component_interface_specs;
+namespace tu = autoware::component_interface_specs::test_utils;
+
+TEST(map, version)
+{
+  static_assert(specs::map::version.major == 0);
+  static_assert(specs::map::version.minor == 1);
+  static_assert(specs::map::version.patch == 0);
+  EXPECT_EQ(specs::map::version.major, 0);
+}
+
+TEST(map, concept_and_registration)
+{
+  using specs::map::GetDifferentialPointCloudMap;
+  using specs::map::MapProjectorInfo;
+  using specs::map::PointCloudMap;
+  using specs::map::Specs;
+  using specs::map::VectorMap;
+
+  static_assert(specs::InterfaceSpec<MapProjectorInfo>);
+  static_assert(specs::InterfaceSpec<VectorMap>);
+  static_assert(specs::ServiceSpec<GetDifferentialPointCloudMap>);
+
+  static_assert(tu::has_type<MapProjectorInfo, Specs>::value);
+  static_assert(tu::has_type<VectorMap, Specs>::value);
+  static_assert(tu::has_type<GetDifferentialPointCloudMap, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 3);
+
+  // PointCloudMap stays available to existing consumers but is deliberately kept
+  // out of the versioned registration surface (heavy-raw confinement, design section 5).
+  static_assert(!tu::has_type<PointCloudMap, Specs>::value);
+  SUCCEED();
+}
+
+TEST(map, get_differential_pointcloud_map_name)
+{
+  using specs::map::GetDifferentialPointCloudMap;
+  EXPECT_STREQ(GetDifferentialPointCloudMap::name, "/map/get_differential_pointcloud_map");
+}
 
 TEST(map, interface)
 {

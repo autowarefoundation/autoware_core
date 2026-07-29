@@ -68,6 +68,19 @@
     },
     {
       "domain": "map",
+      "interface": "/map/vector_map",
+      "type": "autoware_map_msgs/msg/LaneletMapBin",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "transient_local"
+      }
+    },
+    {
+      "domain": "map",
       "interface": "/map/map_projector_info",
       "type": "autoware_map_msgs/msg/MapProjectorInfo",
       "kind": "topic",
@@ -81,28 +94,15 @@
     },
     {
       "domain": "map",
-      "interface": "/map/point_cloud_map",
-      "type": "sensor_msgs/msg/PointCloud2",
-      "kind": "topic",
+      "interface": "/map/get_differential_pointcloud_map",
+      "type": "autoware_map_msgs/srv/GetDifferentialPointCloudMap",
+      "kind": "service",
       "version": "0.1.0",
       "qos": {
         "history": "keep_last",
-        "depth": 1,
+        "depth": 10,
         "reliability": "reliable",
-        "durability": "transient_local"
-      }
-    },
-    {
-      "domain": "map",
-      "interface": "/map/vector_map",
-      "type": "autoware_map_msgs/msg/LaneletMapBin",
-      "kind": "topic",
-      "version": "0.1.0",
-      "qos": {
-        "history": "keep_last",
-        "depth": 1,
-        "reliability": "reliable",
-        "durability": "transient_local"
+        "durability": "volatile"
       }
     },
     {
