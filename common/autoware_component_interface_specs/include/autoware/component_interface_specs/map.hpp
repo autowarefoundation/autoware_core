@@ -68,6 +68,16 @@ struct GetDifferentialPointCloudMap
 AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
   0, 1, 0, VectorMap, MapProjectorInfo, GetDifferentialPointCloudMap)
 
+// Type-enforce PointCloudMap's exclusion from the versioned surface (heavy-raw
+// confinement, design section 5). This non-template exact match wins overload
+// resolution over the template above, so version resolution is ill-formed for
+// PointCloudMap: a downstream detection trait (e.g. universe's HasDomainVersion)
+// then sees it as unversioned, and a direct spec_version<PointCloudMap>() is a hard
+// compile error. Without this the exclusion would be a tuple omission only, and a
+// consumer could still register PointCloudMap and emit a manifest record for an
+// interface absent from the authority manifest.
+constexpr Version resolve_domain_version(const PointCloudMap &) = delete;
+
 }  // namespace autoware::component_interface_specs::map
 
 #endif  // AUTOWARE__COMPONENT_INTERFACE_SPECS__MAP_HPP_

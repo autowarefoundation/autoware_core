@@ -19,9 +19,41 @@
 #include "spec_test_utils.hpp"
 
 #include <tuple>
+#include <type_traits>
+#include <utility>
 
 namespace specs = autoware::component_interface_specs;
 namespace tu = autoware::component_interface_specs::test_utils;
+
+// Local mirror of universe's HasDomainVersion: a void_t/expression-SFINAE probe over
+// the ADL-resolved resolve_domain_version(const Spec &). Downstream consumers use
+// exactly this shape to decide whether a spec participates in versioned interface
+// registration, so PointCloudMap's heavy-raw confinement (design section 5) must be
+// type-enforced here as an ill-formed version resolution, not merely as a tuple
+// omission. Otherwise a consumer registering PointCloudMap would emit a manifest
+// record for an interface absent from the authority manifest.
+namespace
+{
+template <class, class = void>
+struct has_domain_version : std::false_type
+{
+};
+template <class S>
+struct has_domain_version<
+  S, std::void_t<decltype(resolve_domain_version(std::declval<const S &>()))>> : std::true_type
+{
+};
+}  // namespace
+
+// PointCloudMap is intentionally excluded from the versioned surface, so version
+// resolution must be ill-formed for it and the detection trait must report it as
+// unversioned.
+static_assert(
+  !has_domain_version<specs::map::PointCloudMap>::value,
+  "PointCloudMap must not resolve a domain version (heavy-raw confinement, design section 5)");
+// Positive control: a genuinely registered spec is still detected as versioned.
+static_assert(
+  has_domain_version<specs::map::VectorMap>::value, "VectorMap must resolve a domain version");
 
 TEST(map, version)
 {
@@ -52,6 +84,15 @@ TEST(map, concept_and_registration)
   // out of the versioned registration surface (heavy-raw confinement, design section 5).
   static_assert(!tu::has_type<PointCloudMap, Specs>::value);
   SUCCEED();
+}
+
+TEST(map, point_cloud_map_version_is_type_enforced)
+{
+  // The heavy-raw confinement of PointCloudMap is enforced through the version
+  // resolution hook, not just by omission from the Specs tuple: a downstream
+  // detection trait (universe's HasDomainVersion) must see it as unversioned.
+  EXPECT_FALSE(has_domain_version<specs::map::PointCloudMap>::value);
+  EXPECT_TRUE(has_domain_version<specs::map::VectorMap>::value);
 }
 
 TEST(map, get_differential_pointcloud_map_name)
