@@ -19,6 +19,9 @@
 #include <autoware/component_interface_specs/version.hpp>
 
 #include <autoware_control_msgs/msg/control.hpp>
+#include <autoware_vehicle_msgs/msg/gear_command.hpp>
+#include <autoware_vehicle_msgs/msg/hazard_lights_command.hpp>
+#include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
 
 #include <rmw/qos_profiles.h>
 
@@ -34,7 +37,35 @@ struct ControlCommand
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
 
-AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(0, 1, 0, ControlCommand)
+struct GearCommand
+{
+  using Message = autoware_vehicle_msgs::msg::GearCommand;
+  static constexpr char name[] = "/control/command/gear_cmd";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+
+struct TurnIndicatorsCommand
+{
+  using Message = autoware_vehicle_msgs::msg::TurnIndicatorsCommand;
+  static constexpr char name[] = "/control/command/turn_indicators_cmd";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+
+struct HazardLightsCommand
+{
+  using Message = autoware_vehicle_msgs::msg::HazardLightsCommand;
+  static constexpr char name[] = "/control/command/hazard_lights_cmd";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
+  0, 1, 0, ControlCommand, GearCommand, TurnIndicatorsCommand, HazardLightsCommand)
 
 }  // namespace autoware::component_interface_specs::control
 

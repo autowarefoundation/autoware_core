@@ -15,6 +15,45 @@
       }
     },
     {
+      "domain": "control",
+      "interface": "/control/command/gear_cmd",
+      "type": "autoware_vehicle_msgs/msg/GearCommand",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "control",
+      "interface": "/control/command/turn_indicators_cmd",
+      "type": "autoware_vehicle_msgs/msg/TurnIndicatorsCommand",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "control",
+      "interface": "/control/command/hazard_lights_cmd",
+      "type": "autoware_vehicle_msgs/msg/HazardLightsCommand",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
       "domain": "localization",
       "interface": "/localization/initialize",
       "type": "autoware_localization_msgs/srv/InitializeLocalization",
