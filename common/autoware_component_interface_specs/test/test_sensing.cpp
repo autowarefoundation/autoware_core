@@ -14,7 +14,6 @@
 
 #include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/sensing.hpp"
-#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
 #include "spec_test_utils.hpp"
 
