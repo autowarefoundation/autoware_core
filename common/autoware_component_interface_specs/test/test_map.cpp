@@ -19,42 +19,19 @@
 #include "spec_test_utils.hpp"
 
 #include <tuple>
-#include <type_traits>
-#include <utility>
 
 namespace specs = autoware::component_interface_specs;
 namespace tu = autoware::component_interface_specs::test_utils;
-
-// Local mirror of universe's HasDomainVersion: a void_t/expression-SFINAE probe over
-// the ADL-resolved resolve_domain_version(const Spec &). Downstream consumers use
-// exactly this shape to decide whether a spec participates in versioned interface
-// registration, so PointCloudMap's exclusion (it carries a raw point cloud payload
-// rather than a bounded interface message) must be type-enforced here as an
-// ill-formed version resolution, not merely as a tuple omission. Otherwise a
-// consumer registering PointCloudMap would emit a manifest record for an interface
-// absent from the authority manifest.
-namespace
-{
-template <class, class = void>
-struct has_domain_version : std::false_type
-{
-};
-template <class S>
-struct has_domain_version<
-  S, std::void_t<decltype(resolve_domain_version(std::declval<const S &>()))>> : std::true_type
-{
-};
-}  // namespace
 
 // PointCloudMap is intentionally excluded from the versioned surface, so version
 // resolution must be ill-formed for it and the detection trait must report it as
 // unversioned.
 static_assert(
-  !has_domain_version<specs::map::PointCloudMap>::value,
+  !tu::has_domain_version<specs::map::PointCloudMap>::value,
   "PointCloudMap must not resolve a domain version (raw point cloud, excluded from versioning)");
 // Positive control: a genuinely registered spec is still detected as versioned.
 static_assert(
-  has_domain_version<specs::map::VectorMap>::value, "VectorMap must resolve a domain version");
+  tu::has_domain_version<specs::map::VectorMap>::value, "VectorMap must resolve a domain version");
 
 TEST(map, concept_and_registration)
 {
@@ -86,41 +63,23 @@ TEST(map, concept_and_registration)
 TEST(map, interface)
 {
   {
-    using autoware::component_interface_specs::map::MapProjectorInfo;
-    size_t depth = 1;
-    EXPECT_EQ(MapProjectorInfo::depth, depth);
-    EXPECT_EQ(MapProjectorInfo::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(MapProjectorInfo::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
-
-    const auto qos = autoware::component_interface_specs::get_qos<MapProjectorInfo>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
+    using specs::map::MapProjectorInfo;
+    tu::expect_topic_qos<MapProjectorInfo>(
+      "/map/map_projector_info", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
   }
 
   {
-    using autoware::component_interface_specs::map::PointCloudMap;
-    size_t depth = 1;
-    EXPECT_EQ(PointCloudMap::depth, depth);
-    EXPECT_EQ(PointCloudMap::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(PointCloudMap::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
-
-    const auto qos = autoware::component_interface_specs::get_qos<PointCloudMap>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
+    using specs::map::PointCloudMap;
+    tu::expect_topic_qos<PointCloudMap>(
+      "/map/point_cloud_map", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
   }
 
   {
-    using autoware::component_interface_specs::map::VectorMap;
-    size_t depth = 1;
-    EXPECT_EQ(VectorMap::depth, depth);
-    EXPECT_EQ(VectorMap::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(VectorMap::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
-
-    const auto qos = autoware::component_interface_specs::get_qos<VectorMap>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
+    using specs::map::VectorMap;
+    tu::expect_topic_qos<VectorMap>(
+      "/map/vector_map", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
   }
 }
