@@ -47,13 +47,11 @@ TEST(system, concept_and_registration)
 {
   using specs::system::ChangeAutowareControl;
   using specs::system::ChangeOperationMode;
-  using specs::system::HazardStatus;
   using specs::system::MrmState;
   using specs::system::OperationModeState;
   using specs::system::Specs;
 
   static_assert(specs::InterfaceSpec<MrmState>);
-  static_assert(specs::InterfaceSpec<HazardStatus>);
   static_assert(specs::InterfaceSpec<OperationModeState>);
   static_assert(specs::ServiceSpec<ChangeOperationMode>);
   static_assert(specs::ServiceSpec<ChangeAutowareControl>);
@@ -62,8 +60,7 @@ TEST(system, concept_and_registration)
   static_assert(tu::has_type<ChangeOperationMode, Specs>::value);
   static_assert(tu::has_type<ChangeAutowareControl, Specs>::value);
   static_assert(tu::has_type<MrmState, Specs>::value);
-  static_assert(tu::has_type<HazardStatus, Specs>::value);
-  static_assert(std::tuple_size_v<Specs> == 5);
+  static_assert(std::tuple_size_v<Specs> == 4);
   SUCCEED();
 }
 
@@ -72,13 +69,5 @@ TEST(system, mrm_state_qos)
   using specs::system::MrmState;
   tu::expect_topic_qos<MrmState>(
     "/system/fail_safe/mrm_state", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
-    RMW_QOS_POLICY_DURABILITY_VOLATILE);
-}
-
-TEST(system, hazard_status_qos)
-{
-  using specs::system::HazardStatus;
-  tu::expect_topic_qos<HazardStatus>(
-    "/system/emergency/hazard_status", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
     RMW_QOS_POLICY_DURABILITY_VOLATILE);
 }
