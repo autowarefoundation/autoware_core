@@ -12,8 +12,51 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/planning.hpp"
+#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
+#include "spec_test_utils.hpp"
+
+#include <tuple>
+
+namespace specs = autoware::component_interface_specs;
+namespace tu = autoware::component_interface_specs::test_utils;
+
+TEST(planning, version)
+{
+  static_assert(specs::planning::version.major == 0);
+  static_assert(specs::planning::version.minor == 1);
+  static_assert(specs::planning::version.patch == 0);
+  EXPECT_EQ(specs::planning::version.major, 0);
+}
+
+TEST(planning, concept_and_registration)
+{
+  using specs::planning::ClearRoute;
+  using specs::planning::LaneletRoute;
+  using specs::planning::RouteState;
+  using specs::planning::SetLaneletRoute;
+  using specs::planning::SetWaypointRoute;
+  using specs::planning::Specs;
+  using specs::planning::Trajectory;
+
+  static_assert(specs::InterfaceSpec<Trajectory>);
+  static_assert(specs::InterfaceSpec<LaneletRoute>);
+  static_assert(specs::InterfaceSpec<RouteState>);
+  static_assert(specs::ServiceSpec<SetLaneletRoute>);
+  static_assert(specs::ServiceSpec<SetWaypointRoute>);
+  static_assert(specs::ServiceSpec<ClearRoute>);
+
+  static_assert(tu::has_type<Trajectory, Specs>::value);
+  static_assert(tu::has_type<LaneletRoute, Specs>::value);
+  static_assert(tu::has_type<RouteState, Specs>::value);
+  static_assert(tu::has_type<SetLaneletRoute, Specs>::value);
+  static_assert(tu::has_type<SetWaypointRoute, Specs>::value);
+  static_assert(tu::has_type<ClearRoute, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 6);
+  SUCCEED();
+}
 
 TEST(planning, interface)
 {
