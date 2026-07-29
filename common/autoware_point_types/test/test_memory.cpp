@@ -21,10 +21,12 @@
 
 namespace
 {
+using autoware::point_types::create_fields_point_xyzcpe;
 using autoware::point_types::create_fields_point_xyzi;
 using autoware::point_types::create_fields_point_xyziradrt;
 using autoware::point_types::create_fields_point_xyzirc;
 using autoware::point_types::create_fields_point_xyzircaedt;
+using autoware::point_types::is_data_layout_compatible_with_point_xyzcpe;
 using autoware::point_types::is_data_layout_compatible_with_point_xyzi;
 using autoware::point_types::is_data_layout_compatible_with_point_xyziradrt;
 using autoware::point_types::is_data_layout_compatible_with_point_xyzirc;
@@ -112,6 +114,37 @@ TEST(CreateFields, Xyzircaedt)
   EXPECT_EQ(fields[9].offset, offsetof(autoware::point_types::PointXYZIRCAEDT, time_stamp));
 }
 
+TEST(CreateFields, Xyzcpe)
+{
+  const auto fields = create_fields_point_xyzcpe();
+  ASSERT_EQ(fields.size(), 6U);
+
+  EXPECT_EQ(fields[0].name, "x");
+  EXPECT_EQ(fields[0].offset, offsetof(autoware::point_types::PointXYZCPE, x));
+  EXPECT_EQ(fields[0].datatype, PointField::FLOAT32);
+  EXPECT_EQ(fields[0].count, 1U);
+  EXPECT_EQ(fields[1].name, "y");
+  EXPECT_EQ(fields[1].offset, offsetof(autoware::point_types::PointXYZCPE, y));
+  EXPECT_EQ(fields[1].datatype, PointField::FLOAT32);
+  EXPECT_EQ(fields[1].count, 1U);
+  EXPECT_EQ(fields[2].name, "z");
+  EXPECT_EQ(fields[2].offset, offsetof(autoware::point_types::PointXYZCPE, z));
+  EXPECT_EQ(fields[2].datatype, PointField::FLOAT32);
+  EXPECT_EQ(fields[2].count, 1U);
+  EXPECT_EQ(fields[3].name, "class_id");
+  EXPECT_EQ(fields[3].offset, offsetof(autoware::point_types::PointXYZCPE, class_id));
+  EXPECT_EQ(fields[3].datatype, PointField::UINT8);
+  EXPECT_EQ(fields[3].count, 1U);
+  EXPECT_EQ(fields[4].name, "probability");
+  EXPECT_EQ(fields[4].offset, offsetof(autoware::point_types::PointXYZCPE, probability));
+  EXPECT_EQ(fields[4].datatype, PointField::FLOAT32);
+  EXPECT_EQ(fields[4].count, 1U);
+  EXPECT_EQ(fields[5].name, "entropy");
+  EXPECT_EQ(fields[5].offset, offsetof(autoware::point_types::PointXYZCPE, entropy));
+  EXPECT_EQ(fields[5].datatype, PointField::FLOAT32);
+  EXPECT_EQ(fields[5].count, 1U);
+}
+
 //
 // Round-trip: a freshly-created field layout must be reported compatible
 //
@@ -136,8 +169,13 @@ TEST(LayoutCompatibleRoundTrip, Xyzircaedt)
   EXPECT_TRUE(is_data_layout_compatible_with_point_xyzircaedt(create_fields_point_xyzircaedt()));
 }
 
+TEST(LayoutCompatibleRoundTrip, Xyzcpe)
+{
+  EXPECT_TRUE(is_data_layout_compatible_with_point_xyzcpe(create_fields_point_xyzcpe()));
+}
+
 //
-// The four functions are type-specific: a layout for one type must not match another
+// The functions are type-specific: a layout for one type must not match another
 //
 
 TEST(LayoutCompatibleCrossType, MismatchedTypesReturnFalse)
@@ -146,6 +184,7 @@ TEST(LayoutCompatibleCrossType, MismatchedTypesReturnFalse)
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzirc(create_fields_point_xyzi()));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyziradrt(create_fields_point_xyzi()));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzircaedt(create_fields_point_xyzi()));
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(create_fields_point_xyzi()));
 
   // xyzircaedt layout (10 fields, UINT8 intensity) -> not the others
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyziradrt(create_fields_point_xyzircaedt()));
@@ -173,12 +212,17 @@ TEST(LayoutCompatiblePointCloud2Overload, ForwardsToFields)
   cloud_xyzircaedt.fields = create_fields_point_xyzircaedt();
   EXPECT_TRUE(is_data_layout_compatible_with_point_xyzircaedt(cloud_xyzircaedt));
 
+  PointCloud2 cloud_xyzcpe;
+  cloud_xyzcpe.fields = create_fields_point_xyzcpe();
+  EXPECT_TRUE(is_data_layout_compatible_with_point_xyzcpe(cloud_xyzcpe));
+
   // empty cloud is not compatible with any
   PointCloud2 empty;
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzi(empty));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzirc(empty));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyziradrt(empty));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzircaedt(empty));
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(empty));
 }
 
 //
@@ -213,11 +257,35 @@ TEST(LayoutCompatibleNegative, WrongCount)
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzircaedt(fields));
 }
 
+TEST(LayoutCompatibleNegative, XyzcpeCorruptedFields)
+{
+  {
+    auto fields = create_fields_point_xyzcpe();
+    fields[3].name = "class";  // expected to be "class_id"
+    EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(fields));
+  }
+  {
+    auto fields = create_fields_point_xyzcpe();
+    fields[4].offset += 1U;
+    EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(fields));
+  }
+  {
+    auto fields = create_fields_point_xyzcpe();
+    fields[5].datatype = PointField::FLOAT64;
+    EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(fields));
+  }
+  {
+    auto fields = create_fields_point_xyzcpe();
+    fields[0].count = 2U;
+    EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(fields));
+  }
+}
+
 //
 // Field-count edge behavior. This pins the CURRENT contract, which intentionally
 // differs by type: xyzi/xyzirc/xyziradrt use a `size() < N` guard (extra trailing
-// fields are ignored and the cloud is still accepted), while xyzircaedt uses a
-// strict `size() != 10` guard (extra fields are rejected).
+// fields are ignored and the cloud is still accepted), while xyzircaedt/xyzcpe use
+// a strict field-count guard (extra fields are rejected).
 //
 
 TEST(LayoutCompatibleFieldCount, TooFewFieldsRejected)
@@ -242,9 +310,14 @@ TEST(LayoutCompatibleFieldCount, TooFewFieldsRejected)
     fields.pop_back();  // 9 != 10
     EXPECT_FALSE(is_data_layout_compatible_with_point_xyzircaedt(fields));
   }
+  {
+    auto fields = create_fields_point_xyzcpe();
+    fields.pop_back();  // 5 != 6
+    EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(fields));
+  }
 }
 
-TEST(LayoutCompatibleFieldCount, ExtraTrailingFieldsAcceptedExceptXyzircaedt)
+TEST(LayoutCompatibleFieldCount, ExtraTrailingFieldsFollowTypeSpecificPolicy)
 {
   // For the `< N` guard variants, an extra trailing field is ignored -> still compatible.
   {
@@ -267,5 +340,10 @@ TEST(LayoutCompatibleFieldCount, ExtraTrailingFieldsAcceptedExceptXyzircaedt)
     auto fields = create_fields_point_xyzircaedt();
     fields.emplace_back();  // 11 != 10
     EXPECT_FALSE(is_data_layout_compatible_with_point_xyzircaedt(fields));
+  }
+  {
+    auto fields = create_fields_point_xyzcpe();
+    fields.emplace_back();  // 7 != 6
+    EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(fields));
   }
 }
