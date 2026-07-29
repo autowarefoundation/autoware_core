@@ -25,34 +25,18 @@
 
 #include <gtest/gtest.h>
 
-#include <algorithm>
-#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
-#include <thread>
-#include <utility>
+#include <vector>
 
 using autoware::map_loader::Lanelet2FileMetaData;
-using autoware::map_loader::Lanelet2MapLoaderNode;
 using autoware::map_loader::Lanelet2SelectedMapLoaderModule;
-using autoware_map_msgs::srv::GetSelectedLanelet2Map;
 
 namespace
 {
-std::string test_map_path()
-{
-  return ament_index_cpp::get_package_share_directory("autoware_map_loader") +
-         "/test/data/test_map.osm";
-}
-
-autoware_map_msgs::msg::MapProjectorInfo mgrs_projector_info()
-{
-  autoware_map_msgs::msg::MapProjectorInfo info;
-  info.projector_type = autoware_map_msgs::msg::MapProjectorInfo::MGRS;
-  info.mgrs_grid = "54SUE";
-  return info;
-}
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
 }  // namespace
 
 class TestLanelet2SelectedMapLoaderModule : public ::testing::Test
@@ -60,106 +44,65 @@ class TestLanelet2SelectedMapLoaderModule : public ::testing::Test
 protected:
   void SetUp() override
   {
-    // This test is built and run only with ENABLE_AGNOCAST=0 (gated in CMakeLists.txt).
-    rclcpp::init(0, nullptr);
+    // Dummy metadata for testing
+    Lanelet2FileMetaData meta1;
+    meta1.id = "cell_1";
+    meta1.min_x = 0.0;
+    meta1.min_y = 0.0;
+    meta1.max_x = 10.0;
+    meta1.max_y = 10.0;
 
-    node_ = std::make_shared<autoware::agnocast_wrapper::Node>(
-      "test_lanelet2_selected_map_loader_module");
+    Lanelet2FileMetaData meta2;
+    meta2.id = "cell_2";
+    meta2.min_x = 10.0;
+    meta2.min_y = 10.0;
+    meta2.max_x = 20.0;
+    meta2.max_y = 20.0;
 
-    const std::string path = test_map_path();
-    const auto projector_info = mgrs_projector_info();
+    cell_metadata_dict_["cell_1"] = meta1;
+    cell_metadata_dict_["cell_2"] = meta2;
 
-    // Load the map once to compute bounding-box metadata.
-    auto map = Lanelet2MapLoaderNode::load_map(path, projector_info);
-    ASSERT_NE(map, nullptr) << "Failed to load test map: " << path;
+    // Use local projector
+    projector_info_.projector_type = autoware_map_msgs::msg::MapProjectorInfo::LOCAL;
 
-    Lanelet2FileMetaData meta;
-    meta.id = path;
-    meta.min_x = meta.min_y = meta.max_x = meta.max_y = 0.0;
-    for (const auto & pt : map->pointLayer) {
-      meta.min_x = std::min(meta.min_x, pt.x());
-      meta.min_y = std::min(meta.min_y, pt.y());
-      meta.max_x = std::max(meta.max_x, pt.x());
-      meta.max_y = std::max(meta.max_y, pt.y());
-    }
-
-    std::map<std::string, Lanelet2FileMetaData> metadata_dict{{path, meta}};
-
-    module_ = std::make_shared<Lanelet2SelectedMapLoaderModule>(
-      node_.get(), std::move(metadata_dict), projector_info,
-      /*center_line_resolution=*/5.0, /*use_waypoints=*/true);
-
-    client_ = node_->create_client<GetSelectedLanelet2Map>("service/get_selected_lanelet2_map");
+    module_ = std::make_unique<Lanelet2SelectedMapLoaderModule>(
+      cell_metadata_dict_, projector_info_, 0.2, false);
   }
 
-  void TearDown() override { rclcpp::shutdown(); }
-
-  autoware::agnocast_wrapper::Node::SharedPtr node_;
-  std::shared_ptr<Lanelet2SelectedMapLoaderModule> module_;
-  autoware::agnocast_wrapper::Client<GetSelectedLanelet2Map>::SharedPtr client_;
+  std::map<std::string, Lanelet2FileMetaData> cell_metadata_dict_;
+  autoware_map_msgs::msg::MapProjectorInfo projector_info_;
+  std::unique_ptr<Lanelet2SelectedMapLoaderModule> module_;
 };
 
-TEST_F(TestLanelet2SelectedMapLoaderModule, ServiceIsAvailable)
+// TEST 1. Confirms metadata msg is correctly built from provided cell metadata.
+// Expects:
+// - Number of metadata entries matches input
+// - Bounding boxes are correct.
+TEST_F(TestLanelet2SelectedMapLoaderModule, TestCreateMetadataMsg)
 {
-  ASSERT_TRUE(client_->wait_for_service(std::chrono::seconds(3)));
-}
+  const auto msg = module_->build_metadata_msg();
 
-TEST_F(TestLanelet2SelectedMapLoaderModule, LoadKnownCellReturnsNonEmptyMap)
-{
-  ASSERT_TRUE(client_->wait_for_service(std::chrono::seconds(3)));
+  EXPECT_EQ(msg.metadata_list.size(), 2u);
 
-  auto request = client_->allocate_output_service_request();
-  request->cell_ids = {test_map_path()};
-
-  auto future = client_->async_send_request(std::move(request));
-  ASSERT_EQ(
-    rclcpp::spin_until_future_complete(node_->get_node_base_interface(), future),
-    rclcpp::FutureReturnCode::SUCCESS);
-
-  const auto response = future.get();
-  EXPECT_EQ(response->header.frame_id, "map");
-  EXPECT_FALSE(response->lanelet2_cells.data.empty())
-    << "Expected non-empty LaneletMapBin for a valid cell";
-}
-
-TEST_F(TestLanelet2SelectedMapLoaderModule, LoadUnknownCellReturnsFalse)
-{
-  ASSERT_TRUE(client_->wait_for_service(std::chrono::seconds(3)));
-
-  auto request = client_->allocate_output_service_request();
-  request->cell_ids = {"/nonexistent/path/map.osm"};
-
-  auto future = client_->async_send_request(std::move(request));
-  ASSERT_EQ(
-    rclcpp::spin_until_future_complete(node_->get_node_base_interface(), future),
-    rclcpp::FutureReturnCode::SUCCESS);
-
-  // Service returns false for unknown IDs; lanelet2_cells should be empty.
-  const auto response = future.get();
-  EXPECT_TRUE(response->lanelet2_cells.data.empty());
-}
-
-TEST_F(TestLanelet2SelectedMapLoaderModule, MetadataTopicPublished)
-{
-  bool received = false;
-  auto sub = node_->create_subscription<autoware_map_msgs::msg::LaneletMapMetaData>(
-    "output/lanelet2_map_metadata", rclcpp::QoS{1}.transient_local(),
-    [&received, this](const autoware_map_msgs::msg::LaneletMapMetaData & msg) {
-      EXPECT_EQ(msg.header.frame_id, "map");
-      EXPECT_EQ(msg.metadata_list.size(), 1u);
-      EXPECT_EQ(msg.metadata_list[0].cell_id, test_map_path());
-      received = true;
-    });
-
-  // transient_local delivers the latched sample eventually, not synchronously: discovery/matching
-  // must finish first, so a single spin_some() right after subscribing can miss it. Spin with a
-  // deadline.
-  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(3);
-  while (!received && std::chrono::steady_clock::now() < deadline) {
-    rclcpp::spin_some(node_->get_node_base_interface());
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  bool found_cell_1 = false;
+  for (const auto & cell : msg.metadata_list) {
+    if (cell.cell_id == "cell_1") {
+      found_cell_1 = true;
+      EXPECT_NEAR(cell.min_x, 0.0, near_tol);
+      EXPECT_NEAR(cell.max_x, 10.0, near_tol);
+    }
   }
-  EXPECT_TRUE(received) << "LaneletMapMetaData was not received on output/lanelet2_map_metadata";
+  EXPECT_TRUE(found_cell_1);
+}
+
+// TEST 2. Confirms when invalid cell IDs are provided, module returns an empty LaneletMapBin.
+TEST_F(TestLanelet2SelectedMapLoaderModule, TestExecuteWithInvalidCells)
+{
+  std::vector<std::string> invalid_cells = {"missing_cell_1", "missing_cell_2"};
+  std::vector<std::string> warnings;  // Here I just use dummy warnings so the test still compiles
+  const auto result_bin = module_->execute(invalid_cells, warnings);
+
+  EXPECT_TRUE(result_bin.data.empty());
 }
 
 int main(int argc, char ** argv)

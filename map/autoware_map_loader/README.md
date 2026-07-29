@@ -137,6 +137,10 @@ Please see [autoware_map_msgs/msg/MapProjectorInfo.msg](https://github.com/autow
 `lanelet2_map_path` can point to either a single `.osm` file or a directory.
 When a directory is given, all `.osm` files inside are loaded and merged into a single map before publishing.
 
+If no `.osm` file is found at `lanelet2_map_path`, the node throws and exits.
+Invalid configuration is treated as fail-fast so that operators notice and
+fix it (consistent with the missing-metadata and unsupported-version cases).
+
 #### Cell metadata
 
 The node always builds a per-cell bounding-box dictionary at startup so that
