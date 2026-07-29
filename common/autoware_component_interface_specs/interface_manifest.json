@@ -237,6 +237,19 @@
     },
     {
       "domain": "vehicle",
+      "interface": "/vehicle/status/velocity_status",
+      "type": "autoware_vehicle_msgs/msg/VelocityReport",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "vehicle",
       "interface": "/vehicle/status/steering_status",
       "type": "autoware_vehicle_msgs/msg/SteeringReport",
       "kind": "topic",

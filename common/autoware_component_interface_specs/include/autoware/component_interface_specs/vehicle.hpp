@@ -24,11 +24,21 @@
 #include <autoware_vehicle_msgs/msg/hazard_lights_report.hpp>
 #include <autoware_vehicle_msgs/msg/steering_report.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_report.hpp>
+#include <autoware_vehicle_msgs/msg/velocity_report.hpp>
 
 #include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::vehicle
 {
+
+struct VelocityStatus  // new spec (largest gap; consumed by every domain)
+{
+  using Message = autoware_vehicle_msgs::msg::VelocityReport;
+  static constexpr char name[] = "/vehicle/status/velocity_status";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
 
 struct SteeringStatus
 {
@@ -67,7 +77,7 @@ struct HazardLightStatus
 };
 
 AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
-  0, 1, 0, SteeringStatus, GearStatus, TurnIndicatorStatus, HazardLightStatus)
+  0, 1, 0, VelocityStatus, SteeringStatus, GearStatus, TurnIndicatorStatus, HazardLightStatus)
 
 }  // namespace autoware::component_interface_specs::vehicle
 
