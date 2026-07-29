@@ -412,7 +412,7 @@ template <class M>
 class Subscriber
 {
 public:
-  using Base = ::message_filters::Subscriber<M, rclcpp::Node>;
+  using RclcppSubscriber = ::message_filters::Subscriber<M, rclcpp::Node>;
 
   Subscriber() = default;
 
@@ -432,12 +432,12 @@ public:
 
   void unsubscribe() { sub_.unsubscribe(); }
 
-  // Internal API: used by Synchronizer to connect the underlying filter.
+  // Internal API: used by PolicySynchronizer.
   // Not intended for downstream use.
-  Base & rclcpp_subscriber() { return sub_; }
+  RclcppSubscriber & rclcpp_subscriber() { return sub_; }
 
 private:
-  Base sub_;
+  RclcppSubscriber sub_;
 };
 
 /// @brief Policy tags mirroring the Agnocast build. Carry only the queue size; the underlying
@@ -467,8 +467,8 @@ class Synchronizer
 {
   static_assert(
     sizeof(Policy) == 0,
-    "Only sync_policies::ApproximateTime<Ms...> and sync_policies::ExactTime<Ms...> are "
-    "supported.");
+    "Only sync_policies::ApproximateTime<Ms...> and sync_policies::ExactTime<Ms...> "
+    "are supported (2..8 message types).");
 };
 
 /// @brief Common synchronizer wrapper parameterized by the underlying upstream policy
@@ -478,50 +478,139 @@ class Synchronizer
 /// Exposes only the constructor (policy + Subscriber refs) and registerCallback, instead of
 /// aliasing ::message_filters::Synchronizer directly. This keeps the surface identical to the
 /// Agnocast build (e.g. connectInput stays unsupported in both), so code compiles under both
-/// ENABLE_AGNOCAST=0 and =1. The callback receives `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)&
-/// ...)`, which in this build is `std::shared_ptr<const Ms>` — exactly what upstream delivers, so
-/// the callable is forwarded to the underlying synchronizer unchanged.
+/// ENABLE_AGNOCAST=0 and =1.
+///
+/// Registration mirrors the Agnocast build: the user callable is first coerced into `Callback`
+/// and then registered through a per-registration adapter. Forwarding the callable to upstream
+/// directly would be narrower than the Agnocast build, because upstream's
+/// `Signal9::addCallback` always binds nine placeholders and therefore rejects a plain
+/// N-argument lambda or std::function.
+///
+/// @tparam UpstreamPolicy ::message_filters sync policy type (e.g.
+///                        ::message_filters::sync_policies::ApproximateTime<Ms...>).
+/// @tparam Ms             Message types to synchronize (2..8).
 template <typename UpstreamPolicy, typename... Ms>
 class PolicySynchronizer
 {
+  static_assert(
+    sizeof...(Ms) >= 2 && sizeof...(Ms) <= 8,
+    "PolicySynchronizer supports 2 to 8 message types (upstream Signal9 has no "
+    "9-arg MFP overload, which the wrapper relies on for registration).");
+
 public:
+  using Callback = std::function<void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...)>;
+
   PolicySynchronizer(uint32_t queue_size, Subscriber<Ms> &... subs)
   : sync_(UpstreamPolicy(queue_size), subs.rclcpp_subscriber()...)
   {
   }
 
-  // Non-copyable and non-movable: the underlying synchronizer holds connections into the
-  // supplied subscribers, so its address must stay stable for the registrations' lifetime.
+  // Non-copyable and non-movable: upstream holds raw pointers into this object
+  // (see CallbackAdapter), so its address must stay stable for the registrations' lifetime.
+  ~PolicySynchronizer() = default;
   PolicySynchronizer(const PolicySynchronizer &) = delete;
   PolicySynchronizer & operator=(const PolicySynchronizer &) = delete;
   PolicySynchronizer(PolicySynchronizer &&) = delete;
   PolicySynchronizer & operator=(PolicySynchronizer &&) = delete;
 
+  /// @brief Register a callable for each matching tuple. Mirrors the four upstream
+  ///        `::message_filters::Synchronizer::registerCallback` overloads (free callable
+  ///        or member-fn-ptr + instance; const and non-const).
+  ///
+  /// Signature: `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) &...)`.
+  /// Returns `::message_filters::Connection` whose `.disconnect()` removes THIS callable
+  /// only (not RAII — scope exit does NOT unregister).
   template <class C>
   ::message_filters::Connection registerCallback(C & callback)
   {
-    return sync_.registerCallback(callback);
+    return registerCallbackInternal(Callback(callback));
   }
 
   template <class C>
   ::message_filters::Connection registerCallback(const C & callback)
   {
-    return sync_.registerCallback(callback);
+    return registerCallbackInternal(Callback(callback));
   }
 
   template <class C, typename T>
   ::message_filters::Connection registerCallback(C & callback, T * t)
   {
-    return sync_.registerCallback(callback, t);
+    return registerCallbackInternal(bindMemberCallback(callback, t));
   }
 
   template <class C, typename T>
   ::message_filters::Connection registerCallback(const C & callback, T * t)
   {
-    return sync_.registerCallback(callback, t);
+    return registerCallbackInternal(bindMemberCallback(callback, t));
   }
 
 private:
+  // Per-registration adapter: owns the user callable and gives upstream a member-fn-ptr with
+  // exactly sizeof...(Ms) parameters, which is the only shape upstream can register without
+  // requiring the callable itself to swallow nine arguments. Upstream keeps only a raw pointer
+  // (adapter.get()), so it is held in `adapters_` to keep it alive.
+  struct CallbackAdapter
+  {
+    Callback fn;
+
+    // In this build AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) is std::shared_ptr<const M>, i.e.
+    // exactly what upstream delivers, so no conversion is needed here.
+    void rclcppInvoke(const typename Ms::ConstSharedPtr &... ms) { fn(ms...); }
+  };
+
+  using AdapterPtr = std::unique_ptr<CallbackAdapter>;
+
+  template <class C, typename T>
+  static Callback bindMemberCallback(C && callback, T * t)
+  {
+    return Callback{
+      [callback = std::forward<C>(callback),
+       t](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ... ms) { (t->*callback)(ms...); }};
+  }
+
+  ::message_filters::Connection registerCallbackInternal(Callback && callback)
+  {
+    auto adapter = std::make_unique<CallbackAdapter>();
+    adapter->fn = std::move(callback);
+    auto * const adapter_raw = adapter.get();
+
+    auto upstream_conn = sync_.registerCallback(&CallbackAdapter::rclcppInvoke, adapter_raw);
+
+    // Upstream now holds `adapter_raw`; any throw before return would leave it
+    // dangling (Connection's dtor does not auto-disconnect). `upstream_conn` is
+    // copy-captured (not moved) so the catch handler still has a live local if
+    // the closure / Connection construction throws.
+    try {
+      {
+        std::lock_guard<std::mutex> lock(adapters_mutex_);
+        adapters_.push_back(std::move(adapter));
+      }
+
+      return ::message_filters::Connection(
+        ::message_filters::Connection::VoidDisconnectFunction(
+          [this, adapter_raw, upstream_conn]() mutable {
+            upstream_conn.disconnect();
+            std::lock_guard<std::mutex> lock(adapters_mutex_);
+            adapters_.erase(
+              std::remove_if(
+                adapters_.begin(), adapters_.end(),
+                [adapter_raw](const AdapterPtr & p) { return p.get() == adapter_raw; }),
+              adapters_.end());
+          }));
+    } catch (...) {
+      upstream_conn.disconnect();
+      std::lock_guard<std::mutex> lock(adapters_mutex_);
+      adapters_.erase(
+        std::remove_if(
+          adapters_.begin(), adapters_.end(),
+          [adapter_raw](const AdapterPtr & p) { return p.get() == adapter_raw; }),
+        adapters_.end());
+      throw;
+    }
+  }
+
+  std::mutex adapters_mutex_;
+  std::vector<AdapterPtr> adapters_;
   ::message_filters::Synchronizer<UpstreamPolicy> sync_;
 };
 
