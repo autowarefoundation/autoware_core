@@ -119,6 +119,32 @@
       }
     },
     {
+      "domain": "perception",
+      "interface": "/perception/traffic_light_recognition/traffic_signals",
+      "type": "autoware_perception_msgs/msg/TrafficLightGroupArray",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "perception",
+      "interface": "/perception/object_recognition/detection/objects",
+      "type": "autoware_perception_msgs/msg/DetectedObjects",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
       "domain": "planning",
       "interface": "/planning/set_lanelet_route",
       "type": "autoware_planning_msgs/srv/SetLaneletRoute",

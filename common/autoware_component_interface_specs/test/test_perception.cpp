@@ -12,8 +12,42 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/perception.hpp"
+#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
+#include "spec_test_utils.hpp"
+
+#include <tuple>
+
+namespace specs = autoware::component_interface_specs;
+namespace tu = autoware::component_interface_specs::test_utils;
+
+TEST(perception, version)
+{
+  static_assert(specs::perception::version.major == 0);
+  static_assert(specs::perception::version.minor == 1);
+  static_assert(specs::perception::version.patch == 0);
+  EXPECT_EQ(specs::perception::version.major, 0);
+}
+
+TEST(perception, concept_and_registration)
+{
+  using specs::perception::DetectedObjects;
+  using specs::perception::ObjectRecognition;
+  using specs::perception::Specs;
+  using specs::perception::TrafficSignals;
+
+  static_assert(specs::InterfaceSpec<ObjectRecognition>);
+  static_assert(specs::InterfaceSpec<TrafficSignals>);
+  static_assert(specs::InterfaceSpec<DetectedObjects>);
+
+  static_assert(tu::has_type<ObjectRecognition, Specs>::value);
+  static_assert(tu::has_type<TrafficSignals, Specs>::value);
+  static_assert(tu::has_type<DetectedObjects, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 3);
+  SUCCEED();
+}
 
 TEST(perception, interface)
 {
@@ -29,4 +63,20 @@ TEST(perception, interface)
     EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
     EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
   }
+}
+
+TEST(perception, traffic_signals_qos)
+{
+  using specs::perception::TrafficSignals;
+  tu::expect_topic_qos<TrafficSignals>(
+    "/perception/traffic_light_recognition/traffic_signals", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+    RMW_QOS_POLICY_DURABILITY_VOLATILE);
+}
+
+TEST(perception, detected_objects_qos)
+{
+  using specs::perception::DetectedObjects;
+  tu::expect_topic_qos<DetectedObjects>(
+    "/perception/object_recognition/detection/objects", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+    RMW_QOS_POLICY_DURABILITY_VOLATILE);
 }
