@@ -12,8 +12,45 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/localization.hpp"
+#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
+#include "spec_test_utils.hpp"
+
+#include <tuple>
+
+namespace specs = autoware::component_interface_specs;
+namespace tu = autoware::component_interface_specs::test_utils;
+
+TEST(localization, version)
+{
+  static_assert(specs::localization::version.major == 0);
+  static_assert(specs::localization::version.minor == 1);
+  static_assert(specs::localization::version.patch == 0);
+  EXPECT_EQ(specs::localization::version.major, 0);
+}
+
+TEST(localization, concept_and_registration)
+{
+  using specs::localization::Acceleration;
+  using specs::localization::InitializationState;
+  using specs::localization::Initialize;
+  using specs::localization::KinematicState;
+  using specs::localization::Specs;
+
+  static_assert(specs::InterfaceSpec<KinematicState>);
+  static_assert(specs::InterfaceSpec<Acceleration>);
+  static_assert(specs::InterfaceSpec<InitializationState>);
+  static_assert(specs::ServiceSpec<Initialize>);
+
+  static_assert(tu::has_type<KinematicState, Specs>::value);
+  static_assert(tu::has_type<Acceleration, Specs>::value);
+  static_assert(tu::has_type<InitializationState, Specs>::value);
+  static_assert(tu::has_type<Initialize, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 4);
+  SUCCEED();
+}
 
 TEST(localization, interface)
 {
