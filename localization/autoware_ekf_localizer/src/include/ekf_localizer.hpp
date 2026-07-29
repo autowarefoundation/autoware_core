@@ -122,8 +122,8 @@ private:
 
   double ekf_dt_;
 
-  bool is_activated_;
-  bool is_set_initialpose_;
+  std::atomic<bool> is_activated_{false};
+  std::atomic<bool> is_set_initialpose_{false};
 
   EKFDiagnosticInfo pose_diag_info_;
   EKFDiagnosticInfo twist_diag_info_;

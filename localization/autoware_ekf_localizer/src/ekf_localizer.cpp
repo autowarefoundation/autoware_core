@@ -58,8 +58,6 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   cb_group_twist_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
   merged_diagnostic_last_transition_time_(0, 0, RCL_ROS_TIME)
 {
-  is_activated_ = false;
-  is_set_initialpose_ = false;
   merged_diagnostic_status_.level = diagnostic_msgs::msg::DiagnosticStatus::OK;
   merged_diagnostic_status_.message = "OK";
 
@@ -155,7 +153,7 @@ void EKFLocalizer::timer_callback()
       pose_queue_tmp_.pop();
     }
   }
-  if (pose_queue_.exceeded()) {
+  while (pose_queue_.exceeded()) {
     warning_->warn_throttle(
       fmt::format(
         "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
@@ -171,7 +169,7 @@ void EKFLocalizer::timer_callback()
       twist_queue_tmp_.pop();
     }
   }
-  if (twist_queue_.exceeded()) {
+  while (twist_queue_.exceeded()) {
     warning_->warn_throttle(
       fmt::format(
         "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
@@ -379,9 +377,23 @@ void EKFLocalizer::callback_pose_with_covariance(
 
   auto pose_msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(*msg);
 
+  size_t dropped = 0;
   {
     std::lock_guard<std::mutex> lock(pose_mtx_);
     pose_queue_tmp_.push(pose_msg);
+    while (pose_queue_tmp_.size() > pose_queue_.max_queue_size()) {
+      pose_queue_tmp_.pop();
+      ++dropped;
+    }
+  }
+  if (dropped > 0) {
+    warning_->warn_throttle(
+      fmt::format(
+        "[EKF] Pose staging queue is exceeding max_queue_size ({}); dropped {} oldest message(s). "
+        "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
+        "frequency.",
+        pose_queue_.max_queue_size(), dropped),
+      2000);
   }
 
   last_pose_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
@@ -401,9 +413,23 @@ void EKFLocalizer::callback_twist_with_covariance(
     twist_msg->twist.covariance[0 * 6 + 0] = 10000.0;
   }
 
+  size_t dropped = 0;
   {
     std::lock_guard<std::mutex> lock(twist_mtx_);
     twist_queue_tmp_.push(twist_msg);
+    while (twist_queue_tmp_.size() > twist_queue_.max_queue_size()) {
+      twist_queue_tmp_.pop();
+      ++dropped;
+    }
+  }
+  if (dropped > 0) {
+    warning_->warn_throttle(
+      fmt::format(
+        "[EKF] Twist staging queue is exceeding max_queue_size ({}); dropped {} oldest message(s). "
+        "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
+        "frequency.",
+        twist_queue_.max_queue_size(), dropped),
+      2000);
   }
 
   last_twist_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
