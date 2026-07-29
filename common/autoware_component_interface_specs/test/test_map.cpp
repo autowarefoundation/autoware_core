@@ -28,10 +28,11 @@ namespace tu = autoware::component_interface_specs::test_utils;
 // Local mirror of universe's HasDomainVersion: a void_t/expression-SFINAE probe over
 // the ADL-resolved resolve_domain_version(const Spec &). Downstream consumers use
 // exactly this shape to decide whether a spec participates in versioned interface
-// registration, so PointCloudMap's heavy-raw confinement (design section 5) must be
-// type-enforced here as an ill-formed version resolution, not merely as a tuple
-// omission. Otherwise a consumer registering PointCloudMap would emit a manifest
-// record for an interface absent from the authority manifest.
+// registration, so PointCloudMap's exclusion (it carries a raw point cloud payload
+// rather than a bounded interface message) must be type-enforced here as an
+// ill-formed version resolution, not merely as a tuple omission. Otherwise a
+// consumer registering PointCloudMap would emit a manifest record for an interface
+// absent from the authority manifest.
 namespace
 {
 template <class, class = void>
@@ -50,7 +51,7 @@ struct has_domain_version<
 // unversioned.
 static_assert(
   !has_domain_version<specs::map::PointCloudMap>::value,
-  "PointCloudMap must not resolve a domain version (heavy-raw confinement, design section 5)");
+  "PointCloudMap must not resolve a domain version (raw point cloud, excluded from versioning)");
 // Positive control: a genuinely registered spec is still detected as versioned.
 static_assert(
   has_domain_version<specs::map::VectorMap>::value, "VectorMap must resolve a domain version");
@@ -84,16 +85,17 @@ TEST(map, concept_and_registration)
   static_assert(std::tuple_size_v<Specs> == 4);
 
   // PointCloudMap stays available to existing consumers but is deliberately kept
-  // out of the versioned registration surface (heavy-raw confinement, design section 5).
+  // out of the versioned registration surface because it carries a raw point cloud
+  // payload rather than a bounded interface message.
   static_assert(!tu::has_type<PointCloudMap, Specs>::value);
   SUCCEED();
 }
 
 TEST(map, point_cloud_map_version_is_type_enforced)
 {
-  // The heavy-raw confinement of PointCloudMap is enforced through the version
-  // resolution hook, not just by omission from the Specs tuple: a downstream
-  // detection trait (universe's HasDomainVersion) must see it as unversioned.
+  // PointCloudMap's exclusion is enforced through the version resolution hook, not
+  // just by omission from the Specs tuple: a downstream detection trait (universe's
+  // HasDomainVersion) must see it as unversioned.
   EXPECT_FALSE(has_domain_version<specs::map::PointCloudMap>::value);
   EXPECT_TRUE(has_domain_version<specs::map::VectorMap>::value);
 }

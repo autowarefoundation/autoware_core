@@ -38,7 +38,7 @@ struct MapProjectorInfo
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
 };
 
-// interface-spec-lint: not-versioned (heavy-raw confinement, design section 5)
+// interface-spec-lint: not-versioned (raw point cloud; read by autoware_interface_spec_lint)
 struct PointCloudMap
 {
   using Message = sensor_msgs::msg::PointCloud2;
@@ -69,20 +69,23 @@ struct GetPartialPointCloudMap  // new - companion PCD-map delivery path
   static constexpr char name[] = "/map/get_partial_pointcloud_map";
 };
 
-// PointCloudMap is intentionally excluded: heavy-raw confinement (design section 5)
-// keeps the full point cloud map out of the versioned registration surface while
-// the struct itself stays available for existing consumers.
+// PointCloudMap is intentionally excluded from the versioned registration surface:
+// it carries the full raw point cloud payload rather than a bounded interface
+// message, so it is left out of the Specs tuple while the struct itself stays
+// available for existing consumers.
 AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
   0, 1, 0, VectorMap, MapProjectorInfo, GetDifferentialPointCloudMap, GetPartialPointCloudMap)
 
-// Type-enforce PointCloudMap's exclusion from the versioned surface (heavy-raw
-// confinement, design section 5). This non-template exact match wins overload
-// resolution over the template above, so version resolution is ill-formed for
-// PointCloudMap: a downstream detection trait (e.g. universe's HasDomainVersion)
-// then sees it as unversioned, and a direct spec_version<PointCloudMap>() is a hard
-// compile error. Without this the exclusion would be a tuple omission only, and a
-// consumer could still register PointCloudMap and emit a manifest record for an
-// interface absent from the authority manifest.
+// Type-enforce PointCloudMap's exclusion from the versioned surface: it carries a
+// raw point cloud payload rather than a bounded interface message, so version
+// resolution for it is made ill-formed outright rather than left as a tuple
+// omission. This non-template exact match wins overload resolution over the
+// template above, so version resolution is ill-formed for PointCloudMap: a
+// downstream detection trait (e.g. universe's HasDomainVersion) then sees it as
+// unversioned, and a direct spec_version<PointCloudMap>() is a hard compile error.
+// Without this the exclusion would be a tuple omission only, and a consumer could
+// still register PointCloudMap and emit a manifest record for an interface absent
+// from the authority manifest.
 constexpr Version resolve_domain_version(const PointCloudMap &) = delete;
 
 }  // namespace autoware::component_interface_specs::map
