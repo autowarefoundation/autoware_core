@@ -16,13 +16,11 @@
 #include "autoware/velocity_smoother/smoother/smoother_base.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <autoware/agnocast_wrapper/node.hpp>
 
 #include <gtest/gtest.h>
 
 #include <limits>
 #include <memory>
-#include <string>
 #include <vector>
 
 using autoware::velocity_smoother::JerkFilteredSmoother;
@@ -49,8 +47,7 @@ protected:
        "--params-file", velocity_smoother_dir + "/config/default_velocity_smoother.param.yaml",
        "--params-file", velocity_smoother_dir + "/config/default_common.param.yaml",
        "--params-file", velocity_smoother_dir + "/config/JerkFiltered.param.yaml"});
-    node =
-      std::make_shared<autoware::agnocast_wrapper::Node>("test_smoother_base_node", node_options);
+    node = std::make_shared<rclcpp::Node>("test_smoother_base_node", node_options);
 
     auto time_keeper =
       std::make_shared<autoware_utils_debug::TimeKeeper>(debug_processing_time_detail_);
@@ -87,7 +84,7 @@ protected:
 
   void TearDown() override { rclcpp::shutdown(); }
 
-  std::shared_ptr<autoware::agnocast_wrapper::Node> node;
+  std::shared_ptr<rclcpp::Node> node;
   std::shared_ptr<JerkFilteredSmoother> smoother_base;
   rclcpp::Publisher<autoware_utils_debug::ProcessingTimeDetail>::SharedPtr
     debug_processing_time_detail_;

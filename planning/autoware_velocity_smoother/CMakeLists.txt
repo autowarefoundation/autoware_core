@@ -51,6 +51,13 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_node
 )
 
 if(BUILD_TESTING)
+  ament_add_ros_isolated_gmock(test_smoother_base_functions
+  test/test_smoother_base_functions.cpp
+  )
+  target_link_libraries(test_smoother_base_functions
+  smoother
+  ${PROJECT_NAME}_node
+  )
   ament_add_ros_isolated_gmock(test_smoother_functions
   test/test_resample.cpp
   test/test_smoother_functions.cpp
@@ -65,13 +72,6 @@ if(BUILD_TESTING)
   smoother
   )
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
-    ament_add_ros_isolated_gmock(test_smoother_base_functions
-    test/test_smoother_base_functions.cpp
-    )
-    target_link_libraries(test_smoother_base_functions
-    smoother
-    ${PROJECT_NAME}_node
-    )
     ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
       test/test_velocity_smoother_node_interface.cpp
     )
