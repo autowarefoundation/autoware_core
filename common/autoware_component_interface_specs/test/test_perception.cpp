@@ -14,7 +14,6 @@
 
 #include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/perception.hpp"
-#include "autoware/component_interface_specs/version.hpp"
 #include "gtest/gtest.h"
 #include "spec_test_utils.hpp"
 
@@ -43,16 +42,8 @@ TEST(perception, concept_and_registration)
 
 TEST(perception, interface)
 {
-  {
-    using autoware::component_interface_specs::perception::ObjectRecognition;
-    size_t depth = 1;
-    EXPECT_EQ(ObjectRecognition::depth, depth);
-    EXPECT_EQ(ObjectRecognition::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(ObjectRecognition::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
-
-    const auto qos = autoware::component_interface_specs::get_qos<ObjectRecognition>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
-  }
+  using specs::perception::ObjectRecognition;
+  tu::expect_topic_qos<ObjectRecognition>(
+    "/perception/object_recognition/objects", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+    RMW_QOS_POLICY_DURABILITY_VOLATILE);
 }
