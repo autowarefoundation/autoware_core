@@ -32,7 +32,6 @@
 #include <autoware_adapi_v1_msgs/srv/set_route_points.hpp>
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
-#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
 #include <memory>
@@ -57,7 +56,6 @@ using autoware_planning_msgs::srv::ClearRoute;
 using autoware_planning_msgs::srv::SetLaneletRoute;
 using autoware_planning_msgs::srv::SetWaypointRoute;
 using geometry_msgs::msg::Pose;
-using geometry_msgs::msg::PoseStamped;
 using nav_msgs::msg::Odometry;
 using std_msgs::msg::Header;
 using unique_identifier_msgs::msg::UUID;
@@ -67,10 +65,23 @@ class MissionPlanner : public rclcpp::Node
 {
 public:
   explicit MissionPlanner(const rclcpp::NodeOptions & options);
+
+private:
+  // Publishes the processing time on destruction, regardless of which return path is taken.
+  class ScopedProcessingTimePublisher
+  {
+  public:
+    explicit ScopedProcessingTimePublisher(MissionPlanner & node) : node_(node) {}
+    ~ScopedProcessingTimePublisher() { node_.publish_processing_time(stop_watch_); }
+
+  private:
+    MissionPlanner & node_;
+    autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
+  };
+
   void publish_processing_time(
     autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
 
-private:
   ArrivalChecker arrival_checker_;
   pluginlib::ClassLoader<PlannerPlugin> plugin_loader_;
   std::shared_ptr<PlannerPlugin> planner_;

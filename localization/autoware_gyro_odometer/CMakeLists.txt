@@ -12,27 +12,42 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 target_link_libraries(${PROJECT_NAME} fmt)
 
 if(BUILD_TESTING)
-  ament_add_ros_isolated_gtest(test_gyro_odometer
+  ament_add_ros_isolated_gtest(test_gyro_odometer_fusion
     test/test_main.cpp
-    test/test_gyro_odometer_pubsub.cpp
-    test/test_gyro_odometer_helper.cpp
     test/test_gyro_odometer_fusion.cpp
   )
-  ament_target_dependencies(test_gyro_odometer
+  ament_target_dependencies(test_gyro_odometer_fusion
     rclcpp
   )
-  target_link_libraries(test_gyro_odometer
+  target_link_libraries(test_gyro_odometer_fusion
     ${PROJECT_NAME}
   )
-  target_include_directories(test_gyro_odometer PRIVATE
+  target_include_directories(test_gyro_odometer_fusion PRIVATE
     src
   )
+
+  if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+    ament_add_ros_isolated_gtest(test_gyro_odometer
+      test/test_main.cpp
+      test/test_gyro_odometer_pubsub.cpp
+      test/test_gyro_odometer_helper.cpp
+    )
+    ament_target_dependencies(test_gyro_odometer
+      rclcpp
+    )
+    target_link_libraries(test_gyro_odometer
+      ${PROJECT_NAME}
+    )
+    target_include_directories(test_gyro_odometer PRIVATE
+      src
+    )
+  endif()
 endif()
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::gyro_odometer::GyroOdometerNode"
   EXECUTABLE ${PROJECT_NAME}_node
-  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
 )
 

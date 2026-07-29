@@ -45,6 +45,7 @@
 #include <lanelet2_projection/UTM.h>
 
 #include <functional>
+#include <utility>
 
 namespace autoware::lanelet2_map_visualizer
 {
@@ -55,25 +56,25 @@ Lanelet2MapVisualizationNode::Lanelet2MapVisualizationNode(const rclcpp::NodeOpt
 
   viz_lanelets_centerline_ = true;
 
-  sub_map_bin_ = this->create_subscription<autoware_map_msgs::msg::LaneletMapBin>(
+  sub_map_bin_ = create_subscription<autoware_map_msgs::msg::LaneletMapBin>(
     "input/lanelet2_map", rclcpp::QoS{1}.transient_local(),
     std::bind(&Lanelet2MapVisualizationNode::on_map_bin, this, _1));
 
-  pub_marker_ = this->create_publisher<visualization_msgs::msg::MarkerArray>(
+  pub_marker_ = create_publisher<visualization_msgs::msg::MarkerArray>(
     "output/lanelet2_map_marker", rclcpp::QoS{1}.transient_local());
 }
 
 void Lanelet2MapVisualizationNode::on_map_bin(
-  const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::LaneletMapBin) & msg)
 {
   lanelet::LaneletMapConstPtr viz_lanelet_map =
     autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*msg);
   RCLCPP_INFO(this->get_logger(), "Map is loaded\n");
 
-  const visualization_msgs::msg::MarkerArray map_marker_array =
-    create_lanelet_map_marker_array(viz_lanelet_map, viz_lanelets_centerline_);
+  auto output_ptr = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_marker_);
+  *output_ptr = create_lanelet_map_marker_array(viz_lanelet_map, viz_lanelets_centerline_);
 
-  pub_marker_->publish(map_marker_array);
+  pub_marker_->publish(std::move(output_ptr));
 }
 }  // namespace autoware::lanelet2_map_visualizer
 

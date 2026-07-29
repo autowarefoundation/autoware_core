@@ -12,7 +12,7 @@ This document serves as a guide for reviewing PRs that apply [autoware_agnocast_
 | --------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | autoware_agnocast_wrapper (source code)             | [autowarefoundation/autoware_core/.../autoware_agnocast_wrapper](https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper) |
 | Agnocast repository                                 | [autowarefoundation/agnocast](https://github.com/autowarefoundation/agnocast)                                                                                    |
-| Agnocast README                                     | [agnocast/README.md](https://github.com/autowarefoundation/agnocast/blob/main/README.md)                                                                         |
+| Agnocast documentation                              | [Agnocast Documentation](https://autowarefoundation.github.io/agnocast_doc/main/)                                                                                |
 | Autoware Discussion: Agnocast introduction proposal | [Discussion #5835 - Introduce True Zero-Copy Publish/Subscribe IPC to Autoware](https://github.com/orgs/autowarefoundation/discussions/5835)                     |
 | Agnocast ROS 2 rosdistro support                    | [Issue #5968 - Use ROS 2 packages in Agnocast released via rosdistro](https://github.com/autowarefoundation/autoware/issues/5968)                                |
 
@@ -56,7 +56,7 @@ This document serves as a guide for reviewing PRs that apply [autoware_agnocast_
 
 ### Overview of autoware_agnocast_wrapper
 
-[autoware_agnocast_wrapper](https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper) is a wrapper package for applying the zero-copy middleware [Agnocast](https://github.com/autowarefoundation/agnocast) to Autoware nodes.
+[autoware_agnocast_wrapper](https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper) is a wrapper package for applying the zero-copy middleware [Agnocast](https://autowarefoundation.github.io/agnocast_doc/main/) to Autoware nodes.
 
 Build-time and runtime behavior is controlled by the `ENABLE_AGNOCAST` environment variable:
 
@@ -72,7 +72,7 @@ In other words, users who build with `ENABLE_AGNOCAST=0` are not affected at all
 
 Another important prerequisite when reviewing Agnocast-related PRs is the existence of the **Agnocast Bridge**.
 
-The [Agnocast Bridge](https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_ros2_bridge.md) automatically forwards messages bidirectionally between Agnocast nodes and standard ROS 2 nodes:
+The [Agnocast Bridge](https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/bridge/) automatically forwards messages bidirectionally between Agnocast nodes and standard ROS 2 nodes:
 
 - **R2A (ROS 2 → Agnocast)**: Forwards messages from ROS 2 publishers to Agnocast subscribers
 
@@ -148,7 +148,7 @@ Once identified, proceed to the corresponding review procedure below.
 
 - [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc.
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR`
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -279,7 +279,7 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos
 
 &nbsp;
 
-> The version can be found in the `middleware/external/agnocast` section of [`autoware.repos`](https://github.com/autowarefoundation/autoware/blob/main/repositories/autoware.repos). For instructions on building and installing from source, see the [Agnocast README](https://github.com/autowarefoundation/agnocast/blob/main/README.md).
+> The version can be found in the `middleware/external/agnocast` section of [`autoware.repos`](https://github.com/autowarefoundation/autoware/blob/main/repositories/autoware.repos). For instructions on building and installing from source, see the [Agnocast Environment Setup guide](https://autowarefoundation.github.io/agnocast_doc/main/environment-setup/).
 
 &nbsp;
 
@@ -303,7 +303,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR`
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -339,7 +339,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 ## 1. What is autoware_agnocast_wrapper?
 
-[autoware_agnocast_wrapper](https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper) is a package for integrating [Agnocast](https://github.com/autowarefoundation/agnocast), a zero-copy middleware, into each Autoware topic with minimal impact.
+[autoware_agnocast_wrapper](https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper) is a package for integrating [Agnocast](https://autowarefoundation.github.io/agnocast_doc/main/), a zero-copy middleware, into each Autoware topic with minimal impact.
 
 Agnocast is an rclcpp-compatible zero-copy IPC middleware that enables true zero-copy Publish/Subscribe communication for all ROS 2 message types, including variable-length message types already generated by rosidl (see: [Autoware Discussion #5835](https://github.com/orgs/autowarefoundation/discussions/5835)).
 
@@ -415,12 +415,12 @@ All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github
 
 ### Publisher/Subscriber Creation
 
-| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                                 | ENABLE_AGNOCAST=0 (ROS 2)                                 |
-| ----------------------------------------------------------------------- | ------------------------------------------------------------ | --------------------------------------------------------- |
-| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)`       | `this->create_subscription<msg_type>(...)`                |
-| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`          | `this->create_publisher<msg_type>(...)`                   |
-| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`          | `this->create_publisher<msg_type>(...)`                   |
-| `AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, topic, qos)`              | `agnocast_wrapper::create_polling_subscriber<msg_type>(...)` | `InterProcessPollingSubscriber::create_subscription(...)` |
+| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                                         | ENABLE_AGNOCAST=0 (ROS 2)                                                   |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)`               | `this->create_subscription<msg_type>(...)`                                  |
+| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`                  | `this->create_publisher<msg_type>(...)`                                     |
+| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`                  | `this->create_publisher<msg_type>(...)`                                     |
+| `AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, policy, topic, qos)`      | `agnocast_wrapper::create_polling_subscriber<msg_type, policy>(...)` | `InterProcessPollingSubscriber<msg_type, policy>::create_subscription(...)` |
 
 &nbsp;
 
@@ -746,17 +746,17 @@ ros2 launch autoware_launch ...
 
 - [Agnocast Repository](https://github.com/autowarefoundation/agnocast) - Agnocast source code including kernel module, heaphook, bridge, etc.
 
-- [Agnocast README](https://github.com/autowarefoundation/agnocast/blob/main/README.md) - Agnocast architecture, supported environments, installation procedures
+- [Agnocast Documentation](https://autowarefoundation.github.io/agnocast_doc/main/) - Agnocast architecture, supported environments, installation procedures
 
 - [agnocast::Node and rclcpp::Node Interface Comparison](https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_node_interface_comparison.md) - API differences between `agnocast::Node` and `rclcpp::Node`
 
 - [Agnocast Autoware Integration Guide](https://github.com/autowarefoundation/agnocast/blob/main/docs/autoware_integration.md) - Detailed documentation on integrating Agnocast into Autoware
 
-- [Agnocast message_filters User Guide](https://github.com/autowarefoundation/agnocast/blob/main/docs/message_filters_user_guide.md) - How to use Agnocast's message_filters
+- [Agnocast message_filters Migration Guide](https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/message-filters/) - How to use Agnocast's message_filters
 
-- [Agnocast ROS 2 Bridge](https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_ros2_bridge.md) - Bridge communication between Agnocast nodes and standard ROS 2 nodes
+- [Agnocast ROS 2 Bridge](https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/bridge/) - Bridge communication between Agnocast nodes and standard ROS 2 nodes
 
-- [Callback Isolated Executor for Agnocast](https://github.com/autowarefoundation/agnocast/blob/main/docs/callback_isolated_executor_for_agnocast.md) - Design of CallbackIsolatedAgnocastExecutor
+- [CallbackIsolatedExecutor](https://autowarefoundation.github.io/agnocast_doc/main/callback-isolated-executor/) - Design and setup of CallbackIsolatedAgnocastExecutor
 
 - [Autoware Discussion #5835: Introduce True Zero-Copy Publish/Subscribe IPC to Autoware](https://github.com/orgs/autowarefoundation/discussions/5835) - Agnocast introduction proposal for Autoware. Design philosophy, performance comparison, Agnocast Bridge mechanics, etc.
 

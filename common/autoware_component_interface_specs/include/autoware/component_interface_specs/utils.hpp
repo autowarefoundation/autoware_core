@@ -21,6 +21,10 @@
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
+#include <rmw/qos_profiles.h>
+
+#include <cstddef>
+
 namespace autoware::component_interface_specs
 {
 
@@ -28,6 +32,29 @@ template <typename T>
 rclcpp::QoS get_qos()
 {
   return rclcpp::QoS{T::depth}.reliability(T::reliability).durability(T::durability);
+}
+
+/// ROS 2 gives services a QoS profile just like topics: `rmw_qos_profile_services_default`,
+/// which is what every `create_service` / `create_client` call in Autoware takes. No call
+/// site overrides it, so all services do run under identical conditions. Service specs
+/// therefore carry no QoS members of their own -- the one profile they all share is
+/// declared here instead, and `test_service_qos.cpp` asserts it still equals the RMW
+/// default it mirrors, so a change to that default surfaces as a test failure rather than
+/// as silent drift between the specs and the wire.
+namespace service_qos
+{
+static constexpr std::size_t depth = 10;
+static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+}  // namespace service_qos
+
+/// The QoS every service in this package runs on, as the topic-side `get_qos<T>()` returns
+/// the QoS of a single topic spec.
+inline rclcpp::QoS get_service_qos()
+{
+  return rclcpp::QoS{service_qos::depth}
+    .reliability(service_qos::reliability)
+    .durability(service_qos::durability);
 }
 
 }  // namespace autoware::component_interface_specs

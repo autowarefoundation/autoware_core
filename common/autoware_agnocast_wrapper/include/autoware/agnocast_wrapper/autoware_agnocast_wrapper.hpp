@@ -14,14 +14,15 @@
 
 #pragma once
 
-#include "autoware_utils_rclcpp/polling_subscriber.hpp"
-
 #include <rclcpp/exceptions/exceptions.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <rcl/timer.h>
+#include <rclcpp/version.h>
 
 #include <chrono>
+#include <functional>
+#include <future>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -33,8 +34,6 @@
 #include <agnocast/agnocast.hpp>
 
 #include <cstdlib>
-#include <functional>
-#include <future>
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) \
   autoware::agnocast_wrapper::message_ptr<    \
@@ -63,8 +62,6 @@
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Publisher<MessageT>::SharedPtr
-#define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
-  typename autoware::agnocast_wrapper::PollingSubscriber<MessageT>::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) \
   typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) \
@@ -92,11 +89,6 @@
   autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2, arg3)
-
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos) \
-  autoware::agnocast_wrapper::create_polling_subscriber<message_type>(this, topic, qos)
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, node, topic, qos) \
-  autoware::agnocast_wrapper::create_polling_subscriber<message_type>(node, topic, qos)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
@@ -419,6 +411,16 @@ inline bool use_agnocast()
   return sv == 1;
 }
 
+/// @brief Mode-agnostic replacement for rclcpp::ok().
+///
+/// An AgnocastOnly executable initializes only the agnocast context, while mixed-mode and
+/// non-Agnocast executables initialize only the rclcpp context. Exactly one is alive in any
+/// mode, so the disjunction answers "is this process still running" everywhere.
+inline bool ok()
+{
+  return rclcpp::ok() || agnocast::ok();
+}
+
 template <typename MessageT>
 class Subscription
 {
@@ -445,10 +447,15 @@ public:
     // CudaPointcloudPreprocessorNode which uses UNIQUE_PTR callbacks.
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
+      "const reference to the message type");
 
+    constexpr bool is_message_ptr_callback =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
@@ -457,7 +464,15 @@ public:
     subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
-        if constexpr (ownership == OwnershipType::Unique) {
+        if constexpr (!is_message_ptr_callback) {
+          // msg keeps the shared-memory entry alive only while the callback runs: the
+          // reference is valid for the duration of the callback and no copy is made, but
+          // it must not be stored or used after the callback returns. Callbacks that need
+          // to extend the message lifetime should take AUTOWARE_MESSAGE_CONST_SHARED_PTR.
+          // as_const prevents generic callbacks from mutating the shared-memory entry,
+          // which other processes may be reading concurrently.
+          callback(std::as_const(*msg));
+        } else if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
         } else {
           callback(
@@ -482,10 +497,15 @@ public:
   {
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>,
+        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
+      "const reference to the message type");
 
+    constexpr bool is_message_ptr_callback =
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
@@ -496,7 +516,11 @@ public:
     subscription_ = node->create_subscription<MessageT>(
       topic_name, qos,
       [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-        if constexpr (ownership == OwnershipType::Unique) {
+        if constexpr (!is_message_ptr_callback) {
+          // as_const keeps this fallback consistent with the Agnocast path: generic
+          // callbacks must not observe a mutable reference on either path.
+          callback(std::as_const(*msg));
+        } else if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
         } else {
           callback(
@@ -535,95 +559,6 @@ typename Subscription<MessageT>::SharedPtr create_subscription(
     return std::make_shared<ROS2Subscription<MessageT>>(
       node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
       std::forward<Func>(callback), options);
-  }
-}
-
-template <typename MessageT>
-class PollingSubscriber
-{
-public:
-  using SharedPtr = std::shared_ptr<PollingSubscriber<MessageT>>;
-
-  virtual ~PollingSubscriber() = default;
-
-  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData(bool allow_same_message = true) = 0;
-  virtual AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data(bool allow_same_message = true) = 0;
-};
-
-template <typename MessageT>
-class AgnocastPollingSubscriber : public PollingSubscriber<MessageT>
-{
-  typename agnocast::PollingSubscriber<MessageT>::SharedPtr subscriber_;
-
-public:
-  template <typename NodeT>
-  explicit AgnocastPollingSubscriber(
-    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos)
-  : subscriber_(agnocast::create_subscription<MessageT>(node, topic_name, qos))
-  {
-  }
-
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData(bool allow_same_message = true) override
-  {
-    auto data = subscriber_->take_data(allow_same_message);
-    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
-  }
-
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data(bool allow_same_message = true) override
-  {
-    auto data = subscriber_->take_data(allow_same_message);
-    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(std::move(data));
-  }
-};
-
-template <typename MessageT>
-class ROS2PollingSubscriber : public PollingSubscriber<MessageT>
-{
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr subscriber_;
-
-public:
-  explicit ROS2PollingSubscriber(
-    rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
-  : subscriber_(
-      autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::create_subscription(
-        node, topic_name, qos))
-  {
-  }
-
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) takeData(bool allow_same_message = true) override
-  {
-    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(
-      std::move(subscriber_->take_data(allow_same_message)));
-  }
-
-  AUTOWARE_MESSAGE_SHARED_PTR(const MessageT) take_data(bool allow_same_message = true) override
-  {
-    return AUTOWARE_MESSAGE_SHARED_PTR(const MessageT)(
-      std::move(subscriber_->take_data(allow_same_message)));
-  }
-};
-
-template <typename MessageT>
-typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
-  rclcpp::Node * node, const std::string & topic_name, const size_t qos_history_depth)
-{
-  if (use_agnocast()) {
-    return std::make_shared<AgnocastPollingSubscriber<MessageT>>(
-      node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
-  } else {
-    return std::make_shared<ROS2PollingSubscriber<MessageT>>(
-      node, topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
-  }
-}
-
-template <typename MessageT>
-typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
-  rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
-{
-  if (use_agnocast()) {
-    return std::make_shared<AgnocastPollingSubscriber<MessageT>>(node, topic_name, qos);
-  } else {
-    return std::make_shared<ROS2PollingSubscriber<MessageT>>(node, topic_name, qos);
   }
 }
 
@@ -922,15 +857,17 @@ public:
           std::move(agnocast_request),
           [callback = std::move(callback), promise_ptr = std::move(promise_ptr), shared_future](
             typename agnocast::Client<ServiceT>::SharedFuture agnocast_shared_future) {
+            // If an exception is set in the underlying future, propagate it to our promise.
             try {
               typename agnocast::ipc_shared_ptr<const typename ServiceT::Response>
                 agnocast_response = agnocast_shared_future.get();
               promise_ptr->set_value(
                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
-              callback(std::move(shared_future));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
+              return;
             }
+            callback(std::move(shared_future));
           })
         .request_id;
 
@@ -1012,15 +949,17 @@ public:
           ros2_request,
           [callback = std::move(callback), promise_ptr = std::move(promise_ptr),
            shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+            // If an exception is set in the underlying future, propagate it to our promise.
             try {
               std::shared_ptr<const typename ServiceT::Response> ros2_response =
                 ros2_shared_future.get();
               promise_ptr->set_value(
                 AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
-              callback(std::move(shared_future));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
+              return;
             }
+            callback(std::move(shared_future));
           })
         .request_id;
 
@@ -1254,8 +1193,311 @@ inline void set_period(const Timer::SharedPtr & timer, std::chrono::nanoseconds 
 
 #else
 
+#define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) std::unique_ptr<MessageT>
+
+// For publisher (mutable message)
+#define AUTOWARE_MESSAGE_SHARED_PTR(MessageT) std::shared_ptr<MessageT>
+// For subscription (read-only message)
+#define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) std::shared_ptr<const MessageT>
+#define AUTOWARE_SERVER_REQUEST_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Request>
+#define AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) std::shared_ptr<typename ServiceT::Response>
+#define AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) std::shared_ptr<typename ServiceT::Request>
+#define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Response>
+#define AUTOWARE_SUBSCRIPTION_PTR(MessageT) typename rclcpp::Subscription<MessageT>::SharedPtr
+#define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
+#define AUTOWARE_CLIENT_PTR(ServiceT) \
+  typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
+#define AUTOWARE_SERVICE_PTR(ServiceT) \
+  typename autoware::agnocast_wrapper::Service<ServiceT>::SharedPtr
+#define AUTOWARE_CLIENT_FUTURE(ServiceT) \
+  typename autoware::agnocast_wrapper::Client<ServiceT>::Future
+#define AUTOWARE_CLIENT_SHARED_FUTURE(ServiceT) \
+  typename autoware::agnocast_wrapper::Client<ServiceT>::SharedFuture
+#define AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT) \
+  typename autoware::agnocast_wrapper::Client<ServiceT>::FutureAndRequestId
+#define AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT) \
+  typename autoware::agnocast_wrapper::Client<ServiceT>::SharedFutureAndRequestId
+#define AUTOWARE_TIMER_PTR rclcpp::TimerBase::SharedPtr
+
+#define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
+  this->create_subscription<message_type>(topic, qos, callback, options)
+#define AUTOWARE_CREATE_SUBSCRIPTION_ON_NODE(message_type, node, topic, qos, callback, options) \
+  (node)->create_subscription<message_type>(topic, qos, callback, options)
+
+#define AUTOWARE_CREATE_PUBLISHER2(message_type, arg1, arg2) \
+  this->create_publisher<message_type>(arg1, arg2)
+#define AUTOWARE_CREATE_PUBLISHER3(message_type, arg1, arg2, arg3) \
+  this->create_publisher<message_type>(arg1, arg2, arg3)
+#define AUTOWARE_CREATE_PUBLISHER2_ON_NODE(message_type, node, arg1, arg2) \
+  (node)->create_publisher<message_type>(arg1, arg2)
+#define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
+  (node)->create_publisher<message_type>(arg1, arg2, arg3)
+
+#define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
+  autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
+#define AUTOWARE_CREATE_CLIENT2(service_type, service_name, qos) \
+  autoware::agnocast_wrapper::create_client<service_type>(this, service_name, qos)
+#define AUTOWARE_CREATE_CLIENT3(service_type, service_name, qos, group) \
+  autoware::agnocast_wrapper::create_client<service_type>(this, service_name, qos, group)
+#define AUTOWARE_CREATE_CLIENT1_ON_NODE(service_type, node, service_name) \
+  autoware::agnocast_wrapper::create_client<service_type>(node, service_name)
+#define AUTOWARE_CREATE_CLIENT2_ON_NODE(service_type, node, service_name, qos) \
+  autoware::agnocast_wrapper::create_client<service_type>(node, service_name, qos)
+#define AUTOWARE_CREATE_CLIENT3_ON_NODE(service_type, node, service_name, qos, group) \
+  autoware::agnocast_wrapper::create_client<service_type>(node, service_name, qos, group)
+
+#define AUTOWARE_CREATE_SERVICE2(service_type, service_name, callback) \
+  autoware::agnocast_wrapper::create_service<service_type>(this, service_name, callback)
+#define AUTOWARE_CREATE_SERVICE3(service_type, service_name, callback, qos) \
+  autoware::agnocast_wrapper::create_service<service_type>(this, service_name, callback, qos)
+#define AUTOWARE_CREATE_SERVICE4(service_type, service_name, callback, qos, group) \
+  autoware::agnocast_wrapper::create_service<service_type>(this, service_name, callback, qos, group)
+#define AUTOWARE_CREATE_SERVICE2_ON_NODE(service_type, node, service_name, callback) \
+  autoware::agnocast_wrapper::create_service<service_type>(node, service_name, callback)
+#define AUTOWARE_CREATE_SERVICE3_ON_NODE(service_type, node, service_name, callback, qos) \
+  autoware::agnocast_wrapper::create_service<service_type>(node, service_name, callback, qos)
+#define AUTOWARE_CREATE_SERVICE4_ON_NODE(service_type, node, service_name, callback, qos, group) \
+  autoware::agnocast_wrapper::create_service<service_type>(node, service_name, callback, qos, group)
+
+#define AUTOWARE_SUBSCRIPTION_OPTIONS rclcpp::SubscriptionOptions
+#define AUTOWARE_PUBLISHER_OPTIONS rclcpp::PublisherOptions
+
+#define ALLOCATE_OUTPUT_MESSAGE_UNIQUE(publisher) \
+  std::make_unique<typename std::remove_reference<decltype(*publisher)>::type::ROSMessageType>()
+#define ALLOCATE_OUTPUT_MESSAGE_SHARED(publisher) \
+  std::make_shared<typename std::remove_reference<decltype(*publisher)>::type::ROSMessageType>()
+#define ALLOCATE_OUTPUT_SERVICE_REQUEST(client) client->allocate_output_service_request()
+
 namespace autoware::agnocast_wrapper
 {
+
+// ===== Client/Service, non-Agnocast build =====
+//
+// Mirrors the Agnocast-build Client<ServiceT>/Service<ServiceT> abstraction so code written
+// against AUTOWARE_CLIENT_PTR/AUTOWARE_SERVICE_PTR compiles unchanged in both builds.
+// async_send_request() still bridges through a promise: AUTOWARE_CLIENT_FUTURE(ServiceT) and
+// rclcpp::Client<ServiceT>::Future are different std::future instantiations, and std::future has
+// no covariant conversion between them.
+
+template <typename ServiceT>
+class Client
+{
+protected:
+  virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
+
+public:
+  using SharedPtr = std::shared_ptr<Client<ServiceT>>;
+
+  using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
+  using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
+
+  struct FutureAndRequestId : rclcpp::detail::FutureAndRequestId<Future>
+  {
+    using rclcpp::detail::FutureAndRequestId<Future>::FutureAndRequestId;
+    SharedFuture share() noexcept { return this->future.share(); }
+  };
+  struct SharedFutureAndRequestId : rclcpp::detail::FutureAndRequestId<SharedFuture>
+  {
+    using rclcpp::detail::FutureAndRequestId<SharedFuture>::FutureAndRequestId;
+  };
+
+  virtual ~Client() = default;
+
+  virtual AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) allocate_output_service_request() = 0;
+
+  virtual const char * get_service_name() const = 0;
+
+  virtual bool service_is_ready() const = 0;
+
+  template <typename RepT, typename RatioT>
+  bool wait_for_service(
+    std::chrono::duration<RepT, RatioT> timeout = std::chrono::nanoseconds(-1)) const
+  {
+    return wait_for_service_impl(std::chrono::duration_cast<std::chrono::nanoseconds>(timeout));
+  }
+
+  virtual FutureAndRequestId async_send_request(
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) = 0;
+  virtual SharedFutureAndRequestId async_send_request(
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
+    std::function<void(SharedFuture)> callback) = 0;
+};
+
+template <typename ServiceT>
+class ROS2Client : public Client<ServiceT>
+{
+  typename rclcpp::Client<ServiceT>::SharedPtr client_;
+
+protected:
+  bool wait_for_service_impl(std::chrono::nanoseconds timeout) const override
+  {
+    return client_->wait_for_service(timeout);
+  }
+
+public:
+  explicit ROS2Client(
+    rclcpp::Node * node, const std::string & service_name, const rclcpp::QoS & qos,
+    rclcpp::CallbackGroup::SharedPtr group)
+#if RCLCPP_VERSION_MAJOR >= 28
+  : client_(node->create_client<ServiceT>(service_name, qos, group))
+#else
+  : client_(node->create_client<ServiceT>(service_name, qos.get_rmw_qos_profile(), group))
+#endif
+  {
+  }
+
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) allocate_output_service_request() override
+  {
+    return std::make_shared<typename ServiceT::Request>();
+  }
+
+  const char * get_service_name() const override { return client_->get_service_name(); }
+
+  bool service_is_ready() const override { return client_->service_is_ready(); }
+
+  // rclcpp::Client<ServiceT>::Future (std::future<std::shared_ptr<Response>>) and
+  // AUTOWARE_CLIENT_FUTURE(ServiceT) (std::future<std::shared_ptr<const Response>>) are different
+  // std::future instantiations with no covariant conversion between them, so the result can't be
+  // returned directly -- bridge it through a promise instead.
+  AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
+  async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
+  {
+    auto promise_ptr = std::make_shared<std::promise<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>>();
+    AUTOWARE_CLIENT_FUTURE(ServiceT) future = promise_ptr->get_future();
+
+    auto request_id = client_
+                        ->async_send_request(
+                          std::move(request),
+                          [promise_ptr = std::move(promise_ptr)](
+                            typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+                            try {
+                              promise_ptr->set_value(
+                                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+                            } catch (...) {
+                              promise_ptr->set_exception(std::current_exception());
+                            }
+                          })
+                        .request_id;
+
+    return AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)(std::move(future), request_id);
+  }
+
+  AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT)
+  async_send_request(
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
+    std::function<void(AUTOWARE_CLIENT_SHARED_FUTURE(ServiceT))> callback) override
+  {
+    auto promise_ptr = std::make_shared<std::promise<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>>();
+    AUTOWARE_CLIENT_SHARED_FUTURE(ServiceT) shared_future = promise_ptr->get_future().share();
+
+    auto request_id =
+      client_
+        ->async_send_request(
+          std::move(request),
+          [callback = std::move(callback), promise_ptr = std::move(promise_ptr),
+           shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
+            // If an exception is set in the underlying future, propagate it to our promise.
+            try {
+              promise_ptr->set_value(
+                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+            } catch (...) {
+              promise_ptr->set_exception(std::current_exception());
+              return;
+            }
+            callback(std::move(shared_future));
+          })
+        .request_id;
+
+    return AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT)(
+      std::move(shared_future), request_id);
+  }
+};
+
+template <typename ServiceT>
+AUTOWARE_CLIENT_PTR(ServiceT)
+create_client(
+  rclcpp::Node * node, const std::string & service_name,
+  const rclcpp::QoS & qos = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr group = nullptr)
+{
+  return std::make_shared<ROS2Client<ServiceT>>(node, service_name, qos, group);
+}
+
+template <typename ServiceT>
+class Service
+{
+public:
+  using SharedPtr = std::shared_ptr<Service<ServiceT>>;
+
+  virtual ~Service() = default;
+};
+
+// True when Callback takes the preferred AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR pair, i.e. it
+// is written against the wrapper's service API.
+template <typename Func, typename ServiceT>
+inline constexpr bool is_message_ptr_service_callback_v = std::is_invocable_v<
+  std::decay_t<Func>, AUTOWARE_SERVER_REQUEST_PTR(ServiceT) &&,
+  AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) &&>;
+
+// True when Callback is an rclcpp-style handler taking std::shared_ptr request/response. This lets
+// utilities written for rclcpp::Node be used unchanged on the wrapper Node.
+template <typename Func, typename ServiceT>
+inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
+  std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request> &,
+  std::shared_ptr<typename ServiceT::Response> &>;
+
+template <typename ServiceT>
+class ROS2Service : public Service<ServiceT>
+{
+  typename rclcpp::Service<ServiceT>::SharedPtr srv_;
+
+public:
+  template <typename Func>
+  explicit ROS2Service(
+    rclcpp::Node * node, const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos, rclcpp::CallbackGroup::SharedPtr group)
+  {
+    static_assert(
+      is_message_ptr_service_callback_v<Func, ServiceT>,
+      "Callback should be invocable with AUTOWARE_SERVER_REQUEST_PTR and "
+      "AUTOWARE_SERVER_RESPONSE_PTR (const&, &&, or by-value)");
+
+    srv_ = node->create_service<ServiceT>(
+      service_name,
+      [callback = std::forward<Func>(callback)](
+        std::shared_ptr<const typename ServiceT::Request> && ros2_request,
+        std::shared_ptr<typename ServiceT::Response> && ros2_response) {
+        callback(
+          AUTOWARE_SERVER_REQUEST_PTR(ServiceT){std::move(ros2_request)},
+          AUTOWARE_SERVER_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+      },
+#if RCLCPP_VERSION_MAJOR >= 28
+      qos, group);
+#else
+      qos.get_rmw_qos_profile(), group);
+#endif
+  }
+};
+
+template <typename ServiceT, typename Func>
+AUTOWARE_SERVICE_PTR(ServiceT)
+create_service(
+  rclcpp::Node * node, const std::string & service_name, Func && callback,
+  const rclcpp::QoS & qos = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr group = nullptr)
+{
+  return std::make_shared<ROS2Service<ServiceT>>(
+    node, service_name, std::forward<Func>(callback), qos, group);
+}
+
+}  // namespace autoware::agnocast_wrapper
+
+namespace autoware::agnocast_wrapper
+{
+
+/// @brief Mode-agnostic replacement for rclcpp::ok() (non-Agnocast build).
+inline bool ok()
+{
+  return rclcpp::ok();
+}
 
 /// @brief Set the timer period (non-Agnocast build).
 ///
@@ -1284,117 +1526,5 @@ inline void set_period(const rclcpp::TimerBase::SharedPtr & timer, std::chrono::
 }
 
 }  // namespace autoware::agnocast_wrapper
-
-#define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) std::unique_ptr<MessageT>
-// For publisher (mutable message)
-#define AUTOWARE_MESSAGE_SHARED_PTR(MessageT) std::shared_ptr<MessageT>
-// For subscription (read-only message)
-#define AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) std::shared_ptr<const MessageT>
-#define AUTOWARE_SERVER_REQUEST_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Request>
-#define AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) std::shared_ptr<typename ServiceT::Response>
-#define AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) std::shared_ptr<typename ServiceT::Request>
-#define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Response>
-#define AUTOWARE_SUBSCRIPTION_PTR(MessageT) typename rclcpp::Subscription<MessageT>::SharedPtr
-#define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
-#define AUTOWARE_POLLING_SUBSCRIBER_PTR(MessageT) \
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
-#define AUTOWARE_CLIENT_PTR(ServiceT) typename rclcpp::Client<ServiceT>::SharedPtr
-#define AUTOWARE_SERVICE_PTR(ServiceT) typename rclcpp::Service<ServiceT>::SharedPtr
-#define AUTOWARE_CLIENT_FUTURE(ServiceT) typename rclcpp::Client<ServiceT>::Future
-#define AUTOWARE_CLIENT_SHARED_FUTURE(ServiceT) typename rclcpp::Client<ServiceT>::SharedFuture
-#define AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT) \
-  typename rclcpp::Client<ServiceT>::FutureAndRequestId
-#define AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(ServiceT) \
-  typename rclcpp::Client<ServiceT>::SharedFutureAndRequestId
-#define AUTOWARE_TIMER_PTR rclcpp::TimerBase::SharedPtr
-
-#define AUTOWARE_CREATE_SUBSCRIPTION(message_type, topic, qos, callback, options) \
-  this->create_subscription<message_type>(topic, qos, callback, options)
-#define AUTOWARE_CREATE_SUBSCRIPTION_ON_NODE(message_type, node, topic, qos, callback, options) \
-  node->create_subscription<message_type>(topic, qos, callback, options)
-
-#define AUTOWARE_CREATE_PUBLISHER2(message_type, arg1, arg2) \
-  this->create_publisher<message_type>(arg1, arg2)
-#define AUTOWARE_CREATE_PUBLISHER3(message_type, arg1, arg2, arg3) \
-  this->create_publisher<message_type>(arg1, arg2, arg3)
-#define AUTOWARE_CREATE_PUBLISHER2_ON_NODE(message_type, node, arg1, arg2) \
-  node->create_publisher<message_type>(arg1, arg2)
-#define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
-  node->create_publisher<message_type>(arg1, arg2, arg3)
-
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER(message_type, topic, qos)                       \
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
-    this, topic, qos)
-#define AUTOWARE_CREATE_POLLING_SUBSCRIBER_ON_NODE(message_type, node, topic, qos)         \
-  autoware_utils_rclcpp::InterProcessPollingSubscriber<message_type>::create_subscription( \
-    node, topic, qos)
-
-#if RCLCPP_VERSION_MAJOR >= 28
-
-#define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
-  this->create_client<service_type>(service_name)
-#define AUTOWARE_CREATE_CLIENT2(service_type, service_name, qos) \
-  this->create_client<service_type>(service_name, qos)
-#define AUTOWARE_CREATE_CLIENT3(service_type, service_name, qos, group) \
-  this->create_client<service_type>(service_name, qos, group)
-#define AUTOWARE_CREATE_CLIENT1_ON_NODE(service_type, node, service_name) \
-  node->create_client<service_type>(service_name)
-#define AUTOWARE_CREATE_CLIENT2_ON_NODE(service_type, node, service_name, qos) \
-  node->create_client<service_type>(service_name, qos)
-#define AUTOWARE_CREATE_CLIENT3_ON_NODE(service_type, node, service_name, qos, group) \
-  node->create_client<service_type>(service_name, qos, group)
-
-#define AUTOWARE_CREATE_SERVICE2(service_type, service_name, callback) \
-  this->create_service<service_type>(service_name, callback)
-#define AUTOWARE_CREATE_SERVICE3(service_type, service_name, callback, qos) \
-  this->create_service<service_type>(service_name, callback, qos)
-#define AUTOWARE_CREATE_SERVICE4(service_type, service_name, callback, qos, group) \
-  this->create_service<service_type>(service_name, callback, qos, group)
-#define AUTOWARE_CREATE_SERVICE2_ON_NODE(service_type, node, service_name, callback) \
-  node->create_service<service_type>(service_name, callback)
-#define AUTOWARE_CREATE_SERVICE3_ON_NODE(service_type, node, service_name, callback, qos) \
-  node->create_service<service_type>(service_name, callback, qos)
-#define AUTOWARE_CREATE_SERVICE4_ON_NODE(service_type, node, service_name, callback, qos, group) \
-  node->create_service<service_type>(service_name, callback, qos, group)
-
-#else
-
-#define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
-  this->create_client<service_type>(service_name)
-#define AUTOWARE_CREATE_CLIENT2(service_type, service_name, qos) \
-  this->create_client<service_type>(service_name, qos.get_rmw_qos_profile())
-#define AUTOWARE_CREATE_CLIENT3(service_type, service_name, qos, group) \
-  this->create_client<service_type>(service_name, qos.get_rmw_qos_profile(), group)
-#define AUTOWARE_CREATE_CLIENT1_ON_NODE(service_type, node, service_name) \
-  node->create_client<service_type>(service_name)
-#define AUTOWARE_CREATE_CLIENT2_ON_NODE(service_type, node, service_name, qos) \
-  node->create_client<service_type>(service_name, qos.get_rmw_qos_profile())
-#define AUTOWARE_CREATE_CLIENT3_ON_NODE(service_type, node, service_name, qos, group) \
-  node->create_client<service_type>(service_name, qos.get_rmw_qos_profile(), group)
-
-#define AUTOWARE_CREATE_SERVICE2(service_type, service_name, callback) \
-  this->create_service<service_type>(service_name, callback)
-#define AUTOWARE_CREATE_SERVICE3(service_type, service_name, callback, qos) \
-  this->create_service<service_type>(service_name, callback, qos.get_rmw_qos_profile())
-#define AUTOWARE_CREATE_SERVICE4(service_type, service_name, callback, qos, group) \
-  this->create_service<service_type>(service_name, callback, qos.get_rmw_qos_profile(), group)
-#define AUTOWARE_CREATE_SERVICE2_ON_NODE(service_type, node, service_name, callback) \
-  node->create_service<service_type>(service_name, callback)
-#define AUTOWARE_CREATE_SERVICE3_ON_NODE(service_type, node, service_name, callback, qos) \
-  node->create_service<service_type>(service_name, callback, qos.get_rmw_qos_profile())
-#define AUTOWARE_CREATE_SERVICE4_ON_NODE(service_type, node, service_name, callback, qos, group) \
-  node->create_service<service_type>(service_name, callback, qos.get_rmw_qos_profile(), group)
-
-#endif
-
-#define AUTOWARE_SUBSCRIPTION_OPTIONS rclcpp::SubscriptionOptions
-#define AUTOWARE_PUBLISHER_OPTIONS rclcpp::PublisherOptions
-
-#define ALLOCATE_OUTPUT_MESSAGE_UNIQUE(publisher) \
-  std::make_unique<typename std::remove_reference<decltype(*publisher)>::type::ROSMessageType>()
-#define ALLOCATE_OUTPUT_MESSAGE_SHARED(publisher) \
-  std::make_shared<typename std::remove_reference<decltype(*publisher)>::type::ROSMessageType>()
-#define ALLOCATE_OUTPUT_SERVICE_REQUEST(client) \
-  std::make_shared<typename std::remove_reference<decltype(*client)>::type::Request>()
 
 #endif
