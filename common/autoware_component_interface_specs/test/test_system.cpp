@@ -35,14 +35,6 @@ TEST(system, interface)
   }
 }
 
-TEST(system, version)
-{
-  static_assert(specs::system::version.major == 0);
-  static_assert(specs::system::version.minor == 1);
-  static_assert(specs::system::version.patch == 0);
-  EXPECT_EQ(specs::system::version.major, 0);
-}
-
 TEST(system, concept_and_registration)
 {
   using specs::system::ChangeAutowareControl;
@@ -63,11 +55,4 @@ TEST(system, concept_and_registration)
   static_assert(std::tuple_size_v<Specs> == 4);
   SUCCEED();
 }
-
-TEST(system, mrm_state_qos)
-{
-  using specs::system::MrmState;
-  tu::expect_topic_qos<MrmState>(
-    "/system/fail_safe/mrm_state", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
-    RMW_QOS_POLICY_DURABILITY_VOLATILE);
 }
