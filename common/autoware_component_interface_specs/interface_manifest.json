@@ -133,8 +133,8 @@
     },
     {
       "domain": "perception",
-      "interface": "/perception/object_recognition/detection/objects",
-      "type": "autoware_perception_msgs/msg/DetectedObjects",
+      "interface": "/perception/object_recognition/tracking/objects",
+      "type": "autoware_perception_msgs/msg/TrackedObjects",
       "kind": "topic",
       "version": "0.1.0",
       "qos": {

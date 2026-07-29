@@ -24,18 +24,18 @@ namespace tu = autoware::component_interface_specs::test_utils;
 
 TEST(perception, concept_and_registration)
 {
-  using specs::perception::DetectedObjects;
   using specs::perception::ObjectRecognition;
   using specs::perception::Specs;
+  using specs::perception::TrackedObjects;
   using specs::perception::TrafficSignals;
 
   static_assert(specs::InterfaceSpec<ObjectRecognition>);
   static_assert(specs::InterfaceSpec<TrafficSignals>);
-  static_assert(specs::InterfaceSpec<DetectedObjects>);
+  static_assert(specs::InterfaceSpec<TrackedObjects>);
 
   static_assert(tu::has_type<ObjectRecognition, Specs>::value);
   static_assert(tu::has_type<TrafficSignals, Specs>::value);
-  static_assert(tu::has_type<DetectedObjects, Specs>::value);
+  static_assert(tu::has_type<TrackedObjects, Specs>::value);
   static_assert(std::tuple_size_v<Specs> == 3);
   SUCCEED();
 }
