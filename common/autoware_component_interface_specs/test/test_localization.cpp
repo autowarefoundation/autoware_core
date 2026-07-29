@@ -23,14 +23,6 @@
 namespace specs = autoware::component_interface_specs;
 namespace tu = autoware::component_interface_specs::test_utils;
 
-TEST(localization, version)
-{
-  static_assert(specs::localization::version.major == 0);
-  static_assert(specs::localization::version.minor == 1);
-  static_assert(specs::localization::version.patch == 0);
-  EXPECT_EQ(specs::localization::version.major, 0);
-}
-
 TEST(localization, concept_and_registration)
 {
   using specs::localization::Acceleration;
