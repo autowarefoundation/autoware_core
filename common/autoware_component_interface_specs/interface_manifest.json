@@ -198,15 +198,15 @@
     },
     {
       "domain": "system",
-      "interface": "/system/operation_mode/change_autoware_control",
-      "type": "autoware_system_msgs/srv/ChangeAutowareControl",
-      "kind": "service",
+      "interface": "/system/operation_mode/state",
+      "type": "autoware_adapi_v1_msgs/msg/OperationModeState",
+      "kind": "topic",
       "version": "0.1.0",
       "qos": {
         "history": "keep_last",
-        "depth": 10,
+        "depth": 1,
         "reliability": "reliable",
-        "durability": "volatile"
+        "durability": "transient_local"
       }
     },
     {
@@ -224,15 +224,41 @@
     },
     {
       "domain": "system",
-      "interface": "/system/operation_mode/state",
-      "type": "autoware_adapi_v1_msgs/msg/OperationModeState",
+      "interface": "/system/operation_mode/change_autoware_control",
+      "type": "autoware_system_msgs/srv/ChangeAutowareControl",
+      "kind": "service",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 10,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "system",
+      "interface": "/system/fail_safe/mrm_state",
+      "type": "autoware_adapi_v1_msgs/msg/MrmState",
       "kind": "topic",
       "version": "0.1.0",
       "qos": {
         "history": "keep_last",
         "depth": 1,
         "reliability": "reliable",
-        "durability": "transient_local"
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "system",
+      "interface": "/system/emergency/hazard_status",
+      "type": "autoware_system_msgs/msg/HazardStatusStamped",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
       }
     },
     {

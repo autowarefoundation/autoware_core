@@ -15,10 +15,12 @@
 #ifndef AUTOWARE__COMPONENT_INTERFACE_SPECS__SYSTEM_HPP_
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__SYSTEM_HPP_
 
+#include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/component_interface_specs/version.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/mrm_state.hpp>
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
+#include <autoware_system_msgs/msg/hazard_status_stamped.hpp>
 #include <autoware_system_msgs/srv/change_autoware_control.hpp>
 #include <autoware_system_msgs/srv/change_operation_mode.hpp>
 
@@ -48,8 +50,26 @@ struct OperationModeState
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
 };
 
+struct MrmState  // promoted universe -> core (the fail-safe state belongs in the standard subset)
+{
+  using Message = autoware_adapi_v1_msgs::msg::MrmState;
+  static constexpr char name[] = "/system/fail_safe/mrm_state";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+
+struct HazardStatus  // new - diagnostics-driven emergency trigger
+{
+  using Message = autoware_system_msgs::msg::HazardStatusStamped;
+  static constexpr char name[] = "/system/emergency/hazard_status";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+
 AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
-  0, 1, 0, ChangeAutowareControl, ChangeOperationMode, OperationModeState)
+  0, 1, 0, OperationModeState, ChangeOperationMode, ChangeAutowareControl, MrmState, HazardStatus)
 
 }  // namespace autoware::component_interface_specs::system
 
