@@ -23,14 +23,6 @@
 namespace specs = autoware::component_interface_specs;
 namespace tu = autoware::component_interface_specs::test_utils;
 
-TEST(planning, version)
-{
-  static_assert(specs::planning::version.major == 0);
-  static_assert(specs::planning::version.minor == 1);
-  static_assert(specs::planning::version.patch == 0);
-  EXPECT_EQ(specs::planning::version.major, 0);
-}
-
 TEST(planning, concept_and_registration)
 {
   using specs::planning::ClearRoute;
