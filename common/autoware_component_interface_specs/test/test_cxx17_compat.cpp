@@ -24,6 +24,7 @@
 #include "autoware/component_interface_specs/map.hpp"
 #include "autoware/component_interface_specs/perception.hpp"
 #include "autoware/component_interface_specs/planning.hpp"
+#include "autoware/component_interface_specs/sensing.hpp"
 #include "autoware/component_interface_specs/system.hpp"
 #include "autoware/component_interface_specs/utils.hpp"
 #include "autoware/component_interface_specs/vehicle.hpp"
@@ -49,6 +50,7 @@ TEST(cxx17_compat, every_domain_resolves_its_version)
   static_assert(cis::spec_version<cis::map::VectorMap>() == v0_1_0);
   static_assert(cis::spec_version<cis::perception::ObjectRecognition>() == v0_1_0);
   static_assert(cis::spec_version<cis::planning::Trajectory>() == v0_1_0);
+  static_assert(cis::spec_version<cis::sensing::VehicleVelocityConverterTwist>() == v0_1_0);
   static_assert(cis::spec_version<cis::system::OperationModeState>() == v0_1_0);
   static_assert(cis::spec_version<cis::vehicle::GearStatus>() == v0_1_0);
 

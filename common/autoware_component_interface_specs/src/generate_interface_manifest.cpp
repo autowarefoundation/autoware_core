@@ -23,6 +23,7 @@
 #include "autoware/component_interface_specs/map.hpp"
 #include "autoware/component_interface_specs/perception.hpp"
 #include "autoware/component_interface_specs/planning.hpp"
+#include "autoware/component_interface_specs/sensing.hpp"
 #include "autoware/component_interface_specs/system.hpp"
 #include "autoware/component_interface_specs/utils.hpp"
 #include "autoware/component_interface_specs/vehicle.hpp"
@@ -154,6 +155,7 @@ int main(int argc, char ** argv)
   collect<cis::map::Specs>("map", cis::map::version, &entries);
   collect<cis::perception::Specs>("perception", cis::perception::version, &entries);
   collect<cis::planning::Specs>("planning", cis::planning::version, &entries);
+  collect<cis::sensing::Specs>("sensing", cis::sensing::version, &entries);
   collect<cis::system::Specs>("system", cis::system::version, &entries);
   collect<cis::vehicle::Specs>("vehicle", cis::vehicle::version, &entries);
 
