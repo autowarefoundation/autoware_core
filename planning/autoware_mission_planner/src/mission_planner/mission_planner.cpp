@@ -236,7 +236,9 @@ void MissionPlanner::on_set_lanelet_route(
     transform_to_map =
       tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
   } catch (const tf2::TransformException &) {
-    // Not to die immediately
+    // Explicit assignment to avoid clang-tidy's check.
+    // Failure is handled by the transform_to_map check below.
+    transform_to_map = std::nullopt;
   }
 
   if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
@@ -310,7 +312,9 @@ void MissionPlanner::on_set_waypoint_route(
     transform_to_map =
       tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
   } catch (const tf2::TransformException &) {
-    // Not to die immediately
+    // Explicit assignment to avoid clang-tidy's check.
+    // Failure is handled by the transform_to_map check below.
+    transform_to_map = std::nullopt;
   }
 
   if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
