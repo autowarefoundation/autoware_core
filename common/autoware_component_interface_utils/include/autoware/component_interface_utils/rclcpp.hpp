@@ -26,6 +26,7 @@
 #include <memory>
 #include <optional>
 #include <utility>
+#include <vector>
 
 namespace autoware::component_interface_utils
 {
@@ -224,6 +225,9 @@ public:
   {
     return create_client_impl<SpecT>(interface_, group);
   }
+
+  /// Snapshot of every interface this adaptor registered.
+  std::vector<InterfaceRecord> manifest() const { return interface_->manifest(); }
 
 private:
   // Use a node pointer because shared_from_this cannot be used in constructor.
