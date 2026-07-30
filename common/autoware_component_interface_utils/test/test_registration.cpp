@@ -54,6 +54,23 @@ struct Excluded
 };
 constexpr autoware::component_interface_specs::Version resolve_domain_version(const Excluded &) =
   delete;
+
+// A local, versioned spec whose domain version has three distinct, non-zero
+// components. Asserting against {2, 3, 4} can never coincide with
+// InterfaceRecord's own {0, 0, 0} defaults, unlike a real domain (all of which
+// are currently 0.x.y).
+struct Versioned
+{
+  using Message = autoware_adapi_v1_msgs::msg::ResponseStatus;
+  static constexpr char name[] = "/test/versioned";
+  static constexpr std::size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+constexpr autoware::component_interface_specs::Version resolve_domain_version(const Versioned &)
+{
+  return {2, 3, 4};
+}
 }  // namespace test_specs
 
 static_assert(
@@ -104,23 +121,36 @@ TEST(registration, make_record_resolves_the_domain_version_only_where_declared)
     "nav_msgs/msg/Odometry", rmw_qos_profile_default);
   EXPECT_TRUE(versioned.has_version);
   const auto v = resolve_domain_version(KinematicState{});
-  EXPECT_EQ(versioned.major, v.major);
   EXPECT_EQ(versioned.minor, v.minor);
-  EXPECT_EQ(versioned.patch, v.patch);
 
-  // The fields make_record derives or forwards rather than resolving from the
-  // domain version: the spec-declared name, the caller-supplied name/type, the
-  // kind/role passed straight through, and the QoS actually applied
+  // The fields make_record forwards rather than resolves from the domain
+  // version: the caller-supplied name/type and the QoS actually applied
   // (rmw_qos_profile_default is depth 10 / RELIABLE / VOLATILE, which differs
   // from InterfaceRecord's own defaults of 0 / SYSTEM_DEFAULT / SYSTEM_DEFAULT).
-  EXPECT_EQ(versioned.interface_name, KinematicState::name);
   EXPECT_EQ(versioned.resolved_name, KinematicState::name);
   EXPECT_EQ(versioned.type_name, "nav_msgs/msg/Odometry");
-  EXPECT_EQ(versioned.kind, ciu::InterfaceRecord::Kind::Topic);
-  EXPECT_EQ(versioned.role, ciu::InterfaceRecord::Role::Provide);
   EXPECT_EQ(versioned.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
   EXPECT_EQ(versioned.durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
   EXPECT_EQ(versioned.depth, 10u);
+
+  // A local spec whose domain version has three distinct, non-zero components
+  // (so major/minor/patch cannot coincide with InterfaceRecord's defaults),
+  // called with Kind::Service/Role::Require (both differing from
+  // InterfaceRecord's Kind::Topic/Role::Provide defaults) and a resolved_name
+  // that differs from the spec-declared name (as under a remap). This pins
+  // interface_name and resolved_name apart: a bug that copied one field into
+  // the other would fail one of the two assertions below.
+  const auto remapped = ciu::make_record<test_specs::Versioned>(
+    ciu::InterfaceRecord::Kind::Service, ciu::InterfaceRecord::Role::Require, "/remapped/odom",
+    "nav_msgs/msg/Odometry", rmw_qos_profile_default);
+  EXPECT_TRUE(remapped.has_version);
+  EXPECT_EQ(remapped.major, 2);
+  EXPECT_EQ(remapped.minor, 3);
+  EXPECT_EQ(remapped.patch, 4);
+  EXPECT_EQ(remapped.interface_name, test_specs::Versioned::name);
+  EXPECT_EQ(remapped.resolved_name, "/remapped/odom");
+  EXPECT_EQ(remapped.kind, ciu::InterfaceRecord::Kind::Service);
+  EXPECT_EQ(remapped.role, ciu::InterfaceRecord::Role::Require);
 
   const auto plain = ciu::make_record<test_specs::Unversioned>(
     ciu::InterfaceRecord::Kind::Topic, ciu::InterfaceRecord::Role::Provide,
