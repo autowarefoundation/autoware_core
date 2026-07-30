@@ -17,6 +17,7 @@
 #include "gtest/gtest.h"
 
 #include <autoware/component_interface_specs/localization.hpp>
+#include <autoware/component_interface_specs/map.hpp>
 #include <autoware/component_interface_specs/version.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -59,6 +60,12 @@ static_assert(
   ciu::HasDomainVersion<autoware::component_interface_specs::localization::KinematicState>::value);
 static_assert(!ciu::HasDomainVersion<test_specs::Unversioned>::value);
 static_assert(!ciu::HasDomainVersion<test_specs::Excluded>::value);
+// PointCloudMap's domain declares the DEFINE_DOMAIN template overload for every spec
+// in its Specs tuple *and* a deleted non-template overload for this one spec; the
+// trait must still resolve to false, exercising the non-template-beats-template
+// overload-resolution tiebreak rather than the single-deleted-candidate case above.
+static_assert(
+  !ciu::HasDomainVersion<autoware::component_interface_specs::map::PointCloudMap>::value);
 
 TEST(registration, registry_accumulates_and_returns_records)
 {
@@ -66,17 +73,26 @@ TEST(registration, registry_accumulates_and_returns_records)
   auto node = std::make_shared<rclcpp::Node>("test_registry");
   ciu::NodeInterface interface(node.get());
 
-  ciu::InterfaceRecord record;
-  record.kind = ciu::InterfaceRecord::Kind::Topic;
-  record.role = ciu::InterfaceRecord::Role::Provide;
-  record.interface_name = "/test/topic";
-  record.resolved_name = "/test/topic";
-  interface.register_interface(record);
+  ciu::InterfaceRecord first_record;
+  first_record.kind = ciu::InterfaceRecord::Kind::Topic;
+  first_record.role = ciu::InterfaceRecord::Role::Provide;
+  first_record.interface_name = "/test/topic";
+  first_record.resolved_name = "/test/topic";
+  interface.register_interface(first_record);
+
+  ciu::InterfaceRecord second_record;
+  second_record.kind = ciu::InterfaceRecord::Kind::Service;
+  second_record.role = ciu::InterfaceRecord::Role::Require;
+  second_record.interface_name = "/test/service";
+  second_record.resolved_name = "/test/service";
+  interface.register_interface(second_record);
 
   const auto manifest = interface.manifest();
-  ASSERT_EQ(manifest.size(), 1u);
+  ASSERT_EQ(manifest.size(), 2u);
   EXPECT_EQ(manifest[0].interface_name, "/test/topic");
   EXPECT_EQ(manifest[0].role, ciu::InterfaceRecord::Role::Provide);
+  EXPECT_EQ(manifest[1].interface_name, "/test/service");
+  EXPECT_EQ(manifest[1].role, ciu::InterfaceRecord::Role::Require);
   rclcpp::shutdown();
 }
 
@@ -89,6 +105,22 @@ TEST(registration, make_record_resolves_the_domain_version_only_where_declared)
   EXPECT_TRUE(versioned.has_version);
   const auto v = resolve_domain_version(KinematicState{});
   EXPECT_EQ(versioned.major, v.major);
+  EXPECT_EQ(versioned.minor, v.minor);
+  EXPECT_EQ(versioned.patch, v.patch);
+
+  // The fields make_record derives or forwards rather than resolving from the
+  // domain version: the spec-declared name, the caller-supplied name/type, the
+  // kind/role passed straight through, and the QoS actually applied
+  // (rmw_qos_profile_default is depth 10 / RELIABLE / VOLATILE, which differs
+  // from InterfaceRecord's own defaults of 0 / SYSTEM_DEFAULT / SYSTEM_DEFAULT).
+  EXPECT_EQ(versioned.interface_name, KinematicState::name);
+  EXPECT_EQ(versioned.resolved_name, KinematicState::name);
+  EXPECT_EQ(versioned.type_name, "nav_msgs/msg/Odometry");
+  EXPECT_EQ(versioned.kind, ciu::InterfaceRecord::Kind::Topic);
+  EXPECT_EQ(versioned.role, ciu::InterfaceRecord::Role::Provide);
+  EXPECT_EQ(versioned.reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
+  EXPECT_EQ(versioned.durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
+  EXPECT_EQ(versioned.depth, 10u);
 
   const auto plain = ciu::make_record<test_specs::Unversioned>(
     ciu::InterfaceRecord::Kind::Topic, ciu::InterfaceRecord::Role::Provide,
