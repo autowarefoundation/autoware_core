@@ -73,7 +73,8 @@ public:
 
   /// Create a client wrapper for logging.
   template <class SharedPtrT>
-  void init_cli(SharedPtrT & cli, CallbackGroup group = nullptr) const
+  [[deprecated("use create_client<Spec>()")]] void init_cli(
+    SharedPtrT & cli, CallbackGroup group = nullptr) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     cli = create_client_impl<SpecT>(interface_, group);
@@ -81,7 +82,8 @@ public:
 
   /// Create a service wrapper for logging.
   template <class SharedPtrT, class CallbackT>
-  void init_srv(SharedPtrT & srv, CallbackT && callback, CallbackGroup group = nullptr) const
+  [[deprecated("use create_service<Spec>()")]] void init_srv(
+    SharedPtrT & srv, CallbackT && callback, CallbackGroup group = nullptr) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     srv = create_service_impl<SpecT>(interface_, std::forward<CallbackT>(callback), group);
@@ -89,7 +91,7 @@ public:
 
   /// Create a publisher using traits like services.
   template <class SharedPtrT>
-  void init_pub(SharedPtrT & pub) const
+  [[deprecated("use create_publisher<Spec>()")]] void init_pub(SharedPtrT & pub) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     pub = create_publisher_impl<SpecT>(interface_);
@@ -97,7 +99,8 @@ public:
 
   /// Create a subscription using traits like services.
   template <class SharedPtrT, class CallbackT>
-  void init_sub(SharedPtrT & sub, CallbackT && callback) const
+  [[deprecated("use create_subscription<Spec>()")]] void init_sub(
+    SharedPtrT & sub, CallbackT && callback) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     sub = create_subscription_impl<SpecT>(interface_, std::forward<CallbackT>(callback));
@@ -134,7 +137,7 @@ public:
 
   /// Create a subscription wrapper for pointer callback.
   template <class SharedPtrT, class InstanceT>
-  void init_sub(
+  [[deprecated("use create_subscription<Spec>()")]] void init_sub(
     SharedPtrT & sub, InstanceT * instance,
     MessagePtrCallback<SharedPtrT, InstanceT> && callback) const
   {
@@ -145,7 +148,7 @@ public:
 
   /// Create a subscription wrapper for reference callback.
   template <class SharedPtrT, class InstanceT>
-  void init_sub(
+  [[deprecated("use create_subscription<Spec>()")]] void init_sub(
     SharedPtrT & sub, InstanceT * instance,
     MessageRefCallback<SharedPtrT, InstanceT> && callback) const
   {
@@ -156,7 +159,7 @@ public:
 
   /// Create a service wrapper for logging.
   template <class SharedPtrT, class InstanceT>
-  void init_srv(
+  [[deprecated("use create_service<Spec>()")]] void init_srv(
     SharedPtrT & srv, InstanceT * instance, ServiceCallback<SharedPtrT, InstanceT> && callback,
     CallbackGroup group = nullptr) const
   {
