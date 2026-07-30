@@ -236,6 +236,19 @@
       }
     },
     {
+      "domain": "sensing",
+      "interface": "/sensing/vehicle_velocity_converter/twist_with_covariance",
+      "type": "geometry_msgs/msg/TwistWithCovarianceStamped",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 10,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
       "domain": "system",
       "interface": "/system/operation_mode/state",
       "type": "autoware_adapi_v1_msgs/msg/OperationModeState",
