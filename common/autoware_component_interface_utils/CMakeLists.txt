@@ -70,6 +70,39 @@ if(BUILD_TESTING)
   target_link_libraries(test_manifest_json
     nlohmann_json::nlohmann_json
   )
+
+  # Exercises the testing/manifest_drift.hpp helper end to end: a real Node +
+  # NodeAdaptor (hence the ROS graph/isolated-domain-ID treatment, same as
+  # test_component_interface_registration above) pinned against fragment files
+  # committed under test/data/. Those fragments are test data only, so they are
+  # neither installed nor part of the public API.
+  ament_add_ros_isolated_gtest(test_manifest_drift
+    test/test_manifest_drift.cpp
+  )
+
+  target_include_directories(test_manifest_drift
+    PRIVATE include
+  )
+
+  ament_target_dependencies(test_manifest_drift
+    rclcpp
+    rclcpp_components
+    autoware_adapi_v1_msgs
+    autoware_component_interface_specs
+  )
+
+  target_link_libraries(test_manifest_drift
+    nlohmann_json::nlohmann_json
+  )
+
+  # MATCHING_FRAGMENT/DIVERGENT_FRAGMENT let test_manifest_drift.cpp read the
+  # fragment files without hardcoding a path relative to the working
+  # directory the test happens to run from -- the same idiom
+  # autoware_component_interface_specs uses for COMMITTED_MANIFEST.
+  target_compile_definitions(test_manifest_drift
+    PRIVATE
+      MATCHING_FRAGMENT="${CMAKE_CURRENT_SOURCE_DIR}/test/data/matching_fragment.json"
+      DIVERGENT_FRAGMENT="${CMAKE_CURRENT_SOURCE_DIR}/test/data/divergent_fragment.json")
 endif()
 
 # nlohmann-json-dev never lands in ${PROJECT_NAME}_FOUND_BUILD_DEPENDS (see the
