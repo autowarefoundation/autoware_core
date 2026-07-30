@@ -28,6 +28,7 @@
 #include "autoware/component_interface_specs/map.hpp"
 #include "autoware/component_interface_specs/perception.hpp"
 #include "autoware/component_interface_specs/planning.hpp"
+#include "autoware/component_interface_specs/sensing.hpp"
 #include "autoware/component_interface_specs/system.hpp"
 #include "autoware/component_interface_specs/vehicle.hpp"
 
@@ -147,6 +148,7 @@ int main(int argc, char ** argv)
     collect<cis::map::Specs>(&rows);
     collect<cis::perception::Specs>(&rows);
     collect<cis::planning::Specs>(&rows);
+    collect<cis::sensing::Specs>(&rows);
     collect<cis::system::Specs>(&rows);
     collect<cis::vehicle::Specs>(&rows);
   } catch (const std::exception & error) {
