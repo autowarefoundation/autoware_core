@@ -258,14 +258,16 @@ void MissionPlanner::on_set_lanelet_route(
   }
 
   change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-  LaneletRoute route;
+  geometry_msgs::msg::TransformStamped transform_to_map;
   try {
-    route = create_lanelet_route(*req);
+    transform_to_map =
+      tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
   } catch (const tf2::TransformException & error) {
     set_fail_response(
       res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR, error.what());
     return;
   }
+  const auto route = create_lanelet_route(*req, transform_to_map);
 
   if (route.segments.empty()) {
     cancel_route();
@@ -319,14 +321,16 @@ void MissionPlanner::on_set_waypoint_route(
                           : false;
 
   change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-  LaneletRoute route;
+  geometry_msgs::msg::TransformStamped transform_to_map;
   try {
-    route = create_waypoint_route(*req);
+    transform_to_map =
+      tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
   } catch (const tf2::TransformException & error) {
     set_fail_response(
       res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR, error.what());
     return;
   }
+  const auto route = create_waypoint_route(*req, transform_to_map);
 
   if (route.segments.empty()) {
     cancel_route();
@@ -385,33 +389,31 @@ void MissionPlanner::cancel_route()
   }
 }
 
-LaneletRoute MissionPlanner::create_lanelet_route(const SetLaneletRoute::Request & req)
+LaneletRoute MissionPlanner::create_lanelet_route(
+  const SetLaneletRoute::Request & req,
+  const geometry_msgs::msg::TransformStamped & transform_to_map)
 {
-  const auto transform =
-    tf_buffer_.lookupTransform(map_frame_, req.header.frame_id, tf2::TimePointZero);
-
   LaneletRoute route;
   route.header.stamp = req.header.stamp;
   route.header.frame_id = map_frame_;
   route.start_pose = odometry_->pose.pose;
-  route.goal_pose = transform_pose(req.goal_pose, transform);
+  route.goal_pose = transform_pose(req.goal_pose, transform_to_map);
   route.segments = req.segments;
   route.uuid = req.uuid;
   route.allow_modification = req.allow_modification;
   return route;
 }
 
-LaneletRoute MissionPlanner::create_waypoint_route(const SetWaypointRoute::Request & req)
+LaneletRoute MissionPlanner::create_waypoint_route(
+  const SetWaypointRoute::Request & req,
+  const geometry_msgs::msg::TransformStamped & transform_to_map)
 {
-  const auto transform =
-    tf_buffer_.lookupTransform(map_frame_, req.header.frame_id, tf2::TimePointZero);
-
   PlannerPlugin::RoutePoints points;
   points.push_back(odometry_->pose.pose);
   for (const auto & waypoint : req.waypoints) {
-    points.push_back(transform_pose(waypoint, transform));
+    points.push_back(transform_pose(waypoint, transform_to_map));
   }
-  points.push_back(transform_pose(req.goal_pose, transform));
+  points.push_back(transform_pose(req.goal_pose, transform_to_map));
 
   LaneletRoute route = planner_->plan(points);
   route.header.stamp = req.header.stamp;

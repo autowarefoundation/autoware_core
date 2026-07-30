@@ -122,8 +122,12 @@ private:
   void change_route();
   void change_route(const LaneletRoute & route);
   void cancel_route();
-  LaneletRoute create_lanelet_route(const SetLaneletRoute::Request & req);
-  LaneletRoute create_waypoint_route(const SetWaypointRoute::Request & req);
+  LaneletRoute create_lanelet_route(
+    const SetLaneletRoute::Request & req,
+    const geometry_msgs::msg::TransformStamped & transform_to_map);
+  LaneletRoute create_waypoint_route(
+    const SetWaypointRoute::Request & req,
+    const geometry_msgs::msg::TransformStamped & transform_to_map);
 
   void publish_pose_log(const Pose & pose, const std::string & pose_type);
 
