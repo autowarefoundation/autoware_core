@@ -72,35 +72,36 @@ public:
   }
 
   /// Create a client wrapper for logging.
+  /// Legacy form; prefer create_client<Spec>() instead.
   template <class SharedPtrT>
-  [[deprecated("use create_client<Spec>()")]] void init_cli(
-    SharedPtrT & cli, CallbackGroup group = nullptr) const
+  void init_cli(SharedPtrT & cli, CallbackGroup group = nullptr) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     cli = create_client_impl<SpecT>(interface_, group);
   }
 
   /// Create a service wrapper for logging.
+  /// Legacy form; prefer create_service<Spec>() instead.
   template <class SharedPtrT, class CallbackT>
-  [[deprecated("use create_service<Spec>()")]] void init_srv(
-    SharedPtrT & srv, CallbackT && callback, CallbackGroup group = nullptr) const
+  void init_srv(SharedPtrT & srv, CallbackT && callback, CallbackGroup group = nullptr) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     srv = create_service_impl<SpecT>(interface_, std::forward<CallbackT>(callback), group);
   }
 
   /// Create a publisher using traits like services.
+  /// Legacy form; prefer create_publisher<Spec>() instead.
   template <class SharedPtrT>
-  [[deprecated("use create_publisher<Spec>()")]] void init_pub(SharedPtrT & pub) const
+  void init_pub(SharedPtrT & pub) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     pub = create_publisher_impl<SpecT>(interface_);
   }
 
   /// Create a subscription using traits like services.
+  /// Legacy form; prefer create_subscription<Spec>() instead.
   template <class SharedPtrT, class CallbackT>
-  [[deprecated("use create_subscription<Spec>()")]] void init_sub(
-    SharedPtrT & sub, CallbackT && callback) const
+  void init_sub(SharedPtrT & sub, CallbackT && callback) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     sub = create_subscription_impl<SpecT>(interface_, std::forward<CallbackT>(callback));
@@ -123,7 +124,8 @@ public:
   /// The client is deliberately left out of `group`: only the service joins the
   /// caller's (typically MutuallyExclusive) callback group, so the client's
   /// response can still be taken while the service callback that issued the call
-  /// is blocked in Client::call.
+  /// is blocked in Client::call. Putting both in the same group reintroduces the
+  /// deadlock `group` exists to prevent.
   template <class C, class S>
   void relay_service(
     C & cli, S & srv, CallbackGroup group, std::optional<double> timeout = std::nullopt) const
@@ -136,8 +138,9 @@ public:
   }
 
   /// Create a subscription wrapper for pointer callback.
+  /// Legacy form; prefer create_subscription<Spec>() instead.
   template <class SharedPtrT, class InstanceT>
-  [[deprecated("use create_subscription<Spec>()")]] void init_sub(
+  void init_sub(
     SharedPtrT & sub, InstanceT * instance,
     MessagePtrCallback<SharedPtrT, InstanceT> && callback) const
   {
@@ -147,8 +150,9 @@ public:
   }
 
   /// Create a subscription wrapper for reference callback.
+  /// Legacy form; prefer create_subscription<Spec>() instead.
   template <class SharedPtrT, class InstanceT>
-  [[deprecated("use create_subscription<Spec>()")]] void init_sub(
+  void init_sub(
     SharedPtrT & sub, InstanceT * instance,
     MessageRefCallback<SharedPtrT, InstanceT> && callback) const
   {
@@ -158,8 +162,9 @@ public:
   }
 
   /// Create a service wrapper for logging.
+  /// Legacy form; prefer create_service<Spec>() instead.
   template <class SharedPtrT, class InstanceT>
-  [[deprecated("use create_service<Spec>()")]] void init_srv(
+  void init_srv(
     SharedPtrT & srv, InstanceT * instance, ServiceCallback<SharedPtrT, InstanceT> && callback,
     CallbackGroup group = nullptr) const
   {
