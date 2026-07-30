@@ -244,7 +244,7 @@ std::optional<Point> MapHeightFitter::Impl::fit(const Point & position, const st
 
   // transform frame to map_frame_
   try {
-    const auto stamped = tf2_buffer_.lookupTransform(frame, map_frame_, tf2::TimePointZero);
+    const auto stamped = tf2_buffer_.lookupTransform(map_frame_, frame, tf2::TimePointZero);
     tf2::doTransform(point, point, stamped);
   } catch (tf2::TransformException & exception) {
     RCLCPP_WARN_STREAM(logger, "failed to lookup transform: " << exception.what());
@@ -256,7 +256,7 @@ std::optional<Point> MapHeightFitter::Impl::fit(const Point & position, const st
 
   // transform map_frame_ to frame
   try {
-    const auto stamped = tf2_buffer_.lookupTransform(map_frame_, frame, tf2::TimePointZero);
+    const auto stamped = tf2_buffer_.lookupTransform(frame, map_frame_, tf2::TimePointZero);
     tf2::doTransform(point, point, stamped);
   } catch (tf2::TransformException & exception) {
     RCLCPP_WARN_STREAM(logger, "failed to lookup transform: " << exception.what());
