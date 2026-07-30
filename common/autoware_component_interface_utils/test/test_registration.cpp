@@ -56,6 +56,40 @@ struct Excluded
 constexpr autoware::component_interface_specs::Version resolve_domain_version(const Excluded &) =
   delete;
 
+// Two distinct specs sharing one Message type, used to pin relay_message's
+// per-side spec deduction: a bug that reused the publisher's spec for the
+// subscription side too (or vice versa) would register the wrong
+// interface_name on one of the two records.
+struct RelayPub
+{
+  using Message = autoware_adapi_v1_msgs::msg::ResponseStatus;
+  static constexpr char name[] = "/test/relay/pub";
+  static constexpr std::size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+struct RelaySub
+{
+  using Message = autoware_adapi_v1_msgs::msg::ResponseStatus;
+  static constexpr char name[] = "/test/relay/sub";
+  static constexpr std::size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+
+// Two distinct specs sharing one Service type, for the same reason applied
+// to relay_service's client/server pair.
+struct RelayCli
+{
+  using Service = autoware_system_msgs::srv::ChangeOperationMode;
+  static constexpr char name[] = "/test/relay/cli";
+};
+struct RelaySrv
+{
+  using Service = autoware_system_msgs::srv::ChangeOperationMode;
+  static constexpr char name[] = "/test/relay/srv";
+};
+
 // A local, versioned spec whose domain version has three distinct, non-zero
 // components. Asserting against {2, 3, 4} can never coincide with
 // InterfaceRecord's own {0, 0, 0} defaults, unlike a real domain (all of which
@@ -230,4 +264,46 @@ TEST(registration, every_entry_path_registers)
   (void)srv;
   (void)cli;
   (void)legacy_pub;
+}
+
+TEST(registration, relay_message_registers_both_sides_with_their_own_spec)
+{
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_relay_message");
+  ciu::NodeAdaptor adaptor(node.get());
+
+  ciu::Publisher<test_specs::RelayPub>::SharedPtr pub;
+  ciu::Subscription<test_specs::RelaySub>::SharedPtr sub;
+  adaptor.relay_message(pub, sub);
+
+  const auto manifest = adaptor.manifest();
+  ASSERT_EQ(manifest.size(), 2u);
+  EXPECT_EQ(manifest[0].role, ciu::InterfaceRecord::Role::Provide);  // relayed publisher
+  EXPECT_EQ(manifest[0].interface_name, test_specs::RelayPub::name);
+  EXPECT_EQ(manifest[1].role, ciu::InterfaceRecord::Role::Require);  // relayed subscription
+  EXPECT_EQ(manifest[1].interface_name, test_specs::RelaySub::name);
+  rclcpp::shutdown();
+  (void)pub;
+  (void)sub;
+}
+
+TEST(registration, relay_service_registers_both_sides_with_their_own_spec)
+{
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_relay_service");
+  ciu::NodeAdaptor adaptor(node.get());
+
+  ciu::Client<test_specs::RelayCli>::SharedPtr cli;
+  ciu::Service<test_specs::RelaySrv>::SharedPtr srv;
+  adaptor.relay_service(cli, srv, nullptr);
+
+  const auto manifest = adaptor.manifest();
+  ASSERT_EQ(manifest.size(), 2u);
+  EXPECT_EQ(manifest[0].role, ciu::InterfaceRecord::Role::Require);  // relayed client
+  EXPECT_EQ(manifest[0].interface_name, test_specs::RelayCli::name);
+  EXPECT_EQ(manifest[1].role, ciu::InterfaceRecord::Role::Provide);  // relayed service
+  EXPECT_EQ(manifest[1].interface_name, test_specs::RelaySrv::name);
+  rclcpp::shutdown();
+  (void)cli;
+  (void)srv;
 }
