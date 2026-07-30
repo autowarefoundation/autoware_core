@@ -7812,7 +7812,7 @@
 <div><h1 id="autoware_agnocast_wrapper">autoware_agnocast_wrapper<a class="headerlink" href="#autoware_agnocast_wrapper" title="Permanent link">#</a></h1>
 <p>The purpose of this package is to integrate Agnocast, a zero-copy middleware, into each topic in Autoware with minimal side effects. Agnocast is a library designed to work alongside ROS 2, enabling true zero-copy publish/subscribe communication for all ROS 2 message types, including unsized message types.</p>
 <ul>
-<li>Agnocast Repository: <a href="https://github.com/tier4/agnocast">https://github.com/tier4/agnocast</a></li>
+<li>Agnocast Repository: <a href="https://github.com/autowarefoundation/agnocast">https://github.com/autowarefoundation/agnocast</a></li>
 <li>Discussion on Agnocast Integration into Autoware: <a href="https://github.com/orgs/autowarefoundation/discussions/5835">https://github.com/orgs/autowarefoundation/discussions/5835</a></li>
 <li><a href="docs/review_guide/">Review Guide for Agnocast Wrapper PRs</a></li>
 </ul>
@@ -7823,9 +7823,12 @@
 <p>Use this when you want the <strong>entire node</strong> to transparently switch between <code>rclcpp::Node</code> and <code>agnocast::Node</code> at runtime. The node wrapper automatically selects the correct underlying implementation based on the <code>ENABLE_AGNOCAST</code> environment variable.</p>
 <p><code>agnocast_wrapper::Node</code> does <strong>not</strong> publicly derive from <code>rclcpp::Node</code>. It exposes a curated subset
 of the <code>rclcpp::Node</code> surface and forwards each member to the underlying implementation (<code>rclcpp::Node</code>
-or <code>agnocast::Node</code>). This subset is <strong>identical in both builds</strong> (<code>ENABLE_AGNOCAST=0</code> and <code>=1</code>), so a
-node written against it compiles unchanged either way. If you need an API that is not listed below,
-reach the underlying node via <code>get_rclcpp_node()</code> (always available) or extend the wrapper.</p>
+or <code>agnocast::Node</code>). The <strong>member names and argument lists are identical in both builds</strong>
+(<code>ENABLE_AGNOCAST=0</code> and <code>=1</code>), so a node written against it compiles unchanged either way, provided the
+handle, options and message types are spelled with the <code>AUTOWARE_*</code> macros (the underlying types differ
+per build). If you need an API that is not listed below, extend the wrapper, or reach the underlying node
+via <code>get_rclcpp_node()</code> — declared in both builds, but it throws when the node is in Agnocast mode (see
+the <a href="#build-modes-agnocast-disabled-vs-agnocast-enabled">build-modes table</a>).</p>
 <h4 id="supported-api-surface">Supported API surface<a class="headerlink" href="#supported-api-surface" title="Permanent link">#</a></h4>
 <p>The following members / free functions are provided. Unless noted, signatures mirror their
 <code>rclcpp::Node</code> counterparts.</p>
@@ -7868,10 +7871,6 @@ reach the underlying node via <code>get_rclcpp_node()</code> (always available) 
 <tr>
 <td>Subscription</td>
 <td><code>create_subscription&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads)</td>
-</tr>
-<tr>
-<td>Polling subscriber</td>
-<td><code>create_polling_subscriber&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads)</td>
 </tr>
 <tr>
 <td>Client</td>
@@ -7972,7 +7971,11 @@ autoware::agnocast_wrapper::set_period(timer_, std::chrono::milliseconds(200));<
 <p>To use the Node wrapper in your package, add the following to your <code>CMakeLists.txt</code>:</p>
 <p><code>cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
-ament_target_dependencies(my_node_component autoware_agnocast_wrapper)</code></p>
+ament_target_dependencies(my_node_component autoware_agnocast_wrapper)
+autoware_agnocast_wrapper_setup(my_node_component)</code></p>
+<p><code>autoware_agnocast_wrapper_setup()</code> is required: it defines <code>USE_AGNOCAST_ENABLED</code> on the target, which
+<code>ament_target_dependencies()</code> does not propagate. Apply it to every target that includes a wrapper header;
+<code>autoware_agnocast_wrapper_register_node()</code> does it for the targets it handles.</p>
 <h4 id="registering-a-node-with-autoware_agnocast_wrapper_register_node">Registering a Node with <code>autoware_agnocast_wrapper_register_node</code><a class="headerlink" href="#registering-a-node-with-autoware_agnocast_wrapper_register_node" title="Permanent link">#</a></h4>
 <p>Instead of calling <code>rclcpp_components_register_node</code> directly, use the <code>autoware_agnocast_wrapper_register_node</code> macro to register your component node. This macro:</p>
 <ol>
@@ -8426,30 +8429,6 @@ public:
   autoware::agnocast_wrapper::polling::PollingSubscriber<nav_msgs::msg::odometry>::SharedPtr sub_;
 };
 ```</nav_msgs::msg::odometry></p>
-<h3 id="when-to-use-this-vs-the-existing-member-api">When to use this vs the existing member API<a class="headerlink" href="#when-to-use-this-vs-the-existing-member-api" title="Permanent link">#</a></h3>
-<p>This package currently exposes two polling APIs:</p>
-<table>
-<thead>
-<tr>
-<th>API</th>
-<th>Returns</th>
-<th>Form</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>Node::create_polling_subscriber</code> / <code>AUTOWARE_POLLING_SUBSCRIBER_PTR</code> (top-level)</td>
-<td><code>message_ptr</code></td>
-<td><code>Node</code> member</td>
-</tr>
-<tr>
-<td><code>polling::create_polling_subscriber</code> (this section)</td>
-<td>plain <code>std::shared_ptr&lt;const MessageT&gt;</code></td>
-<td>free function</td>
-</tr>
-</tbody>
-</table>
-<p>Prefer <code>polling::</code> for new code: it returns a plain <code>std::shared_ptr</code> (no <code>message_ptr</code>), is node-independent, and confines the <code>autoware_utils_rclcpp</code> dependency to a single header. The top-level member API is kept for backward compatibility with already-merged consumers and is planned to be removed once they are migrated to <code>polling::</code>.</p>
 <h2 id="how-to-enabledisable-agnocast-on-build">How to Enable/Disable Agnocast on Build<a class="headerlink" href="#how-to-enabledisable-agnocast-on-build" title="Permanent link">#</a></h2>
 <p>To build Autoware <strong>with</strong> Agnocast:</p>
 <p><code>bash
