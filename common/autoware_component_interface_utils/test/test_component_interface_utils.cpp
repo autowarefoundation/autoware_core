@@ -21,6 +21,8 @@
 #include "autoware/component_interface_utils/status.hpp"
 #include "gtest/gtest.h"
 
+#include <autoware/component_interface_specs/control.hpp>
+#include <autoware/component_interface_specs/planning.hpp>
 #include <autoware/component_interface_specs/system.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -274,6 +276,42 @@ bool spin_until(const rclcpp::Node::SharedPtr & node, const std::function<bool()
 }
 
 }  // namespace
+
+TEST(interface, node_adaptor_relay_message)
+{
+  // relay_message needs two specs carrying the same message type; these are the
+  // only such pair among the core specs, and the relay direction here has no
+  // meaning beyond exercising the helper.
+  using Source = autoware::component_interface_specs::planning::Trajectory;
+  using Target = autoware::component_interface_specs::control::PredictedTrajectory;
+
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_adaptor_relay");
+  autoware::component_interface_utils::NodeAdaptor adaptor(node.get());
+
+  autoware::component_interface_utils::Publisher<Target>::SharedPtr relay_pub;
+  autoware::component_interface_utils::Subscription<Source>::SharedPtr relay_sub;
+  adaptor.relay_message(relay_pub, relay_sub);
+
+  size_t relayed_points = 0;
+  auto observer = adaptor.create_subscription<Target>(
+    [&relayed_points](const Target::Message::ConstSharedPtr msg) {
+      relayed_points = msg->points.size();
+    });
+  auto source = adaptor.create_publisher<Source>();
+
+  Source::Message msg;
+  msg.points.resize(3);
+  source->publish(msg);
+
+  // The relay forwards what it receives on the source spec onto the target spec,
+  // so a message published on the source has to come back out on the target.
+  EXPECT_TRUE(spin_until(node, [&relayed_points] { return relayed_points != 0; }));
+  EXPECT_EQ(relayed_points, 3u);
+
+  rclcpp::shutdown();
+  (void)observer;
+}
 
 TEST(interface, node_adaptor_create_subscription_member_callbacks)
 {

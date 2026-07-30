@@ -96,22 +96,34 @@ public:
     sub = create_subscription_impl<SpecT>(interface_->node, std::forward<CallbackT>(callback));
   }
 
-  /// Relay message.
+  /// Relay message. Goes straight to the creation functions rather than through
+  /// init_pub/init_sub, so this helper does not depend on the out-parameter forms.
   template <class P, class S>
   void relay_message(P & pub, S & sub) const
   {
-    using MsgT = typename P::element_type::SpecType::Message::ConstSharedPtr;
-    init_pub(pub);
-    init_sub(sub, [pub](MsgT msg) { pub->publish(*msg); });
+    using PubSpecT = typename P::element_type::SpecType;
+    using SubSpecT = typename S::element_type::SpecType;
+    using MsgT = typename PubSpecT::Message::ConstSharedPtr;
+    pub = create_publisher_impl<PubSpecT>(interface_->node);
+    sub =
+      create_subscription_impl<SubSpecT>(interface_->node, [pub](MsgT msg) { pub->publish(*msg); });
   }
 
-  /// Relay service.
+  /// Relay service. Goes straight to the creation functions rather than through
+  /// init_cli/init_srv, so this helper does not depend on the out-parameter forms.
+  /// The client is deliberately left out of `group`: only the service joins the
+  /// caller's (typically MutuallyExclusive) callback group, so the client's
+  /// response can still be taken while the service callback that issued the call
+  /// is blocked in Client::call.
   template <class C, class S>
   void relay_service(
     C & cli, S & srv, CallbackGroup group, std::optional<double> timeout = std::nullopt) const
   {
-    init_cli(cli);
-    init_srv(srv, [cli, timeout](auto req, auto res) { *res = *cli->call(req, timeout); }, group);
+    using CliSpecT = typename C::element_type::SpecType;
+    using SrvSpecT = typename S::element_type::SpecType;
+    cli = create_client_impl<CliSpecT>(interface_, nullptr);
+    srv = create_service_impl<SrvSpecT>(
+      interface_, [cli, timeout](auto req, auto res) { *res = *cli->call(req, timeout); }, group);
   }
 
   /// Create a subscription wrapper for pointer callback.
@@ -120,8 +132,9 @@ public:
     SharedPtrT & sub, InstanceT * instance,
     MessagePtrCallback<SharedPtrT, InstanceT> && callback) const
   {
+    using SpecT = typename SharedPtrT::element_type::SpecType;
     using std::placeholders::_1;
-    init_sub(sub, std::bind(callback, instance, _1));
+    sub = create_subscription_impl<SpecT>(interface_->node, std::bind(callback, instance, _1));
   }
 
   /// Create a subscription wrapper for reference callback.
@@ -130,8 +143,9 @@ public:
     SharedPtrT & sub, InstanceT * instance,
     MessageRefCallback<SharedPtrT, InstanceT> && callback) const
   {
+    using SpecT = typename SharedPtrT::element_type::SpecType;
     using std::placeholders::_1;
-    init_sub(sub, std::bind(callback, instance, _1));
+    sub = create_subscription_impl<SpecT>(interface_->node, std::bind(callback, instance, _1));
   }
 
   /// Create a service wrapper for logging.
@@ -140,9 +154,10 @@ public:
     SharedPtrT & srv, InstanceT * instance, ServiceCallback<SharedPtrT, InstanceT> && callback,
     CallbackGroup group = nullptr) const
   {
+    using SpecT = typename SharedPtrT::element_type::SpecType;
     using std::placeholders::_1;
     using std::placeholders::_2;
-    init_srv(srv, std::bind(callback, instance, _1, _2), group);
+    srv = create_service_impl<SpecT>(interface_, std::bind(callback, instance, _1, _2), group);
   }
 
   /// Create a publisher, returning it instead of assigning to an out-parameter.
