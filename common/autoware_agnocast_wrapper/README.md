@@ -261,6 +261,35 @@ target_include_directories(target PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DI
 autoware_agnocast_wrapper_setup(target)
 ```
 
+## Subscribing with `MessageT::ConstSharedPtr`
+
+Some interfaces cannot be templated on the message pointer type: a virtual method overridden by
+downstream packages, a pluginlib boundary, a third-party callback. When such an interface is fixed
+to the plain ROS 2 `MessageT::ConstSharedPtr`, a subscription callback can take that type directly,
+leaving no Agnocast-specific code at the call site:
+
+```cpp
+node->create_subscription<PointCloud2>(
+  "input", qos, [this](const PointCloud2::ConstSharedPtr & msg) {
+    // virtual void on_pointcloud(const PointCloud2::ConstSharedPtr &) — cannot change signature
+    on_pointcloud(msg);
+  });
+```
+
+The payload is not copied. On the Agnocast path the callback receives an aliasing `shared_ptr`: it
+shares ownership with the shared-memory message (so the entry stays alive) but points directly at
+the payload the message already holds. The pointer may therefore be retained beyond the callback,
+at the cost of pinning one shared-memory entry for that whole time — the same type and lifetime
+contract as a polling subscriber's `take_data()`. In a non-Agnocast build the callback is an
+ordinary rclcpp one, so the same call site compiles in both builds.
+
+`message_filters::Synchronizer` callbacks accept this form as well, so a synchronized callback
+written against `MessageT::ConstSharedPtr` needs no changes either.
+
+Prefer `AUTOWARE_MESSAGE_UNIQUE_PTR` / `AUTOWARE_MESSAGE_CONST_SHARED_PTR` where you control the
+interface: they make the ownership explicit and cannot be mistaken for a copy. This form is for the
+boundaries where you do not.
+
 ## Message Filters Support
 
 This package provides wrapper types for `message_filters` (`Subscriber`, `Synchronizer`) in the `autoware::agnocast_wrapper::message_filters` namespace. These wrappers transparently switch between `::message_filters` and `agnocast::message_filters` at runtime.
