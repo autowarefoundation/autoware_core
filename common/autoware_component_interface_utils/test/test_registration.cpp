@@ -18,6 +18,7 @@
 
 #include <autoware/component_interface_specs/localization.hpp>
 #include <autoware/component_interface_specs/map.hpp>
+#include <autoware/component_interface_specs/system.hpp>
 #include <autoware/component_interface_specs/version.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -156,4 +157,57 @@ TEST(registration, make_record_resolves_the_domain_version_only_where_declared)
     ciu::InterfaceRecord::Kind::Topic, ciu::InterfaceRecord::Role::Provide,
     test_specs::Unversioned::name, "std_msgs/msg/Empty", rmw_qos_profile_default);
   EXPECT_FALSE(plain.has_version);
+}
+
+TEST(registration, create_publisher_registers_with_remap_resolved_name)
+{
+  using OperationModeState = autoware::component_interface_specs::system::OperationModeState;
+  rclcpp::init(0, nullptr);
+  rclcpp::NodeOptions opts;
+  opts.arguments({"--ros-args", "-r", std::string(OperationModeState::name) + ":=/renamed/mode"});
+  auto node = std::make_shared<rclcpp::Node>("test_remap", opts);
+  ciu::NodeAdaptor adaptor(node.get());
+
+  auto pub = adaptor.create_publisher<OperationModeState>();
+  const auto manifest = adaptor.manifest();
+  ASSERT_EQ(manifest.size(), 1u);
+  EXPECT_EQ(manifest[0].interface_name, OperationModeState::name);
+  EXPECT_EQ(manifest[0].resolved_name, "/renamed/mode");
+  EXPECT_EQ(manifest[0].role, ciu::InterfaceRecord::Role::Provide);
+  EXPECT_EQ(manifest[0].durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+  EXPECT_TRUE(manifest[0].has_version);
+  rclcpp::shutdown();
+  (void)pub;
+}
+
+TEST(registration, every_entry_path_registers)
+{
+  using OperationModeState = autoware::component_interface_specs::system::OperationModeState;
+  using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_paths");
+  ciu::NodeAdaptor adaptor(node.get());
+
+  // Polling subscription (nullptr callback) -- Require.
+  auto sub = adaptor.create_subscription<OperationModeState>(nullptr);
+  // Service server -- Provide; service client -- Require.
+  auto srv = adaptor.create_service<ChangeOperationMode>([](auto, auto) {});
+  auto cli = adaptor.create_client<ChangeOperationMode>();
+  // Legacy init_* path (deprecated in a later commit, must still register).
+  ciu::Publisher<OperationModeState>::SharedPtr legacy_pub;
+  adaptor.init_pub(legacy_pub);
+
+  const auto manifest = adaptor.manifest();
+  ASSERT_EQ(manifest.size(), 4u);
+  EXPECT_EQ(manifest[0].role, ciu::InterfaceRecord::Role::Require);  // sub
+  EXPECT_EQ(manifest[1].kind, ciu::InterfaceRecord::Kind::Service);  // srv
+  EXPECT_EQ(manifest[1].role, ciu::InterfaceRecord::Role::Provide);
+  EXPECT_EQ(manifest[2].role, ciu::InterfaceRecord::Role::Require);  // cli
+  EXPECT_EQ(manifest[2].depth, 10u);                                 // shared service profile
+  EXPECT_EQ(manifest[3].role, ciu::InterfaceRecord::Role::Provide);  // init_pub
+  rclcpp::shutdown();
+  (void)sub;
+  (void)srv;
+  (void)cli;
+  (void)legacy_pub;
 }

@@ -92,7 +92,7 @@ public:
   void init_pub(SharedPtrT & pub) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
-    pub = create_publisher_impl<SpecT>(interface_->node);
+    pub = create_publisher_impl<SpecT>(interface_);
   }
 
   /// Create a subscription using traits like services.
@@ -100,7 +100,7 @@ public:
   void init_sub(SharedPtrT & sub, CallbackT && callback) const
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
-    sub = create_subscription_impl<SpecT>(interface_->node, std::forward<CallbackT>(callback));
+    sub = create_subscription_impl<SpecT>(interface_, std::forward<CallbackT>(callback));
   }
 
   /// Relay message. Goes straight to the creation functions rather than through
@@ -111,9 +111,8 @@ public:
     using PubSpecT = typename P::element_type::SpecType;
     using SubSpecT = typename S::element_type::SpecType;
     using MsgT = typename PubSpecT::Message::ConstSharedPtr;
-    pub = create_publisher_impl<PubSpecT>(interface_->node);
-    sub =
-      create_subscription_impl<SubSpecT>(interface_->node, [pub](MsgT msg) { pub->publish(*msg); });
+    pub = create_publisher_impl<PubSpecT>(interface_);
+    sub = create_subscription_impl<SubSpecT>(interface_, [pub](MsgT msg) { pub->publish(*msg); });
   }
 
   /// Relay service. Goes straight to the creation functions rather than through
@@ -141,7 +140,7 @@ public:
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     using std::placeholders::_1;
-    sub = create_subscription_impl<SpecT>(interface_->node, std::bind(callback, instance, _1));
+    sub = create_subscription_impl<SpecT>(interface_, std::bind(callback, instance, _1));
   }
 
   /// Create a subscription wrapper for reference callback.
@@ -152,7 +151,7 @@ public:
   {
     using SpecT = typename SharedPtrT::element_type::SpecType;
     using std::placeholders::_1;
-    sub = create_subscription_impl<SpecT>(interface_->node, std::bind(callback, instance, _1));
+    sub = create_subscription_impl<SpecT>(interface_, std::bind(callback, instance, _1));
   }
 
   /// Create a service wrapper for logging.
@@ -168,17 +167,19 @@ public:
   }
 
   /// Create a publisher, returning it instead of assigning to an out-parameter.
+  /// The created publisher is registered in this node's interface manifest.
   template <class SpecT>
   typename Publisher<SpecT, NodeT>::SharedPtr create_publisher()
   {
-    return create_publisher_impl<SpecT>(interface_->node);
+    return create_publisher_impl<SpecT>(interface_);
   }
 
   /// Create a subscription, returning it instead of assigning to an out-parameter.
+  /// The created subscription is registered in this node's interface manifest.
   template <class SpecT, class CallbackT>
   typename Subscription<SpecT, NodeT>::SharedPtr create_subscription(CallbackT && callback)
   {
-    return create_subscription_impl<SpecT>(interface_->node, std::forward<CallbackT>(callback));
+    return create_subscription_impl<SpecT>(interface_, std::forward<CallbackT>(callback));
   }
 
   /// Create a subscription bound to a member function taking the message pointer.
@@ -200,6 +201,7 @@ public:
   }
 
   /// Create a service server, returning it instead of assigning to an out-parameter.
+  /// The created service server is registered in this node's interface manifest.
   template <class SpecT, class CallbackT>
   typename Service<SpecT, NodeT>::SharedPtr create_service(
     CallbackT && callback, rclcpp::CallbackGroup::SharedPtr group = nullptr)
@@ -219,6 +221,7 @@ public:
   }
 
   /// Create a service client, returning it instead of assigning to an out-parameter.
+  /// The created client is registered in this node's interface manifest.
   template <class SpecT>
   typename Client<SpecT, NodeT>::SharedPtr create_client(
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
