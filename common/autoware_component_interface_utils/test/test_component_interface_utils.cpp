@@ -26,6 +26,8 @@
 
 #include <algorithm>
 #include <chrono>
+#include <functional>
+#include <future>
 #include <memory>
 #include <string>
 #include <thread>
@@ -217,6 +219,115 @@ TEST(interface, node_adaptor_create_publisher_qos)
   EXPECT_EQ(infos[0].qos_profile().durability(), rclcpp::DurabilityPolicy::TransientLocal);
   rclcpp::shutdown();
   (void)pub;
+}
+
+namespace
+{
+
+using OperationModeState = autoware::component_interface_specs::system::OperationModeState;
+using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
+
+/// Callback host for the member-function overloads. Each member has a distinct
+/// signature so which overload the compiler picks is observable: only the pointer
+/// form can bind on_ptr, only the reference form can bind on_ref.
+class CallbackHost
+{
+public:
+  void on_ptr(const OperationModeState::Message::ConstSharedPtr msg)
+  {
+    ptr_mode = msg->mode;
+    ptr_called = true;
+  }
+  void on_ref(const OperationModeState::Message & msg)
+  {
+    ref_mode = msg.mode;
+    ref_called = true;
+  }
+  void on_change(
+    const ChangeOperationMode::Service::Request::SharedPtr,
+    const ChangeOperationMode::Service::Response::SharedPtr res)
+  {
+    res->status.success = true;
+    srv_called = true;
+  }
+
+  bool ptr_called = false;
+  bool ref_called = false;
+  bool srv_called = false;
+  uint8_t ptr_mode = 0;
+  uint8_t ref_mode = 0;
+};
+
+/// Spin until the predicate holds (or the timeout elapses) so delivery is awaited
+/// rather than assumed.
+bool spin_until(const rclcpp::Node::SharedPtr & node, const std::function<bool()> & done)
+{
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (std::chrono::steady_clock::now() < deadline) {
+    if (done()) {
+      return true;
+    }
+    rclcpp::spin_some(node);
+    std::this_thread::sleep_for(std::chrono::milliseconds(20));
+  }
+  return done();
+}
+
+}  // namespace
+
+TEST(interface, node_adaptor_create_subscription_member_callbacks)
+{
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_adaptor_member_sub");
+  autoware::component_interface_utils::NodeAdaptor adaptor(node.get());
+  CallbackHost host;
+
+  // Both member-function shapes the out-parameter init_sub accepts are also
+  // reachable through the returning form, so a caller does not have to spell out
+  // a std::bind or a forwarding lambda to keep using a member callback.
+  auto sub_ptr = adaptor.create_subscription<OperationModeState>(&host, &CallbackHost::on_ptr);
+  auto sub_ref = adaptor.create_subscription<OperationModeState>(&host, &CallbackHost::on_ref);
+  auto pub = adaptor.create_publisher<OperationModeState>();
+
+  OperationModeState::Message msg;
+  msg.mode = OperationModeState::Message::AUTONOMOUS;
+  pub->publish(msg);
+
+  EXPECT_TRUE(spin_until(node, [&host] { return host.ptr_called && host.ref_called; }));
+  EXPECT_EQ(host.ptr_mode, OperationModeState::Message::AUTONOMOUS);
+  EXPECT_EQ(host.ref_mode, OperationModeState::Message::AUTONOMOUS);
+
+  rclcpp::shutdown();
+  (void)sub_ptr;
+  (void)sub_ref;
+}
+
+TEST(interface, node_adaptor_create_service_member_callback)
+{
+  rclcpp::init(0, nullptr);
+  auto node = std::make_shared<rclcpp::Node>("test_adaptor_member_srv");
+  autoware::component_interface_utils::NodeAdaptor adaptor(node.get());
+  CallbackHost host;
+
+  // The member-function service overload resolves against the returning form and
+  // creates a real server on the spec'd name; the two-argument callback shape is
+  // what distinguishes it from create_service<Spec>(callback, group).
+  auto srv = adaptor.create_service<ChangeOperationMode>(&host, &CallbackHost::on_change);
+  ASSERT_TRUE(wait_for_service(node, ChangeOperationMode::name));
+
+  // Drive a real request through it, so the binding itself is asserted rather than
+  // the mere existence of a server: only the bound member can set success.
+  auto cli = node->create_client<ChangeOperationMode::Service>(ChangeOperationMode::name);
+  auto future = cli->async_send_request(std::make_shared<ChangeOperationMode::Service::Request>())
+                  .future.share();
+  ASSERT_TRUE(spin_until(node, [&future] {
+    return future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+  }));
+  EXPECT_TRUE(host.srv_called);
+  EXPECT_TRUE(future.get()->status.success);
+
+  rclcpp::shutdown();
+  (void)srv;
 }
 
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON

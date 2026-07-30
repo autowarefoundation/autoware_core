@@ -22,6 +22,7 @@
 #include <autoware/component_interface_utils/rclcpp/topic_publisher.hpp>
 #include <autoware/component_interface_utils/rclcpp/topic_subscription.hpp>
 
+#include <functional>
 #include <memory>
 #include <optional>
 #include <utility>
@@ -34,17 +35,30 @@ class NodeAdaptor
 private:
   using CallbackGroup = rclcpp::CallbackGroup::SharedPtr;
 
-  template <class SharedPtrT, class InstanceT>
-  using MessagePtrCallback =
-    void (InstanceT::*)(const typename SharedPtrT::element_type::SpecType::Message::ConstSharedPtr);
-  template <class SharedPtrT, class InstanceT>
-  using MessageRefCallback =
-    void (InstanceT::*)(const typename SharedPtrT::element_type::SpecType::Message &);
+  // Member-function callback shapes, keyed on the spec. The returning create_X<Spec>()
+  // forms name their spec explicitly, so these are the primary definitions; the
+  // SharedPtrT-keyed aliases below project the spec out of the wrapper's smart pointer
+  // for the out-parameter forms, so both spellings stay provably the same shape.
+  template <class SpecT, class InstanceT>
+  using SpecMessagePtrCallback = void (InstanceT::*)(const typename SpecT::Message::ConstSharedPtr);
+  template <class SpecT, class InstanceT>
+  using SpecMessageRefCallback = void (InstanceT::*)(const typename SpecT::Message &);
+
+  template <class SpecT, class InstanceT>
+  using SpecServiceCallback = void (InstanceT::*)(
+    const typename SpecT::Service::Request::SharedPtr,
+    const typename SpecT::Service::Response::SharedPtr);
 
   template <class SharedPtrT, class InstanceT>
-  using ServiceCallback = void (InstanceT::*)(
-    const typename SharedPtrT::element_type::SpecType::Service::Request::SharedPtr,
-    const typename SharedPtrT::element_type::SpecType::Service::Response::SharedPtr);
+  using MessagePtrCallback =
+    SpecMessagePtrCallback<typename SharedPtrT::element_type::SpecType, InstanceT>;
+  template <class SharedPtrT, class InstanceT>
+  using MessageRefCallback =
+    SpecMessageRefCallback<typename SharedPtrT::element_type::SpecType, InstanceT>;
+
+  template <class SharedPtrT, class InstanceT>
+  using ServiceCallback =
+    SpecServiceCallback<typename SharedPtrT::element_type::SpecType, InstanceT>;
 
 public:
   /// Constructor.
@@ -131,21 +145,39 @@ public:
     init_srv(srv, std::bind(callback, instance, _1, _2), group);
   }
 
-  /// Create a publisher (returning form; Wave 1: non-registering).
+  /// Create a publisher, returning it instead of assigning to an out-parameter.
   template <class SpecT>
   typename Publisher<SpecT>::SharedPtr create_publisher()
   {
     return create_publisher_impl<SpecT>(interface_->node);
   }
 
-  /// Create a subscription (returning form; Wave 1: non-registering).
+  /// Create a subscription, returning it instead of assigning to an out-parameter.
   template <class SpecT, class CallbackT>
   typename Subscription<SpecT>::SharedPtr create_subscription(CallbackT && callback)
   {
     return create_subscription_impl<SpecT>(interface_->node, std::forward<CallbackT>(callback));
   }
 
-  /// Create a service server (returning form; Wave 1: non-registering).
+  /// Create a subscription bound to a member function taking the message pointer.
+  template <class SpecT, class InstanceT>
+  typename Subscription<SpecT>::SharedPtr create_subscription(
+    InstanceT * instance, SpecMessagePtrCallback<SpecT, InstanceT> && callback)
+  {
+    using std::placeholders::_1;
+    return create_subscription<SpecT>(std::bind(callback, instance, _1));
+  }
+
+  /// Create a subscription bound to a member function taking the message by reference.
+  template <class SpecT, class InstanceT>
+  typename Subscription<SpecT>::SharedPtr create_subscription(
+    InstanceT * instance, SpecMessageRefCallback<SpecT, InstanceT> && callback)
+  {
+    using std::placeholders::_1;
+    return create_subscription<SpecT>(std::bind(callback, instance, _1));
+  }
+
+  /// Create a service server, returning it instead of assigning to an out-parameter.
   template <class SpecT, class CallbackT>
   typename Service<SpecT>::SharedPtr create_service(
     CallbackT && callback, rclcpp::CallbackGroup::SharedPtr group = nullptr)
@@ -153,7 +185,18 @@ public:
     return create_service_impl<SpecT>(interface_, std::forward<CallbackT>(callback), group);
   }
 
-  /// Create a service client (returning form; Wave 1: non-registering).
+  /// Create a service server bound to a member function.
+  template <class SpecT, class InstanceT>
+  typename Service<SpecT>::SharedPtr create_service(
+    InstanceT * instance, SpecServiceCallback<SpecT, InstanceT> && callback,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    using std::placeholders::_1;
+    using std::placeholders::_2;
+    return create_service<SpecT>(std::bind(callback, instance, _1, _2), group);
+  }
+
+  /// Create a service client, returning it instead of assigning to an out-parameter.
   template <class SpecT>
   typename Client<SpecT>::SharedPtr create_client(rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
