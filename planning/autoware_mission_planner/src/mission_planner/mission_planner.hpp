@@ -57,7 +57,6 @@ using autoware_planning_msgs::srv::SetWaypointRoute;
 using geometry_msgs::msg::Pose;
 using nav_msgs::msg::Odometry;
 using std_msgs::msg::Header;
-using unique_identifier_msgs::msg::UUID;
 using visualization_msgs::msg::MarkerArray;
 
 class MissionPlanner : public rclcpp::Node
@@ -126,10 +125,7 @@ private:
   void change_route(const LaneletRoute & route);
   void cancel_route();
   LaneletRoute create_lanelet_route(const SetLaneletRoute::Request & req);
-  LaneletRoute create_route(const SetWaypointRoute::Request & req);
-  LaneletRoute create_route(
-    const Header & header, const std::vector<Pose> & waypoints, const Pose & start_pose,
-    const Pose & goal_pose, const UUID & uuid, const bool allow_goal_modification);
+  LaneletRoute create_waypoint_route(const SetWaypointRoute::Request & req);
 
   void publish_pose_log(const Pose & pose, const std::string & pose_type);
 

@@ -323,7 +323,7 @@ void MissionPlanner::on_set_waypoint_route(
   change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
   LaneletRoute route;
   try {
-    route = create_route(*req);
+    route = create_waypoint_route(*req);
   } catch (const tf2::TransformException & error) {
     set_fail_response(
       res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR, error.what());
@@ -400,34 +400,20 @@ LaneletRoute MissionPlanner::create_lanelet_route(const SetLaneletRoute::Request
   return route;
 }
 
-LaneletRoute MissionPlanner::create_route(const SetWaypointRoute::Request & req)
-{
-  const auto & header = req.header;
-  const auto & waypoints = req.waypoints;
-  const auto & goal_pose = req.goal_pose;
-  const auto & uuid = req.uuid;
-  const auto & allow_goal_modification = req.allow_modification;
-
-  return create_route(
-    header, waypoints, odometry_->pose.pose, goal_pose, uuid, allow_goal_modification);
-}
-
-LaneletRoute MissionPlanner::create_route(
-  const Header & header, const std::vector<Pose> & waypoints, const Pose & start_pose,
-  const Pose & goal_pose, const UUID & uuid, const bool allow_goal_modification)
+LaneletRoute MissionPlanner::create_waypoint_route(const SetWaypointRoute::Request & req)
 {
   PlannerPlugin::RoutePoints points;
-  points.push_back(start_pose);
-  for (const auto & waypoint : waypoints) {
-    points.push_back(transform_pose(waypoint, header));
+  points.push_back(odometry_->pose.pose);
+  for (const auto & waypoint : req.waypoints) {
+    points.push_back(transform_pose(waypoint, req.header));
   }
-  points.push_back(transform_pose(goal_pose, header));
+  points.push_back(transform_pose(req.goal_pose, req.header));
 
   LaneletRoute route = planner_->plan(points);
-  route.header.stamp = header.stamp;
+  route.header.stamp = req.header.stamp;
   route.header.frame_id = map_frame_;
-  route.uuid = uuid;
-  route.allow_modification = allow_goal_modification;
+  route.uuid = req.uuid;
+  route.allow_modification = req.allow_modification;
   return route;
 }
 
