@@ -203,9 +203,12 @@ TEST(registration, every_entry_path_registers)
   // Service server -- Provide; service client -- Require.
   auto srv = adaptor.create_service<ChangeOperationMode>([](auto, auto) {});
   auto cli = adaptor.create_client<ChangeOperationMode>();
-  // Legacy init_* path (deprecated in a later commit, must still register).
+  // Legacy init_* path (deprecated, must still register).
   ciu::Publisher<OperationModeState>::SharedPtr legacy_pub;
+#pragma GCC diagnostic push
+#pragma GCC diagnostic ignored "-Wdeprecated-declarations"
   adaptor.init_pub(legacy_pub);
+#pragma GCC diagnostic pop
 
   const auto manifest = adaptor.manifest();
   ASSERT_EQ(manifest.size(), 5u);
