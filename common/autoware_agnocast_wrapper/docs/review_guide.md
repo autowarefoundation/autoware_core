@@ -405,22 +405,20 @@ All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github
 
 ### Publisher/Subscriber Types
 
-| Macro                                   | ENABLE_AGNOCAST=1 (Agnocast)         | ENABLE_AGNOCAST=0 (ROS 2)                        |
-| --------------------------------------- | ------------------------------------ | ------------------------------------------------ |
-| `AUTOWARE_PUBLISHER_PTR(MsgT)`          | `Publisher<MsgT>::SharedPtr`         | `rclcpp::Publisher<MsgT>::SharedPtr`             |
-| `AUTOWARE_SUBSCRIPTION_PTR(MsgT)`       | `Subscription<MsgT>::SharedPtr`      | `rclcpp::Subscription<MsgT>::SharedPtr`          |
-| `AUTOWARE_POLLING_SUBSCRIBER_PTR(MsgT)` | `PollingSubscriber<MsgT>::SharedPtr` | `InterProcessPollingSubscriber<MsgT>::SharedPtr` |
+| Macro                             | ENABLE_AGNOCAST=1 (Agnocast)    | ENABLE_AGNOCAST=0 (ROS 2)               |
+| --------------------------------- | ------------------------------- | --------------------------------------- |
+| `AUTOWARE_PUBLISHER_PTR(MsgT)`    | `Publisher<MsgT>::SharedPtr`    | `rclcpp::Publisher<MsgT>::SharedPtr`    |
+| `AUTOWARE_SUBSCRIPTION_PTR(MsgT)` | `Subscription<MsgT>::SharedPtr` | `rclcpp::Subscription<MsgT>::SharedPtr` |
 
 &nbsp;
 
 ### Publisher/Subscriber Creation
 
-| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                                         | ENABLE_AGNOCAST=0 (ROS 2)                                                   |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------- | --------------------------------------------------------------------------- |
-| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)`               | `this->create_subscription<msg_type>(...)`                                  |
-| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`                  | `this->create_publisher<msg_type>(...)`                                     |
-| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`                  | `this->create_publisher<msg_type>(...)`                                     |
-| `AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, policy, topic, qos)`      | `agnocast_wrapper::create_polling_subscriber<msg_type, policy>(...)` | `InterProcessPollingSubscriber<msg_type, policy>::create_subscription(...)` |
+| Macro                                                                   | ENABLE_AGNOCAST=1 (Agnocast)                           | ENABLE_AGNOCAST=0 (ROS 2)                  |
+| ----------------------------------------------------------------------- | ------------------------------------------------------ | ------------------------------------------ |
+| `AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)` | `agnocast_wrapper::create_subscription<msg_type>(...)` | `this->create_subscription<msg_type>(...)` |
+| `AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)`                      | `agnocast_wrapper::create_publisher<msg_type>(...)`    | `this->create_publisher<msg_type>(...)`    |
+| `AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)`             | `agnocast_wrapper::create_publisher<msg_type>(...)`    | `this->create_publisher<msg_type>(...)`    |
 
 &nbsp;
 
@@ -525,14 +523,30 @@ private:
 
 ### Method 2 Behavior with ENABLE_AGNOCAST=0
 
-When built with `ENABLE_AGNOCAST=0` (or unset), [`node.hpp`](https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/node.hpp) defines `autoware::agnocast_wrapper::Node` as a simple typedef for `rclcpp::Node`:
+When built with `ENABLE_AGNOCAST=0` (or unset), [`node.hpp`](https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/node.hpp) defines `autoware::agnocast_wrapper::Node` as a **real class that owns an internal `rclcpp::Node` and forwards a curated set of members to it**. It is not a typedef for `rclcpp::Node`, and it does not derive from `rclcpp::Node` in either build:
 
 ```cpp
-// node.hpp when ENABLE_AGNOCAST=0
-using Node = rclcpp::Node;
+// node.hpp when ENABLE_AGNOCAST=0 (simplified)
+class Node : public std::enable_shared_from_this<Node>
+{
+public:
+  explicit Node(const std::string & node_name, const rclcpp::NodeOptions & options = {});
+  // ... the same curated member set as the ENABLE_AGNOCAST=1 Node ...
+  std::shared_ptr<rclcpp::Node> get_rclcpp_node() const { return node_; }
+
+private:
+  std::shared_ptr<rclcpp::Node> node_;
+};
 ```
 
-Therefore, code using Method 2 compiles and runs without issues as a regular `rclcpp::Node` when built with `ENABLE_AGNOCAST=0`. Backward compatibility is maintained even in environments without Agnocast support.
+This is deliberate: if the `=0` build aliased or derived from `rclcpp::Node`, the full `rclcpp::Node` API would leak into it, and a node could compile under `=0` while using members that do not exist under `=1`.
+
+Two consequences to keep in mind while reviewing:
+
+- The node **cannot be passed where an `rclcpp::Node *` / `rclcpp::Node &` is expected.** Hand it to executors and utilities via `get_node_base_interface()`.
+- Any `rclcpp::Node` member not in the curated surface (see the [README](../README.md#supported-api-surface)) will not compile.
+
+Code using Method 2 still compiles and runs as a plain ROS 2 node when built with `ENABLE_AGNOCAST=0`, so backward compatibility for users without Agnocast is maintained.
 
 &nbsp;
 
@@ -555,9 +569,13 @@ A CMake macro used in place of `rclcpp_components_register_node`. It generates d
 
 **ENABLE_AGNOCAST=1:**
 
-- Generates two targets:
-  1. `<EXECUTABLE>_component`: Standard rclcpp_components executable (for containers)
-  2. `<EXECUTABLE>`: Runtime-switchable standalone executable
+- `<EXECUTABLE>`: a runtime-switchable standalone executable
+- Component registration via `rclcpp_components_register_nodes` (plural), which populates the ament
+  resource index only — the component can still be loaded into a container, but no extra standalone
+  executable is generated for it
+
+> There is no `<EXECUTABLE>_component` target. Launch files should reference `<EXECUTABLE>`, which is the
+> same name in both modes.
 
 &nbsp;
 
@@ -691,10 +709,11 @@ container = ComposableNodeContainer(
 
 ### Parameters
 
-| Parameter                | Default                                       | Description                               |
-| ------------------------ | --------------------------------------------- | ----------------------------------------- |
-| `agnocast_heaphook_path` | `/opt/ros/humble/lib/libagnocast_heaphook.so` | Path to the heaphook library              |
-| `use_multithread`        | `false`                                       | Whether to use a multi-threaded container |
+| Parameter                | Default                                            | Description                                                                                         |
+| ------------------------ | -------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `agnocast_heaphook_path` | `/opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so` | Path to the heaphook library. `$ROS_DISTRO` is read from the environment and falls back to `humble` |
+| `use_multithread`        | `false`                                            | Whether to use a multi-threaded container                                                           |
+| `use_agnocast`           | `$(env ENABLE_AGNOCAST 0)`                         | Per-include override (`1`/`0`). Forces one node/container back to the plain rclcpp path             |
 
 &nbsp;
 
