@@ -175,6 +175,10 @@ TEST(registration, create_publisher_registers_with_remap_resolved_name)
   EXPECT_EQ(manifest[0].resolved_name, "/renamed/mode");
   EXPECT_EQ(manifest[0].role, ciu::InterfaceRecord::Role::Provide);
   EXPECT_EQ(manifest[0].durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
+  // OperationModeState declares depth 1, distinct from both
+  // rmw_qos_profile_default's 10 and InterfaceRecord's own default of 0 --
+  // pins actual QoS, not the spec-declared value, ending up in the record.
+  EXPECT_EQ(manifest[0].depth, 1u);
   EXPECT_TRUE(manifest[0].has_version);
   rclcpp::shutdown();
   (void)pub;
@@ -190,6 +194,12 @@ TEST(registration, every_entry_path_registers)
 
   // Polling subscription (nullptr callback) -- Require.
   auto sub = adaptor.create_subscription<OperationModeState>(nullptr);
+  // Callback-form subscription -- the dominant form in universe, and the
+  // `if constexpr` branch the polling test above never instantiates. The
+  // callback needs a concrete signature: a generic (auto-parameter) lambda
+  // fails to compile because rclcpp::function_traits cannot deduce it.
+  auto cb_sub = adaptor.create_subscription<OperationModeState>(
+    [](const OperationModeState::Message::ConstSharedPtr) {});
   // Service server -- Provide; service client -- Require.
   auto srv = adaptor.create_service<ChangeOperationMode>([](auto, auto) {});
   auto cli = adaptor.create_client<ChangeOperationMode>();
@@ -198,15 +208,22 @@ TEST(registration, every_entry_path_registers)
   adaptor.init_pub(legacy_pub);
 
   const auto manifest = adaptor.manifest();
-  ASSERT_EQ(manifest.size(), 4u);
+  ASSERT_EQ(manifest.size(), 5u);
   EXPECT_EQ(manifest[0].role, ciu::InterfaceRecord::Role::Require);  // sub
-  EXPECT_EQ(manifest[1].kind, ciu::InterfaceRecord::Kind::Service);  // srv
-  EXPECT_EQ(manifest[1].role, ciu::InterfaceRecord::Role::Provide);
-  EXPECT_EQ(manifest[2].role, ciu::InterfaceRecord::Role::Require);  // cli
-  EXPECT_EQ(manifest[2].depth, 10u);                                 // shared service profile
-  EXPECT_EQ(manifest[3].role, ciu::InterfaceRecord::Role::Provide);  // init_pub
+  EXPECT_EQ(manifest[0].interface_name, OperationModeState::name);
+  EXPECT_EQ(manifest[1].role, ciu::InterfaceRecord::Role::Require);  // cb_sub
+  EXPECT_EQ(manifest[1].interface_name, OperationModeState::name);
+  EXPECT_EQ(manifest[2].kind, ciu::InterfaceRecord::Kind::Service);  // srv
+  EXPECT_EQ(manifest[2].role, ciu::InterfaceRecord::Role::Provide);
+  EXPECT_EQ(manifest[2].interface_name, ChangeOperationMode::name);
+  EXPECT_EQ(manifest[3].role, ciu::InterfaceRecord::Role::Require);  // cli
+  EXPECT_EQ(manifest[3].depth, 10u);                                 // shared service profile
+  EXPECT_EQ(manifest[3].interface_name, ChangeOperationMode::name);
+  EXPECT_EQ(manifest[4].role, ciu::InterfaceRecord::Role::Provide);  // init_pub
+  EXPECT_EQ(manifest[4].interface_name, OperationModeState::name);
   rclcpp::shutdown();
   (void)sub;
+  (void)cb_sub;
   (void)srv;
   (void)cli;
   (void)legacy_pub;
