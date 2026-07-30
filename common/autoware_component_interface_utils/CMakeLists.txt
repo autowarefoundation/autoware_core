@@ -26,6 +26,21 @@ if(BUILD_TESTING)
     autoware_adapi_v1_msgs
     autoware_component_interface_specs
   )
+
+  ament_add_ros_isolated_gtest(test_component_interface_registration
+    test/test_registration.cpp
+  )
+
+  target_include_directories(test_component_interface_registration
+    PRIVATE include
+  )
+
+  ament_target_dependencies(test_component_interface_registration
+    rclcpp
+    rclcpp_components
+    autoware_adapi_v1_msgs
+    autoware_component_interface_specs
+  )
 endif()
 
 ament_auto_package()
