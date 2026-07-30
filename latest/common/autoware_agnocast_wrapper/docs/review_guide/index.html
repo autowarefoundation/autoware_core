@@ -9616,11 +9616,6 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 <td><code>Subscription&lt;MsgT&gt;::SharedPtr</code></td>
 <td><code>rclcpp::Subscription&lt;MsgT&gt;::SharedPtr</code></td>
 </tr>
-<tr>
-<td><code>AUTOWARE_POLLING_SUBSCRIBER_PTR(MsgT)</code></td>
-<td><code>PollingSubscriber&lt;MsgT&gt;::SharedPtr</code></td>
-<td><code>InterProcessPollingSubscriber&lt;MsgT&gt;::SharedPtr</code></td>
-</tr>
 </tbody>
 </table>
 <p> </p>
@@ -9648,11 +9643,6 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 <td><code>AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)</code></td>
 <td><code>agnocast_wrapper::create_publisher&lt;msg_type&gt;(...)</code></td>
 <td><code>this-&gt;create_publisher&lt;msg_type&gt;(...)</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CREATE_POLLING_SUBSCRIBER(msg_type, policy, topic, qos)</code></td>
-<td><code>agnocast_wrapper::create_polling_subscriber&lt;msg_type, policy&gt;(...)</code></td>
-<td><code>InterProcessPollingSubscriber&lt;msg_type, policy&gt;::create_subscription(...)</code></td>
 </tr>
 </tbody>
 </table>
@@ -9786,11 +9776,26 @@ public:
 </table>
 <p> </p>
 <h3 id="method-2-behavior-with-enable_agnocast0">Method 2 Behavior with ENABLE_AGNOCAST=0<a class="headerlink" href="#method-2-behavior-with-enable_agnocast0" title="Permanent link">#</a></h3>
-<p>When built with <code>ENABLE_AGNOCAST=0</code> (or unset), <a href="https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/node.hpp"><code>node.hpp</code></a> defines <code>autoware::agnocast_wrapper::Node</code> as a simple typedef for <code>rclcpp::Node</code>:</p>
-<p><code>cpp
-// node.hpp when ENABLE_AGNOCAST=0
-using Node = rclcpp::Node;</code></p>
-<p>Therefore, code using Method 2 compiles and runs without issues as a regular <code>rclcpp::Node</code> when built with <code>ENABLE_AGNOCAST=0</code>. Backward compatibility is maintained even in environments without Agnocast support.</p>
+<p>When built with <code>ENABLE_AGNOCAST=0</code> (or unset), <a href="https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/node.hpp"><code>node.hpp</code></a> defines <code>autoware::agnocast_wrapper::Node</code> as a <strong>real class that owns an internal <code>rclcpp::Node</code> and forwards a curated set of members to it</strong>. It is not a typedef for <code>rclcpp::Node</code>, and it does not derive from <code>rclcpp::Node</code> in either build:</p>
+<p>```cpp
+// node.hpp when ENABLE_AGNOCAST=0 (simplified)
+class Node : public std::enable_shared_from_this<node>
+{
+public:
+  explicit Node(const std::string &amp; node_name, const rclcpp::NodeOptions &amp; options = {});
+  // ... the same curated member set as the ENABLE_AGNOCAST=1 Node ...
+  std::shared_ptr<rclcpp::node> get_rclcpp_node() const { return node_; }</rclcpp::node></node></p>
+<p>private:
+  std::shared_ptr<rclcpp::node> node_;
+};
+```</rclcpp::node></p>
+<p>This is deliberate: if the <code>=0</code> build aliased or derived from <code>rclcpp::Node</code>, the full <code>rclcpp::Node</code> API would leak into it, and a node could compile under <code>=0</code> while using members that do not exist under <code>=1</code>.</p>
+<p>Two consequences to keep in mind while reviewing:</p>
+<ul>
+<li>The node <strong>cannot be passed where an <code>rclcpp::Node *</code> / <code>rclcpp::Node &amp;</code> is expected.</strong> Hand it to executors and utilities via <code>get_node_base_interface()</code>.</li>
+<li>Any <code>rclcpp::Node</code> member not in the curated surface (see the <a href="../../#supported-api-surface">README</a>) will not compile.</li>
+</ul>
+<p>Code using Method 2 still compiles and runs as a plain ROS 2 node when built with <code>ENABLE_AGNOCAST=0</code>, so backward compatibility for users without Agnocast is maintained.</p>
 <p> </p>
 <h2 id="5-component_container-and-autoware_agnocast_wrapper_register_node">5. component_container and autoware_agnocast_wrapper_register_node<a class="headerlink" href="#5-component_container-and-autoware_agnocast_wrapper_register_node" title="Permanent link">#</a></h2>
 <p> </p>
@@ -9805,12 +9810,15 @@ using Node = rclcpp::Node;</code></p>
 <p> </p>
 <p><strong>ENABLE_AGNOCAST=1:</strong></p>
 <ul>
-<li>Generates two targets:<ol>
-<li><code>&lt;EXECUTABLE&gt;_component</code>: Standard rclcpp_components executable (for containers)</li>
-<li><code>&lt;EXECUTABLE&gt;</code>: Runtime-switchable standalone executable</li>
-</ol>
-</li>
+<li><code>&lt;EXECUTABLE&gt;</code>: a runtime-switchable standalone executable</li>
+<li>Component registration via <code>rclcpp_components_register_nodes</code> (plural), which populates the ament
+  resource index only — the component can still be loaded into a container, but no extra standalone
+  executable is generated for it</li>
 </ul>
+<blockquote>
+<p>There is no <code>&lt;EXECUTABLE&gt;_component</code> target. Launch files should reference <code>&lt;EXECUTABLE&gt;</code>, which is the
+same name in both modes.</p>
+</blockquote>
 <p> </p>
 <p><strong>Usage example:</strong></p>
 <p><code>cmake
@@ -10016,13 +10024,18 @@ from ament_index_python.packages import get_package_share_directory</p>
 <tbody>
 <tr>
 <td><code>agnocast_heaphook_path</code></td>
-<td><code>/opt/ros/humble/lib/libagnocast_heaphook.so</code></td>
-<td>Path to the heaphook library</td>
+<td><code>/opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so</code></td>
+<td>Path to the heaphook library. <code>$ROS_DISTRO</code> is read from the environment and falls back to <code>humble</code></td>
 </tr>
 <tr>
 <td><code>use_multithread</code></td>
 <td><code>false</code></td>
 <td>Whether to use a multi-threaded container</td>
+</tr>
+<tr>
+<td><code>use_agnocast</code></td>
+<td><code>$(env ENABLE_AGNOCAST 0)</code></td>
+<td>Per-include override (<code>1</code>/<code>0</code>). Forces one node/container back to the plain rclcpp path</td>
 </tr>
 </tbody>
 </table>
