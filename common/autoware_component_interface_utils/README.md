@@ -52,7 +52,7 @@ sub_ = node.create_subscription<SampleMessage>(callback);
 ```
 
 The adaptor also provides deducing forms that take the output variable instead of an explicit template argument (`init_srv`, `init_cli`, `init_pub`, `init_sub`).
-They create the same wrappers as the `create_*` methods above, but every one of them is deprecated; see [Migrating from init_\*](#migrating-from-init_) for the `create_*` replacement of each overload.
+They create the same wrappers as the `create_*` methods above, but they are the legacy form; see [Migrating from init_\*](#migrating-from-init_) for the `create_*` replacement of each overload.
 
 ```cpp
 // header file
@@ -63,18 +63,18 @@ autoware::component_interface_utils::Subscription<SampleMessage>::SharedPtr sub_
 
 // source file
 const auto node = autoware::component_interface_utils::NodeAdaptor(this);
-node.init_srv(srv_, callback);  // deprecated, use create_service<SampleService>(callback)
-node.init_cli(cli_);            // deprecated, use create_client<SampleService>()
-node.init_pub(pub_);            // deprecated, use create_publisher<SampleMessage>()
-node.init_sub(sub_, callback);  // deprecated, use create_subscription<SampleMessage>(callback)
+node.init_srv(srv_, callback);  // legacy form, prefer create_service<SampleService>(callback)
+node.init_cli(cli_);            // legacy form, prefer create_client<SampleService>()
+node.init_pub(pub_);            // legacy form, prefer create_publisher<SampleMessage>()
+node.init_sub(sub_, callback);  // legacy form, prefer create_subscription<SampleMessage>(callback)
 ```
 
 ## Migrating from init_*
 
-Every `init_*` overload is marked `[[deprecated]]` and has a `create_*` replacement that returns the wrapper instead of writing it into an output parameter.
+Every `init_*` overload is the legacy form and has a `create_*` replacement that returns the wrapper instead of writing it into an output parameter.
 Both styles register the interface identically, so migrating a call site is a mechanical rewrite with no behavior change.
 
-| Deprecated overload                                           | Replacement                                                                                   |
+| Legacy overload                                               | Replacement                                                                                   |
 | ------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
 | `init_pub(pub)`                                               | `pub = create_publisher<Spec>()`                                                              |
 | `init_sub(sub, callback)`                                     | `sub = create_subscription<Spec>(callback)`                                                   |
@@ -84,7 +84,7 @@ Both styles register the interface identically, so migrating a call site is a me
 | `init_srv(srv, callback, group)`                              | `srv = create_service<Spec>(callback, group)`                                                 |
 | `init_srv(srv, instance, &Instance::service_callback, group)` | `srv = create_service<Spec>(std::bind(&Instance::service_callback, instance, _1, _2), group)` |
 
-Because the `init_*` overloads are deprecated rather than removed, existing call sites keep compiling, but this package itself is built with `-Werror=deprecated`, and consumers that build the same way will see the deprecation as a hard error until they migrate.
+The `init_*` overloads are not removed, so existing call sites keep compiling as-is; `create_*` is preferred for new code, and existing call sites are expected to migrate over time.
 
 ## Opt-in service introspection for service and client
 
