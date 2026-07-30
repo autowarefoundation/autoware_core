@@ -26,6 +26,11 @@
 #include <memory>
 #include <vector>
 
+namespace autoware::agnocast_wrapper
+{
+class Node;
+}  // namespace autoware::agnocast_wrapper
+
 namespace autoware::velocity_smoother
 {
 using autoware_planning_msgs::msg::TrajectoryPoint;
@@ -61,6 +66,9 @@ public:
 
   explicit SmootherBase(
     rclcpp::Node & node, const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
+  explicit SmootherBase(
+    autoware::agnocast_wrapper::Node & node,
+    const std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper);
   virtual ~SmootherBase() = default;
   virtual bool apply(
     const double initial_vel, const double initial_acc, const TrajectoryPoints & input,
