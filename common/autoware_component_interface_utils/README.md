@@ -174,6 +174,15 @@ Version fields are conditional on `has_version`: a versioned `provided[]` entry 
 A package that wants its nodes' manifests checked by a deploy-time admission gate commits an interface manifest fragment: `config/interface_manifest_fragment.json`, containing either one manifest document (matching the schema above) for a single-node package, or a JSON array of them for a package with multiple nodes.
 The fragment is installed to `share/<pkg>/` like any other data file, so the gate can discover it alongside every other installed package's fragment without the package needing to register itself anywhere else.
 
+The gate-discoverable location is the fixed relative path `share/<package_name>/interface_manifest_fragment.json` -- install the file directly there with a `FILES` rule, not through a subdirectory-copying rule such as `install(DIRECTORY config DESTINATION share/${PROJECT_NAME})`, which would nest it one level deeper (`share/<package_name>/config/interface_manifest_fragment.json`) instead, where the gate does not look:
+
+```cmake
+install(
+  FILES config/interface_manifest_fragment.json
+  DESTINATION share/${PROJECT_NAME}
+)
+```
+
 Pin the fragment against reality in a unit test, using `expect_manifest_matches` from `autoware/component_interface_utils/testing/manifest_drift.hpp`:
 
 ```cpp
