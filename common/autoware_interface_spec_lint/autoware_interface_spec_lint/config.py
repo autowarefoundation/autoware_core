@@ -109,6 +109,12 @@ def load_config(path) -> GateConfig:
             )
         severities[gate] = severity
 
+    if not severities:
+        raise ValueError(
+            "gate config: 'gates' is empty; a config that declares no gates would "
+            "silently leave every gate off, so interface-spec-lint would always exit 0"
+        )
+
     raw_topic_cfg = data.get("no_raw_spec_topic") or {}
     owner_iso = data.get("owner_isolation") or {}
     return GateConfig(

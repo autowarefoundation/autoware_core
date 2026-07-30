@@ -61,6 +61,17 @@ def test_enabling_a_deferred_gate_is_rejected(tmp_path):
         load_config(_write(tmp_path, "gates:\n  if_usage_coverage: { severity: error }\n"))
 
 
+def test_empty_gates_is_rejected(tmp_path):
+    # An empty (or absent) 'gates:' key would otherwise load successfully with every
+    # gate defaulting to off, so interface-spec-lint would report 0 findings and exit 0
+    # no matter what tree it points at -- the config loader's own version of the
+    # fail-open shape a missing manifest or spec dir has elsewhere in this package.
+    with pytest.raises(ValueError, match="'gates' is empty"):
+        load_config(_write(tmp_path, "gates: {}\n"))
+    with pytest.raises(ValueError, match="'gates' is empty"):
+        load_config(_write(tmp_path, "owner_isolation:\n  base_owner: acme\n"))
+
+
 def test_no_raw_spec_topic_params_are_parsed(tmp_path):
     cfg = load_config(
         _write(
@@ -85,6 +96,7 @@ def test_committed_config_is_ratcheted_to_error():
         "interface_spec_concept",
         "spec_registered",
         "version_consistency",
+        "qos_consistency",
         "manifest_fresh",
         "owner_isolation",
         "no_raw_spec_topic",
