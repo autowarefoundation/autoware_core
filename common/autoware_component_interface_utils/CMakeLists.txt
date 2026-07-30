@@ -4,6 +4,13 @@ project(autoware_component_interface_utils)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
+# ament_auto_find_build_dependencies() (invoked by autoware_package() above) calls
+# find_package() using the exact package.xml dependency string, which is the
+# rosdep key "nlohmann-json-dev" here. That key does not match the CMake package
+# name the system install actually exports ("nlohmann_json"), so it must be
+# found explicitly.
+find_package(nlohmann_json REQUIRED)
+
 include_directories(
   include
   SYSTEM
@@ -40,6 +47,28 @@ if(BUILD_TESTING)
     rclcpp_components
     autoware_adapi_v1_msgs
     autoware_component_interface_specs
+  )
+
+  # Pure mapping logic over InterfaceRecord -- no rclcpp::init(), no Node, no ROS
+  # graph -- so it does not need the isolated-domain-ID treatment the two
+  # targets above require.
+  ament_add_gtest(test_manifest_json
+    test/test_manifest_json.cpp
+  )
+
+  target_include_directories(test_manifest_json
+    PRIVATE include
+  )
+
+  ament_target_dependencies(test_manifest_json
+    rclcpp
+    rclcpp_components
+    autoware_adapi_v1_msgs
+    autoware_component_interface_specs
+  )
+
+  target_link_libraries(test_manifest_json
+    nlohmann_json::nlohmann_json
   )
 endif()
 
