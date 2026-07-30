@@ -56,7 +56,6 @@ using autoware_planning_msgs::srv::SetLaneletRoute;
 using autoware_planning_msgs::srv::SetWaypointRoute;
 using geometry_msgs::msg::Pose;
 using nav_msgs::msg::Odometry;
-using std_msgs::msg::Header;
 using visualization_msgs::msg::MarkerArray;
 
 class MissionPlanner : public rclcpp::Node
@@ -87,7 +86,6 @@ private:
   std::string map_frame_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
-  Pose transform_pose(const Pose & pose, const Header & header);
 
   rclcpp::Service<ClearRouteSpecs::Service>::SharedPtr srv_clear_route;
   rclcpp::Service<SetLaneletRouteSpecs::Service>::SharedPtr srv_set_lanelet_route;

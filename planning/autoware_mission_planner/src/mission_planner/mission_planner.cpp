@@ -67,6 +67,13 @@ ArrivalCheckerThreshold get_arrival_checker_threshold(rclcpp::Node & node)
   threshold.duration = node.declare_parameter<double>("arrival_check_duration");
   return threshold;
 }
+
+Pose transform_pose(const Pose & pose, const geometry_msgs::msg::TransformStamped & transform)
+{
+  Pose result;
+  tf2::doTransform(pose, result, transform);
+  return result;
+}
 }  // namespace
 
 MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
@@ -191,15 +198,6 @@ void MissionPlanner::on_map(const LaneletMapBin::ConstSharedPtr msg)
   map_ptr_ = msg;
   lanelet_map_ptr_ = autoware::experimental::lanelet2_utils::remove_const(
     autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*map_ptr_));
-}
-
-Pose MissionPlanner::transform_pose(const Pose & pose, const Header & header)
-{
-  const auto transform =
-    tf_buffer_.lookupTransform(map_frame_, header.frame_id, tf2::TimePointZero);
-  geometry_msgs::msg::Pose result;
-  tf2::doTransform(pose, result, transform);
-  return result;
 }
 
 void MissionPlanner::change_state(RouteState::_state_type state)
@@ -389,11 +387,14 @@ void MissionPlanner::cancel_route()
 
 LaneletRoute MissionPlanner::create_lanelet_route(const SetLaneletRoute::Request & req)
 {
+  const auto transform =
+    tf_buffer_.lookupTransform(map_frame_, req.header.frame_id, tf2::TimePointZero);
+
   LaneletRoute route;
   route.header.stamp = req.header.stamp;
   route.header.frame_id = map_frame_;
   route.start_pose = odometry_->pose.pose;
-  route.goal_pose = transform_pose(req.goal_pose, req.header);
+  route.goal_pose = transform_pose(req.goal_pose, transform);
   route.segments = req.segments;
   route.uuid = req.uuid;
   route.allow_modification = req.allow_modification;
@@ -402,12 +403,15 @@ LaneletRoute MissionPlanner::create_lanelet_route(const SetLaneletRoute::Request
 
 LaneletRoute MissionPlanner::create_waypoint_route(const SetWaypointRoute::Request & req)
 {
+  const auto transform =
+    tf_buffer_.lookupTransform(map_frame_, req.header.frame_id, tf2::TimePointZero);
+
   PlannerPlugin::RoutePoints points;
   points.push_back(odometry_->pose.pose);
   for (const auto & waypoint : req.waypoints) {
-    points.push_back(transform_pose(waypoint, req.header));
+    points.push_back(transform_pose(waypoint, transform));
   }
-  points.push_back(transform_pose(req.goal_pose, req.header));
+  points.push_back(transform_pose(req.goal_pose, transform));
 
   LaneletRoute route = planner_->plan(points);
   route.header.stamp = req.header.stamp;
