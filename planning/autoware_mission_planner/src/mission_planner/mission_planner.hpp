@@ -49,7 +49,6 @@ using autoware_adapi_v1_msgs::msg::OperationModeState;
 using autoware_map_msgs::msg::LaneletMapBin;
 using autoware_planning_msgs::msg::LaneletPrimitive;
 using autoware_planning_msgs::msg::LaneletRoute;
-using autoware_planning_msgs::msg::LaneletSegment;
 using autoware_planning_msgs::msg::PoseWithUuidStamped;
 using autoware_planning_msgs::msg::RouteState;
 using autoware_planning_msgs::srv::ClearRoute;
@@ -126,11 +125,8 @@ private:
   void change_route();
   void change_route(const LaneletRoute & route);
   void cancel_route();
-  LaneletRoute create_route(const SetLaneletRoute::Request & req);
+  LaneletRoute create_lanelet_route(const SetLaneletRoute::Request & req);
   LaneletRoute create_route(const SetWaypointRoute::Request & req);
-  LaneletRoute create_route(
-    const Header & header, const std::vector<LaneletSegment> & segments, const Pose & goal_pose,
-    const UUID & uuid, const bool allow_goal_modification);
   LaneletRoute create_route(
     const Header & header, const std::vector<Pose> & waypoints, const Pose & start_pose,
     const Pose & goal_pose, const UUID & uuid, const bool allow_goal_modification);

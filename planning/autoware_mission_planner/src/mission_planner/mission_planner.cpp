@@ -262,7 +262,7 @@ void MissionPlanner::on_set_lanelet_route(
   change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
   LaneletRoute route;
   try {
-    route = create_route(*req);
+    route = create_lanelet_route(*req);
   } catch (const tf2::TransformException & error) {
     set_fail_response(
       res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR, error.what());
@@ -387,15 +387,17 @@ void MissionPlanner::cancel_route()
   }
 }
 
-LaneletRoute MissionPlanner::create_route(const SetLaneletRoute::Request & req)
+LaneletRoute MissionPlanner::create_lanelet_route(const SetLaneletRoute::Request & req)
 {
-  const auto & header = req.header;
-  const auto & segments = req.segments;
-  const auto & goal_pose = req.goal_pose;
-  const auto & uuid = req.uuid;
-  const auto & allow_goal_modification = req.allow_modification;
-
-  return create_route(header, segments, goal_pose, uuid, allow_goal_modification);
+  LaneletRoute route;
+  route.header.stamp = req.header.stamp;
+  route.header.frame_id = map_frame_;
+  route.start_pose = odometry_->pose.pose;
+  route.goal_pose = transform_pose(req.goal_pose, req.header);
+  route.segments = req.segments;
+  route.uuid = req.uuid;
+  route.allow_modification = req.allow_modification;
+  return route;
 }
 
 LaneletRoute MissionPlanner::create_route(const SetWaypointRoute::Request & req)
@@ -408,21 +410,6 @@ LaneletRoute MissionPlanner::create_route(const SetWaypointRoute::Request & req)
 
   return create_route(
     header, waypoints, odometry_->pose.pose, goal_pose, uuid, allow_goal_modification);
-}
-
-LaneletRoute MissionPlanner::create_route(
-  const Header & header, const std::vector<LaneletSegment> & segments, const Pose & goal_pose,
-  const UUID & uuid, const bool allow_goal_modification)
-{
-  LaneletRoute route;
-  route.header.stamp = header.stamp;
-  route.header.frame_id = map_frame_;
-  route.start_pose = odometry_->pose.pose;
-  route.goal_pose = transform_pose(goal_pose, header);
-  route.segments = segments;
-  route.uuid = uuid;
-  route.allow_modification = allow_goal_modification;
-  return route;
 }
 
 LaneletRoute MissionPlanner::create_route(
