@@ -155,8 +155,6 @@ Once identified, proceed to the corresponding review procedure below.
 
 - [ ] Options type: `rclcpp::SubscriptionOptions` → `AUTOWARE_SUBSCRIPTION_OPTIONS` (and `rclcpp::PublisherOptions` → `AUTOWARE_PUBLISHER_OPTIONS`)
 
-- [ ] Polling subscribers are left as plain `autoware_utils_rclcpp::InterProcessPollingSubscriber`. `polling::create_polling_subscriber` currently takes an `autoware::agnocast_wrapper::Node *`, so it cannot be called from a Method 1 node (see Part 2 Section 3.1)
-
 &nbsp;
 
 #### Step 2: Verification (see Part 2 Section 2, Part 2 Section 8)
