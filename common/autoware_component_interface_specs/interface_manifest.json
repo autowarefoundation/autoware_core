@@ -68,6 +68,19 @@
     },
     {
       "domain": "map",
+      "interface": "/map/vector_map",
+      "type": "autoware_map_msgs/msg/LaneletMapBin",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "transient_local"
+      }
+    },
+    {
+      "domain": "map",
       "interface": "/map/map_projector_info",
       "type": "autoware_map_msgs/msg/MapProjectorInfo",
       "kind": "topic",
@@ -81,34 +94,60 @@
     },
     {
       "domain": "map",
-      "interface": "/map/point_cloud_map",
-      "type": "sensor_msgs/msg/PointCloud2",
-      "kind": "topic",
+      "interface": "/map/get_differential_pointcloud_map",
+      "type": "autoware_map_msgs/srv/GetDifferentialPointCloudMap",
+      "kind": "service",
       "version": "0.1.0",
       "qos": {
         "history": "keep_last",
-        "depth": 1,
+        "depth": 10,
         "reliability": "reliable",
-        "durability": "transient_local"
+        "durability": "volatile"
       }
     },
     {
       "domain": "map",
-      "interface": "/map/vector_map",
-      "type": "autoware_map_msgs/msg/LaneletMapBin",
-      "kind": "topic",
+      "interface": "/map/get_partial_pointcloud_map",
+      "type": "autoware_map_msgs/srv/GetPartialPointCloudMap",
+      "kind": "service",
       "version": "0.1.0",
       "qos": {
         "history": "keep_last",
-        "depth": 1,
+        "depth": 10,
         "reliability": "reliable",
-        "durability": "transient_local"
+        "durability": "volatile"
       }
     },
     {
       "domain": "perception",
       "interface": "/perception/object_recognition/objects",
       "type": "autoware_perception_msgs/msg/PredictedObjects",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "perception",
+      "interface": "/perception/traffic_light_recognition/traffic_signals",
+      "type": "autoware_perception_msgs/msg/TrafficLightGroupArray",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "perception",
+      "interface": "/perception/object_recognition/tracking/objects",
+      "type": "autoware_perception_msgs/msg/TrackedObjects",
       "kind": "topic",
       "version": "0.1.0",
       "qos": {
@@ -197,23 +236,10 @@
       }
     },
     {
-      "domain": "system",
-      "interface": "/system/operation_mode/change_autoware_control",
-      "type": "autoware_system_msgs/srv/ChangeAutowareControl",
-      "kind": "service",
-      "version": "0.1.0",
-      "qos": {
-        "history": "keep_last",
-        "depth": 10,
-        "reliability": "reliable",
-        "durability": "volatile"
-      }
-    },
-    {
-      "domain": "system",
-      "interface": "/system/operation_mode/change_operation_mode",
-      "type": "autoware_system_msgs/srv/ChangeOperationMode",
-      "kind": "service",
+      "domain": "sensing",
+      "interface": "/sensing/vehicle_velocity_converter/twist_with_covariance",
+      "type": "geometry_msgs/msg/TwistWithCovarianceStamped",
+      "kind": "topic",
       "version": "0.1.0",
       "qos": {
         "history": "keep_last",
@@ -233,6 +259,58 @@
         "depth": 1,
         "reliability": "reliable",
         "durability": "transient_local"
+      }
+    },
+    {
+      "domain": "system",
+      "interface": "/system/operation_mode/change_operation_mode",
+      "type": "autoware_system_msgs/srv/ChangeOperationMode",
+      "kind": "service",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 10,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "system",
+      "interface": "/system/operation_mode/change_autoware_control",
+      "type": "autoware_system_msgs/srv/ChangeAutowareControl",
+      "kind": "service",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 10,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "system",
+      "interface": "/system/fail_safe/mrm_state",
+      "type": "autoware_adapi_v1_msgs/msg/MrmState",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "vehicle",
+      "interface": "/vehicle/status/velocity_status",
+      "type": "autoware_vehicle_msgs/msg/VelocityReport",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
       }
     },
     {
@@ -278,6 +356,19 @@
       "domain": "vehicle",
       "interface": "/vehicle/status/hazard_lights_status",
       "type": "autoware_vehicle_msgs/msg/HazardLightsReport",
+      "kind": "topic",
+      "version": "0.1.0",
+      "qos": {
+        "history": "keep_last",
+        "depth": 1,
+        "reliability": "reliable",
+        "durability": "volatile"
+      }
+    },
+    {
+      "domain": "vehicle",
+      "interface": "/vehicle/status/control_mode",
+      "type": "autoware_vehicle_msgs/msg/ControlModeReport",
       "kind": "topic",
       "version": "0.1.0",
       "qos": {

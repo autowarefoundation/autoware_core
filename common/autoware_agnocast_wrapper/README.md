@@ -2,7 +2,7 @@
 
 The purpose of this package is to integrate Agnocast, a zero-copy middleware, into each topic in Autoware with minimal side effects. Agnocast is a library designed to work alongside ROS 2, enabling true zero-copy publish/subscribe communication for all ROS 2 message types, including unsized message types.
 
-- Agnocast Repository: <https://github.com/tier4/agnocast>
+- Agnocast Repository: <https://github.com/autowarefoundation/agnocast>
 - Discussion on Agnocast Integration into Autoware: <https://github.com/orgs/autowarefoundation/discussions/5835>
 - [Review Guide for Agnocast Wrapper PRs](docs/review_guide.md)
 
@@ -18,30 +18,32 @@ Use this when you want the **entire node** to transparently switch between `rclc
 
 `agnocast_wrapper::Node` does **not** publicly derive from `rclcpp::Node`. It exposes a curated subset
 of the `rclcpp::Node` surface and forwards each member to the underlying implementation (`rclcpp::Node`
-or `agnocast::Node`). This subset is **identical in both builds** (`ENABLE_AGNOCAST=0` and `=1`), so a
-node written against it compiles unchanged either way. If you need an API that is not listed below,
-reach the underlying node via `get_rclcpp_node()` (always available) or extend the wrapper.
+or `agnocast::Node`). The **member names and argument lists are identical in both builds**
+(`ENABLE_AGNOCAST=0` and `=1`), so a node written against it compiles unchanged either way, provided the
+handle, options and message types are spelled with the `AUTOWARE_*` macros (the underlying types differ
+per build). If you need an API that is not listed below, extend the wrapper, or reach the underlying node
+via `get_rclcpp_node()` — declared in both builds, but it throws when the node is in Agnocast mode (see
+the [build-modes table](#build-modes-agnocast-disabled-vs-agnocast-enabled)).
 
 #### Supported API surface
 
 The following members / free functions are provided. Unless noted, signatures mirror their
 `rclcpp::Node` counterparts.
 
-| Category           | Members                                                                                                                                                                                                                                                                                                                                                                                                               |
-| ------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Construction       | `Node(name, options)`, `Node(name, namespace, options)`, virtual destructor, `SharedPtr`                                                                                                                                                                                                                                                                                                                              |
-| Basic info         | `get_name()`, `get_namespace()`, `get_fully_qualified_name()`, `get_logger()`                                                                                                                                                                                                                                                                                                                                         |
-| Time               | `get_clock()`, `now()`                                                                                                                                                                                                                                                                                                                                                                                                |
-| Node interfaces    | `get_node_base_interface()`, `get_node_topics_interface()`, `get_node_parameters_interface()` (partial — only these three)                                                                                                                                                                                                                                                                                            |
-| Callback groups    | `create_callback_group()`                                                                                                                                                                                                                                                                                                                                                                                             |
-| Parameters         | `declare_parameter()` (typed + `ParameterValue`/`ParameterType` overloads), `has_parameter()`, `undeclare_parameter()`, `get_parameter()` / `get_parameters()` (typed + prefix overloads), `set_parameter()` / `set_parameters()` / `set_parameters_atomically()`, `describe_parameter(s)()`, `get_parameter_types()`, `list_parameters()`, `add_on_set_parameters_callback()`, `remove_on_set_parameters_callback()` |
-| Publisher          | `create_publisher<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                            |
-| Subscription       | `create_subscription<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                         |
-| Polling subscriber | `create_polling_subscriber<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                   |
-| Client             | `create_client<ServiceT>()` — takes `rclcpp::QoS` (the wrapper normalizes the Humble vs. Jazzy QoS-argument difference)                                                                                                                                                                                                                                                                                               |
-| Service            | `create_service<ServiceT>()` — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                                             |
-| Timer              | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
-| Underlying node    | `get_rclcpp_node()`; `get_agnocast_node()` (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free `to_rclcpp_node(node)`                                                                                                                                                                                                                            |
+| Category        | Members                                                                                                                                                                                                                                                                                                                                                                                                               |
+| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Construction    | `Node(name, options)`, `Node(name, namespace, options)`, virtual destructor, `SharedPtr`                                                                                                                                                                                                                                                                                                                              |
+| Basic info      | `get_name()`, `get_namespace()`, `get_fully_qualified_name()`, `get_logger()`                                                                                                                                                                                                                                                                                                                                         |
+| Time            | `get_clock()`, `now()`                                                                                                                                                                                                                                                                                                                                                                                                |
+| Node interfaces | `get_node_base_interface()`, `get_node_topics_interface()`, `get_node_parameters_interface()` (partial — only these three)                                                                                                                                                                                                                                                                                            |
+| Callback groups | `create_callback_group()`                                                                                                                                                                                                                                                                                                                                                                                             |
+| Parameters      | `declare_parameter()` (typed + `ParameterValue`/`ParameterType` overloads), `has_parameter()`, `undeclare_parameter()`, `get_parameter()` / `get_parameters()` (typed + prefix overloads), `set_parameter()` / `set_parameters()` / `set_parameters_atomically()`, `describe_parameter(s)()`, `get_parameter_types()`, `list_parameters()`, `add_on_set_parameters_callback()`, `remove_on_set_parameters_callback()` |
+| Publisher       | `create_publisher<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                            |
+| Subscription    | `create_subscription<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                         |
+| Client          | `create_client<ServiceT>()` — takes `rclcpp::QoS` (the wrapper normalizes the Humble vs. Jazzy QoS-argument difference)                                                                                                                                                                                                                                                                                               |
+| Service         | `create_service<ServiceT>()` — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                                             |
+| Timer           | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
+| Underlying node | `get_rclcpp_node()`; `get_agnocast_node()` (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free `to_rclcpp_node(node)`                                                                                                                                                                                                                            |
 
 > `OnSetParametersCallbackType` is aliased in this namespace and resolves to the correct rclcpp type
 > for both Humble (rclcpp 16.x) and Jazzy (rclcpp 28+).
@@ -114,7 +116,12 @@ To use the Node wrapper in your package, add the following to your `CMakeLists.t
 ```cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
 ament_target_dependencies(my_node_component autoware_agnocast_wrapper)
+autoware_agnocast_wrapper_setup(my_node_component)
 ```
+
+`autoware_agnocast_wrapper_setup()` is required: it defines `USE_AGNOCAST_ENABLED` on the target, which
+`ament_target_dependencies()` does not propagate. Apply it to every target that includes a wrapper header;
+`autoware_agnocast_wrapper_register_node()` does it for the targets it handles.
 
 #### Registering a Node with `autoware_agnocast_wrapper_register_node`
 
@@ -446,17 +453,6 @@ private:
   autoware::agnocast_wrapper::polling::PollingSubscriber<nav_msgs::msg::Odometry>::SharedPtr sub_;
 };
 ```
-
-### When to use this vs the existing member API
-
-This package currently exposes two polling APIs:
-
-| API                                                                               | Returns                                 | Form          |
-| --------------------------------------------------------------------------------- | --------------------------------------- | ------------- |
-| `Node::create_polling_subscriber` / `AUTOWARE_POLLING_SUBSCRIBER_PTR` (top-level) | `message_ptr`                           | `Node` member |
-| `polling::create_polling_subscriber` (this section)                               | plain `std::shared_ptr<const MessageT>` | free function |
-
-Prefer `polling::` for new code: it returns a plain `std::shared_ptr` (no `message_ptr`), is node-independent, and confines the `autoware_utils_rclcpp` dependency to a single header. The top-level member API is kept for backward compatibility with already-merged consumers and is planned to be removed once they are migrated to `polling::`.
 
 ## How to Enable/Disable Agnocast on Build
 

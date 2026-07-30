@@ -36,6 +36,11 @@ if(BUILD_TESTING)
     test/test_path_to_trajectory_node.cpp
   )
   target_link_libraries(test_path_to_trajectory_node planning_topic_converter_ros)
+
+  ament_auto_add_gtest(test_path_to_trajectory
+    test/test_path_to_trajectory.cpp
+  )
+  target_link_libraries(test_path_to_trajectory planning_topic_converter)
 endif()
 
 autoware_ament_auto_package()
