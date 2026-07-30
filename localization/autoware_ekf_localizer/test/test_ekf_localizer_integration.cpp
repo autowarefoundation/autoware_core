@@ -26,7 +26,15 @@
 #include <gtest/gtest.h>
 
 #include <memory>
+#include <string>
 #include <vector>
+
+namespace
+{
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
+}  // namespace
+
 namespace autoware::ekf_localizer
 {
 
@@ -122,3 +130,65 @@ protected:
 };
 
 }  // namespace autoware::ekf_localizer
+
+// ================== TESTING AREA HERE ==================
+
+// TEST 1. Confirms node correctly performs pose initialization properly.
+// Expects:
+// - Node should not publish odometry until it receives a trigger and an init pose.
+// - After receiving a trigger and an init pose, node should publish odometry exactly at that init
+// pose. This test will:
+// 1. Brief step time 0.1 sec (expect no odometry published).
+// 2. Trigger node init (still expect no odometry published).
+// 3. Brief step time 0.1 sec (expect diagnostics to report error due to missing init pose).
+// 4. Publish an init pose.
+// 5. Very brief step time 0.02 sec (50 Hz) (expect odometry published at that pose).
+TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
+{
+  // 1. Expects node should do nothing without trigger
+  step_time(0.1);
+  EXPECT_EQ(odom_count_, 0U);
+
+  // 2. Trigger node init
+  ASSERT_TRUE(client_trigger_->wait_for_service(std::chrono::seconds(1)));
+  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
+  req->data = true;
+  auto future = client_trigger_->async_send_request(req);
+  executor_->spin_until_future_complete(future);
+  ASSERT_TRUE(future.get()->success);
+
+  // 3. Diagnostics should report error due to missing init pose
+  step_time(0.1);
+  ASSERT_NE(latest_diag_, nullptr);
+  bool found_init_error = false;
+  for (const auto & status : latest_diag_->status) {
+    if (
+      status.message.find("initial pose is not set") != std::string::npos &&
+      status.level == diagnostic_msgs::msg::DiagnosticStatus::ERROR) {
+      found_init_error = true;
+    }
+  }
+  EXPECT_TRUE(found_init_error) << "Node failed to guard against missing initial pose.";
+
+  // 4. Send init pose
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
+  init_pose.header.stamp = current_time_;
+  init_pose.header.frame_id = "map";
+  init_pose.pose.pose.position.x = 10.0;
+  init_pose.pose.pose.position.y = 20.0;
+  init_pose.pose.pose.orientation.w = 1.0;
+
+  // Also assign safe array
+  init_pose.pose.covariance.fill(0.0);
+  init_pose.pose.covariance[0] = 0.01;
+  init_pose.pose.covariance[7] = 0.01;
+  init_pose.pose.covariance[35] = 0.01;
+
+  pub_initial_pose_->publish(init_pose);
+  step_time(0.02);  // 50Hz tick
+
+  // 5. Expects odometry now being published at exact init coordinates
+  ASSERT_NE(latest_odom_, nullptr);
+  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 10.0, near_tol);
+  EXPECT_NEAR(latest_odom_->pose.pose.position.y, 20.0, near_tol);
+}
