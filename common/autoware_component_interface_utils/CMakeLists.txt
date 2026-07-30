@@ -72,4 +72,11 @@ if(BUILD_TESTING)
   )
 endif()
 
+# nlohmann-json-dev never lands in ${PROJECT_NAME}_FOUND_BUILD_DEPENDS (see the
+# find_package() comment above), so ament_auto_package() would not export it on
+# its own. manifest_json.hpp is a publicly installed header that requires
+# nlohmann::json, so downstream C++ consumers of this package need the
+# dependency exported explicitly.
+ament_export_dependencies(nlohmann_json)
+
 ament_auto_package()
