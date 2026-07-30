@@ -12,18 +12,24 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__MAP_PROJECTION_LOADER__MAP_PROJECTION_LOADER_HPP_
-#define AUTOWARE__MAP_PROJECTION_LOADER__MAP_PROJECTION_LOADER_HPP_
+#ifndef MAP_PROJECTION_LOADER_NODE_HPP_
+#define MAP_PROJECTION_LOADER_NODE_HPP_
 
-#include <autoware_map_msgs/msg/map_projector_info.hpp>
-
-#include <string>
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/component_interface_specs/map.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 namespace autoware::map_projection_loader
 {
-autoware_map_msgs::msg::MapProjectorInfo load_info_from_yaml(const std::string & filename);
-autoware_map_msgs::msg::MapProjectorInfo load_map_projector_info(
-  const std::string & yaml_filename, const std::string & lanelet2_map_filename);
+class MapProjectionLoader : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit MapProjectionLoader(const rclcpp::NodeOptions & options);
+
+private:
+  using MapProjectorInfo = autoware::component_interface_specs::map::MapProjectorInfo;
+  AUTOWARE_PUBLISHER_PTR(MapProjectorInfo::Message) publisher_;
+};
 }  // namespace autoware::map_projection_loader
 
-#endif  // AUTOWARE__MAP_PROJECTION_LOADER__MAP_PROJECTION_LOADER_HPP_
+#endif  // MAP_PROJECTION_LOADER_NODE_HPP_

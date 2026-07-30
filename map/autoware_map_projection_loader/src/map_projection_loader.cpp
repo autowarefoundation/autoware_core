@@ -22,7 +22,6 @@
 
 #include <filesystem>
 #include <string>
-#include <utility>
 
 namespace autoware::map_projection_loader
 {
@@ -100,30 +99,4 @@ autoware_map_msgs::msg::MapProjectorInfo load_map_projector_info(
   }
   return msg;
 }
-
-MapProjectionLoader::MapProjectionLoader(const rclcpp::NodeOptions & options)
-: Node("map_projection_loader", options)
-{
-  const std::string yaml_filename = this->declare_parameter<std::string>("map_projector_info_path");
-  const std::string lanelet2_map_filename =
-    this->declare_parameter<std::string>("lanelet2_map_path");
-
-  RCLCPP_INFO_STREAM(get_logger(), "map_projector_info_path: " << yaml_filename);
-  RCLCPP_INFO_STREAM(get_logger(), "lanelet2_map_path: " << lanelet2_map_filename);
-
-  const autoware_map_msgs::msg::MapProjectorInfo msg =
-    load_map_projector_info(yaml_filename, lanelet2_map_filename);
-
-  RCLCPP_INFO_STREAM(get_logger(), "Loaded map projector info");
-
-  // Publish the message
-  publisher_ = this->create_publisher<MapProjectorInfo::Message>(
-    MapProjectorInfo::name, autoware::component_interface_specs::get_qos<MapProjectorInfo>());
-  auto output = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(publisher_);
-  *output = msg;
-  publisher_->publish(std::move(output));
-}
 }  // namespace autoware::map_projection_loader
-
-#include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::map_projection_loader::MapProjectionLoader)
