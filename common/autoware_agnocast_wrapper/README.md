@@ -3,6 +3,7 @@
 The purpose of this package is to integrate Agnocast, a zero-copy middleware, into each topic in Autoware with minimal side effects. Agnocast is a library designed to work alongside ROS 2, enabling true zero-copy publish/subscribe communication for all ROS 2 message types, including unsized message types.
 
 - Agnocast Repository: <https://github.com/autowarefoundation/agnocast>
+- Agnocast Documentation: <https://autowarefoundation.github.io/agnocast_doc/main/>
 - Discussion on Agnocast Integration into Autoware: <https://github.com/orgs/autowarefoundation/discussions/5835>
 - [Review Guide for Agnocast Wrapper PRs](docs/review_guide.md)
 
@@ -19,11 +20,11 @@ Use this when you want the **entire node** to transparently switch between `rclc
 `agnocast_wrapper::Node` does **not** publicly derive from `rclcpp::Node`. It exposes a curated subset
 of the `rclcpp::Node` surface and forwards each member to the underlying implementation (`rclcpp::Node`
 or `agnocast::Node`). The **member names and argument lists are identical in both builds**
-(`ENABLE_AGNOCAST=0` and `=1`), so a node written against it compiles unchanged either way, provided the
-handle, options and message types are spelled with the `AUTOWARE_*` macros (the underlying types differ
-per build). If you need an API that is not listed below, extend the wrapper, or reach the underlying node
-via `get_rclcpp_node()` — declared in both builds, but it throws when the node is in Agnocast mode (see
-the [build-modes table](#build-modes-agnocast-disabled-vs-agnocast-enabled)).
+(`ENABLE_AGNOCAST=0` and `=1`), so a node written against it compiles unchanged either way — provided
+you spell the handle, options and message types with the `AUTOWARE_*` macros (see
+[Type spellings](#type-spellings)). If you need an API that is not listed below, extend the wrapper, or
+reach the underlying node via `get_rclcpp_node()` (declared in both builds, but it throws when the node
+is in Agnocast mode — see the [build-modes table](#build-modes-agnocast-disabled-vs-agnocast-enabled)).
 
 #### Supported API surface
 
@@ -32,21 +33,45 @@ The following members / free functions are provided. Unless noted, signatures mi
 
 | Category        | Members                                                                                                                                                                                                                                                                                                                                                                                                               |
 | --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Construction    | `Node(name, options)`, `Node(name, namespace, options)`, virtual destructor, `SharedPtr`                                                                                                                                                                                                                                                                                                                              |
+| Construction    | `Node(name, options)`, `Node(name, namespace, options)`, virtual destructor, `SharedPtr`. Non-copyable and non-movable (copying would alias one backend behind two wrappers). Derives from `std::enable_shared_from_this<Node>`, so `shared_from_this()` is available when the node is owned by a `shared_ptr`                                                                                                        |
 | Basic info      | `get_name()`, `get_namespace()`, `get_fully_qualified_name()`, `get_logger()`                                                                                                                                                                                                                                                                                                                                         |
 | Time            | `get_clock()`, `now()`                                                                                                                                                                                                                                                                                                                                                                                                |
 | Node interfaces | `get_node_base_interface()`, `get_node_topics_interface()`, `get_node_parameters_interface()` (partial — only these three)                                                                                                                                                                                                                                                                                            |
 | Callback groups | `create_callback_group()`                                                                                                                                                                                                                                                                                                                                                                                             |
 | Parameters      | `declare_parameter()` (typed + `ParameterValue`/`ParameterType` overloads), `has_parameter()`, `undeclare_parameter()`, `get_parameter()` / `get_parameters()` (typed + prefix overloads), `set_parameter()` / `set_parameters()` / `set_parameters_atomically()`, `describe_parameter(s)()`, `get_parameter_types()`, `list_parameters()`, `add_on_set_parameters_callback()`, `remove_on_set_parameters_callback()` |
-| Publisher       | `create_publisher<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                            |
+| Publisher       | `create_publisher<MessageT>()` (`QoS` and depth overloads) — see [Publisher API](#publisher-api)                                                                                                                                                                                                                                                                                                                      |
 | Subscription    | `create_subscription<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                         |
 | Client          | `create_client<ServiceT>()` — takes `rclcpp::QoS` (the wrapper normalizes the Humble vs. Jazzy QoS-argument difference)                                                                                                                                                                                                                                                                                               |
 | Service         | `create_service<ServiceT>()` — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                                             |
 | Timer           | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
 | Underlying node | `get_rclcpp_node()`; `get_agnocast_node()` (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free `to_rclcpp_node(node)`                                                                                                                                                                                                                            |
+| Context         | free `ok()` — mode-agnostic replacement for `rclcpp::ok()` (see [Context notes](#context-notes))                                                                                                                                                                                                                                                                                                                      |
 
 > `OnSetParametersCallbackType` is aliased in this namespace and resolves to the correct rclcpp type
 > for both Humble (rclcpp 16.x) and Jazzy (rclcpp 28+).
+
+Polling subscribers are **not** a `Node` member. Use the free function
+`polling::create_polling_subscriber<MessageT>(node, topic, qos)` — see
+[Polling Subscriber](#polling-subscriber-polling-namespace).
+
+#### Type spellings
+
+The member _names_ and argument lists above are the same in both builds, but the handle, options and
+message types they use are not the same C++ types. Always spell them with the `AUTOWARE_*` macros so the
+same source compiles in both builds:
+
+| What                             | Spell it as                            | `ENABLE_AGNOCAST=0`                  | `ENABLE_AGNOCAST=1`                            |
+| -------------------------------- | -------------------------------------- | ------------------------------------ | ---------------------------------------------- |
+| `create_publisher` result        | `AUTOWARE_PUBLISHER_PTR(M)`            | `rclcpp::Publisher<M>::SharedPtr`    | `agnocast_wrapper::Publisher<M>::SharedPtr`    |
+| `create_subscription` result     | `AUTOWARE_SUBSCRIPTION_PTR(M)`         | `rclcpp::Subscription<M>::SharedPtr` | `agnocast_wrapper::Subscription<M>::SharedPtr` |
+| `create_wall_timer` result       | `AUTOWARE_TIMER_PTR`                   | `rclcpp::TimerBase::SharedPtr`       | `agnocast_wrapper::Timer::SharedPtr`           |
+| `create_publisher` options arg   | `AUTOWARE_PUBLISHER_OPTIONS`           | `rclcpp::PublisherOptions`           | `agnocast::PublisherOptions`                   |
+| `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`        | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
+| Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)` | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
+
+`AUTOWARE_CLIENT_PTR(S)` / `AUTOWARE_SERVICE_PTR(S)` and the `AUTOWARE_CLIENT_*FUTURE*` macros resolve to
+the wrapper's own `Client<S>` / `Service<S>` types in **both** builds, so client and service code needs no
+per-build spelling. See [Key Macros](docs/review_guide.md#3-key-macros) for the full macro list.
 
 #### Build modes: agnocast-disabled vs agnocast-enabled
 
@@ -110,6 +135,27 @@ timer_ = autoware::agnocast_wrapper::create_timer(
 ```cpp
 autoware::agnocast_wrapper::set_period(timer_, std::chrono::milliseconds(200));
 ```
+
+#### Context notes
+
+Use `autoware::agnocast_wrapper::ok()` instead of `rclcpp::ok()`. An AgnocastOnly executable never calls
+`rclcpp::init()`, so `rclcpp::ok()` reports `false` there even while the process is healthy; `ok()` checks
+both contexts.
+
+#### Publisher API
+
+A wrapper publisher exposes three `publish()` overloads, all supported in both builds:
+
+| Call                                                                   | Behavior                                                       |
+| ---------------------------------------------------------------------- | -------------------------------------------------------------- |
+| `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub)` → `pub->publish(std::move(msg))` | Zero-copy: the message is built in place in shared memory.     |
+| `ALLOCATE_OUTPUT_MESSAGE_SHARED(pub)` → `pub->publish(std::move(msg))` | Same, for the shared-ownership form.                           |
+| `pub->publish(msg)` (`const MessageT &`)                               | Copies `msg` into a freshly allocated message, then publishes. |
+
+Prefer the allocate-then-move form when you are constructing the outgoing message anyway; the
+`const MessageT &` overload suits a message you already hold and must keep.
+
+#### CMake setup
 
 To use the Node wrapper in your package, add the following to your `CMakeLists.txt`:
 
@@ -270,6 +316,7 @@ This package provides wrapper types for `message_filters` (`Subscriber`, `Synchr
 - Only `ApproximateTime` and `ExactTime` synchronization policies are supported.
 - 2 to 8 message types per `Synchronizer`. Upstream `message_filters` supports up to 9, but the registration path this wrapper uses caps it at 8.
 - `connectInput()` is not supported; pass `Subscriber` references at construction time.
+- `Subscriber::subscribe()` (and the topic-taking constructor) takes an `autoware::agnocast_wrapper::Node *`, so this wrapper requires a Method 2 node. There is no overload for a plain `rclcpp::Node`.
 
 ### Usage example
 
@@ -325,6 +372,8 @@ void onSynchronized(
 This package provides wrapper types for tf2 (`TransformListener`, `TransformBroadcaster`, `StaticTransformBroadcaster`, `Buffer`) in the `autoware::agnocast_wrapper` namespace. The listener and broadcasters transparently switch between their `tf2_ros` and `agnocast` implementations at runtime, depending on whether the given node is running in Agnocast mode.
 
 The node-taking constructors require a Method 2 node (`autoware::agnocast_wrapper::Node`). This is needed because an AgnocastOnly executor does not spin a plain `tf2_ros::TransformListener` (a ROS 2 subscription); routing `/tf` through Agnocast keeps tf callbacks firing.
+
+All four wrapper types are non-copyable and non-movable (the backend is chosen at construction and bound by reference), so hold them by value or in a `unique_ptr`.
 
 `Buffer` aliases to `agnocast::Buffer` in Agnocast-enabled builds and `tf2_ros::Buffer` otherwise. The agnocast variant intentionally omits APIs that would silently break under an AgnocastOnly executor (currently `waitForTransform` / `setCreateTimerInterface` and the `/tf2_frames` debug service), so misuse is caught at compile time.
 
@@ -509,6 +558,13 @@ In such cases, rebuild both A and B with Agnocast **disabled** to ensure consist
 ## How to Enable Agnocast at Runtime
 
 When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via `LD_PRELOAD`, and component containers must be replaced with their Agnocast equivalents. This package provides `agnocast_env.launch.xml` (and its Python equivalent `agnocast_env.launch.py`) which handles both of these concerns based on the `ENABLE_AGNOCAST` environment variable.
+
+### Discovery agent
+
+Including `agnocast_env.launch.xml` / `.py` also launches the `agnocast_discovery_agent` node
+automatically, once per launch tree and only when `ENABLE_AGNOCAST=1`. It publishes the local Agnocast
+state on `/_agnocast_discovery`, which the `ros2 topic list_agnocast` / `info_agnocast` / `hz_agnocast`
+commands rely on.
 
 ### Provided Variables
 

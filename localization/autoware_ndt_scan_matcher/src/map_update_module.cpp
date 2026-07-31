@@ -70,14 +70,16 @@ bool MapUpdateModule::callback_timer(
 
   // check is_set_last_update_position
   const bool is_set_last_update_position = (position != std::nullopt);
-  diagnostics(DiagnosticsUpdate{
-    {{"is_set_last_update_position", is_set_last_update_position}}, std::nullopt, ""});
+  diagnostics(
+    DiagnosticsUpdate{
+      {{"is_set_last_update_position", is_set_last_update_position}}, std::nullopt, ""});
   if (!is_set_last_update_position) {
-    diagnostics(DiagnosticsUpdate{
-      {},
-      DiagnosticLevel::WARN,
-      "Cannot find the reference position for map update."
-      "Please check if the EKF odometry is provided to NDT."});
+    diagnostics(
+      DiagnosticsUpdate{
+        {},
+        DiagnosticLevel::WARN,
+        "Cannot find the reference position for map update."
+        "Please check if the EKF odometry is provided to NDT."});
     return false;
   }
 
@@ -106,8 +108,9 @@ bool MapUpdateModule::should_update_map(
   const double distance = std::hypot(dx, dy);
 
   // check distance_last_update_position_to_current_position
-  diagnostics(DiagnosticsUpdate{
-    {{"distance_last_update_position_to_current_position", distance}}, std::nullopt, ""});
+  diagnostics(
+    DiagnosticsUpdate{
+      {{"distance_last_update_position_to_current_position", distance}}, std::nullopt, ""});
   if (distance + param_.lidar_radius > param_.map_radius) {
     diagnostics(
       DiagnosticsUpdate{{}, DiagnosticLevel::ERROR, "Dynamic map loading is not keeping up."});
@@ -161,12 +164,13 @@ bool MapUpdateModule::update_map_internal(
     // check is_updated_map
     diagnostics(DiagnosticsUpdate{{{"is_updated_map", updated}}, std::nullopt, ""});
     if (!updated) {
-      diagnostics(DiagnosticsUpdate{
-        {},
-        DiagnosticLevel::ERROR,
-        "update_ndt failed. If this happens with initial position estimation, make sure that"
-        "(1) the initial position matches the pcd map and (2) the map_loader is working "
-        "properly."});
+      diagnostics(
+        DiagnosticsUpdate{
+          {},
+          DiagnosticLevel::ERROR,
+          "update_ndt failed. If this happens with initial position estimation, make sure that"
+          "(1) the initial position matches the pcd map and (2) the map_loader is working "
+          "properly."});
       last_update_position_.with([&](auto & pos) { pos = position; });
       return false;
     }
@@ -229,10 +233,11 @@ bool MapUpdateModule::update_ndt(
   const geometry_msgs::msg::Point & position, NdtType & ndt,
   const DiagnosticsHandlingFunction & diagnostics)
 {
-  diagnostics(DiagnosticsUpdate{
-    {{"maps_size_before", static_cast<int64_t>(ndt.getCurrentMapIDs().size())}},
-    std::nullopt,
-    ""});
+  diagnostics(
+    DiagnosticsUpdate{
+      {{"maps_size_before", static_cast<int64_t>(ndt.getCurrentMapIDs().size())}},
+      std::nullopt,
+      ""});
 
   auto request = std::make_shared<GetDifferentialPointCloudMap::Request>();
 
@@ -246,22 +251,23 @@ bool MapUpdateModule::update_ndt(
 
   // check is_succeed_call_pcd_loader
   const bool is_succeed_call_pcd_loader = (response != nullptr);
-  diagnostics(DiagnosticsUpdate{
-    {{"is_succeed_call_pcd_loader", is_succeed_call_pcd_loader}}, std::nullopt, ""});
+  diagnostics(
+    DiagnosticsUpdate{
+      {{"is_succeed_call_pcd_loader", is_succeed_call_pcd_loader}}, std::nullopt, ""});
   if (!is_succeed_call_pcd_loader) {
-    diagnostics(
-      DiagnosticsUpdate{{}, DiagnosticLevel::WARN, "pcd_loader service is not working."});
+    diagnostics(DiagnosticsUpdate{{}, DiagnosticLevel::WARN, "pcd_loader service is not working."});
     return false;  // No update
   }
 
   auto & maps_to_add = response->new_pointcloud_with_ids;
   auto & map_ids_to_remove = response->ids_to_remove;
 
-  diagnostics(DiagnosticsUpdate{
-    {{"maps_to_add_size", static_cast<int64_t>(maps_to_add.size())},
-     {"maps_to_remove_size", static_cast<int64_t>(map_ids_to_remove.size())}},
-    std::nullopt,
-    ""});
+  diagnostics(
+    DiagnosticsUpdate{
+      {{"maps_to_add_size", static_cast<int64_t>(maps_to_add.size())},
+       {"maps_to_remove_size", static_cast<int64_t>(map_ids_to_remove.size())}},
+      std::nullopt,
+      ""});
 
   if (maps_to_add.empty() && map_ids_to_remove.empty()) {
     return false;  // No update
@@ -289,11 +295,12 @@ bool MapUpdateModule::update_ndt(
   const auto duration_micro_sec =
     std::chrono::duration_cast<std::chrono::microseconds>(exe_end_time - exe_start_time).count();
   const auto exe_time = static_cast<double>(duration_micro_sec) / 1000.0;
-  diagnostics(DiagnosticsUpdate{
-    {{"map_update_execution_time", exe_time},
-     {"maps_size_after", static_cast<int64_t>(ndt.getCurrentMapIDs().size())}},
-    std::nullopt,
-    ""});
+  diagnostics(
+    DiagnosticsUpdate{
+      {{"map_update_execution_time", exe_time},
+       {"maps_size_after", static_cast<int64_t>(ndt.getCurrentMapIDs().size())}},
+      std::nullopt,
+      ""});
 
   return true;  // Updated
 }

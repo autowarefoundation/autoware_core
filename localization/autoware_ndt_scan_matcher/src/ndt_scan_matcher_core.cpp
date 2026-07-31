@@ -226,8 +226,7 @@ NDTScanMatcher::get_differential_point_cloud_map(
 
   // send a request to map_loader
   auto result{pcd_loader_client_->async_send_request(
-    request,
-    [](rclcpp::Client<MapUpdateModule::GetDifferentialPointCloudMap>::SharedFuture) {})};
+    request, [](rclcpp::Client<MapUpdateModule::GetDifferentialPointCloudMap>::SharedFuture) {})};
 
   std::future_status status = result.wait_for(std::chrono::seconds(0));
   while (status != std::future_status::ready) {
@@ -312,8 +311,7 @@ void NDTScanMatcher::callback_timer()
 
   const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
   const bool is_map_updated = map_update_module_->callback_timer(
-    is_activated_, latest_ekf_position,
-    [this](const MapUpdateModule::DiagnosticsUpdate & update) {
+    is_activated_, latest_ekf_position, [this](const MapUpdateModule::DiagnosticsUpdate & update) {
       apply_diagnostics_update(*diagnostics_map_update_, update);
     });
 

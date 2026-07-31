@@ -156,7 +156,8 @@ private:
   // Returns nullptr if the map could not be fetched (e.g. the service is unavailable).
   // While fetching, mirrors the loaded point clouds into loaded_pcd_map_ so that the debug
   // partial map can be published on the node side (see publish_partial_pcd_map).
-  MapUpdateModule::GetDifferentialPointCloudMap::Response::SharedPtr get_differential_point_cloud_map(
+  MapUpdateModule::GetDifferentialPointCloudMap::Response::SharedPtr
+  get_differential_point_cloud_map(
     const MapUpdateModule::GetDifferentialPointCloudMap::Request::SharedPtr & request);
 
   // Assembles loaded_pcd_map_ into a single cloud and publishes it for debugging.
