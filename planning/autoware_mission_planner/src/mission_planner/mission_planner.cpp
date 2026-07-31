@@ -120,6 +120,12 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
     "~/route", autoware::component_interface_specs::get_qos<LaneletRouteSpecs>());
   pub_state_ = create_publisher<RouteStateSpecs::Message>(
     "~/state", autoware::component_interface_specs::get_qos<RouteStateSpecs>());
+  on_change_state_ = [this](RouteState::_state_type state) {
+    RouteState msg;
+    msg.stamp = now();
+    msg.state = state;
+    pub_state_->publish(msg);
+  };
 
   // Route state will be published when the node gets ready for route api after initialization,
   // otherwise the mission planner rejects the request for the API.
@@ -182,7 +188,7 @@ void MissionPlanner::on_odometry(const Odometry::ConstSharedPtr msg)
   arrival_checker_.update(*msg);
 
   // NOTE: Do not check in the other states as goal may change.
-  if (state_.state == RouteState::SET) {
+  if (state_ == RouteState::SET) {
     if (arrival_checker_.is_arrived()) {
       change_state(RouteState::ARRIVED);
     }
@@ -203,9 +209,10 @@ void MissionPlanner::on_map(const LaneletMapBin::ConstSharedPtr msg)
 
 void MissionPlanner::change_state(RouteState::_state_type state)
 {
-  state_.stamp = now();
-  state_.state = state;
-  pub_state_->publish(state_);
+  state_ = state;
+  if (on_change_state_) {
+    on_change_state_(state);
+  }
 }
 
 void MissionPlanner::on_clear_route(
@@ -229,7 +236,7 @@ void MissionPlanner::on_set_lanelet_route(
 {
   ScopedProcessingTimePublisher processing_time_publisher(*this);
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
-  const auto is_reroute = state_.state == RouteState::SET;
+  const auto is_reroute = state_ == RouteState::SET;
 
   std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
   try {
@@ -241,7 +248,7 @@ void MissionPlanner::on_set_lanelet_route(
     transform_to_map = std::nullopt;
   }
 
-  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
+  if (state_ != RouteState::UNSET && state_ != RouteState::SET) {
     set_fail_response(
       res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
     return;
@@ -305,7 +312,7 @@ void MissionPlanner::on_set_waypoint_route(
 {
   ScopedProcessingTimePublisher processing_time_publisher(*this);
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
-  const auto is_reroute = state_.state == RouteState::SET;
+  const auto is_reroute = state_ == RouteState::SET;
 
   std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
   try {
@@ -317,7 +324,7 @@ void MissionPlanner::on_set_waypoint_route(
     transform_to_map = std::nullopt;
   }
 
-  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
+  if (state_ != RouteState::UNSET && state_ != RouteState::SET) {
     set_fail_response(
       res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
     return;

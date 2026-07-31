@@ -34,6 +34,7 @@
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -64,6 +65,8 @@ public:
   explicit MissionPlanner(const rclcpp::NodeOptions & options);
 
 private:
+  using ChangeStateCallback = std::function<void(RouteState::_state_type)>;
+
   // Publishes the processing time on destruction, regardless of which return path is taken.
   class ScopedProcessingTimePublisher
   {
@@ -102,7 +105,8 @@ private:
   Odometry::ConstSharedPtr odometry_;
   OperationModeState::ConstSharedPtr operation_mode_state_;
   LaneletMapBin::ConstSharedPtr map_ptr_;
-  RouteState state_;
+  RouteState::_state_type state_{};
+  ChangeStateCallback on_change_state_;
   LaneletRoute::ConstSharedPtr current_route_;
   lanelet::LaneletMapPtr lanelet_map_ptr_{nullptr};
 
