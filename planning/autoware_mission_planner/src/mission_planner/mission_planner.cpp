@@ -94,8 +94,18 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   minimum_reroute_length_ = declare_parameter<double>("minimum_reroute_length");
   allow_reroute_in_autonomous_mode_ = declare_parameter<bool>("allow_reroute_in_autonomous_mode");
 
+  lanelet2::DefaultPlannerParameters default_planner_param;
+  default_planner_param.goal_angle_threshold_deg =
+    declare_parameter<double>("goal_angle_threshold_deg");
+  default_planner_param.enable_correct_goal_pose =
+    declare_parameter<bool>("enable_correct_goal_pose");
+  default_planner_param.consider_no_drivable_lanes =
+    declare_parameter<bool>("consider_no_drivable_lanes");
+  default_planner_param.check_footprint_inside_lanes =
+    declare_parameter<bool>("check_footprint_inside_lanes");
+
   planner_ = std::make_shared<lanelet2::DefaultPlanner>();
-  planner_->initialize(this);
+  planner_->initialize(this, default_planner_param);
 
   const auto durable_qos = rclcpp::QoS(1).transient_local();
   sub_odometry_ = create_subscription<Odometry>(

@@ -50,7 +50,7 @@ public:
 
   DefaultPlanner() : vehicle_info_(), is_graph_ready_(false), param_(), node_(nullptr) {}
 
-  void initialize(rclcpp::Node * node);
+  void initialize(rclcpp::Node * node, const DefaultPlannerParameters & param);
   [[nodiscard]] bool ready() const;
   LaneletRoute plan(const RoutePoints & points);
   void updateRoute(const LaneletRoute & route);

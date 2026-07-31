@@ -73,21 +73,17 @@ lanelet::ConstLanelets get_lanelets_to(
 }
 }  // namespace
 
-void DefaultPlanner::initialize(rclcpp::Node * node)
+void DefaultPlanner::initialize(rclcpp::Node * node, const DefaultPlannerParameters & param)
 {
   is_graph_ready_ = false;
   node_ = node;
+  param_ = param;
 
   const auto durable_qos = rclcpp::QoS(1).transient_local();
   pub_goal_footprint_marker_ =
     node_->create_publisher<MarkerArray>("~/debug/goal_footprint", durable_qos);
 
   vehicle_info_ = autoware::vehicle_info_utils::VehicleInfoUtils(*node_).getVehicleInfo();
-  param_.goal_angle_threshold_deg = node_->declare_parameter<double>("goal_angle_threshold_deg");
-  param_.enable_correct_goal_pose = node_->declare_parameter<bool>("enable_correct_goal_pose");
-  param_.consider_no_drivable_lanes = node_->declare_parameter<bool>("consider_no_drivable_lanes");
-  param_.check_footprint_inside_lanes =
-    node_->declare_parameter<bool>("check_footprint_inside_lanes");
 
   map_subscriber_ = node_->create_subscription<LaneletMapBin>(
     "~/input/vector_map", rclcpp::QoS{10}.transient_local(),

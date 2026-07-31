@@ -87,7 +87,14 @@ protected:
     // vehicle_width: 1.83, vehicle_length: 4.77
 
     node_ = std::make_shared<rclcpp::Node>("test_node", options);
-    planner_.initialize(node_.get());
+
+    autoware::mission_planner::lanelet2::DefaultPlannerParameters param;
+    param.goal_angle_threshold_deg = node_->declare_parameter<double>("goal_angle_threshold_deg");
+    param.enable_correct_goal_pose = node_->declare_parameter<bool>("enable_correct_goal_pose");
+    param.consider_no_drivable_lanes = node_->declare_parameter<bool>("consider_no_drivable_lanes");
+    param.check_footprint_inside_lanes =
+      node_->declare_parameter<bool>("check_footprint_inside_lanes");
+    planner_.initialize(node_.get(), param);
   }
 
   ~DefaultPlannerTest() override { rclcpp::shutdown(); }
