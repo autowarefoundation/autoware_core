@@ -413,7 +413,3 @@ void DefaultPlanner::clearRoute()
 }
 
 }  // namespace autoware::mission_planner::lanelet2
-
-#include <pluginlib/class_list_macros.hpp>
-PLUGINLIB_EXPORT_CLASS(
-  autoware::mission_planner::lanelet2::DefaultPlanner, autoware::mission_planner::PlannerPlugin)

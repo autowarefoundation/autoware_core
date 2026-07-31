@@ -14,6 +14,7 @@
 
 #include "mission_planner.hpp"
 
+#include "../lanelet2_plugins/default_planner.hpp"
 #include "reroute_safety.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -80,7 +81,6 @@ Pose transform_pose(const Pose & pose, const geometry_msgs::msg::TransformStampe
 MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
 : Node("mission_planner", options),
   arrival_checker_(get_arrival_checker_threshold(*this)),
-  plugin_loader_("autoware_mission_planner", "autoware::mission_planner::PlannerPlugin"),
   tf_buffer_(get_clock()),
   tf_listener_(tf_buffer_),
   odometry_(nullptr),
@@ -95,8 +95,7 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   minimum_reroute_length_ = declare_parameter<double>("minimum_reroute_length");
   allow_reroute_in_autonomous_mode_ = declare_parameter<bool>("allow_reroute_in_autonomous_mode");
 
-  planner_ =
-    plugin_loader_.createSharedInstance("autoware::mission_planner::lanelet2::DefaultPlanner");
+  planner_ = std::make_shared<lanelet2::DefaultPlanner>();
   planner_->initialize(this);
 
   const auto durable_qos = rclcpp::QoS(1).transient_local();

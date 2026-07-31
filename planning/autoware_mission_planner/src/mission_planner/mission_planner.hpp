@@ -23,7 +23,6 @@
 #include <autoware/route_handler/route_handler.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <pluginlib/class_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/buffer.hpp>
 #include <tf2_ros/transform_listener.hpp>
@@ -84,7 +83,6 @@ private:
     autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
 
   ArrivalChecker arrival_checker_;
-  pluginlib::ClassLoader<PlannerPlugin> plugin_loader_;
   std::shared_ptr<PlannerPlugin> planner_;
 
   std::string map_frame_;
