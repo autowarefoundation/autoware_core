@@ -44,17 +44,19 @@ namespace autoware::component_interface_utils
 /// ("off" | "metadata" | "contents", default "off"). Service-call tracing is
 /// provided by ROS 2 service introspection (see the service wrappers), not a
 /// custom log topic.
+template <class NodeT = rclcpp::Node>
 struct NodeInterface
 {
   using SharedPtr = std::shared_ptr<NodeInterface>;
+  using NodeType = NodeT;
 
-  explicit NodeInterface(rclcpp::Node * node) : node(node)
+  explicit NodeInterface(NodeT * node) : node(node)
   {
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
     const std::string param = "component_interface.service_introspection";
     const std::string mode = node->has_parameter(param)
                                ? node->get_parameter(param).as_string()
-                               : node->declare_parameter<std::string>(param, "off");
+                               : node->template declare_parameter<std::string>(param, "off");
     if (mode == "contents") {
       introspection_state = RCL_SERVICE_INTROSPECTION_CONTENTS;
     } else if (mode == "metadata") {
@@ -65,7 +67,7 @@ struct NodeInterface
 #endif
   }
 
-  rclcpp::Node * node;
+  NodeT * node;
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
   rcl_service_introspection_state_t introspection_state = RCL_SERVICE_INTROSPECTION_OFF;
 #endif

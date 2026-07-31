@@ -29,6 +29,7 @@
 namespace autoware::component_interface_utils
 {
 
+template <class NodeT = rclcpp::Node>
 class NodeAdaptor
 {
 private:
@@ -47,8 +48,13 @@ private:
     const typename SharedPtrT::element_type::SpecType::Service::Response::SharedPtr);
 
 public:
-  /// Constructor.
-  explicit NodeAdaptor(rclcpp::Node * node) { interface_ = std::make_shared<NodeInterface>(node); }
+  /// Constructor. D is deduced separately from NodeT so that `NodeAdaptor(this)` on a derived
+  /// node keeps NodeT at its default instead of deducing the derived type.
+  template <class D>
+  explicit NodeAdaptor(D * node)
+  {
+    interface_ = std::make_shared<NodeInterface<NodeT>>(node);
+  }
 
   /// Create a client wrapper for logging.
   template <class SharedPtrT>
@@ -133,21 +139,21 @@ public:
 
   /// Create a publisher (returning form; Wave 1: non-registering).
   template <class SpecT>
-  typename Publisher<SpecT>::SharedPtr create_publisher()
+  typename Publisher<SpecT, NodeT>::SharedPtr create_publisher()
   {
     return create_publisher_impl<SpecT>(interface_->node);
   }
 
   /// Create a subscription (returning form; Wave 1: non-registering).
   template <class SpecT, class CallbackT>
-  typename Subscription<SpecT>::SharedPtr create_subscription(CallbackT && callback)
+  typename Subscription<SpecT, NodeT>::SharedPtr create_subscription(CallbackT && callback)
   {
     return create_subscription_impl<SpecT>(interface_->node, std::forward<CallbackT>(callback));
   }
 
   /// Create a service server (returning form; Wave 1: non-registering).
   template <class SpecT, class CallbackT>
-  typename Service<SpecT>::SharedPtr create_service(
+  typename Service<SpecT, NodeT>::SharedPtr create_service(
     CallbackT && callback, rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
     return create_service_impl<SpecT>(interface_, std::forward<CallbackT>(callback), group);
@@ -155,14 +161,15 @@ public:
 
   /// Create a service client (returning form; Wave 1: non-registering).
   template <class SpecT>
-  typename Client<SpecT>::SharedPtr create_client(rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  typename Client<SpecT, NodeT>::SharedPtr create_client(
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
     return create_client_impl<SpecT>(interface_, group);
   }
 
 private:
   // Use a node pointer because shared_from_this cannot be used in constructor.
-  NodeInterface::SharedPtr interface_;
+  typename NodeInterface<NodeT>::SharedPtr interface_;
 };
 
 }  // namespace autoware::component_interface_utils

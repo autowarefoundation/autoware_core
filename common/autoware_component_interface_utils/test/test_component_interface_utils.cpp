@@ -29,9 +29,46 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <type_traits>
+#include <utility>
 
 namespace
 {
+
+/// Minimal stand-in for a node type other than rclcpp::Node, with its own endpoint types.
+template <class MessageT>
+struct FakePublisher
+{
+  using SharedPtr = std::shared_ptr<FakePublisher>;
+  void publish(const MessageT &) {}
+};
+
+template <class MessageT>
+struct FakeSubscription
+{
+  using SharedPtr = std::shared_ptr<FakeSubscription>;
+};
+
+struct FakeNode
+{
+  template <class MessageT>
+  typename FakePublisher<MessageT>::SharedPtr create_publisher(
+    const std::string &, const rclcpp::QoS &)
+  {
+    return std::make_shared<FakePublisher<MessageT>>();
+  }
+
+  template <class MessageT, class CallbackT>
+  typename FakeSubscription<MessageT>::SharedPtr create_subscription(
+    const std::string &, const rclcpp::QoS &, CallbackT &&)
+  {
+    return std::make_shared<FakeSubscription<MessageT>>();
+  }
+};
+
+struct DerivedNode : public rclcpp::Node
+{
+};
 
 /// Graph discovery of even local endpoints is asynchronous, so poll until the
 /// topic has at least one publisher (or the timeout elapses) rather than assume
@@ -161,7 +198,8 @@ TEST(interface, service_wrappers_without_service_log)
   using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
   rclcpp::init(0, nullptr);
   auto node = std::make_shared<rclcpp::Node>("test_service");
-  auto interface = std::make_shared<autoware::component_interface_utils::NodeInterface>(node.get());
+  auto interface =
+    std::make_shared<autoware::component_interface_utils::NodeInterface<>>(node.get());
 
   auto srv = autoware::component_interface_utils::Service<ChangeOperationMode>::make_shared(
     interface, [](auto, auto res) { res->status.success = true; }, nullptr);
@@ -198,6 +236,44 @@ TEST(interface, client_async_send_request_callback_overload)
   auto future = cli->async_send_request(req, [](auto) {});
   EXPECT_TRUE(future.valid());
   rclcpp::shutdown();
+}
+
+TEST(interface, wrappers_deduce_endpoint_types_from_node)
+{
+  using OperationModeState = autoware::component_interface_specs::system::OperationModeState;
+  using ChangeOperationMode = autoware::component_interface_specs::system::ChangeOperationMode;
+  using Message = OperationModeState::Message;
+  using Srv = ChangeOperationMode::Service;
+  namespace utils = autoware::component_interface_utils;
+
+  // The default node type keeps the endpoint types the wrappers used before they were templated.
+  static_assert(
+    std::is_same_v<
+      typename utils::Publisher<OperationModeState>::WrapType, rclcpp::Publisher<Message>>);
+  static_assert(
+    std::is_same_v<
+      typename utils::Subscription<OperationModeState>::WrapType, rclcpp::Subscription<Message>>);
+  static_assert(
+    std::is_same_v<typename utils::Client<ChangeOperationMode>::WrapType, rclcpp::Client<Srv>>);
+  static_assert(
+    std::is_same_v<typename utils::Service<ChangeOperationMode>::WrapType, rclcpp::Service<Srv>>);
+
+  // Another node type contributes its own endpoint types instead.
+  static_assert(
+    std::is_same_v<
+      typename utils::Publisher<OperationModeState, FakeNode>::WrapType, FakePublisher<Message>>);
+  static_assert(std::is_same_v<
+                typename utils::Subscription<OperationModeState, FakeNode>::WrapType,
+                FakeSubscription<Message>>);
+
+  // A derived node must not be deduced as the adaptor's node type, or the wrappers it creates
+  // would stop matching the consumers' member declarations.
+  static_assert(std::is_same_v<
+                decltype(utils::NodeAdaptor(std::declval<DerivedNode *>())),
+                utils::NodeAdaptor<rclcpp::Node>>);
+  static_assert(std::is_same_v<
+                decltype(utils::NodeAdaptor(std::declval<rclcpp::Node *>())),
+                utils::NodeAdaptor<rclcpp::Node>>);
 }
 
 TEST(interface, node_adaptor_create_publisher_qos)
