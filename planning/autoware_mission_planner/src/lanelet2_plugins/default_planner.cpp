@@ -73,7 +73,7 @@ lanelet::ConstLanelets get_lanelets_to(
 }
 }  // namespace
 
-void DefaultPlanner::initialize_common(rclcpp::Node * node)
+void DefaultPlanner::initialize(rclcpp::Node * node)
 {
   is_graph_ready_ = false;
   node_ = node;
@@ -88,20 +88,10 @@ void DefaultPlanner::initialize_common(rclcpp::Node * node)
   param_.consider_no_drivable_lanes = node_->declare_parameter<bool>("consider_no_drivable_lanes");
   param_.check_footprint_inside_lanes =
     node_->declare_parameter<bool>("check_footprint_inside_lanes");
-}
 
-void DefaultPlanner::initialize(rclcpp::Node * node)
-{
-  initialize_common(node);
   map_subscriber_ = node_->create_subscription<LaneletMapBin>(
     "~/input/vector_map", rclcpp::QoS{10}.transient_local(),
     std::bind(&DefaultPlanner::map_callback, this, std::placeholders::_1));
-}
-
-void DefaultPlanner::initialize(rclcpp::Node * node, const LaneletMapBin::ConstSharedPtr msg)
-{
-  initialize_common(node);
-  map_callback(msg);
 }
 
 bool DefaultPlanner::ready() const
