@@ -15,14 +15,26 @@
 #ifndef MISSION_PLANNER__REROUTE_SAFETY_HPP_
 #define MISSION_PLANNER__REROUTE_SAFETY_HPP_
 
-#include <rclcpp/logger.hpp>
-
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 
 #include <lanelet2_core/LaneletMap.h>
 
+#include <string>
+
 namespace autoware::mission_planner
 {
+
+/**
+ * @brief result of check_reroute_safety.
+ *
+ * @param is_safe whether the reroute is safe (or the vehicle is effectively stopped).
+ * @param reason human-readable reason why the reroute is not safe; empty when is_safe is true.
+ */
+struct RerouteSafetyResult
+{
+  bool is_safe;
+  std::string reason;
+};
 
 /**
  * @brief pure, dependency-injected reroute-safety check.
@@ -40,15 +52,13 @@ namespace autoware::mission_planner
  * @param reroute_time_threshold time horizon used to scale the velocity-dependent safety length
  * [s].
  * @param minimum_reroute_length lower bound of the safety length [m].
- * @param logger logger used for the diagnostic messages emitted on the failure branches.
- * @return true if the reroute is safe (or the vehicle is effectively stopped), false otherwise.
+ * @return RerouteSafetyResult indicating whether the reroute is safe and, if not, why.
  */
-bool check_reroute_safety(
+RerouteSafetyResult check_reroute_safety(
   const autoware_planning_msgs::msg::LaneletRoute & original_route,
   const autoware_planning_msgs::msg::LaneletRoute & target_route,
   const lanelet::LaneletMapConstPtr & lanelet_map, const double current_velocity,
-  const double reroute_time_threshold, const double minimum_reroute_length,
-  const rclcpp::Logger & logger);
+  const double reroute_time_threshold, const double minimum_reroute_length);
 
 }  // namespace autoware::mission_planner
 
