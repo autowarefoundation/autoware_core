@@ -94,7 +94,9 @@ protected:
     param.consider_no_drivable_lanes = node_->declare_parameter<bool>("consider_no_drivable_lanes");
     param.check_footprint_inside_lanes =
       node_->declare_parameter<bool>("check_footprint_inside_lanes");
-    planner_.initialize(node_.get(), param);
+    const auto vehicle_info =
+      autoware::vehicle_info_utils::VehicleInfoUtils(*node_).getVehicleInfo();
+    planner_.initialize(node_.get(), param, vehicle_info);
   }
 
   ~DefaultPlannerTest() override { rclcpp::shutdown(); }

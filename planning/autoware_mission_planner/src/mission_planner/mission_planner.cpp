@@ -18,6 +18,7 @@
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_utils_math/unit_conversion.hpp>
+#include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <autoware_common_msgs/msg/response_status.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
@@ -104,8 +105,10 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   default_planner_param.check_footprint_inside_lanes =
     declare_parameter<bool>("check_footprint_inside_lanes");
 
+  const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
+
   planner_ = std::make_shared<lanelet2::DefaultPlanner>();
-  planner_->initialize(this, default_planner_param);
+  planner_->initialize(this, default_planner_param, vehicle_info);
 
   const auto durable_qos = rclcpp::QoS(1).transient_local();
   sub_odometry_ = create_subscription<Odometry>(
