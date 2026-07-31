@@ -307,6 +307,7 @@ void MissionPlanner::on_set_lanelet_route(
   change_state(RouteState::SET);
   res->status.success = true;
 
+  publish_route(route);
   publish_pose_log(odometry_->pose.pose, "initial");
   publish_pose_log(req->goal_pose, "goal");
 }
@@ -381,6 +382,7 @@ void MissionPlanner::on_set_waypoint_route(
   change_state(RouteState::SET);
   res->status.success = true;
 
+  publish_route(route);
   publish_pose_log(odometry_->pose.pose, "initial");
   publish_pose_log(req->goal_pose, "goal");
 }
@@ -396,6 +398,12 @@ void MissionPlanner::clear_route()
   // pub_marker_->publish();
 }
 
+void MissionPlanner::publish_route(const LaneletRoute & route)
+{
+  pub_route_->publish(route);
+  pub_marker_->publish(planner_->visualize(route));
+}
+
 void MissionPlanner::change_route(const LaneletRoute & route)
 {
   PoseWithUuidStamped goal;
@@ -406,9 +414,6 @@ void MissionPlanner::change_route(const LaneletRoute & route)
   current_route_ = std::make_shared<LaneletRoute>(route);
   planner_->updateRoute(route);
   arrival_checker_.set_goal(goal);
-
-  pub_route_->publish(route);
-  pub_marker_->publish(planner_->visualize(route));
 }
 
 void MissionPlanner::cancel_route()

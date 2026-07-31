@@ -125,6 +125,7 @@ private:
 
   void change_state(RouteState::_state_type state);
   void clear_route();
+  void publish_route(const LaneletRoute & route);
   void change_route(const LaneletRoute & route);
   void cancel_route();
   LaneletRoute create_lanelet_route(
