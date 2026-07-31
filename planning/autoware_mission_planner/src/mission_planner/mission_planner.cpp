@@ -291,12 +291,16 @@ void MissionPlanner::on_set_lanelet_route(
     return;
   }
 
-  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-    cancel_route();
-    change_state(RouteState::SET);
-    set_fail_response(
-      res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
-    return;
+  if (is_reroute && is_autonomous_driving) {
+    const auto reroute_safety_result = check_reroute_safety(*current_route_, route);
+    if (!reroute_safety_result.is_safe) {
+      RCLCPP_ERROR(get_logger(), "%s", reroute_safety_result.reason.c_str());
+      cancel_route();
+      change_state(RouteState::SET);
+      set_fail_response(
+        res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+      return;
+    }
   }
 
   change_route(route);
@@ -361,12 +365,16 @@ void MissionPlanner::on_set_waypoint_route(
     return;
   }
 
-  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-    cancel_route();
-    change_state(RouteState::SET);
-    set_fail_response(
-      res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
-    return;
+  if (is_reroute && is_autonomous_driving) {
+    const auto reroute_safety_result = check_reroute_safety(*current_route_, route);
+    if (!reroute_safety_result.is_safe) {
+      RCLCPP_ERROR(get_logger(), "%s", reroute_safety_result.reason.c_str());
+      cancel_route();
+      change_state(RouteState::SET);
+      set_fail_response(
+        res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+      return;
+    }
   }
 
   change_route(route);
@@ -445,26 +453,21 @@ LaneletRoute MissionPlanner::create_waypoint_route(
   return route;
 }
 
-bool MissionPlanner::check_reroute_safety(
+RerouteSafetyResult MissionPlanner::check_reroute_safety(
   const LaneletRoute & original_route, const LaneletRoute & target_route)
 {
   // The pure check_reroute_safety free function validates the routes and the map, but the node
-  // owns the odometry, so guard it here to keep the original observable behavior (same log
-  // message and early return when odometry or map is not yet available).
+  // owns the odometry, so guard it here to keep the original observable behavior (same failure
+  // reason and early return when odometry or map is not yet available).
   if (!map_ptr_ || !lanelet_map_ptr_ || !odometry_) {
-    RCLCPP_ERROR(get_logger(), "Check reroute safety failed. Route, map or odometry is not set.");
-    return false;
+    return {false, "Check reroute safety failed. Route, map or odometry is not set."};
   }
 
   const auto current_velocity = odometry_->twist.twist.linear.x;
 
-  const auto result = autoware::mission_planner::check_reroute_safety(
+  return autoware::mission_planner::check_reroute_safety(
     original_route, target_route, lanelet_map_ptr_, current_velocity, reroute_time_threshold_,
     minimum_reroute_length_);
-  if (!result.is_safe) {
-    RCLCPP_ERROR(get_logger(), "%s", result.reason.c_str());
-  }
-  return result.is_safe;
 }
 }  // namespace autoware::mission_planner
 

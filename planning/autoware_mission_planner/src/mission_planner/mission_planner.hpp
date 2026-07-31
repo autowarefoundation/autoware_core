@@ -16,6 +16,7 @@
 #define MISSION_PLANNER__MISSION_PLANNER_HPP_
 
 #include "arrival_checker.hpp"
+#include "reroute_safety.hpp"
 
 #include <autoware/component_interface_specs/planning.hpp>
 #include <autoware/mission_planner/mission_planner_plugin.hpp>
@@ -144,7 +145,8 @@ private:
   // flag to allow reroute in autonomous driving mode.
   // if false, reroute fails. if true, only safe reroute is allowed.
   bool allow_reroute_in_autonomous_mode_;
-  bool check_reroute_safety(const LaneletRoute & original_route, const LaneletRoute & target_route);
+  RerouteSafetyResult check_reroute_safety(
+    const LaneletRoute & original_route, const LaneletRoute & target_route);
 
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
