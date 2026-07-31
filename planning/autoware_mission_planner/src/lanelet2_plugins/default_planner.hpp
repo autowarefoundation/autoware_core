@@ -15,7 +15,6 @@
 #ifndef LANELET2_PLUGINS__DEFAULT_PLANNER_HPP_
 #define LANELET2_PLUGINS__DEFAULT_PLANNER_HPP_
 
-#include <autoware/mission_planner/mission_planner_plugin.hpp>
 #include <autoware/route_handler/route_handler.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
@@ -24,6 +23,7 @@
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
@@ -40,18 +40,23 @@ struct DefaultPlannerParameters
   bool check_footprint_inside_lanes;
 };
 
-class DefaultPlanner : public mission_planner::PlannerPlugin
+class DefaultPlanner
 {
 public:
+  using RoutePoints = std::vector<geometry_msgs::msg::Pose>;
+  using LaneletRoute = autoware_planning_msgs::msg::LaneletRoute;
+  using LaneletMapBin = autoware_map_msgs::msg::LaneletMapBin;
+  using MarkerArray = visualization_msgs::msg::MarkerArray;
+
   DefaultPlanner() : vehicle_info_(), is_graph_ready_(false), param_(), node_(nullptr) {}
 
-  void initialize(rclcpp::Node * node) override;
-  void initialize(rclcpp::Node * node, const LaneletMapBin::ConstSharedPtr msg) override;
-  [[nodiscard]] bool ready() const override;
-  LaneletRoute plan(const RoutePoints & points) override;
-  void updateRoute(const PlannerPlugin::LaneletRoute & route) override;
-  void clearRoute() override;
-  [[nodiscard]] MarkerArray visualize(const LaneletRoute & route) const override;
+  void initialize(rclcpp::Node * node);
+  void initialize(rclcpp::Node * node, const LaneletMapBin::ConstSharedPtr msg);
+  [[nodiscard]] bool ready() const;
+  LaneletRoute plan(const RoutePoints & points);
+  void updateRoute(const LaneletRoute & route);
+  void clearRoute();
+  [[nodiscard]] MarkerArray visualize(const LaneletRoute & route) const;
   [[nodiscard]] static MarkerArray visualize_debug_footprint(
     autoware_utils_geometry::LinearRing2d goal_footprint);
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;

@@ -115,7 +115,7 @@ void DefaultPlanner::map_callback(const LaneletMapBin::ConstSharedPtr msg)
   is_graph_ready_ = true;
 }
 
-PlannerPlugin::MarkerArray DefaultPlanner::visualize(const LaneletRoute & route) const
+DefaultPlanner::MarkerArray DefaultPlanner::visualize(const LaneletRoute & route) const
 {
   lanelet::ConstLanelets route_lanelets;
   lanelet::ConstLanelets end_lanelets;
@@ -327,7 +327,7 @@ bool DefaultPlanner::is_goal_valid(const geometry_msgs::msg::Pose & goal)
   return is_in_parking_lot(parking_lots, goal_lanelet_pt);
 }
 
-PlannerPlugin::LaneletRoute DefaultPlanner::plan(const RoutePoints & points)
+DefaultPlanner::LaneletRoute DefaultPlanner::plan(const RoutePoints & points)
 {
   const auto logger = node_->get_logger();
 
@@ -402,7 +402,7 @@ geometry_msgs::msg::Pose DefaultPlanner::refine_goal_height(
   return refined_goal;
 }
 
-void DefaultPlanner::updateRoute(const PlannerPlugin::LaneletRoute & route)
+void DefaultPlanner::updateRoute(const LaneletRoute & route)
 {
   route_handler_.setRoute(route);
 }

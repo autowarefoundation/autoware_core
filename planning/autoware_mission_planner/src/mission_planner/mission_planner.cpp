@@ -14,7 +14,6 @@
 
 #include "mission_planner.hpp"
 
-#include "../lanelet2_plugins/default_planner.hpp"
 #include "reroute_safety.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -442,7 +441,7 @@ LaneletRoute MissionPlanner::create_waypoint_route(
   const SetWaypointRoute::Request & req,
   const geometry_msgs::msg::TransformStamped & transform_to_map)
 {
-  PlannerPlugin::RoutePoints points;
+  lanelet2::DefaultPlanner::RoutePoints points;
   points.push_back(odometry_->pose.pose);
   for (const auto & waypoint : req.waypoints) {
     points.push_back(transform_pose(waypoint, transform_to_map));
