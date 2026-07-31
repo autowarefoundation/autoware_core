@@ -1812,6 +1812,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#client-service-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client / Service Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#publishersubscriber-creation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1821,6 +1832,39 @@
   </a>
   
 </li>
+        
+          <li class="md-nav__item">
+  <a href="#31-polling-subscribers-polling-free-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Polling Subscribers (polling:: free functions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#include" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        include 
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="include">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#message-allocation" class="md-nav__link">
@@ -1841,11 +1885,6 @@
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -1883,7 +1922,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#include" class="md-nav__link">
+  <a href="#include_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         include 
@@ -1911,7 +1950,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#include_1" class="md-nav__link">
+  <a href="#include_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         include 
@@ -8806,6 +8845,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#client-service-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client / Service Types
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#publishersubscriber-creation" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8815,6 +8865,39 @@
   </a>
   
 </li>
+        
+          <li class="md-nav__item">
+  <a href="#31-polling-subscribers-polling-free-functions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3.1 Polling Subscribers (polling:: free functions)
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#include" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        include 
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="include">
+      <ul class="md-nav__list">
         
           <li class="md-nav__item">
   <a href="#message-allocation" class="md-nav__link">
@@ -8835,11 +8918,6 @@
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -8877,7 +8955,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#include" class="md-nav__link">
+  <a href="#include_1" class="md-nav__link">
     <span class="md-ellipsis">
       
         include 
@@ -8905,7 +8983,7 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#include_1" class="md-nav__link">
+  <a href="#include_2" class="md-nav__link">
     <span class="md-ellipsis">
       
         include 
@@ -9253,7 +9331,10 @@
 <ul>
 <li>What is autoware_agnocast_wrapper?</li>
 <li>Behavior Changes via ENABLE_AGNOCAST Environment Variable</li>
-<li>Key Macros</li>
+<li>Key Macros<ul>
+<li>Polling Subscribers (<code>polling::</code> free functions)</li>
+</ul>
+</li>
 <li>Two Integration Methods: Free Functions vs <code>agnocast_wrapper::Node</code></li>
 <li>component_container and <code>autoware_agnocast_wrapper_register_node</code></li>
 <li>Executor Types and Selection</li>
@@ -9350,7 +9431,7 @@ class MyNode : public autoware::agnocast_wrapper::Node
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Message allocation (if publisher exists): <code>std::make_unique&lt;M&gt;()</code> → <code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)</code></li>
 </ul>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Options type: <code>rclcpp::SubscriptionOptions</code> → <code>AUTOWARE_SUBSCRIPTION_OPTIONS</code></li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Options type: <code>rclcpp::SubscriptionOptions</code> → <code>AUTOWARE_SUBSCRIPTION_OPTIONS</code> (and <code>rclcpp::PublisherOptions</code> → <code>AUTOWARE_PUBLISHER_OPTIONS</code>)</li>
 </ul>
 <p> </p>
 <h4 id="step-2-verification-see-part-2-section-2-part-2-section-8">Step 2: Verification (see Part 2 Section 2, Part 2 Section 8)<a class="headerlink" href="#step-2-verification-see-part-2-section-2-part-2-section-8" title="Permanent link">#</a></h4>
@@ -9469,6 +9550,9 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Message allocation (if publisher exists): <code>std::make_unique&lt;M&gt;()</code> → <code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)</code></li>
+</ul>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Polling subscribers use the <code>polling::</code> free-function API (see Part 2 Section 3.1)</li>
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> If the node also uses message_filters, timers, tf2, or diagnostic_updater, they have been migrated to the corresponding <code>autoware::agnocast_wrapper::*</code> wrappers (see the <a href="../../">README</a> for usage and current limitations)</li>
@@ -9616,6 +9700,81 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 <td><code>Subscription&lt;MsgT&gt;::SharedPtr</code></td>
 <td><code>rclcpp::Subscription&lt;MsgT&gt;::SharedPtr</code></td>
 </tr>
+<tr>
+<td><code>AUTOWARE_TIMER_PTR</code></td>
+<td><code>Timer::SharedPtr</code></td>
+<td><code>rclcpp::TimerBase::SharedPtr</code></td>
+</tr>
+</tbody>
+</table>
+<p> </p>
+<h3 id="client-service-types">Client / Service Types<a class="headerlink" href="#client-service-types" title="Permanent link">#</a></h3>
+<p>These resolve to the wrapper's <strong>own</strong> types in both builds (the wrapper unifies the Client/Service
+surface), so client and service code needs no per-build spelling:</p>
+<table>
+<thead>
+<tr>
+<th>Macro</th>
+<th>Both builds</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOWARE_CLIENT_PTR(SrvT)</code></td>
+<td><code>Client&lt;SrvT&gt;::SharedPtr</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_SERVICE_PTR(SrvT)</code></td>
+<td><code>Service&lt;SrvT&gt;::SharedPtr</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_CLIENT_FUTURE(SrvT)</code></td>
+<td><code>Client&lt;SrvT&gt;::Future</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_CLIENT_SHARED_FUTURE(SrvT)</code></td>
+<td><code>Client&lt;SrvT&gt;::SharedFuture</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(SrvT)</code></td>
+<td><code>Client&lt;SrvT&gt;::FutureAndRequestId</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(SrvT)</code></td>
+<td><code>Client&lt;SrvT&gt;::SharedFutureAndRequestId</code></td>
+</tr>
+</tbody>
+</table>
+<p>Request/response pointer types <strong>do</strong> differ per build:</p>
+<table>
+<thead>
+<tr>
+<th>Macro</th>
+<th>ENABLE_AGNOCAST=1</th>
+<th>ENABLE_AGNOCAST=0</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOWARE_SERVER_REQUEST_PTR(SrvT)</code></td>
+<td><code>message_ptr&lt;const Request, …&gt;</code></td>
+<td><code>std::shared_ptr&lt;const SrvT::Request&gt;</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_SERVER_RESPONSE_PTR(SrvT)</code></td>
+<td><code>message_ptr&lt;Response, …&gt;</code></td>
+<td><code>std::shared_ptr&lt;SrvT::Response&gt;</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_CLIENT_REQUEST_PTR(SrvT)</code></td>
+<td><code>message_ptr&lt;Request, …&gt;</code></td>
+<td><code>std::shared_ptr&lt;SrvT::Request&gt;</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)</code></td>
+<td><code>message_ptr&lt;const Response, …&gt;</code></td>
+<td><code>std::shared_ptr&lt;const SrvT::Response&gt;</code></td>
+</tr>
 </tbody>
 </table>
 <p> </p>
@@ -9646,6 +9805,36 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 </tr>
 </tbody>
 </table>
+<p>The macros above implicitly use <code>this</code> as the node. Each has an <code>_ON_NODE</code> variant that takes the node
+explicitly as the first argument after the message type — use these when the publisher/subscriber is
+created outside the node class (helper classes, free functions, member objects that only hold a node
+pointer):</p>
+<ul>
+<li><code>AUTOWARE_CREATE_SUBSCRIPTION_ON_NODE(msg_type, node, topic, qos, callback, options)</code></li>
+<li><code>AUTOWARE_CREATE_PUBLISHER2_ON_NODE(msg_type, node, topic, qos)</code> / <code>AUTOWARE_CREATE_PUBLISHER3_ON_NODE(msg_type, node, topic, qos, options)</code></li>
+</ul>
+<p>Clients and services follow the same pattern, with the numeric suffix selecting the arity:</p>
+<ul>
+<li><code>AUTOWARE_CREATE_CLIENT1/2/3(service_type, service_name[, qos[, group]])</code> (+ <code>_ON_NODE</code> variants)</li>
+<li><code>AUTOWARE_CREATE_SERVICE2/3/4(service_type, service_name, callback[, qos[, group]])</code> (+ <code>_ON_NODE</code> variants)</li>
+</ul>
+<p> </p>
+<h3 id="31-polling-subscribers-polling-free-functions">3.1 Polling Subscribers (<code>polling::</code> free functions)<a class="headerlink" href="#31-polling-subscribers-polling-free-functions" title="Permanent link">#</a></h3>
+<p>Polling subscribers are <strong>not</strong> created via a macro or a <code>Node</code> member. Use the free function:</p>
+<p>```cpp</p>
+<h1 id="include">include <autoware agnocast_wrapper polling_subscriber.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware></h1>
+<p>namespace polling = autoware::agnocast_wrapper::polling;</p>
+<p>polling::PollingSubscriber<nav_msgs::msg::odometry>::SharedPtr sub_ =
+  polling::create_polling_subscriber<nav_msgs::msg::odometry>(this, "~/input/odometry", 1);</nav_msgs::msg::odometry></nav_msgs::msg::odometry></p>
+<p>// take_data() returns a plain std::shared_ptr<const messaget> in BOTH builds.
+const std::shared_ptr<const nav_msgs::msg::odometry> msg = sub_-&gt;take_data();
+```</const></const></p>
+<p>Review points:</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> The receiving variable is <code>std::shared_ptr&lt;const MessageT&gt;</code>, not a <code>message_ptr</code> or <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code>.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> The <strong>policy tag</strong> is preserved from the original code. <code>polling_policy::Latest</code> (the default) re-delivers the cached message every call; <code>polling_policy::Newest</code> returns <code>nullptr</code> until a new message arrives.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>polling_policy::All</code> is rejected at compile time — <code>take_data()</code> returns a single message, not a vector.</li>
+</ul>
 <p> </p>
 <h3 id="message-allocation">Message Allocation<a class="headerlink" href="#message-allocation" title="Permanent link">#</a></h3>
 <table>
@@ -9700,7 +9889,7 @@ sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos</
 <p>Used to apply Agnocast to specific topics only on an existing <code>rclcpp::Node</code>. Wraps individual Publishers/Subscribers without changing the entire node.</p>
 <p><strong>Usage example:</strong></p>
 <p>```cpp</p>
-<h1 id="include">include <autoware agnocast_wrapper autoware_agnocast_wrapper.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware></h1>
+<h1 id="include_1">include <autoware agnocast_wrapper autoware_agnocast_wrapper.hpp><a class="headerlink" href="#include_1" title="Permanent link">#</a></autoware></h1>
 <p>class MyNode : public rclcpp::Node  // Remains rclcpp::Node
 {
   AUTOWARE_PUBLISHER_PTR(PointCloud2) pub_;</p>
@@ -9724,7 +9913,7 @@ autoware_agnocast_wrapper_setup(target)</code></p>
 <p>Used to transparently switch the entire node between <code>rclcpp::Node</code> and <a href="https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_node_interface_comparison.md"><code>agnocast::Node</code></a>. The node wrapper automatically selects the appropriate implementation based on the <code>ENABLE_AGNOCAST</code> environment variable at runtime.</p>
 <p><strong>Usage example:</strong></p>
 <p>```cpp</p>
-<h1 id="include_1">include <autoware agnocast_wrapper node.hpp><a class="headerlink" href="#include_1" title="Permanent link">#</a></autoware></h1>
+<h1 id="include_2">include <autoware agnocast_wrapper node.hpp><a class="headerlink" href="#include_2" title="Permanent link">#</a></autoware></h1>
 <p>class MyNode : public autoware::agnocast_wrapper::Node  // Inherits Node wrapper
 {
 public:
@@ -9776,15 +9965,15 @@ public:
 </table>
 <p> </p>
 <h3 id="method-2-behavior-with-enable_agnocast0">Method 2 Behavior with ENABLE_AGNOCAST=0<a class="headerlink" href="#method-2-behavior-with-enable_agnocast0" title="Permanent link">#</a></h3>
-<p>When built with <code>ENABLE_AGNOCAST=0</code> (or unset), <a href="https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/node.hpp"><code>node.hpp</code></a> defines <code>autoware::agnocast_wrapper::Node</code> as a <strong>real class that owns an internal <code>rclcpp::Node</code> and forwards a curated set of members to it</strong>. It is not a typedef for <code>rclcpp::Node</code>, and it does not derive from <code>rclcpp::Node</code> in either build:</p>
+<p>When built with <code>ENABLE_AGNOCAST=0</code> (or unset), <a href="https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/node.hpp"><code>node.hpp</code></a> defines <code>autoware::agnocast_wrapper::Node</code> as a <strong>real class that owns an internal <code>rclcpp::Node</code> and forwards a curated set of members to it</strong>. It is <em>not</em> a typedef for <code>rclcpp::Node</code>, and it does not derive from <code>rclcpp::Node</code> in either build:</p>
 <p>```cpp
 // node.hpp when ENABLE_AGNOCAST=0 (simplified)
-class Node : public std::enable_shared_from_this<node>
+class Node
 {
 public:
   explicit Node(const std::string &amp; node_name, const rclcpp::NodeOptions &amp; options = {});
   // ... the same curated member set as the ENABLE_AGNOCAST=1 Node ...
-  std::shared_ptr<rclcpp::node> get_rclcpp_node() const { return node_; }</rclcpp::node></node></p>
+  std::shared_ptr<rclcpp::node> get_rclcpp_node() const { return node_; }</rclcpp::node></p>
 <p>private:
   std::shared_ptr<rclcpp::node> node_;
 };
@@ -9810,15 +9999,19 @@ public:
 <p> </p>
 <p><strong>ENABLE_AGNOCAST=1:</strong></p>
 <ul>
-<li><code>&lt;EXECUTABLE&gt;</code>: a runtime-switchable standalone executable</li>
-<li>Component registration via <code>rclcpp_components_register_nodes</code> (plural), which populates the ament
-  resource index only — the component can still be loaded into a container, but no extra standalone
-  executable is generated for it</li>
+<li><code>&lt;EXECUTABLE&gt;</code>: a runtime-switchable standalone executable, generated from the package's
+  <code>node_main_switchable.cpp.in</code> template</li>
+<li>Component registration: <code>rclcpp_components_register_nodes</code> (plural) is called, which populates the
+  ament resource index <strong>only</strong> — so the component can still be loaded into a container, but no extra
+  standalone executable is generated for it</li>
 </ul>
 <blockquote>
-<p>There is no <code>&lt;EXECUTABLE&gt;_component</code> target. Launch files should reference <code>&lt;EXECUTABLE&gt;</code>, which is the
-same name in both modes.</p>
+<p>There is no <code>&lt;EXECUTABLE&gt;_component</code> target. Launch files should always reference <code>&lt;EXECUTABLE&gt;</code>, which
+is the same name in both modes.</p>
 </blockquote>
+<p>Note that the macro applies <code>autoware_agnocast_wrapper_setup()</code> to <strong>both</strong> the component library and the
+generated executable. Both need <code>USE_AGNOCAST_ENABLED</code> defined for ABI consistency, and
+<code>ament_target_dependencies()</code> does not propagate the wrapper's <code>PUBLIC</code> compile definitions.</p>
 <p> </p>
 <p><strong>Usage example:</strong></p>
 <p><code>cmake
@@ -10035,7 +10228,7 @@ from ament_index_python.packages import get_package_share_directory</p>
 <tr>
 <td><code>use_agnocast</code></td>
 <td><code>$(env ENABLE_AGNOCAST 0)</code></td>
-<td>Per-include override (<code>1</code>/<code>0</code>). Forces one node/container back to the plain rclcpp path</td>
+<td>Per-include override (<code>1</code>/<code>0</code>). Usually left unset; forces one node/container back to the plain rclcpp path</td>
 </tr>
 </tbody>
 </table>

@@ -7813,6 +7813,7 @@
 <p>The purpose of this package is to integrate Agnocast, a zero-copy middleware, into each topic in Autoware with minimal side effects. Agnocast is a library designed to work alongside ROS 2, enabling true zero-copy publish/subscribe communication for all ROS 2 message types, including unsized message types.</p>
 <ul>
 <li>Agnocast Repository: <a href="https://github.com/autowarefoundation/agnocast">https://github.com/autowarefoundation/agnocast</a></li>
+<li>Agnocast Documentation: <a href="https://autowarefoundation.github.io/agnocast_doc/main/">https://autowarefoundation.github.io/agnocast_doc/main/</a></li>
 <li>Discussion on Agnocast Integration into Autoware: <a href="https://github.com/orgs/autowarefoundation/discussions/5835">https://github.com/orgs/autowarefoundation/discussions/5835</a></li>
 <li><a href="docs/review_guide/">Review Guide for Agnocast Wrapper PRs</a></li>
 </ul>
@@ -7824,11 +7825,11 @@
 <p><code>agnocast_wrapper::Node</code> does <strong>not</strong> publicly derive from <code>rclcpp::Node</code>. It exposes a curated subset
 of the <code>rclcpp::Node</code> surface and forwards each member to the underlying implementation (<code>rclcpp::Node</code>
 or <code>agnocast::Node</code>). The <strong>member names and argument lists are identical in both builds</strong>
-(<code>ENABLE_AGNOCAST=0</code> and <code>=1</code>), so a node written against it compiles unchanged either way, provided the
-handle, options and message types are spelled with the <code>AUTOWARE_*</code> macros (the underlying types differ
-per build). If you need an API that is not listed below, extend the wrapper, or reach the underlying node
-via <code>get_rclcpp_node()</code> — declared in both builds, but it throws when the node is in Agnocast mode (see
-the <a href="#build-modes-agnocast-disabled-vs-agnocast-enabled">build-modes table</a>).</p>
+(<code>ENABLE_AGNOCAST=0</code> and <code>=1</code>), so a node written against it compiles unchanged either way — provided
+you spell the handle, options and message types with the <code>AUTOWARE_*</code> macros (see
+<a href="#type-spellings">Type spellings</a>). If you need an API that is not listed below, extend the wrapper, or
+reach the underlying node via <code>get_rclcpp_node()</code> (declared in both builds, but it throws when the node
+is in Agnocast mode — see the <a href="#build-modes-agnocast-disabled-vs-agnocast-enabled">build-modes table</a>).</p>
 <h4 id="supported-api-surface">Supported API surface<a class="headerlink" href="#supported-api-surface" title="Permanent link">#</a></h4>
 <p>The following members / free functions are provided. Unless noted, signatures mirror their
 <code>rclcpp::Node</code> counterparts.</p>
@@ -7842,7 +7843,7 @@ the <a href="#build-modes-agnocast-disabled-vs-agnocast-enabled">build-modes tab
 <tbody>
 <tr>
 <td>Construction</td>
-<td><code>Node(name, options)</code>, <code>Node(name, namespace, options)</code>, virtual destructor, <code>SharedPtr</code></td>
+<td><code>Node(name, options)</code>, <code>Node(name, namespace, options)</code>, virtual destructor, <code>SharedPtr</code>. Non-copyable and non-movable (copying would alias one backend behind two wrappers). Derives from <code>std::enable_shared_from_this&lt;Node&gt;</code>, so <code>shared_from_this()</code> is available when the node is owned by a <code>shared_ptr</code></td>
 </tr>
 <tr>
 <td>Basic info</td>
@@ -7866,7 +7867,7 @@ the <a href="#build-modes-agnocast-disabled-vs-agnocast-enabled">build-modes tab
 </tr>
 <tr>
 <td>Publisher</td>
-<td><code>create_publisher&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads)</td>
+<td><code>create_publisher&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads) — see <a href="#publisher-api">Publisher API</a></td>
 </tr>
 <tr>
 <td>Subscription</td>
@@ -7888,12 +7889,74 @@ the <a href="#build-modes-agnocast-disabled-vs-agnocast-enabled">build-modes tab
 <td>Underlying node</td>
 <td><code>get_rclcpp_node()</code>; <code>get_agnocast_node()</code> (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free <code>to_rclcpp_node(node)</code></td>
 </tr>
+<tr>
+<td>Context</td>
+<td>free <code>ok()</code> — mode-agnostic replacement for <code>rclcpp::ok()</code> (see <a href="#context-notes">Context notes</a>)</td>
+</tr>
 </tbody>
 </table>
 <blockquote>
 <p><code>OnSetParametersCallbackType</code> is aliased in this namespace and resolves to the correct rclcpp type
 for both Humble (rclcpp 16.x) and Jazzy (rclcpp 28+).</p>
 </blockquote>
+<p>Polling subscribers are <strong>not</strong> a <code>Node</code> member. Use the free function
+<code>polling::create_polling_subscriber&lt;MessageT&gt;(node, topic, qos)</code> — see
+<a href="#polling-subscriber-polling-namespace">Polling Subscriber</a>.</p>
+<h4 id="type-spellings">Type spellings<a class="headerlink" href="#type-spellings" title="Permanent link">#</a></h4>
+<p>The member <em>names</em> and argument lists above are the same in both builds, but the handle, options and
+message types they use are not the same C++ types. Always spell them with the <code>AUTOWARE_*</code> macros so the
+same source compiles in both builds:</p>
+<table>
+<thead>
+<tr>
+<th>What</th>
+<th>Spell it as</th>
+<th><code>ENABLE_AGNOCAST=0</code></th>
+<th><code>ENABLE_AGNOCAST=1</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>create_publisher</code> result</td>
+<td><code>AUTOWARE_PUBLISHER_PTR(M)</code></td>
+<td><code>rclcpp::Publisher&lt;M&gt;::SharedPtr</code></td>
+<td><code>agnocast_wrapper::Publisher&lt;M&gt;::SharedPtr</code></td>
+</tr>
+<tr>
+<td><code>create_subscription</code> result</td>
+<td><code>AUTOWARE_SUBSCRIPTION_PTR(M)</code></td>
+<td><code>rclcpp::Subscription&lt;M&gt;::SharedPtr</code></td>
+<td><code>agnocast_wrapper::Subscription&lt;M&gt;::SharedPtr</code></td>
+</tr>
+<tr>
+<td><code>create_wall_timer</code> result</td>
+<td><code>AUTOWARE_TIMER_PTR</code></td>
+<td><code>rclcpp::TimerBase::SharedPtr</code></td>
+<td><code>agnocast_wrapper::Timer::SharedPtr</code></td>
+</tr>
+<tr>
+<td><code>create_publisher</code> options arg</td>
+<td><code>AUTOWARE_PUBLISHER_OPTIONS</code></td>
+<td><code>rclcpp::PublisherOptions</code></td>
+<td><code>agnocast::PublisherOptions</code></td>
+</tr>
+<tr>
+<td><code>create_subscription</code> options</td>
+<td><code>AUTOWARE_SUBSCRIPTION_OPTIONS</code></td>
+<td><code>rclcpp::SubscriptionOptions</code></td>
+<td><code>agnocast::SubscriptionOptions</code></td>
+</tr>
+<tr>
+<td>Owning subscription callback arg</td>
+<td><code>AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)</code></td>
+<td><code>std::shared_ptr&lt;const M&gt;</code></td>
+<td><code>message_ptr&lt;const M, Shared&gt;</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>AUTOWARE_CLIENT_PTR(S)</code> / <code>AUTOWARE_SERVICE_PTR(S)</code> and the <code>AUTOWARE_CLIENT_*FUTURE*</code> macros resolve to
+the wrapper's own <code>Client&lt;S&gt;</code> / <code>Service&lt;S&gt;</code> types in <strong>both</strong> builds, so client and service code needs no
+per-build spelling. See <a href="docs/review_guide/#3-key-macros">Key Macros</a> for the full macro list.</p>
 <h4 id="build-modes-agnocast-disabled-vs-agnocast-enabled">Build modes: agnocast-disabled vs agnocast-enabled<a class="headerlink" href="#build-modes-agnocast-disabled-vs-agnocast-enabled" title="Permanent link">#</a></h4>
 <p>Which of the two <code>Node</code> <strong>class definitions</strong> is compiled is a <strong>build-time</strong> choice, selected by the
 <code>USE_AGNOCAST_ENABLED</code> preprocessor macro. The API surface above is identical in both, so this choice
@@ -7968,6 +8031,37 @@ timer_ = autoware::agnocast_wrapper::create_timer(
 <p><code>set_period()</code> is likewise a <strong>free function</strong>. <code>rclcpp::TimerBase</code> has no <code>set_period</code> member, so the free form is the only portable spelling across both builds:</p>
 <p><code>cpp
 autoware::agnocast_wrapper::set_period(timer_, std::chrono::milliseconds(200));</code></p>
+<h4 id="context-notes">Context notes<a class="headerlink" href="#context-notes" title="Permanent link">#</a></h4>
+<p>Use <code>autoware::agnocast_wrapper::ok()</code> instead of <code>rclcpp::ok()</code>. An AgnocastOnly executable never calls
+<code>rclcpp::init()</code>, so <code>rclcpp::ok()</code> reports <code>false</code> there even while the process is healthy; <code>ok()</code> checks
+both contexts.</p>
+<h4 id="publisher-api">Publisher API<a class="headerlink" href="#publisher-api" title="Permanent link">#</a></h4>
+<p>A wrapper publisher exposes three <code>publish()</code> overloads, all supported in both builds:</p>
+<table>
+<thead>
+<tr>
+<th>Call</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub)</code> → <code>pub-&gt;publish(std::move(msg))</code></td>
+<td>Zero-copy: the message is built in place in shared memory.</td>
+</tr>
+<tr>
+<td><code>ALLOCATE_OUTPUT_MESSAGE_SHARED(pub)</code> → <code>pub-&gt;publish(std::move(msg))</code></td>
+<td>Same, for the shared-ownership form.</td>
+</tr>
+<tr>
+<td><code>pub-&gt;publish(msg)</code> (<code>const MessageT &amp;</code>)</td>
+<td>Copies <code>msg</code> into a freshly allocated message, then publishes.</td>
+</tr>
+</tbody>
+</table>
+<p>Prefer the allocate-then-move form when you are constructing the outgoing message anyway; the
+<code>const MessageT &amp;</code> overload suits a message you already hold and must keep.</p>
+<h4 id="cmake-setup">CMake setup<a class="headerlink" href="#cmake-setup" title="Permanent link">#</a></h4>
 <p>To use the Node wrapper in your package, add the following to your <code>CMakeLists.txt</code>:</p>
 <p><code>cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
@@ -8212,6 +8306,7 @@ autoware_agnocast_wrapper_setup(target)</code></p>
 <li>Only <code>ApproximateTime</code> and <code>ExactTime</code> synchronization policies are supported.</li>
 <li>2 to 8 message types per <code>Synchronizer</code>. Upstream <code>message_filters</code> supports up to 9, but the registration path this wrapper uses caps it at 8.</li>
 <li><code>connectInput()</code> is not supported; pass <code>Subscriber</code> references at construction time.</li>
+<li><code>Subscriber::subscribe()</code> (and the topic-taking constructor) takes an <code>autoware::agnocast_wrapper::Node *</code>, so this wrapper requires a Method 2 node. There is no overload for a plain <code>rclcpp::Node</code>.</li>
 </ul>
 <h3 id="usage-example">Usage example<a class="headerlink" href="#usage-example" title="Permanent link">#</a></h3>
 <p>```cpp</p>
@@ -8277,6 +8372,7 @@ void onSynchronized(
 <h2 id="tf2-support">tf2 Support<a class="headerlink" href="#tf2-support" title="Permanent link">#</a></h2>
 <p>This package provides wrapper types for tf2 (<code>TransformListener</code>, <code>TransformBroadcaster</code>, <code>StaticTransformBroadcaster</code>, <code>Buffer</code>) in the <code>autoware::agnocast_wrapper</code> namespace. The listener and broadcasters transparently switch between their <code>tf2_ros</code> and <code>agnocast</code> implementations at runtime, depending on whether the given node is running in Agnocast mode.</p>
 <p>The node-taking constructors require a Method 2 node (<code>autoware::agnocast_wrapper::Node</code>). This is needed because an AgnocastOnly executor does not spin a plain <code>tf2_ros::TransformListener</code> (a ROS 2 subscription); routing <code>/tf</code> through Agnocast keeps tf callbacks firing.</p>
+<p>All four wrapper types are non-copyable and non-movable (the backend is chosen at construction and bound by reference), so hold them by value or in a <code>unique_ptr</code>.</p>
 <p><code>Buffer</code> aliases to <code>agnocast::Buffer</code> in Agnocast-enabled builds and <code>tf2_ros::Buffer</code> otherwise. The agnocast variant intentionally omits APIs that would silently break under an AgnocastOnly executor (currently <code>waitForTransform</code> / <code>setCreateTimerInterface</code> and the <code>/tf2_frames</code> debug service), so misuse is caught at compile time.</p>
 <h3 id="usage-example_1">Usage example<a class="headerlink" href="#usage-example_1" title="Permanent link">#</a></h3>
 <p>```cpp</p>
@@ -8467,6 +8563,11 @@ colcon build --symlink-install --cmake-args -DCMAKE_BUILD_TYPE=Release --package
 <p>In such cases, rebuild both A and B with Agnocast <strong>disabled</strong> to ensure consistency. As a best practice, we recommend keeping the value of <code>ENABLE_AGNOCAST</code> consistent within a workspace to avoid unintentional mismatches and simplify build management.</p>
 <h2 id="how-to-enable-agnocast-at-runtime">How to Enable Agnocast at Runtime<a class="headerlink" href="#how-to-enable-agnocast-at-runtime" title="Permanent link">#</a></h2>
 <p>When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via <code>LD_PRELOAD</code>, and component containers must be replaced with their Agnocast equivalents. This package provides <code>agnocast_env.launch.xml</code> (and its Python equivalent <code>agnocast_env.launch.py</code>) which handles both of these concerns based on the <code>ENABLE_AGNOCAST</code> environment variable.</p>
+<h3 id="discovery-agent">Discovery agent<a class="headerlink" href="#discovery-agent" title="Permanent link">#</a></h3>
+<p>Including <code>agnocast_env.launch.xml</code> / <code>.py</code> also launches the <code>agnocast_discovery_agent</code> node
+automatically, once per launch tree and only when <code>ENABLE_AGNOCAST=1</code>. It publishes the local Agnocast
+state on <code>/_agnocast_discovery</code>, which the <code>ros2 topic list_agnocast</code> / <code>info_agnocast</code> / <code>hz_agnocast</code>
+commands rely on.</p>
 <h3 id="provided-variables">Provided Variables<a class="headerlink" href="#provided-variables" title="Permanent link">#</a></h3>
 <p>After including <code>agnocast_env.launch.xml</code> (or <code>agnocast_env.launch.py</code>), the following variables are available (in Python launch files, reference them via <code>LaunchConfiguration</code>):</p>
 <table>
