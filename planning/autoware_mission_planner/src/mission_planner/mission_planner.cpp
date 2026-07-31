@@ -458,9 +458,13 @@ bool MissionPlanner::check_reroute_safety(
 
   const auto current_velocity = odometry_->twist.twist.linear.x;
 
-  return autoware::mission_planner::check_reroute_safety(
+  const auto result = autoware::mission_planner::check_reroute_safety(
     original_route, target_route, lanelet_map_ptr_, current_velocity, reroute_time_threshold_,
-    minimum_reroute_length_, get_logger());
+    minimum_reroute_length_);
+  if (!result.is_safe) {
+    RCLCPP_ERROR(get_logger(), "%s", result.reason.c_str());
+  }
+  return result.is_safe;
 }
 }  // namespace autoware::mission_planner
 
