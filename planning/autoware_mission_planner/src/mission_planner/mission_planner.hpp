@@ -49,7 +49,6 @@ using autoware_adapi_v1_msgs::msg::OperationModeState;
 using autoware_map_msgs::msg::LaneletMapBin;
 using autoware_planning_msgs::msg::LaneletPrimitive;
 using autoware_planning_msgs::msg::LaneletRoute;
-using autoware_planning_msgs::msg::LaneletSegment;
 using autoware_planning_msgs::msg::PoseWithUuidStamped;
 using autoware_planning_msgs::msg::RouteState;
 using autoware_planning_msgs::srv::ClearRoute;
@@ -57,8 +56,6 @@ using autoware_planning_msgs::srv::SetLaneletRoute;
 using autoware_planning_msgs::srv::SetWaypointRoute;
 using geometry_msgs::msg::Pose;
 using nav_msgs::msg::Odometry;
-using std_msgs::msg::Header;
-using unique_identifier_msgs::msg::UUID;
 using visualization_msgs::msg::MarkerArray;
 
 class MissionPlanner : public rclcpp::Node
@@ -89,7 +86,6 @@ private:
   std::string map_frame_;
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
-  Pose transform_pose(const Pose & pose, const Header & header);
 
   rclcpp::Service<ClearRouteSpecs::Service>::SharedPtr srv_clear_route;
   rclcpp::Service<SetLaneletRouteSpecs::Service>::SharedPtr srv_set_lanelet_route;
@@ -126,14 +122,12 @@ private:
   void change_route();
   void change_route(const LaneletRoute & route);
   void cancel_route();
-  LaneletRoute create_route(const SetLaneletRoute::Request & req);
-  LaneletRoute create_route(const SetWaypointRoute::Request & req);
-  LaneletRoute create_route(
-    const Header & header, const std::vector<LaneletSegment> & segments, const Pose & goal_pose,
-    const UUID & uuid, const bool allow_goal_modification);
-  LaneletRoute create_route(
-    const Header & header, const std::vector<Pose> & waypoints, const Pose & start_pose,
-    const Pose & goal_pose, const UUID & uuid, const bool allow_goal_modification);
+  LaneletRoute create_lanelet_route(
+    const SetLaneletRoute::Request & req,
+    const geometry_msgs::msg::TransformStamped & transform_to_map);
+  LaneletRoute create_waypoint_route(
+    const SetWaypointRoute::Request & req,
+    const geometry_msgs::msg::TransformStamped & transform_to_map);
 
   void publish_pose_log(const Pose & pose, const std::string & pose_type);
 

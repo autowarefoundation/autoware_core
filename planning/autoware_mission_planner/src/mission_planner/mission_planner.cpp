@@ -24,6 +24,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -66,6 +67,13 @@ ArrivalCheckerThreshold get_arrival_checker_threshold(rclcpp::Node & node)
   threshold.distance = node.declare_parameter<double>("arrival_check_distance");
   threshold.duration = node.declare_parameter<double>("arrival_check_duration");
   return threshold;
+}
+
+Pose transform_pose(const Pose & pose, const geometry_msgs::msg::TransformStamped & transform)
+{
+  Pose result;
+  tf2::doTransform(pose, result, transform);
+  return result;
 }
 }  // namespace
 
@@ -193,15 +201,6 @@ void MissionPlanner::on_map(const LaneletMapBin::ConstSharedPtr msg)
     autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*map_ptr_));
 }
 
-Pose MissionPlanner::transform_pose(const Pose & pose, const Header & header)
-{
-  const auto transform =
-    tf_buffer_.lookupTransform(map_frame_, header.frame_id, tf2::TimePointZero);
-  geometry_msgs::msg::Pose result;
-  tf2::doTransform(pose, result, transform);
-  return result;
-}
-
 void MissionPlanner::change_state(RouteState::_state_type state)
 {
   state_.stamp = now();
@@ -232,6 +231,16 @@ void MissionPlanner::on_set_lanelet_route(
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
   const auto is_reroute = state_.state == RouteState::SET;
 
+  std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
+  try {
+    transform_to_map =
+      tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
+  } catch (const tf2::TransformException &) {
+    // Explicit assignment to avoid clang-tidy's check.
+    // Failure is handled by the transform_to_map check below.
+    transform_to_map = std::nullopt;
+  }
+
   if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
     set_fail_response(
       res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
@@ -260,14 +269,13 @@ void MissionPlanner::on_set_lanelet_route(
   }
 
   change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-  LaneletRoute route;
-  try {
-    route = create_route(*req);
-  } catch (const tf2::TransformException & error) {
+  if (!transform_to_map) {
     set_fail_response(
-      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR, error.what());
+      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR,
+      "Failed to transform pose to map frame.");
     return;
   }
+  const auto route = create_lanelet_route(*req, *transform_to_map);
 
   if (route.segments.empty()) {
     cancel_route();
@@ -299,6 +307,16 @@ void MissionPlanner::on_set_waypoint_route(
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
   const auto is_reroute = state_.state == RouteState::SET;
 
+  std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
+  try {
+    transform_to_map =
+      tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
+  } catch (const tf2::TransformException &) {
+    // Explicit assignment to avoid clang-tidy's check.
+    // Failure is handled by the transform_to_map check below.
+    transform_to_map = std::nullopt;
+  }
+
   if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
     set_fail_response(
       res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
@@ -321,14 +339,13 @@ void MissionPlanner::on_set_waypoint_route(
                           : false;
 
   change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-  LaneletRoute route;
-  try {
-    route = create_route(*req);
-  } catch (const tf2::TransformException & error) {
+  if (!transform_to_map) {
     set_fail_response(
-      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR, error.what());
+      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR,
+      "Failed to transform pose to map frame.");
     return;
   }
+  const auto route = create_waypoint_route(*req, *transform_to_map);
 
   if (route.segments.empty()) {
     cancel_route();
@@ -387,60 +404,37 @@ void MissionPlanner::cancel_route()
   }
 }
 
-LaneletRoute MissionPlanner::create_route(const SetLaneletRoute::Request & req)
-{
-  const auto & header = req.header;
-  const auto & segments = req.segments;
-  const auto & goal_pose = req.goal_pose;
-  const auto & uuid = req.uuid;
-  const auto & allow_goal_modification = req.allow_modification;
-
-  return create_route(header, segments, goal_pose, uuid, allow_goal_modification);
-}
-
-LaneletRoute MissionPlanner::create_route(const SetWaypointRoute::Request & req)
-{
-  const auto & header = req.header;
-  const auto & waypoints = req.waypoints;
-  const auto & goal_pose = req.goal_pose;
-  const auto & uuid = req.uuid;
-  const auto & allow_goal_modification = req.allow_modification;
-
-  return create_route(
-    header, waypoints, odometry_->pose.pose, goal_pose, uuid, allow_goal_modification);
-}
-
-LaneletRoute MissionPlanner::create_route(
-  const Header & header, const std::vector<LaneletSegment> & segments, const Pose & goal_pose,
-  const UUID & uuid, const bool allow_goal_modification)
+LaneletRoute MissionPlanner::create_lanelet_route(
+  const SetLaneletRoute::Request & req,
+  const geometry_msgs::msg::TransformStamped & transform_to_map)
 {
   LaneletRoute route;
-  route.header.stamp = header.stamp;
+  route.header.stamp = req.header.stamp;
   route.header.frame_id = map_frame_;
   route.start_pose = odometry_->pose.pose;
-  route.goal_pose = transform_pose(goal_pose, header);
-  route.segments = segments;
-  route.uuid = uuid;
-  route.allow_modification = allow_goal_modification;
+  route.goal_pose = transform_pose(req.goal_pose, transform_to_map);
+  route.segments = req.segments;
+  route.uuid = req.uuid;
+  route.allow_modification = req.allow_modification;
   return route;
 }
 
-LaneletRoute MissionPlanner::create_route(
-  const Header & header, const std::vector<Pose> & waypoints, const Pose & start_pose,
-  const Pose & goal_pose, const UUID & uuid, const bool allow_goal_modification)
+LaneletRoute MissionPlanner::create_waypoint_route(
+  const SetWaypointRoute::Request & req,
+  const geometry_msgs::msg::TransformStamped & transform_to_map)
 {
   PlannerPlugin::RoutePoints points;
-  points.push_back(start_pose);
-  for (const auto & waypoint : waypoints) {
-    points.push_back(transform_pose(waypoint, header));
+  points.push_back(odometry_->pose.pose);
+  for (const auto & waypoint : req.waypoints) {
+    points.push_back(transform_pose(waypoint, transform_to_map));
   }
-  points.push_back(transform_pose(goal_pose, header));
+  points.push_back(transform_pose(req.goal_pose, transform_to_map));
 
   LaneletRoute route = planner_->plan(points);
-  route.header.stamp = header.stamp;
+  route.header.stamp = req.header.stamp;
   route.header.frame_id = map_frame_;
-  route.uuid = uuid;
-  route.allow_modification = allow_goal_modification;
+  route.uuid = req.uuid;
+  route.allow_modification = req.allow_modification;
   return route;
 }
 
