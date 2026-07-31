@@ -43,8 +43,10 @@
 #include <cmath>
 #include <functional>
 #include <future>
+#include <map>
 #include <iomanip>
 #include <thread>
+#include <utility>
 #include <variant>
 
 namespace autoware::ndt_scan_matcher
