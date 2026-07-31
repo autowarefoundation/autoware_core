@@ -226,7 +226,7 @@ void MissionPlanner::on_clear_route(
     return;
   }
 
-  change_route();
+  clear_route();
   change_state(RouteState::UNSET);
   res->status.success = true;
 }
@@ -385,7 +385,7 @@ void MissionPlanner::on_set_waypoint_route(
   publish_pose_log(req->goal_pose, "goal");
 }
 
-void MissionPlanner::change_route()
+void MissionPlanner::clear_route()
 {
   current_route_ = nullptr;
   planner_->clearRoute();
