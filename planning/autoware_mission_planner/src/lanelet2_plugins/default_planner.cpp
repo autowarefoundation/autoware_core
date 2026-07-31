@@ -85,21 +85,17 @@ void DefaultPlanner::initialize(
   const auto durable_qos = rclcpp::QoS(1).transient_local();
   pub_goal_footprint_marker_ =
     node_->create_publisher<MarkerArray>("~/debug/goal_footprint", durable_qos);
+}
 
-  map_subscriber_ = node_->create_subscription<LaneletMapBin>(
-    "~/input/vector_map", rclcpp::QoS{10}.transient_local(),
-    std::bind(&DefaultPlanner::map_callback, this, std::placeholders::_1));
+void DefaultPlanner::set_map(const LaneletMapBin & msg)
+{
+  route_handler_.setMap(msg);
+  is_graph_ready_ = true;
 }
 
 bool DefaultPlanner::ready() const
 {
   return is_graph_ready_;
-}
-
-void DefaultPlanner::map_callback(const LaneletMapBin::ConstSharedPtr msg)
-{
-  route_handler_.setMap(*msg);
-  is_graph_ready_ = true;
 }
 
 DefaultPlanner::MarkerArray DefaultPlanner::visualize(const LaneletRoute & route) const

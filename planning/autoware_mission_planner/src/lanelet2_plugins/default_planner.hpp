@@ -53,6 +53,7 @@ public:
   void initialize(
     rclcpp::Node * node, const DefaultPlannerParameters & param,
     const autoware::vehicle_info_utils::VehicleInfo & vehicle_info);
+  void set_map(const LaneletMapBin & msg);
   [[nodiscard]] bool ready() const;
   LaneletRoute plan(const RoutePoints & points);
   void updateRoute(const LaneletRoute & route);
@@ -71,10 +72,7 @@ protected:
   DefaultPlannerParameters param_;
 
   rclcpp::Node * node_;
-  rclcpp::Subscription<LaneletMapBin>::SharedPtr map_subscriber_;
   rclcpp::Publisher<MarkerArray>::SharedPtr pub_goal_footprint_marker_;
-
-  void map_callback(const LaneletMapBin::ConstSharedPtr msg);
 
   /**
    * @brief check if the goal_footprint is within the lanelets closest to the goal plus the

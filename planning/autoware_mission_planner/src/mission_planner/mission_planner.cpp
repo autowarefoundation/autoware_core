@@ -216,6 +216,7 @@ void MissionPlanner::on_map(const LaneletMapBin::ConstSharedPtr msg)
   map_ptr_ = msg;
   lanelet_map_ptr_ = autoware::experimental::lanelet2_utils::remove_const(
     autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*map_ptr_));
+  planner_->set_map(*map_ptr_);
 }
 
 void MissionPlanner::change_state(RouteState::_state_type state)
