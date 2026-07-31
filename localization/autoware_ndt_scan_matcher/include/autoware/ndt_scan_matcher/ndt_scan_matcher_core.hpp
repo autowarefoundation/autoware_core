@@ -152,10 +152,8 @@ private:
   void add_regularization_pose(
     const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
 
-  // Performs the pcd_loader service call for MapUpdateModule (kept on the ROS node side).
-  // Returns nullptr if the map could not be fetched (e.g. the service is unavailable).
-  // While fetching, mirrors the loaded point clouds into loaded_pcd_map_ so that the debug
-  // partial map can be published on the node side (see publish_partial_pcd_map).
+  // Performs the pcd_loader service call for MapUpdateModule, returning nullptr on failure.
+  // Also mirrors the loaded clouds into loaded_pcd_map_ for publish_partial_pcd_map.
   MapUpdateModule::GetDifferentialPointCloudMap::Response::SharedPtr
   get_differential_point_cloud_map(
     const MapUpdateModule::GetDifferentialPointCloudMap::Request::SharedPtr & request);

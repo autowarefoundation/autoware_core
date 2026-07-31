@@ -238,9 +238,8 @@ NDTScanMatcher::get_differential_point_cloud_map(
 
   const auto response = result.get();
 
-  // Maintain a mirror of the loaded point clouds for the debug partial-map publish.
-  // request->cached_ids lists the cells the NDT currently holds, so keeping only those (then
-  // applying the differential add/remove) also handles a full rebuild, where cached_ids is empty.
+  // Mirror the loaded clouds for the debug partial-map publish. Keeping only the cells in
+  // request->cached_ids (then applying the diff) also handles a rebuild, where cached_ids is empty.
   if (param_.dynamic_map_loading.publish_loaded_map && response) {
     std::lock_guard<std::mutex> lock(loaded_pcd_map_mutex_);
 

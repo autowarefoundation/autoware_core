@@ -71,9 +71,8 @@ public:
     std::string message;
   };
 
-  // Injected by the ROS node: forwards a diagnostics update to the node's DiagnosticsInterface.
-  // Passed per call so the node can route it to the diagnostic that matches the caller (e.g.
-  // periodic map-update status vs. ndt_align service status).
+  // Injected by the ROS node to forward a diagnostics update. Passed per call so the node can
+  // route it to the diagnostic that matches the caller.
   using DiagnosticsHandlingFunction = std::function<void(const DiagnosticsUpdate &)>;
 
 private:
