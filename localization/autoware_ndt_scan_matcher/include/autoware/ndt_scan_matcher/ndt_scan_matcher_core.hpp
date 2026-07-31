@@ -66,6 +66,7 @@
 
 namespace autoware::ndt_scan_matcher
 {
+using DiagnosticsInterface = autoware_utils_diagnostics::DiagnosticsInterface;
 
 class NDTScanMatcher : public rclcpp::Node
 {
@@ -151,6 +152,20 @@ private:
   void add_regularization_pose(
     const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
 
+  // Performs the pcd_loader service call for MapUpdateModule (kept on the ROS node side).
+  // Returns nullptr if the map could not be fetched (e.g. the service is unavailable).
+  // While fetching, mirrors the loaded point clouds into loaded_pcd_map_ so that the debug
+  // partial map can be published on the node side (see publish_partial_pcd_map).
+  MapUpdateModule::GetDifferentialPointCloudMap::Response::SharedPtr get_differential_point_cloud_map(
+    const MapUpdateModule::GetDifferentialPointCloudMap::Request::SharedPtr & request);
+
+  // Assembles loaded_pcd_map_ into a single cloud and publishes it for debugging.
+  void publish_partial_pcd_map();
+
+  // Forwards a diagnostics update produced by MapUpdateModule to the given DiagnosticsInterface.
+  static void apply_diagnostics_update(
+    DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsUpdate & update);
+
   rclcpp::TimerBase::SharedPtr map_update_timer_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
   rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sensor_points_sub_;
@@ -188,6 +203,16 @@ private:
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ndt_marker_pub_;
   rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
     ndt_monte_carlo_initial_pose_marker_pub_;
+
+  // Debug publisher and pcd loader client used by MapUpdateModule (kept on the ROS node side).
+  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr loaded_pcd_pub_;
+  rclcpp::Client<MapUpdateModule::GetDifferentialPointCloudMap>::SharedPtr pcd_loader_client_;
+
+  // Mirror of the point clouds currently loaded in the NDT, kept only for the debug partial-map
+  // publish. Maintained in get_differential_point_cloud_map and read in publish_partial_pcd_map,
+  // hence guarded by its own mutex.
+  std::map<std::string, pcl::PointCloud<pcl::PointXYZ>::Ptr> loaded_pcd_map_;
+  std::mutex loaded_pcd_map_mutex_;
 
   rclcpp::Service<autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped>::SharedPtr
     service_;

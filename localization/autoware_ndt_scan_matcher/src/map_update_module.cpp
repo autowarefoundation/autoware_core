@@ -14,7 +14,11 @@
 
 #include <autoware/ndt_scan_matcher/map_update_module.hpp>
 
+#include <pcl_conversions/pcl_conversions.h>
+
+#include <chrono>
 #include <memory>
+#include <sstream>
 #include <string>
 #include <utility>
 
@@ -22,15 +26,10 @@ namespace autoware::ndt_scan_matcher
 {
 
 MapUpdateModule::MapUpdateModule(
-  rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param)
-: ndt_ptr_(ndt_ptr), logger_(node->get_logger()), clock_(node->get_clock()), param_(param)
+  Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param,
+  PcdLoaderFunction pcd_loader)
+: pcd_loader_(std::move(pcd_loader)), ndt_ptr_(ndt_ptr), param_(param)
 {
-  loaded_pcd_pub_ = node->create_publisher<sensor_msgs::msg::PointCloud2>(
-    "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
-
-  pcd_loader_client_ =
-    node->create_client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>("pcd_loader_service");
-
   auto copied = builder_state_.with([&](auto & builder_state) {
     // Initially, a direct map update on ndt_ptr_ is needed.
     // ndt_ptr_'s mutex is locked until it is fully rebuilt.
@@ -58,42 +57,41 @@ MapUpdateModule::MapUpdateModule(
   }
 }
 
-void MapUpdateModule::callback_timer(
+bool MapUpdateModule::callback_timer(
   const bool is_activated, const std::optional<geometry_msgs::msg::Point> & position,
-  std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
+  const DiagnosticsHandlingFunction & diagnostics)
 {
   // check is_activated
-  diagnostics_ptr->add_key_value("is_activated", is_activated);
+  diagnostics(DiagnosticsUpdate{{{"is_activated", is_activated}}, std::nullopt, ""});
   if (!is_activated) {
-    std::stringstream message;
-    message << "Node is not activated.";
-    diagnostics_ptr->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    return;
+    diagnostics(DiagnosticsUpdate{{}, DiagnosticLevel::WARN, "Node is not activated."});
+    return false;
   }
 
   // check is_set_last_update_position
   const bool is_set_last_update_position = (position != std::nullopt);
-  diagnostics_ptr->add_key_value("is_set_last_update_position", is_set_last_update_position);
+  diagnostics(DiagnosticsUpdate{
+    {{"is_set_last_update_position", is_set_last_update_position}}, std::nullopt, ""});
   if (!is_set_last_update_position) {
-    std::stringstream message;
-    message << "Cannot find the reference position for map update."
-            << "Please check if the EKF odometry is provided to NDT.";
-    diagnostics_ptr->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    return;
+    diagnostics(DiagnosticsUpdate{
+      {},
+      DiagnosticLevel::WARN,
+      "Cannot find the reference position for map update."
+      "Please check if the EKF odometry is provided to NDT."});
+    return false;
   }
 
-  builder_state_.with([&](auto & builder_state) {
-    if (should_update_map(builder_state, position.value(), diagnostics_ptr)) {
-      update_map_internal(builder_state, position.value(), diagnostics_ptr);
+  return builder_state_.with([&](auto & builder_state) {
+    if (should_update_map(builder_state, position.value(), diagnostics)) {
+      return update_map_internal(builder_state, position.value(), diagnostics);
     }
+    return false;
   });
 }
 
 bool MapUpdateModule::should_update_map(
   BuilderState & builder_state, const geometry_msgs::msg::Point & position,
-  std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
+  const DiagnosticsHandlingFunction & diagnostics)
 {
   const auto last_update_position =
     last_update_position_.with([](const auto & pos) { return pos; });
@@ -108,12 +106,11 @@ bool MapUpdateModule::should_update_map(
   const double distance = std::hypot(dx, dy);
 
   // check distance_last_update_position_to_current_position
-  diagnostics_ptr->add_key_value("distance_last_update_position_to_current_position", distance);
+  diagnostics(DiagnosticsUpdate{
+    {{"distance_last_update_position_to_current_position", distance}}, std::nullopt, ""});
   if (distance + param_.lidar_radius > param_.map_radius) {
-    std::stringstream message;
-    message << "Dynamic map loading is not keeping up.";
-    diagnostics_ptr->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+    diagnostics(
+      DiagnosticsUpdate{{}, DiagnosticLevel::ERROR, "Dynamic map loading is not keeping up."});
 
     // If the map does not keep up with the current position,
     // lock ndt_ptr_ entirely until it is fully rebuilt.
@@ -140,11 +137,12 @@ bool MapUpdateModule::out_of_map_range(const geometry_msgs::msg::Point & positio
   return (distance + param_.lidar_radius > param_.map_radius);
 }
 
-void MapUpdateModule::update_map_internal(
+bool MapUpdateModule::update_map_internal(
   BuilderState & builder_state, const geometry_msgs::msg::Point & position,
-  std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
+  const DiagnosticsHandlingFunction & diagnostics)
 {
-  diagnostics_ptr->add_key_value("is_need_rebuild", builder_state.need_rebuild);
+  diagnostics(
+    DiagnosticsUpdate{{{"is_need_rebuild", builder_state.need_rebuild}}, std::nullopt, ""});
 
   // If the current position is super far from the previous loading position,
   // lock and rebuild ndt_ptr_
@@ -154,27 +152,23 @@ void MapUpdateModule::update_map_internal(
       auto param = ndt_ptr->getParams();
 
       ndt_ptr.reset(new NdtType);
-      loaded_map_.clear();
 
       ndt_ptr->setParams(param);
 
-      updated = update_ndt(position, *ndt_ptr, diagnostics_ptr);
+      updated = update_ndt(position, *ndt_ptr, diagnostics);
     });
 
     // check is_updated_map
-    diagnostics_ptr->add_key_value("is_updated_map", updated);
+    diagnostics(DiagnosticsUpdate{{{"is_updated_map", updated}}, std::nullopt, ""});
     if (!updated) {
-      std::stringstream message;
-      message
-        << "update_ndt failed. If this happens with initial position estimation, make sure that"
-        << "(1) the initial position matches the pcd map and (2) the map_loader is working "
-           "properly.";
-      diagnostics_ptr->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
-      RCLCPP_ERROR_STREAM_THROTTLE(logger_, *clock_, 1000, message.str());
-
+      diagnostics(DiagnosticsUpdate{
+        {},
+        DiagnosticLevel::ERROR,
+        "update_ndt failed. If this happens with initial position estimation, make sure that"
+        "(1) the initial position matches the pcd map and (2) the map_loader is working "
+        "properly."});
       last_update_position_.with([&](auto & pos) { pos = position; });
-      return;
+      return false;
     }
 
     builder_state.need_rebuild = false;
@@ -187,14 +181,14 @@ void MapUpdateModule::update_map_internal(
     // the main ndt_ptr_) overlap, the latency of updating/alignment reduces partly.
     // If the updating is done the main ndt_ptr_, either the update or the NDT
     // align will be blocked by the other.
-    const bool updated = update_ndt(position, *builder_state.secondary_ndt_ptr, diagnostics_ptr);
+    const bool updated = update_ndt(position, *builder_state.secondary_ndt_ptr, diagnostics);
 
     // check is_updated_map
-    diagnostics_ptr->add_key_value("is_updated_map", updated);
+    diagnostics(DiagnosticsUpdate{{{"is_updated_map", updated}}, std::nullopt, ""});
     if (!updated) {
       last_update_position_.with([&](auto & pos) { pos = position; });
 
-      return;
+      return false;
     }
 
     // Update the NDT map pointer with minimal lock duration to prevent latency spikes.
@@ -220,69 +214,54 @@ void MapUpdateModule::update_map_internal(
   // Memorize the position of the last update
   last_update_position_.with([&](auto & pos) { pos = position; });
 
-  // Publish the new ndt maps
-  if (param_.publish_loaded_map) {
-    publish_partial_pcd_map();
-  }
+  return true;
 }
 
-void MapUpdateModule::update_map(
-  const geometry_msgs::msg::Point & position,
-  std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
+bool MapUpdateModule::update_map(
+  const geometry_msgs::msg::Point & position, const DiagnosticsHandlingFunction & diagnostics)
 {
-  builder_state_.with(
-    [&](auto & builder_state) { update_map_internal(builder_state, position, diagnostics_ptr); });
+  return builder_state_.with([&](auto & builder_state) {
+    return update_map_internal(builder_state, position, diagnostics);
+  });
 }
 
 bool MapUpdateModule::update_ndt(
   const geometry_msgs::msg::Point & position, NdtType & ndt,
-  std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr)
+  const DiagnosticsHandlingFunction & diagnostics)
 {
-  diagnostics_ptr->add_key_value("maps_size_before", ndt.getCurrentMapIDs().size());
+  diagnostics(DiagnosticsUpdate{
+    {{"maps_size_before", static_cast<int64_t>(ndt.getCurrentMapIDs().size())}},
+    std::nullopt,
+    ""});
 
-  auto request = std::make_shared<autoware_map_msgs::srv::GetDifferentialPointCloudMap::Request>();
+  auto request = std::make_shared<GetDifferentialPointCloudMap::Request>();
 
   request->area.center_x = static_cast<float>(position.x);
   request->area.center_y = static_cast<float>(position.y);
   request->area.radius = static_cast<float>(param_.map_radius);
   request->cached_ids = ndt.getCurrentMapIDs();
 
-  while (!pcd_loader_client_->wait_for_service(std::chrono::seconds(1)) && rclcpp::ok()) {
-    diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", false);
+  // Fetch the differential point cloud map. The ROS node performs the actual service call.
+  const auto response = pcd_loader_(request);
 
-    std::stringstream message;
-    message << "Waiting for pcd loader service. Check the pointcloud_map_loader.";
-    diagnostics_ptr->update_level_and_message(
-      diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    return false;
+  // check is_succeed_call_pcd_loader
+  const bool is_succeed_call_pcd_loader = (response != nullptr);
+  diagnostics(DiagnosticsUpdate{
+    {{"is_succeed_call_pcd_loader", is_succeed_call_pcd_loader}}, std::nullopt, ""});
+  if (!is_succeed_call_pcd_loader) {
+    diagnostics(
+      DiagnosticsUpdate{{}, DiagnosticLevel::WARN, "pcd_loader service is not working."});
+    return false;  // No update
   }
 
-  // send a request to map_loader
-  auto result{pcd_loader_client_->async_send_request(
-    request,
-    [](rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedFuture) {})};
+  auto & maps_to_add = response->new_pointcloud_with_ids;
+  auto & map_ids_to_remove = response->ids_to_remove;
 
-  std::future_status status = result.wait_for(std::chrono::seconds(0));
-  while (status != std::future_status::ready) {
-    // check is_succeed_call_pcd_loader
-    if (!rclcpp::ok()) {
-      diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", false);
-
-      std::stringstream message;
-      message << "pcd_loader service is not working.";
-      diagnostics_ptr->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-      return false;  // No update
-    }
-    status = result.wait_for(std::chrono::seconds(1));
-  }
-  diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", true);
-
-  auto & maps_to_add = result.get()->new_pointcloud_with_ids;
-  auto & map_ids_to_remove = result.get()->ids_to_remove;
-
-  diagnostics_ptr->add_key_value("maps_to_add_size", maps_to_add.size());
-  diagnostics_ptr->add_key_value("maps_to_remove_size", map_ids_to_remove.size());
+  diagnostics(DiagnosticsUpdate{
+    {{"maps_to_add_size", static_cast<int64_t>(maps_to_add.size())},
+     {"maps_to_remove_size", static_cast<int64_t>(map_ids_to_remove.size())}},
+    std::nullopt,
+    ""});
 
   if (maps_to_add.empty() && map_ids_to_remove.empty()) {
     return false;  // No update
@@ -297,17 +276,11 @@ bool MapUpdateModule::update_ndt(
 
     pcl::fromROSMsg(map.pointcloud, *cloud);
     ndt.addTarget(cloud, map.cell_id);
-    if (param_.publish_loaded_map) {
-      loaded_map_[map.cell_id] = cloud;
-    }
   }
 
   // Remove pcd
   for (const std::string & map_id_to_remove : map_ids_to_remove) {
     ndt.removeTarget(map_id_to_remove);
-    if (param_.publish_loaded_map) {
-      loaded_map_.erase(map_id_to_remove);
-    }
   }
 
   ndt.createVoxelKdtree();
@@ -316,28 +289,13 @@ bool MapUpdateModule::update_ndt(
   const auto duration_micro_sec =
     std::chrono::duration_cast<std::chrono::microseconds>(exe_end_time - exe_start_time).count();
   const auto exe_time = static_cast<double>(duration_micro_sec) / 1000.0;
-  diagnostics_ptr->add_key_value("map_update_execution_time", exe_time);
-  diagnostics_ptr->add_key_value("maps_size_after", ndt.getCurrentMapIDs().size());
-  diagnostics_ptr->add_key_value("is_succeed_call_pcd_loader", true);
-  return true;  // Updated
-}
+  diagnostics(DiagnosticsUpdate{
+    {{"map_update_execution_time", exe_time},
+     {"maps_size_after", static_cast<int64_t>(ndt.getCurrentMapIDs().size())}},
+    std::nullopt,
+    ""});
 
-void MapUpdateModule::publish_partial_pcd_map()
-{
-  pcl::PointCloud<PointTarget> map_pcl;
-  sensor_msgs::msg::PointCloud2 map_msg;
-  size_t total_points = 0;
-  for (const auto & map : loaded_map_) {
-    total_points += map.second->size();
-  }
-  map_pcl.points.reserve(total_points);
-  for (const auto & map : loaded_map_) {
-    map_pcl += *(map.second);
-  }
-  pcl::toROSMsg(map_pcl, map_msg);
-  map_msg.header.frame_id = "map";
-  map_msg.header.stamp = clock_->now();
-  loaded_pcd_pub_->publish(map_msg);
+  return true;  // Updated
 }
 
 }  // namespace autoware::ndt_scan_matcher

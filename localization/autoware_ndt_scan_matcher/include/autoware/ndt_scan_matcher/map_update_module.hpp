@@ -18,40 +18,65 @@
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
-#include "particle.hpp"
-
-#include <autoware/localization_util/util_func.hpp>
-#include <autoware_utils_diagnostics/diagnostics_interface.hpp>
-#include <autoware_utils_pcl/transforms.hpp>
-#include <autoware_utils_visualization/marker_helper.hpp>
-#include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <visualization_msgs/msg/marker_array.hpp>
+#include <geometry_msgs/msg/point.hpp>
 
-#include <fmt/format.h>
-#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_types.h>
 
-#include <map>
+#include <cstdint>
+#include <functional>
 #include <memory>
 #include <optional>
 #include <string>
-#include <thread>
+#include <variant>
 #include <vector>
 
 namespace autoware::ndt_scan_matcher
 {
-using DiagnosticsInterface = autoware_utils_diagnostics::DiagnosticsInterface;
 
 class MapUpdateModule
 {
+public:
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
   using NdtType = pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
   using NdtPtrType = std::shared_ptr<NdtType>;
 
+  using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;
+
+  // Injected by the ROS node: given a differential map request, returns the response,
+  // or nullptr if the map could not be fetched (e.g. the service is unavailable).
+  using PcdLoaderFunction = std::function<GetDifferentialPointCloudMap::Response::SharedPtr(
+    const GetDifferentialPointCloudMap::Request::SharedPtr &)>;
+
+  // Severity of a diagnostics update. Mirrors diagnostic_msgs::msg::DiagnosticStatus levels so
+  // this module needs no ROS diagnostics dependency.
+  enum class DiagnosticLevel : int8_t { OK = 0, WARN = 1, ERROR = 2, STALE = 3 };
+
+  // A single diagnostic key/value. The value keeps its type so the ROS node can format it exactly
+  // the way DiagnosticsInterface would (e.g. bool as "True"/"False").
+  struct DiagnosticKeyValue
+  {
+    std::string key;
+    std::variant<bool, int64_t, double, std::string> value;
+  };
+
+  // A diagnostics update emitted while updating the map: key/values to attach and, optionally, a
+  // status (level + message). Plain data, kept ROS-free on purpose.
+  struct DiagnosticsUpdate
+  {
+    std::vector<DiagnosticKeyValue> key_values;
+    std::optional<DiagnosticLevel> level;  // std::nullopt => leave the status unchanged
+    std::string message;
+  };
+
+  // Injected by the ROS node: forwards a diagnostics update to the node's DiagnosticsInterface.
+  // Passed per call so the node can route it to the diagnostic that matches the caller (e.g.
+  // periodic map-update status vs. ndt_align service status).
+  using DiagnosticsHandlingFunction = std::function<void(const DiagnosticsUpdate &)>;
+
+private:
   struct BuilderState
   {
     bool need_rebuild{true};
@@ -60,39 +85,38 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param);
+    Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param,
+    PcdLoaderFunction pcd_loader);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
 private:
   friend class NDTScanMatcher;
 
-  void callback_timer(
+  // Returns true if the NDT map was actually updated.
+  bool callback_timer(
     const bool is_activated, const std::optional<geometry_msgs::msg::Point> & position,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+    const DiagnosticsHandlingFunction & diagnostics);
 
   [[nodiscard]] bool should_update_map(
     BuilderState & builder_state, const geometry_msgs::msg::Point & position,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+    const DiagnosticsHandlingFunction & diagnostics);
 
-  void update_map_internal(
+  // Returns true if the NDT map was actually updated.
+  bool update_map_internal(
     BuilderState & builder_state, const geometry_msgs::msg::Point & position,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+    const DiagnosticsHandlingFunction & diagnostics);
 
   // Do not call this function while holding the lock for ndt_ptr_.
-  void update_map(
-    const geometry_msgs::msg::Point & position,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
+  // Returns true if the NDT map was actually updated.
+  bool update_map(
+    const geometry_msgs::msg::Point & position, const DiagnosticsHandlingFunction & diagnostics);
   // Update the specified NDT
   bool update_ndt(
     const geometry_msgs::msg::Point & position, NdtType & ndt,
-    std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
-  void publish_partial_pcd_map();
+    const DiagnosticsHandlingFunction & diagnostics);
 
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr loaded_pcd_pub_;
-
-  rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
-    pcd_loader_client_;
+  PcdLoaderFunction pcd_loader_;
 
   // To prevent deadlocks, acquire locks in the following order:
   // 1. builder_state_ -> ndt_ptr_
@@ -101,13 +125,7 @@ private:
   Guarded<BuilderState> builder_state_;
   Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
 
-  rclcpp::Logger logger_;
-  rclcpp::Clock::SharedPtr clock_;
-
   HyperParameters::DynamicMapLoading param_;
-
-  // All accesses must occur while builder_state_'s lock is held
-  std::map<std::string, pcl::PointCloud<PointTarget>::Ptr> loaded_map_;
 };
 
 }  // namespace autoware::ndt_scan_matcher
