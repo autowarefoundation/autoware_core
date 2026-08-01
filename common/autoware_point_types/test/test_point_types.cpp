@@ -16,7 +16,10 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
+#include <cstdint>
 #include <limits>
+#include <stdexcept>
 
 TEST(PointEquality, PointXYZI)
 {
@@ -46,6 +49,84 @@ TEST(PointEquality, PointXYZIRCAEDT)
   PointXYZIRCAEDT pt1{0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
   EXPECT_EQ(pt0, pt1);
   EXPECT_TRUE(pt0 == pt1);
+}
+
+TEST(PointEquality, PointXYZCPE)
+{
+  using autoware::point_types::PointXYZCPE;
+
+  {
+    // test defaults are the unclassified/unset markers
+    PointXYZCPE pt0;
+    PointXYZCPE pt1;
+    EXPECT_EQ(
+      pt0.class_id,
+      static_cast<std::uint8_t>(autoware::point_types::PointCloudClassification::INVALID));
+    EXPECT_TRUE(std::isnan(pt0.entropy));
+    EXPECT_EQ(pt0, pt1);
+
+    pt1.entropy = 0.0F;
+    EXPECT_FALSE(pt0 == pt1);
+  }
+
+  {
+    // test with specific values
+    PointXYZCPE pt0{0, 1, 2, 3, 4, 5};
+    PointXYZCPE pt1{0, 1, 2, 3, 4, 5};
+    EXPECT_EQ(pt0, pt1);
+    EXPECT_TRUE(pt0 == pt1);
+  }
+}
+
+TEST(PointCloudClassification, EnumValues)
+{
+  using autoware::point_types::PointCloudClassification;
+
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::CAR), 0U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::TRUCK), 1U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::BUS), 2U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::MOTORCYCLE), 3U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::BICYCLE), 4U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::PEDESTRIAN), 5U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::ANIMAL), 6U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::HAZARD), 7U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::FLAT_SURFACE), 8U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::STRUCTURE), 9U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::VEGETATION), 10U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::NOISE), 11U);
+  EXPECT_EQ(static_cast<std::uint8_t>(PointCloudClassification::INVALID), 255U);
+}
+
+TEST(PointCloudClassification, ToString)
+{
+  using autoware::point_types::PointCloudClassification;
+  using autoware::point_types::to_string;
+
+  EXPECT_EQ(to_string(PointCloudClassification::CAR), "CAR");
+  EXPECT_EQ(to_string(PointCloudClassification::TRUCK), "TRUCK");
+  EXPECT_EQ(to_string(PointCloudClassification::BUS), "BUS");
+  EXPECT_EQ(to_string(PointCloudClassification::MOTORCYCLE), "MOTORCYCLE");
+  EXPECT_EQ(to_string(PointCloudClassification::BICYCLE), "BICYCLE");
+  EXPECT_EQ(to_string(PointCloudClassification::PEDESTRIAN), "PEDESTRIAN");
+  EXPECT_EQ(to_string(PointCloudClassification::ANIMAL), "ANIMAL");
+  EXPECT_EQ(to_string(PointCloudClassification::HAZARD), "HAZARD");
+  EXPECT_EQ(to_string(PointCloudClassification::FLAT_SURFACE), "FLAT_SURFACE");
+  EXPECT_EQ(to_string(PointCloudClassification::STRUCTURE), "STRUCTURE");
+  EXPECT_EQ(to_string(PointCloudClassification::VEGETATION), "VEGETATION");
+  EXPECT_EQ(to_string(PointCloudClassification::NOISE), "NOISE");
+  EXPECT_EQ(to_string(PointCloudClassification::INVALID), "INVALID");
+  EXPECT_THROW(to_string(static_cast<PointCloudClassification>(254U)), std::invalid_argument);
+}
+
+TEST(PointCloudClassification, ConstexprToString)
+{
+  using autoware::point_types::PointCloudClassification;
+  using autoware::point_types::to_string;
+
+  constexpr auto classification = PointCloudClassification::CAR;
+  constexpr auto str = to_string(classification);
+  static_assert(str == "CAR");
+  EXPECT_EQ(str, "CAR");
 }
 
 TEST(PointEquality, FloatEq)

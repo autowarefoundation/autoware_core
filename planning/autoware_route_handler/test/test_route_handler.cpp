@@ -15,7 +15,6 @@
 #include "test_route_handler.hpp"
 
 #include <autoware_utils_geometry/geometry.hpp>
-#include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
 
@@ -67,9 +66,6 @@ TEST_F(TestRouteHandler, getLaneletSequenceWhenOverlappingRoute)
 
   route_handler_->setRouteLanelets(path_lanelets);
   ASSERT_TRUE(route_handler_->isHandlerReady());
-
-  rclcpp::init(0, nullptr);
-  ASSERT_TRUE(rclcpp::ok());
 
   auto lanelet_sequence = route_handler_->getLaneletSequence(path_lanelets.back());
   ASSERT_EQ(lanelet_sequence.size(), 12);
@@ -312,5 +308,59 @@ TEST_F(TestRouteHandler, testGetShoulderLaneletsAtPose)
   pose.position.y = 73768.6;
   shoulder_lanelets = route_handler_->getShoulderLaneletsAtPose(pose);
   ASSERT_TRUE(shoulder_lanelets.empty());
+}
+
+// In overlap_map.osm the lanelets 282 -> 287 -> ... -> 345 -> 282 form a cycle. A route that
+// contains the whole cycle without using it as its start or goal (a full lap of a loop course)
+// makes the forward traversal come back to an already visited lanelet. It must stop there, so that
+// each lanelet appears at most once, instead of going around until the requested length is covered.
+TEST_F(TestRouteHandler, getLaneletSequenceVisitsEachLaneletAtMostOnceOnCyclicRoute)
+{
+  set_route_handler("overlap_map.osm");
+
+  const lanelet::Ids expected_ids{277, 282, 287, 292, 297, 302, 307, 312, 317, 322, 345};
+  autoware_planning_msgs::msg::LaneletRoute route;
+  for (const auto & id : lanelet::Ids{277, 282, 287, 292, 297, 302, 307, 312, 317, 322, 345, 168}) {
+    autoware_planning_msgs::msg::LaneletPrimitive primitive;
+    primitive.id = id;
+    primitive.primitive_type = "lane";
+    autoware_planning_msgs::msg::LaneletSegment segment;
+    segment.preferred_primitive = primitive;
+    segment.primitives.push_back(primitive);
+    route.segments.push_back(segment);
+  }
+  route_handler_->setRoute(route);
+  ASSERT_TRUE(route_handler_->isHandlerReady());
+
+  constexpr double forward_distance_longer_than_the_cycle = 1.0e6;
+  const auto lanelet_sequence = route_handler_->getLaneletSequence(
+    route_handler_->getLaneletsFromId(277), 0.0, forward_distance_longer_than_the_cycle);
+
+  lanelet::Ids ids;
+  ids.reserve(lanelet_sequence.size());
+  for (const auto & lanelet : lanelet_sequence) ids.push_back(lanelet.id());
+  EXPECT_EQ(ids, expected_ids);
+}
+
+// The only in-route predecessor of 282 is the goal lanelet 345, which is skipped, so the backward
+// traversal cannot advance and must stop instead of spinning on the same lanelet.
+TEST_F(TestRouteHandler, getLaneletSequenceStopsWhenNoNewPreviousLaneletIsFound)
+{
+  set_route_handler("overlap_map.osm");
+  const auto route_lanelets = route_handler_->getLaneletsFromIds({287, 282, 345});
+  route_handler_->setRouteLanelets(route_lanelets);
+
+  const auto lanelet_sequence =
+    route_handler_->getLaneletSequence(route_handler_->getLaneletsFromId(282), 100.0, 0.0);
+
+  ASSERT_EQ(lanelet_sequence.size(), 1ul);
+  EXPECT_EQ(lanelet_sequence.front().id(), 282ul);
+
+  // Sanity check that the traversal above stopped because its only candidate was the goal lanelet:
+  // adding the other predecessor of 282 to the route lets the traversal advance again.
+  route_handler_->setRouteLanelets(route_handler_->getLaneletsFromIds({287, 277, 282, 345}));
+  const auto sequence_with_predecessor =
+    route_handler_->getLaneletSequence(route_handler_->getLaneletsFromId(282), 100.0, 0.0);
+  EXPECT_GT(sequence_with_predecessor.size(), 1ul);
 }
 }  // namespace autoware::route_handler::test

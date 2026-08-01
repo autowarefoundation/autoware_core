@@ -20,15 +20,26 @@
 #include <autoware/component_interface_specs/utils.hpp>
 #include <autoware/component_interface_specs/version.hpp>
 
+#include <autoware_vehicle_msgs/msg/control_mode_report.hpp>
 #include <autoware_vehicle_msgs/msg/gear_report.hpp>
 #include <autoware_vehicle_msgs/msg/hazard_lights_report.hpp>
 #include <autoware_vehicle_msgs/msg/steering_report.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_report.hpp>
+#include <autoware_vehicle_msgs/msg/velocity_report.hpp>
 
 #include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::vehicle
 {
+
+struct VelocityStatus  // new spec (largest gap; consumed by every domain)
+{
+  using Message = autoware_vehicle_msgs::msg::VelocityReport;
+  static constexpr char name[] = "/vehicle/status/velocity_status";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
 
 struct SteeringStatus
 {
@@ -66,8 +77,18 @@ struct HazardLightStatus
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
 
+struct ControlModeStatus  // new spec (vehicle->control/system safety-supervision report)
+{
+  using Message = autoware_vehicle_msgs::msg::ControlModeReport;
+  static constexpr char name[] = "/vehicle/status/control_mode";
+  static constexpr size_t depth = 1;
+  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
+  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
+};
+
 AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
-  0, 1, 0, SteeringStatus, GearStatus, TurnIndicatorStatus, HazardLightStatus)
+  0, 1, 0, VelocityStatus, SteeringStatus, GearStatus, TurnIndicatorStatus, HazardLightStatus,
+  ControlModeStatus)
 
 }  // namespace autoware::component_interface_specs::vehicle
 

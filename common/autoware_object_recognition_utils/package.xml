@@ -13,6 +13,7 @@
 
   <depend>autoware_interpolation</depend>
   <depend>autoware_perception_msgs</depend>
+  <depend>autoware_point_types</depend>
   <depend>autoware_utils_geometry</depend>
   <depend>autoware_utils_math</depend>
   <depend>geometry_msgs</depend>
