@@ -411,6 +411,16 @@ inline bool use_agnocast()
   return sv == 1;
 }
 
+/// @brief Mode-agnostic replacement for rclcpp::ok().
+///
+/// An AgnocastOnly executable initializes only the agnocast context, while mixed-mode and
+/// non-Agnocast executables initialize only the rclcpp context. Exactly one is alive in any
+/// mode, so the disjunction answers "is this process still running" everywhere.
+inline bool ok()
+{
+  return rclcpp::ok() || agnocast::ok();
+}
+
 template <typename MessageT>
 class Subscription
 {
@@ -566,11 +576,13 @@ public:
   virtual void publish(AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) && message) = 0;
   virtual void publish(AUTOWARE_MESSAGE_SHARED_PTR(MessageT) && message) = 0;
 
-  /// Publish by const reference (internally copies into allocated message).
-  /// This method is discouraged because it performs an implicit copy.
-  /// Prefer ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher) + the corresponding publish()
-  /// overload. May be marked [[deprecated]] in the future once autoware_cmake supports
-  /// suppressing deprecation warnings for test targets.
+  /// Publish by const reference: copies @p data into a freshly allocated message (allocated in
+  /// shared memory on the Agnocast path), then publishes it.
+  ///
+  /// Use this when the caller already holds a message it does not own or must retain — e.g.
+  /// re-publishing a received message, or publishing a member kept as node state. When the outgoing
+  /// message is being constructed anyway, prefer ALLOCATE_OUTPUT_MESSAGE_{UNIQUE,SHARED}(publisher)
+  /// and the corresponding publish() overload instead, which builds in place and copies no payload.
   virtual void publish(const MessageT & data) = 0;
 
   virtual uint32_t get_subscription_count() const = 0;
@@ -1482,6 +1494,12 @@ create_service(
 
 namespace autoware::agnocast_wrapper
 {
+
+/// @brief Mode-agnostic replacement for rclcpp::ok() (non-Agnocast build).
+inline bool ok()
+{
+  return rclcpp::ok();
+}
 
 /// @brief Set the timer period (non-Agnocast build).
 ///

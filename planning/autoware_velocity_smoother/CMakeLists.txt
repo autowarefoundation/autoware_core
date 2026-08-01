@@ -33,6 +33,8 @@ ament_auto_add_library(smoother SHARED
   ${SMOOTHER_SRC}
 )
 
+autoware_agnocast_wrapper_setup(smoother)
+
 ament_auto_add_library(${PROJECT_NAME}_node SHARED
   ${MOTION_VELOCITY_SMOOTHER_SRC}
 )
@@ -41,9 +43,11 @@ target_link_libraries(${PROJECT_NAME}_node
   smoother
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}_node
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_node
   PLUGIN "autoware::velocity_smoother::VelocitySmootherNode"
   EXECUTABLE velocity_smoother_node
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 if(BUILD_TESTING)
@@ -67,12 +71,14 @@ if(BUILD_TESTING)
   target_link_libraries(test_trajectory_utils
   smoother
   )
-  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
-    test/test_velocity_smoother_node_interface.cpp
-  )
-  target_link_libraries(test_${PROJECT_NAME}
-    ${PROJECT_NAME}_node
-  )
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
+      test/test_velocity_smoother_node_interface.cpp
+    )
+    target_link_libraries(test_${PROJECT_NAME}
+      ${PROJECT_NAME}_node
+    )
+  endif()
 endif()
 
 

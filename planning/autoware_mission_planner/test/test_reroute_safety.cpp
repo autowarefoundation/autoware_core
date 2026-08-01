@@ -14,9 +14,6 @@
 
 #include "../src/mission_planner/reroute_safety.hpp"
 
-#include <rclcpp/logger.hpp>
-#include <rclcpp/logging.hpp>
-
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 
 #include <gtest/gtest.h>
@@ -73,11 +70,6 @@ LaneletSegment make_segment(const std::vector<lanelet::Id> & ids)
   return segment;
 }
 
-rclcpp::Logger test_logger()
-{
-  return rclcpp::get_logger("test_reroute_safety");
-}
-
 }  // namespace
 
 class CheckRerouteSafetyTest : public ::testing::Test
@@ -115,16 +107,18 @@ TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenOriginalRouteEmpty)
 {
   const auto target = make_nominal_route();
   LaneletRoute original;  // empty segments
-  EXPECT_FALSE(check_reroute_safety(
-    original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_FALSE(
+    check_reroute_safety(original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenTargetRouteEmpty)
 {
   const auto original = make_nominal_route();
   LaneletRoute target;  // empty segments
-  EXPECT_FALSE(check_reroute_safety(
-    original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_FALSE(
+    check_reroute_safety(original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenMapIsNull)
@@ -133,7 +127,8 @@ TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenMapIsNull)
   const auto target = make_nominal_route();
   const lanelet::LaneletMapConstPtr null_map = nullptr;
   EXPECT_FALSE(check_reroute_safety(
-    original, target, null_map, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+                 original, target, null_map, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+                 .is_safe);
 }
 
 TEST_F(CheckRerouteSafetyTest, ReturnsTrueWhenVehicleStopped)
@@ -145,8 +140,9 @@ TEST_F(CheckRerouteSafetyTest, ReturnsTrueWhenVehicleStopped)
   target.start_pose = make_pose(10.0);
   target.goal_pose = make_pose(290.0);
   target.segments = {make_segment({99})};  // unknown id, no common segment
-  EXPECT_TRUE(check_reroute_safety(
-    original, target, map_, 0.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_TRUE(
+    check_reroute_safety(original, target, map_, 0.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenNoCommonSegment)
@@ -156,8 +152,9 @@ TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenNoCommonSegment)
   target.start_pose = make_pose(10.0);
   target.goal_pose = make_pose(290.0);
   target.segments = {make_segment({99})};  // no overlap with original {1,2,3}
-  EXPECT_FALSE(check_reroute_safety(
-    original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_FALSE(
+    check_reroute_safety(original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenEgoNotOnFirstTargetSection)
@@ -169,8 +166,9 @@ TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenEgoNotOnFirstTargetSection)
   target.start_pose = make_pose(10.0, 50.0);  // y far outside the [-1, 1] band of any lanelet
   target.goal_pose = make_pose(290.0);
   target.segments = {make_segment({1}), make_segment({2}), make_segment({3})};
-  EXPECT_FALSE(check_reroute_safety(
-    original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_FALSE(
+    check_reroute_safety(original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -183,8 +181,9 @@ TEST_F(CheckRerouteSafetyTest, ReturnsTrueWhenAccumulatedLengthExceedsSafetyLeng
   // x=290 is ~280 m, far above the safety length max(5 * 10, 30) = 50 m.
   const auto original = make_nominal_route();
   const auto target = make_nominal_route();
-  EXPECT_TRUE(check_reroute_safety(
-    original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_TRUE(
+    check_reroute_safety(original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenAccumulatedLengthBelowSafetyLength)
@@ -201,8 +200,9 @@ TEST_F(CheckRerouteSafetyTest, ReturnsFalseWhenAccumulatedLengthBelowSafetyLengt
   target.goal_pose = make_pose(85.0);
   target.segments = {make_segment({1})};
 
-  EXPECT_FALSE(check_reroute_safety(
-    original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_FALSE(
+    check_reroute_safety(original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 TEST_F(CheckRerouteSafetyTest, SafetyLengthScalesWithVelocity)
@@ -213,8 +213,9 @@ TEST_F(CheckRerouteSafetyTest, SafetyLengthScalesWithVelocity)
   // pins the velocity dependence of the decision.
   const auto original = make_nominal_route();
   const auto target = make_nominal_route();
-  EXPECT_FALSE(check_reroute_safety(
-    original, target, map_, 30.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_FALSE(
+    check_reroute_safety(original, target, map_, 30.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -260,8 +261,9 @@ TEST_F(CheckRerouteSafetyTest, AccumulatesFromSegmentBeforeCommonWhenTargetStart
   // safety_length = max(5 * 10, 30) = 50. The correct branch (10 m) is below it -> false; the
   // regression (100 m) would be above it -> true. Asserting false is RED against a regression that
   // drops the `- 1` and always uses start_idx_original.
-  EXPECT_FALSE(check_reroute_safety(
-    original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_FALSE(
+    check_reroute_safety(original, target, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -288,6 +290,7 @@ TEST_F(CheckRerouteSafetyTest, StopsAccumulationOnEmptyIntermediateSegment)
   // (end_idx_target == 2 -> lanelet 3) goal subtraction applies, accumulated = max(90 - 50, 0)
   // = 40. safety_length = max(5 * 10, 30) = 50; 40 <= 50 -> unsafe -> false, and the call does not
   // crash.
-  EXPECT_FALSE(check_reroute_safety(
-    route, route, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength, test_logger()));
+  EXPECT_FALSE(
+    check_reroute_safety(route, route, map_, 5.0, kRerouteTimeThreshold, kMinimumRerouteLength)
+      .is_safe);
 }

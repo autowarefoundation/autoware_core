@@ -28,6 +28,7 @@
 #include <chrono>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 using autoware_map_msgs::srv::GetDifferentialPointCloudMap;
@@ -94,7 +95,7 @@ TEST_F(TestPointcloudMapLoaderNode, LoadPCDFilesNoDownsampleTest)
 
   // Spin until pointcloud is received or timeout occurs
   rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(map_loader_node_);
+  executor.add_node(map_loader_node_->get_node_base_interface());
   auto start_time = map_loader_node_->now();
   while (!*pointcloud_received && (map_loader_node_->now() - start_time).seconds() < 3) {
     executor.spin_some(50ms);
@@ -131,9 +132,9 @@ TEST_F(TestPointcloudMapLoaderNode, LoadDifferentialPCDFiles)
   request->area.radius = 2;
   request->cached_ids.clear();
 
-  auto result_future = client->async_send_request(request);
+  auto result_future = client->async_send_request(std::move(request));
   ASSERT_EQ(
-    rclcpp::spin_until_future_complete(map_loader_node_, result_future),
+    rclcpp::spin_until_future_complete(map_loader_node_->get_node_base_interface(), result_future),
     rclcpp::FutureReturnCode::SUCCESS);
 
   auto result = result_future.get();
@@ -178,9 +179,9 @@ TEST(PointcloudMapLoaderNodePartial, LoadPartialPCDFiles)
   request->area.center_y = 0;
   request->area.radius = 2;
 
-  auto result_future = client->async_send_request(request);
+  auto result_future = client->async_send_request(std::move(request));
   ASSERT_EQ(
-    rclcpp::spin_until_future_complete(map_loader_node, result_future),
+    rclcpp::spin_until_future_complete(map_loader_node->get_node_base_interface(), result_future),
     rclcpp::FutureReturnCode::SUCCESS);
 
   auto result = result_future.get();

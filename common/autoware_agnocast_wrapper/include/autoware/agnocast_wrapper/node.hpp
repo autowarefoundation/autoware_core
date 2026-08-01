@@ -53,13 +53,15 @@ namespace autoware::agnocast_wrapper
 /// @brief Node wrapper class that can switch between rclcpp::Node and agnocast::Node at runtime
 /// based on the ENABLE_AGNOCAST environment variable.
 ///
+/// Derives from std::enable_shared_from_this so shared_from_this() works, as on rclcpp::Node.
+///
 /// @invariant The backend variant (rclcpp::Node or agnocast::Node) is chosen at construction
 ///            based on use_agnocast() and never mutates for the lifetime of the Node.
 /// @invariant `use_agnocast() == true`  iff `get_agnocast_node()` returns a valid
 ///            shared_ptr without throwing.
 /// @invariant `use_agnocast() == false` iff `get_rclcpp_node()`   returns a valid
 ///            shared_ptr without throwing.
-class Node
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
   using SharedPtr = std::shared_ptr<Node>;
@@ -443,7 +445,9 @@ namespace autoware::agnocast_wrapper
 /// from rclcpp::Node. This keeps the public surface identical to the Agnocast-build Node, so code
 /// compiles under both ENABLE_AGNOCAST=0 and =1. Deriving from rclcpp::Node would instead leak its
 /// full API into the =0 build, allowing =0-only code that breaks under =1.
-class Node
+///
+/// Derives from std::enable_shared_from_this so shared_from_this() works, as on rclcpp::Node.
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
   using SharedPtr = std::shared_ptr<Node>;

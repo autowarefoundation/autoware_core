@@ -87,6 +87,19 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
     RCLCPP_WARN_STREAM(get_logger(), msg);
   };
 
+  // The map metadata is the delivery-independent evidence that the PCD map was loaded and is
+  // servable. It is published whenever the metadata dict exists — that is, always, since the
+  // differential loader below is unconditional — so a deployment that turns `enable_whole_load`
+  // off and consumes the map through the differential/partial services still has a liveness
+  // signal for the map module to monitor.
+  {
+    rclcpp::QoS durable_qos{1};
+    durable_qos.transient_local();
+    pub_metadata_ = create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
+      "output/pointcloud_map_metadata", durable_qos);
+    pub_metadata_->publish(create_metadata(pcd_metadata_dict));
+  }
+
   if (enable_partial_load) {
     partial_map_loader_ =
       std::make_unique<PartialMapLoaderModule>(pcd_metadata_dict, on_cell_load_error);
@@ -116,12 +129,6 @@ PointCloudMapLoaderNode::PointCloudMapLoaderNode(const rclcpp::NodeOptions & opt
                                         GetSelectedPointCloudMap::Response::SharedPtr res) {
         return selected_map_loader_->create_response(req, res);
       });
-
-    rclcpp::QoS durable_qos{1};
-    durable_qos.transient_local();
-    pub_metadata_ = create_publisher<autoware_map_msgs::msg::PointCloudMapMetaData>(
-      "output/pointcloud_map_metadata", durable_qos);
-    pub_metadata_->publish(create_metadata(pcd_metadata_dict));
   }
 }
 }  // namespace autoware::map_loader
