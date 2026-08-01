@@ -25,9 +25,9 @@ namespace autoware::qp_interface
 {
 CSC_Matrix calCSCMatrix(const Eigen::MatrixXd & mat)
 {
-  const size_t elem = static_cast<size_t>(mat.nonZeros());
   const Eigen::Index rows = mat.rows();
   const Eigen::Index cols = mat.cols();
+  const size_t elem = static_cast<size_t>(rows * cols);
 
   std::vector<c_float> vals;
   vals.reserve(elem);
@@ -66,9 +66,9 @@ CSC_Matrix calCSCMatrix(const Eigen::MatrixXd & mat)
 
 CSC_Matrix calCSCMatrixTrapezoidal(const Eigen::MatrixXd & mat)
 {
-  const size_t elem = static_cast<size_t>(mat.nonZeros());
   const Eigen::Index rows = mat.rows();
   const Eigen::Index cols = mat.cols();
+  const size_t elem = static_cast<size_t>(rows * (rows + 1) / 2);
 
   if (rows != cols) {
     throw std::invalid_argument("Matrix must be square (n, n)");
