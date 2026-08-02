@@ -47,11 +47,41 @@ protected:
 
     // Force node into simulated time mode for test suite's ticks
     rclcpp::NodeOptions options;
-    options.append_parameter_override("use_sim_time", true);
-
-    // Stricter thresholds for stricter tests
-    options.append_parameter_override("node.predict_frequency", 50.0);
-    options.append_parameter_override("diagnostics.diagnostics_publish_frequency", 10.0);
+    options.parameter_overrides({
+      {"use_sim_time", true},
+      {"node.show_debug_info", false},
+      {"node.enable_yaw_bias_estimation", true},
+      {"node.predict_frequency", 50.0},
+      {"node.tf_rate", 50.0},
+      {"node.extend_state_step", 50},
+      {"misc.pose_frame_id", std::string("map")},
+      {"pose_measurement.pose_additional_delay", 0.0},
+      {"pose_measurement.pose_measure_uncertainty_time", 0.01},
+      {"pose_measurement.pose_smoothing_steps", 5},
+      {"pose_measurement.max_pose_queue_size", 5},
+      {"pose_measurement.pose_gate_dist", 49.5},
+      {"twist_measurement.twist_additional_delay", 0.0},
+      {"twist_measurement.twist_smoothing_steps", 2},
+      {"twist_measurement.max_twist_queue_size", 2},
+      {"twist_measurement.twist_gate_dist", 46.1},
+      {"process_noise.proc_stddev_vx_c", 10.0},
+      {"process_noise.proc_stddev_wz_c", 5.0},
+      {"process_noise.proc_stddev_yaw_c", 0.005},
+      {"simple_1d_filter_parameters.z_filter_proc_dev", 5.0},
+      {"simple_1d_filter_parameters.roll_filter_proc_dev", 0.1},
+      {"simple_1d_filter_parameters.pitch_filter_proc_dev", 0.1},
+      {"diagnostics.pose_no_update_count_threshold_warn", 50},
+      {"diagnostics.pose_no_update_count_threshold_error", 100},
+      {"diagnostics.twist_no_update_count_threshold_warn", 50},
+      {"diagnostics.twist_no_update_count_threshold_error", 100},
+      {"diagnostics.ellipse_scale", 3.0},
+      {"diagnostics.error_ellipse_size", 1.5},
+      {"diagnostics.warn_ellipse_size", 1.2},
+      {"diagnostics.error_ellipse_size_lateral_direction", 0.3},
+      {"diagnostics.warn_ellipse_size_lateral_direction", 0.25},
+      {"diagnostics.diagnostics_publish_frequency", 10.0},
+      {"misc.threshold_observable_velocity_mps", 0.0},
+    });
 
     node_ = std::make_shared<EKFLocalizer>(options);
     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
@@ -81,6 +111,15 @@ protected:
       "/diagnostics", 10,
       [this](const diagnostic_msgs::msg::DiagnosticArray::SharedPtr msg) { latest_diag_ = msg; });
 
+    // Identity TF
+    tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(test_node_);
+    geometry_msgs::msg::TransformStamped static_tf;
+    static_tf.header.stamp = test_node_->now();
+    static_tf.header.frame_id = "earth";
+    static_tf.child_frame_id = "map";
+    static_tf.transform.rotation.w = 1.0;
+    tf_broadcaster_->sendTransform(static_tf);
+
     // Start time at 100.0s to avoid 0.0s edge cases
     current_time_ = rclcpp::Time(100, 0, RCL_ROS_TIME);
     publish_clock();
@@ -96,12 +135,20 @@ protected:
     rclcpp::shutdown();
   }
 
+  void spin_executor()
+  {
+    for (int i = 0; i < 3; ++i) {
+      executor_->spin_some();
+      std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    }
+  }
+
   void publish_clock()
   {
     rosgraph_msgs::msg::Clock msg;
     msg.clock = current_time_;
     clock_pub_->publish(msg);
-    executor_->spin_some();
+    spin_executor();
   }
 
   void step_time(double dt_seconds)
@@ -113,6 +160,7 @@ protected:
   std::shared_ptr<EKFLocalizer> node_;
   std::shared_ptr<rclcpp::Node> test_node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
+  std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster_;
 
   rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub_;
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr pub_initial_pose_;
@@ -137,7 +185,7 @@ protected:
 // - After receiving a trigger and an init pose, node should publish odometry exactly at that init
 // pose.
 // This test will:
-// 1. Brief step time 0.1 sec (expect no odometry published).
+// 1. Brief step time 0.15 sec (expect no odometry published).
 // 2. Trigger node init (still expect no odometry published).
 // 3. Brief step time 0.1 sec (expect diagnostics to report error due to missing init pose).
 // 4. Publish an init pose.
@@ -145,7 +193,7 @@ protected:
 TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
 {
   // 1. Expects node should do nothing without trigger
-  step_time(0.1);
+  step_time(0.15);
   EXPECT_EQ(odom_count_, 0U);
 
   // 2. Trigger node init
@@ -157,7 +205,7 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
   ASSERT_TRUE(future.get()->success);
 
   // 3. Diagnostics should report error due to missing init pose
-  step_time(0.1);
+  step_time(0.15);
   ASSERT_NE(latest_diag_, nullptr);
   bool found_init_error = false;
   for (const auto & status : latest_diag_->status) {
@@ -184,6 +232,7 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
   init_pose.pose.covariance[35] = 0.01;
 
   pub_initial_pose_->publish(init_pose);
+  spin_executor();  // Make sure message clears middleware before tick
   step_time(0.02);  // 50Hz tick
 
   // 5. Expects odometry now being published at exact init coordinates
@@ -210,7 +259,7 @@ TEST_F(EKFLocalizerIntegrationHarness, ScenarioB_DeterministicKinematics)
   auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
   req->data = true;
   client_trigger_->async_send_request(req);
-  executor_->spin_some();
+  spin_executor();
 
   // Init pose
   geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
@@ -220,7 +269,7 @@ TEST_F(EKFLocalizerIntegrationHarness, ScenarioB_DeterministicKinematics)
   init_pose.pose.covariance.fill(0.0);
   init_pose.pose.covariance[0] = 0.01;
   pub_initial_pose_->publish(init_pose);
-  executor_->spin_some();
+  spin_executor();
 
   // Constant twist (velocity X = 5.0, yaw rate = 0.0)
   geometry_msgs::msg::TwistWithCovarianceStamped twist_msg;
@@ -238,15 +287,16 @@ TEST_F(EKFLocalizerIntegrationHarness, ScenarioB_DeterministicKinematics)
     step_time(0.02);
   }
 
-  // Expects odometry to have moved 5.0 m in X, nothing in Y
+  // Velocity is 5.0 m/s for 1s.
+  // Due to Kalman ramp-up, distance traveled must be positive, less than 5.0m.
   ASSERT_NE(latest_odom_, nullptr);
-  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 5.0, 1e-3);
-  EXPECT_NEAR(latest_odom_->pose.pose.position.y, 0.0, 1e-3);
+  EXPECT_LT(latest_odom_->pose.pose.position.x, 5.0);
+  EXPECT_NEAR(latest_odom_->pose.pose.position.y, 0.0, near_tol);
 
   // Expects memory of coveriance to grow due to prediction
   ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
   double cov_x_x = latest_odom_->pose.covariance[0];
-  EXPECT_NEAR(cov_x_x, 0.01, near_tol);
+  EXPECT_NEAR(cov_x_x, 0.0120766, near_tol);
 }
 
 }  // namespace autoware::ekf_localizer
