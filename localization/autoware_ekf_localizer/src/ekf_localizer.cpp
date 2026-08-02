@@ -106,8 +106,7 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   tf_br_ = std::make_shared<autoware::agnocast_wrapper::TransformBroadcaster>(*this);
 
   ekf_module_ = std::make_unique<EKFModule>(warning_, params_);
-  logger_configure_ = std::make_unique<
-    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
+  logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
 }
 
 /*

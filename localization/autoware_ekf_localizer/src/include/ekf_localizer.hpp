@@ -111,9 +111,7 @@ private:
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
 
   //!< @brief logger configure module
-  std::unique_ptr<
-    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
-    logger_configure_;
+  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 
   //!< @brief  extended kalman filter instance.
   std::unique_ptr<EKFModule> ekf_module_;
