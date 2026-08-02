@@ -211,7 +211,7 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
   bool found_init_error = false;
   for (const auto & status : latest_diag_->status) {
     if (
-      status.message.find("initial pose is not set") != std::string::npos &&
+      status.message.find("[ERROR]initial pose is not set") != std::string::npos &&
       status.level == diagnostic_msgs::msg::DiagnosticStatus::ERROR) {
       found_init_error = true;
     }
@@ -378,7 +378,7 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
 
   bool found_mahalanobis_warn = false;
   for (const auto & status : latest_diag_->status) {
-    if (status.message.find("mahalanobis distance") != std::string::npos) {
+    if (status.message.find("[WARN]mahalanobis distance") != std::string::npos) {
       found_mahalanobis_warn = true;
     }
   }
@@ -405,7 +405,7 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
 
   bool found_delay_warn = false;
   for (const auto & status : latest_diag_->status) {
-    if (status.message.find("delay") != std::string::npos) {
+    if (status.message.find("[WARN]twist topic is delay") != std::string::npos) {
       found_delay_warn = true;
     }
   }
@@ -422,7 +422,7 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
 // 5 without crashing.
 // 5. Expects odometry to be updated with the newest pose message, and covariance array to be of
 // size 36.
-TEST_F(EKFLocalizerIntegrationHarness, ScenarioD_QueueOverflow)
+TEST_F(EKFLocalizerIntegrationHarness, QueueOverflow)
 {
   // Boot
   auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
@@ -471,6 +471,84 @@ TEST_F(EKFLocalizerIntegrationHarness, ScenarioD_QueueOverflow)
 
   // Array boundary protection test
   ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
+}
+
+// TEST 5. Confirms node correctly handles timeouts and cascaded WARN => ERROR diagnostics.
+// Expects node to emit WARN at 50 ticks of no pose updates, and ERROR at 100 ticks of no pose
+// updates. This test will:
+// 1. Trigger node init.
+// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
+// 3. Advance time 48 ticks (expect no WARN yet).
+// 4. Advance time 1 more tick (expect WARN).
+// 5. Advance time 50 more ticks (expect ERROR).
+TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
+{
+  // Boot
+  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
+  req->data = true;
+  client_trigger_->async_send_request(req);
+  executor_->spin_some();
+
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
+  init_pose.header.stamp = current_time_;
+  init_pose.header.frame_id = "map";
+  init_pose.pose.pose.orientation.w = 1.0;
+
+  init_pose.pose.covariance.fill(0.0);
+  init_pose.pose.covariance[0] = 0.01;   // X
+  init_pose.pose.covariance[7] = 0.01;   // Y
+  init_pose.pose.covariance[14] = 0.01;  // Z
+  init_pose.pose.covariance[21] = 0.01;  // Roll
+  init_pose.pose.covariance[28] = 0.01;  // Pitch
+  init_pose.pose.covariance[35] = 0.01;  // Yaw
+
+  pub_initial_pose_->publish(init_pose);
+  spin_executor();  // Flush queue before ticking
+  step_time(0.02);
+
+  // Now deny node of any /in_pose_with_covariance messages
+  // ============ 1. Advance 48 ticks (total 49, threshold is 50 for WARN) ============
+  for (int i = 0; i < 48; ++i) {
+    step_time(0.02);
+  }
+
+  // Expects node to not WARN yet
+  ASSERT_NE(latest_diag_, nullptr);
+  bool found_pose_warn = false;
+  for (const auto & status : latest_diag_->status) {
+    if (status.message.find("pose is not updated") != std::string::npos) {
+      found_pose_warn = true;
+    }
+  }
+  EXPECT_FALSE(found_pose_warn) << "Node failed to shut up before tick 50.";
+
+  // ============ 2. Advance 1 more tick to hit 50 (WARN state) ============
+  step_time(0.02);
+
+  found_pose_warn = false;
+  for (const auto & status : latest_diag_->status) {
+    if (status.message.find("[WARN]pose is not updated") != std::string::npos) {
+      found_pose_warn = true;
+    }
+  }
+  // Expects node to WARN at 50 ticks of no pose updates
+  EXPECT_TRUE(found_pose_warn) << "Node failed to WARN at 50 missed updates.";
+
+  // ============ 3. Advance 50 more ticks to hit 100 (ERROR state) ============
+  for (int i = 0; i < 50; ++i) {
+    step_time(0.02);
+  }
+
+  bool found_pose_error = false;
+  for (const auto & status : latest_diag_->status) {
+    if (
+      status.message.find("[ERROR]pose is not updated") != std::string::npos &&
+      status.level == diagnostic_msgs::msg::DiagnosticStatus::ERROR) {
+      found_pose_error = true;
+    }
+  }
+  // Expects node to ERROR at 100 ticks of no pose updates
+  EXPECT_TRUE(found_pose_error) << "Node failed to ERROR at 100 missed updates.";
 }
 
 }  // namespace autoware::ekf_localizer
