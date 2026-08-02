@@ -129,15 +129,14 @@ protected:
   size_t odom_count_ = 0;
 };
 
-}  // namespace autoware::ekf_localizer
-
 // ================== TESTING AREA HERE ==================
 
 // TEST 1. Confirms node correctly performs pose initialization properly.
 // Expects:
 // - Node should not publish odometry until it receives a trigger and an init pose.
 // - After receiving a trigger and an init pose, node should publish odometry exactly at that init
-// pose. This test will:
+// pose.
+// This test will:
 // 1. Brief step time 0.1 sec (expect no odometry published).
 // 2. Trigger node init (still expect no odometry published).
 // 3. Brief step time 0.1 sec (expect diagnostics to report error due to missing init pose).
@@ -192,3 +191,62 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 10.0, near_tol);
   EXPECT_NEAR(latest_odom_->pose.pose.position.y, 20.0, near_tol);
 }
+
+// TEST 2. Confirms node correctly performs deterministic kinematics.
+// Expects:
+// - Node should publish odometry that moves 5.0 m in X after 1 second of
+// constant velocity input (5.0 m/s in X, 0.0 rad/s in yaw).
+// - Node should report covariance growth due to prediction step.
+// This test will:
+// 1. Trigger node init.
+// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
+// 3. Publish a constant twist (5.0 m/s in X, 0.0 rad/s in yaw) for 1 second (50 ticks at 50Hz).
+// 4. Expects:
+// - Odometry to have moved 5.0 m in X, nothing in Y, hence new pose should be (5.0, 0.0, 0.0).
+// - Covariance to have grown due to prediction step.
+TEST_F(EKFLocalizerIntegrationHarness, ScenarioB_DeterministicKinematics)
+{
+  // Boot up node
+  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
+  req->data = true;
+  client_trigger_->async_send_request(req);
+  executor_->spin_some();
+
+  // Init pose
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
+  init_pose.header.stamp = current_time_;
+  init_pose.header.frame_id = "map";
+  init_pose.pose.pose.orientation.w = 1.0;
+  init_pose.pose.covariance.fill(0.0);
+  init_pose.pose.covariance[0] = 0.01;
+  pub_initial_pose_->publish(init_pose);
+  executor_->spin_some();
+
+  // Constant twist (velocity X = 5.0, yaw rate = 0.0)
+  geometry_msgs::msg::TwistWithCovarianceStamped twist_msg;
+  twist_msg.header.frame_id = "base_link";
+  twist_msg.twist.twist.linear.x = 5.0;
+  twist_msg.twist.twist.angular.z = 0.0;
+  twist_msg.twist.covariance.fill(0.0);
+  twist_msg.twist.covariance[0] = 0.1;
+  twist_msg.twist.covariance[35] = 0.1;
+
+  // Run filter for 1 second (20 ticks at 50Hz)
+  for (int i = 0; i < 50; ++i) {
+    twist_msg.header.stamp = current_time_;
+    pub_twist_->publish(twist_msg);
+    step_time(0.02);
+  }
+
+  // Expects odometry to have moved 5.0 m in X, nothing in Y
+  ASSERT_NE(latest_odom_, nullptr);
+  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 5.0, 1e-3);
+  EXPECT_NEAR(latest_odom_->pose.pose.position.y, 0.0, 1e-3);
+
+  // Expects memory of coveriance to grow due to prediction
+  ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
+  double cov_x_x = latest_odom_->pose.covariance[0];
+  EXPECT_NEAR(cov_x_x, 0.01, near_tol);
+}
+
+}  // namespace autoware::ekf_localizer
