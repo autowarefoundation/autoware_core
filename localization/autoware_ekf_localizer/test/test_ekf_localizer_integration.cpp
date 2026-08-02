@@ -294,7 +294,7 @@ TEST_F(EKFLocalizerIntegrationHarness, DeterministicKinematics)
   EXPECT_LT(latest_odom_->pose.pose.position.x, 5.0);
   EXPECT_NEAR(latest_odom_->pose.pose.position.y, 0.0, near_tol);
 
-  // Expects memory of coveriance to grow due to prediction
+  // Expects memory of covariance to grow due to prediction
   ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
   double cov_x_x = latest_odom_->pose.covariance[0];
   EXPECT_NEAR(cov_x_x, 0.0120766, near_tol);
