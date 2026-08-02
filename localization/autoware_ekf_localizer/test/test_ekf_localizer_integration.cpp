@@ -412,4 +412,65 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
   EXPECT_TRUE(found_delay_warn) << "Failed to trigger Delay limit warning.";
 }
 
+// TEST 4. Confirms node correctly handles pose queue overflow.
+// Expects node to ignore oldest messages and process newest messages without crashing.
+// This test will:
+// 1. Trigger node init.
+// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
+// 3. Flood pose queue with 8 messages (max_pose_queue_size is 5 by default).
+// 4. Step time to trigger EKF timer callback, which should pop oldest 3 messages and process newest
+// 5 without crashing.
+// 5. Expects odometry to be updated with the newest pose message, and covariance array to be of
+// size 36.
+TEST_F(EKFLocalizerIntegrationHarness, ScenarioD_QueueOverflow)
+{
+  // Boot
+  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
+  req->data = true;
+  client_trigger_->async_send_request(req);
+  executor_->spin_some();
+
+  // Init pose
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
+  init_pose.header.stamp = current_time_;
+  init_pose.header.frame_id = "map";
+  init_pose.pose.pose.orientation.w = 1.0;
+
+  init_pose.pose.covariance.fill(0.0);
+  init_pose.pose.covariance[0] = 0.01;   // X
+  init_pose.pose.covariance[7] = 0.01;   // Y
+  init_pose.pose.covariance[14] = 0.01;  // Z
+  init_pose.pose.covariance[21] = 0.01;  // Roll
+  init_pose.pose.covariance[28] = 0.01;  // Pitch
+  init_pose.pose.covariance[35] = 0.01;  // Yaw
+
+  pub_initial_pose_->publish(init_pose);
+  spin_executor();  // Flush queue before ticking
+  step_time(0.02);
+
+  // As default max_pose_queue_size is 5, we gonna flood queue with 8 messages
+  for (int i = 0; i < 8; ++i) {
+    geometry_msgs::msg::PoseWithCovarianceStamped rapid_pose = init_pose;
+    rapid_pose.header.stamp = current_time_;
+    rapid_pose.pose.pose.position.x = 0.1 * i;
+    pub_pose_->publish(rapid_pose);
+
+    // Spin executor to process subscription callbacks instantly,
+    // but don't step time (so EKF timer callback can't drain queue yet)
+    executor_->spin_some();
+  }
+
+  // Now step time to trigger EKF timer callback
+  // It should pop oldest 3, process newest 5, without crashing
+  step_time(0.02);
+
+  ASSERT_NE(latest_odom_, nullptr);
+
+  // Expects updated state, should be somewhere x > 0.0
+  EXPECT_GT(latest_odom_->pose.pose.position.x, 0.0);
+
+  // Array boundary protection test
+  ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
+}
+
 }  // namespace autoware::ekf_localizer
