@@ -35,6 +35,6 @@ param_values:
 processes:
   - name: estimate_acceleration
     trigger_conditions:
-      - on_input: twist
+      - on_input: odom
     outcomes:
       - to_output: accel
