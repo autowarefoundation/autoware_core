@@ -28,7 +28,6 @@ if(BUILD_TESTING)
 
   if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     ament_add_ros_isolated_gtest(test_gyro_odometer
-      test/test_main.cpp
       test/test_gyro_odometer_pubsub.cpp
     )
     ament_target_dependencies(test_gyro_odometer
