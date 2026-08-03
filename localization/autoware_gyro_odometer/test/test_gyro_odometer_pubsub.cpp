@@ -60,30 +60,8 @@ rclcpp::NodeOptions get_node_options_with_default_params()
 }
 }  // namespace
 
-bool is_twist_valid(
-  const TwistWithCovarianceStamped & twist, const TwistWithCovarianceStamped & twist_ground_truth)
-{
-  if (twist.twist.twist.linear.x != twist_ground_truth.twist.twist.linear.x) {
-    return false;
-  }
-  if (twist.twist.twist.linear.y != twist_ground_truth.twist.twist.linear.y) {
-    return false;
-  }
-  if (twist.twist.twist.linear.z != twist_ground_truth.twist.twist.linear.z) {
-    return false;
-  }
-  if (twist.twist.twist.angular.x != twist_ground_truth.twist.twist.angular.x) {
-    return false;
-  }
-  if (twist.twist.twist.angular.y != twist_ground_truth.twist.twist.angular.y) {
-    return false;
-  }
-  if (twist.twist.twist.angular.z != twist_ground_truth.twist.twist.angular.z) {
-    return false;
-  }
-  return true;
-}
-
+// Drives the node over real publish/subscribe so each test body stays a plain Arrange/Act/Assert:
+// the fixture owns the ROS context, the executor thread and the test-side pub/sub wiring.
 class GyroOdometerNodeTest : public ::testing::Test
 {
 protected:
@@ -151,17 +129,12 @@ protected:
 // velocity data are provided
 TEST_F(GyroOdometerNodeTest, TestGyroOdometerWithImuAndVelocity)
 {
-  Imu input_imu = generate_sample_imu();
-  TwistWithCovarianceStamped input_velocity = generate_sample_velocity();
-
-  TwistWithCovarianceStamped expected_output_twist;
-  expected_output_twist.twist.twist.linear.x = input_velocity.twist.twist.linear.x;
-  expected_output_twist.twist.twist.angular.x = input_imu.angular_velocity.x;
-  expected_output_twist.twist.twist.angular.y = input_imu.angular_velocity.y;
-  expected_output_twist.twist.twist.angular.z = input_imu.angular_velocity.z;
-
+  // Arrange
+  const Imu input_imu = generate_sample_imu();
+  const TwistWithCovarianceStamped input_velocity = generate_sample_velocity();
   start_gyro_odometer_node();
 
+  // Act
   // TODO(youtalk): Remove these after the refinement of the GyroOdometerNode
   vehicle_twist_publisher_->publish(input_velocity);
   imu_publisher_->publish(input_imu);
@@ -171,21 +144,35 @@ TEST_F(GyroOdometerNodeTest, TestGyroOdometerWithImuAndVelocity)
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-  EXPECT_FALSE(received_twist() == nullptr);
-  EXPECT_TRUE(is_twist_valid(*received_twist(), expected_output_twist));
+  // Assert
+  auto const twist = received_twist();
+  ASSERT_NE(twist, nullptr) << "Twist message was not received within predefined time";
+
+  // The longitudinal velocity comes from the vehicle twist and the angular velocity from the IMU.
+  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.x, input_velocity.twist.twist.linear.x);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.x, input_imu.angular_velocity.x);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.y, input_imu.angular_velocity.y);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.z, input_imu.angular_velocity.z);
+
+  // The lateral and vertical velocities are not estimated, so they stay at zero.
+  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.y, 0.0);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.z, 0.0);
 }
 
 // IMU-only test
 // Verify that the gyro_odometer does NOT publish any outputs when only IMU is provided
 TEST_F(GyroOdometerNodeTest, TestGyroOdometerImuOnly)
 {
-  Imu input_imu = generate_sample_imu();
-
+  // Arrange
+  const Imu input_imu = generate_sample_imu();
   start_gyro_odometer_node();
 
+  // Act
   imu_publisher_->publish(input_imu);
 
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-  EXPECT_TRUE(received_twist() == nullptr);
+  // Assert
+  auto const twist = received_twist();
+  ASSERT_EQ(twist, nullptr) << "Twist message was received when only IMU was provided";
 }
