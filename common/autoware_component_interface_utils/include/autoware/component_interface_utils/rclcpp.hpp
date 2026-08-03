@@ -182,7 +182,7 @@ public:
 
   /// Create a subscription bound to a member function taking the message pointer.
   template <class SpecT, class InstanceT>
-  typename Subscription<SpecT>::SharedPtr create_subscription(
+  typename Subscription<SpecT, NodeT>::SharedPtr create_subscription(
     InstanceT * instance, SpecMessagePtrCallback<SpecT, InstanceT> && callback)
   {
     using std::placeholders::_1;
@@ -191,7 +191,7 @@ public:
 
   /// Create a subscription bound to a member function taking the message by reference.
   template <class SpecT, class InstanceT>
-  typename Subscription<SpecT>::SharedPtr create_subscription(
+  typename Subscription<SpecT, NodeT>::SharedPtr create_subscription(
     InstanceT * instance, SpecMessageRefCallback<SpecT, InstanceT> && callback)
   {
     using std::placeholders::_1;
@@ -208,7 +208,7 @@ public:
 
   /// Create a service server bound to a member function.
   template <class SpecT, class InstanceT>
-  typename Service<SpecT>::SharedPtr create_service(
+  typename Service<SpecT, NodeT>::SharedPtr create_service(
     InstanceT * instance, SpecServiceCallback<SpecT, InstanceT> && callback,
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
