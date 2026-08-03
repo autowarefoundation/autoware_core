@@ -120,6 +120,12 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
     "~/route", autoware::component_interface_specs::get_qos<LaneletRouteSpecs>());
   pub_state_ = create_publisher<RouteStateSpecs::Message>(
     "~/state", autoware::component_interface_specs::get_qos<RouteStateSpecs>());
+  on_change_state_ = [this](RouteState::_state_type state) {
+    RouteState msg;
+    msg.stamp = now();
+    msg.state = state;
+    pub_state_->publish(msg);
+  };
 
   // Route state will be published when the node gets ready for route api after initialization,
   // otherwise the mission planner rejects the request for the API.
@@ -182,7 +188,7 @@ void MissionPlanner::on_odometry(const Odometry::ConstSharedPtr msg)
   arrival_checker_.update(*msg);
 
   // NOTE: Do not check in the other states as goal may change.
-  if (state_.state == RouteState::SET) {
+  if (state_ == RouteState::SET) {
     if (arrival_checker_.is_arrived()) {
       change_state(RouteState::ARRIVED);
     }
@@ -203,9 +209,10 @@ void MissionPlanner::on_map(const LaneletMapBin::ConstSharedPtr msg)
 
 void MissionPlanner::change_state(RouteState::_state_type state)
 {
-  state_.stamp = now();
-  state_.state = state;
-  pub_state_->publish(state_);
+  state_ = state;
+  if (on_change_state_) {
+    on_change_state_(state);
+  }
 }
 
 void MissionPlanner::on_clear_route(
@@ -219,7 +226,7 @@ void MissionPlanner::on_clear_route(
     return;
   }
 
-  change_route();
+  clear_route();
   change_state(RouteState::UNSET);
   res->status.success = true;
 }
@@ -229,7 +236,7 @@ void MissionPlanner::on_set_lanelet_route(
 {
   ScopedProcessingTimePublisher processing_time_publisher(*this);
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
-  const auto is_reroute = state_.state == RouteState::SET;
+  const auto is_reroute = state_ == RouteState::SET;
 
   std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
   try {
@@ -241,7 +248,7 @@ void MissionPlanner::on_set_lanelet_route(
     transform_to_map = std::nullopt;
   }
 
-  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
+  if (state_ != RouteState::UNSET && state_ != RouteState::SET) {
     set_fail_response(
       res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
     return;
@@ -284,18 +291,23 @@ void MissionPlanner::on_set_lanelet_route(
     return;
   }
 
-  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-    cancel_route();
-    change_state(RouteState::SET);
-    set_fail_response(
-      res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
-    return;
+  if (is_reroute && is_autonomous_driving) {
+    const auto reroute_safety_result = check_reroute_safety(*current_route_, route);
+    if (!reroute_safety_result.is_safe) {
+      RCLCPP_ERROR(get_logger(), "%s", reroute_safety_result.reason.c_str());
+      cancel_route();
+      change_state(RouteState::SET);
+      set_fail_response(
+        res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+      return;
+    }
   }
 
   change_route(route);
   change_state(RouteState::SET);
   res->status.success = true;
 
+  publish_route(route);
   publish_pose_log(odometry_->pose.pose, "initial");
   publish_pose_log(req->goal_pose, "goal");
 }
@@ -305,7 +317,7 @@ void MissionPlanner::on_set_waypoint_route(
 {
   ScopedProcessingTimePublisher processing_time_publisher(*this);
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
-  const auto is_reroute = state_.state == RouteState::SET;
+  const auto is_reroute = state_ == RouteState::SET;
 
   std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
   try {
@@ -317,7 +329,7 @@ void MissionPlanner::on_set_waypoint_route(
     transform_to_map = std::nullopt;
   }
 
-  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
+  if (state_ != RouteState::UNSET && state_ != RouteState::SET) {
     set_fail_response(
       res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
     return;
@@ -354,23 +366,28 @@ void MissionPlanner::on_set_waypoint_route(
     return;
   }
 
-  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-    cancel_route();
-    change_state(RouteState::SET);
-    set_fail_response(
-      res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
-    return;
+  if (is_reroute && is_autonomous_driving) {
+    const auto reroute_safety_result = check_reroute_safety(*current_route_, route);
+    if (!reroute_safety_result.is_safe) {
+      RCLCPP_ERROR(get_logger(), "%s", reroute_safety_result.reason.c_str());
+      cancel_route();
+      change_state(RouteState::SET);
+      set_fail_response(
+        res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+      return;
+    }
   }
 
   change_route(route);
   change_state(RouteState::SET);
   res->status.success = true;
 
+  publish_route(route);
   publish_pose_log(odometry_->pose.pose, "initial");
   publish_pose_log(req->goal_pose, "goal");
 }
 
-void MissionPlanner::change_route()
+void MissionPlanner::clear_route()
 {
   current_route_ = nullptr;
   planner_->clearRoute();
@@ -379,6 +396,12 @@ void MissionPlanner::change_route()
   // TODO(Takagi, Isamu): publish an empty route here
   // pub_route_->publish();
   // pub_marker_->publish();
+}
+
+void MissionPlanner::publish_route(const LaneletRoute & route)
+{
+  pub_route_->publish(route);
+  pub_marker_->publish(planner_->visualize(route));
 }
 
 void MissionPlanner::change_route(const LaneletRoute & route)
@@ -391,9 +414,6 @@ void MissionPlanner::change_route(const LaneletRoute & route)
   current_route_ = std::make_shared<LaneletRoute>(route);
   planner_->updateRoute(route);
   arrival_checker_.set_goal(goal);
-
-  pub_route_->publish(route);
-  pub_marker_->publish(planner_->visualize(route));
 }
 
 void MissionPlanner::cancel_route()
@@ -438,22 +458,21 @@ LaneletRoute MissionPlanner::create_waypoint_route(
   return route;
 }
 
-bool MissionPlanner::check_reroute_safety(
+RerouteSafetyResult MissionPlanner::check_reroute_safety(
   const LaneletRoute & original_route, const LaneletRoute & target_route)
 {
   // The pure check_reroute_safety free function validates the routes and the map, but the node
-  // owns the odometry, so guard it here to keep the original observable behavior (same log
-  // message and early return when odometry or map is not yet available).
+  // owns the odometry, so guard it here to keep the original observable behavior (same failure
+  // reason and early return when odometry or map is not yet available).
   if (!map_ptr_ || !lanelet_map_ptr_ || !odometry_) {
-    RCLCPP_ERROR(get_logger(), "Check reroute safety failed. Route, map or odometry is not set.");
-    return false;
+    return {false, "Check reroute safety failed. Route, map or odometry is not set."};
   }
 
   const auto current_velocity = odometry_->twist.twist.linear.x;
 
   return autoware::mission_planner::check_reroute_safety(
     original_route, target_route, lanelet_map_ptr_, current_velocity, reroute_time_threshold_,
-    minimum_reroute_length_, get_logger());
+    minimum_reroute_length_);
 }
 }  // namespace autoware::mission_planner
 

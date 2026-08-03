@@ -152,16 +152,14 @@ TEST(TestLoadInfoFromYaml, LoadTransverseMercatorExplicitScaleFactor)
   EXPECT_FLOAT_EQ(msg.scale_factor, 0.5F);
 }
 
-TEST(TestLoadInfoFromYaml, LoadDeprecatedLowercaseLocal)
+TEST(TestLoadInfoFromYaml, LoadDeprecatedLowercaseLocalThrows)
 {
   const std::string output_path = "/tmp/test_load_info_from_yaml_deprecated_local.yaml";
   write_yaml("projector_type: local\n", output_path);
 
-  const auto msg = autoware::map_projection_loader::load_info_from_yaml(output_path);
-
-  // Deprecated lowercase "local" is remapped to the canonical "Local".
-  EXPECT_EQ(msg.projector_type, autoware_map_msgs::msg::MapProjectorInfo::LOCAL);
-  EXPECT_FLOAT_EQ(msg.scale_factor, 1.0F);
+  // The deprecated lowercase "local" projector type is no longer supported and is rejected.
+  EXPECT_THROW(
+    autoware::map_projection_loader::load_info_from_yaml(output_path), std::runtime_error);
 }
 
 TEST(TestLoadInfoFromYaml, InvalidProjectorTypeThrows)

@@ -16,6 +16,7 @@
 #define MISSION_PLANNER__MISSION_PLANNER_HPP_
 
 #include "arrival_checker.hpp"
+#include "reroute_safety.hpp"
 
 #include <autoware/component_interface_specs/planning.hpp>
 #include <autoware/mission_planner/mission_planner_plugin.hpp>
@@ -34,6 +35,7 @@
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <visualization_msgs/msg/marker_array.hpp>
 
+#include <functional>
 #include <memory>
 #include <string>
 #include <vector>
@@ -64,6 +66,8 @@ public:
   explicit MissionPlanner(const rclcpp::NodeOptions & options);
 
 private:
+  using ChangeStateCallback = std::function<void(RouteState::_state_type)>;
+
   // Publishes the processing time on destruction, regardless of which return path is taken.
   class ScopedProcessingTimePublisher
   {
@@ -102,7 +106,8 @@ private:
   Odometry::ConstSharedPtr odometry_;
   OperationModeState::ConstSharedPtr operation_mode_state_;
   LaneletMapBin::ConstSharedPtr map_ptr_;
-  RouteState state_;
+  RouteState::_state_type state_{};
+  ChangeStateCallback on_change_state_;
   LaneletRoute::ConstSharedPtr current_route_;
   lanelet::LaneletMapPtr lanelet_map_ptr_{nullptr};
 
@@ -119,7 +124,8 @@ private:
     const SetWaypointRoute::Response::SharedPtr res);
 
   void change_state(RouteState::_state_type state);
-  void change_route();
+  void clear_route();
+  void publish_route(const LaneletRoute & route);
   void change_route(const LaneletRoute & route);
   void cancel_route();
   LaneletRoute create_lanelet_route(
@@ -140,7 +146,8 @@ private:
   // flag to allow reroute in autonomous driving mode.
   // if false, reroute fails. if true, only safe reroute is allowed.
   bool allow_reroute_in_autonomous_mode_;
-  bool check_reroute_safety(const LaneletRoute & original_route, const LaneletRoute & target_route);
+  RerouteSafetyResult check_reroute_safety(
+    const LaneletRoute & original_route, const LaneletRoute & target_route);
 
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
   rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float64Stamped>::SharedPtr
