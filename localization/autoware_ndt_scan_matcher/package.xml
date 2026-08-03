@@ -46,6 +46,7 @@
   <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>launch_testing_ament_cmake</test_depend>
+  <test_depend>rcl_yaml_param_parser</test_depend>
   <test_depend>ros_testing</test_depend>
 
   <export>
