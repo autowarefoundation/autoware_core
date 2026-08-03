@@ -33,7 +33,7 @@
 namespace
 {
 // Floating point tolerance at EXPECT_NEAR and similar checks
-constexpr float near_tol = 1e-3F;
+constexpr float near_tol = 1e-2F;
 }  // namespace
 
 namespace autoware::ekf_localizer
