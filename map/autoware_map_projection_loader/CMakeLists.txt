@@ -9,6 +9,7 @@ ament_auto_find_build_dependencies()
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_projection_loader.cpp
   src/load_info_from_lanelet2_map.cpp
+  src/map_projection_loader_node.cpp
 )
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}

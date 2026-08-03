@@ -50,6 +50,10 @@ if(BUILD_TESTING)
       test/lanelet2_map_loader_launch.test.py
       TIMEOUT "30"
     )
+    add_launch_test(
+      test/pointcloud_map_loader_metadata_launch.test.py
+      TIMEOUT "30"
+    )
   endif()
   install(DIRECTORY
     test/data/

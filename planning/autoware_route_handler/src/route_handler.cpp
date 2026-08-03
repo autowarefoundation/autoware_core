@@ -769,13 +769,14 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceAfter(
 
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
-  while (rclcpp::ok() && length < min_length) {
+  std::unordered_set<lanelet::Id> visited_ids{lanelet.id()};
+  while (length < min_length) {
     lanelet::ConstLanelet next_lanelet;
     if (!getNextLaneletWithinRoute(current_lanelet, &next_lanelet)) {
       break;
     }
-    // loop check
-    if (lanelet.id() == next_lanelet.id()) {
+    // loop check: a lanelet is visited at most once so that a cyclic route terminates
+    if (!visited_ids.insert(next_lanelet.id()).second) {
       break;
     }
     lanelet_sequence_forward.push_back(next_lanelet);
@@ -819,7 +820,7 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceUpTo(
       [&lanelet_to_check](auto & backward) { return (backward.id() == lanelet_to_check.id()); });
   };
 
-  while (rclcpp::ok() && length < min_length) {
+  while (length < min_length) {
     previous_lanelets.clear();
     if (!getPreviousLaneletsWithinRoute(current_lanelet, &previous_lanelets)) {
       break;
@@ -827,6 +828,7 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceUpTo(
 
     if (checkForLoop(previous_lanelets, true)) break;
 
+    const auto previous_id = current_lanelet.id();
     for (const auto & prev_lanelet : previous_lanelets) {
       if (!isNewLanelet(prev_lanelet) || exists(goal_lanelets_, prev_lanelet)) continue;
       lanelet_sequence_backward.push_back(prev_lanelet);
@@ -835,6 +837,8 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceUpTo(
       current_lanelet = prev_lanelet;
       break;
     }
+    // none of the previous lanelets was new, so the traversal cannot progress any further
+    if (current_lanelet.id() == previous_id) break;
   }
 
   std::reverse(lanelet_sequence_backward.begin(), lanelet_sequence_backward.end());
@@ -1011,7 +1015,7 @@ lanelet::ConstLanelets RouteHandler::getShoulderLaneletSequenceAfter(
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
   std::set<lanelet::Id> searched_ids{};
-  while (rclcpp::ok() && length < min_length) {
+  while (length < min_length) {
     const auto next_lanelet = getFollowingShoulderLanelet(current_lanelet);
     if (!next_lanelet) break;
     lanelet_sequence_forward.push_back(*next_lanelet);
@@ -1053,7 +1057,7 @@ lanelet::ConstLanelets RouteHandler::getShoulderLaneletSequenceUpTo(
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
   std::set<lanelet::Id> searched_ids{};
-  while (rclcpp::ok() && length < min_length) {
+  while (length < min_length) {
     const auto prev_lanelet = getPreviousShoulderLanelet(current_lanelet);
     if (!prev_lanelet) break;
 
