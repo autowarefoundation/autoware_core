@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef GYRO_ODOMETER_FUSION_HPP_
-#define GYRO_ODOMETER_FUSION_HPP_
+#ifndef GYRO_ODOMETER_HPP_
+#define GYRO_ODOMETER_HPP_
 
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -53,4 +53,4 @@ geometry_msgs::msg::TwistWithCovarianceStamped apply_stop_compensation(
 
 }  // namespace autoware::gyro_odometer
 
-#endif  // GYRO_ODOMETER_FUSION_HPP_
+#endif  // GYRO_ODOMETER_HPP_
