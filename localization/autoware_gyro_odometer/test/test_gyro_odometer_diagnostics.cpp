@@ -24,7 +24,7 @@ namespace autoware::gyro_odometer
 // Pure-decision tests: no ROS context, deterministic state in / entries out.
 
 // determine_diagnostics: everything healthy -> OK, no entries, empty log.
-TEST(GyroOdometerFusion, DetermineDiagnosticsOkWhenHealthy)
+TEST(GyroOdometerDiagnostics, DetermineDiagnosticsOkWhenHealthy)
 {
   DiagnosticsState state;
   state.vehicle_twist_arrived = true;
@@ -45,7 +45,7 @@ TEST(GyroOdometerFusion, DetermineDiagnosticsOkWhenHealthy)
 // determine_diagnostics: missing inputs raise WARN. This pins the bug fix: the aggregated level
 // must reflect the highest triggered severity (previously the local 'level' stayed OK and the WARN
 // log was unreachable).
-TEST(GyroOdometerFusion, DetermineDiagnosticsWarnWhenNotArrived)
+TEST(GyroOdometerDiagnostics, DetermineDiagnosticsWarnWhenNotArrived)
 {
   DiagnosticsState state;
   state.vehicle_twist_arrived = false;
@@ -64,7 +64,7 @@ TEST(GyroOdometerFusion, DetermineDiagnosticsWarnWhenNotArrived)
 }
 
 // determine_diagnostics: a timeout raises ERROR.
-TEST(GyroOdometerFusion, DetermineDiagnosticsErrorOnTimeout)
+TEST(GyroOdometerDiagnostics, DetermineDiagnosticsErrorOnTimeout)
 {
   DiagnosticsState state;
   state.vehicle_twist_arrived = true;
@@ -82,7 +82,7 @@ TEST(GyroOdometerFusion, DetermineDiagnosticsErrorOnTimeout)
 }
 
 // determine_diagnostics: TF failure raises ERROR.
-TEST(GyroOdometerFusion, DetermineDiagnosticsErrorOnTransformFailure)
+TEST(GyroOdometerDiagnostics, DetermineDiagnosticsErrorOnTransformFailure)
 {
   DiagnosticsState state;
   state.vehicle_twist_arrived = true;
@@ -102,7 +102,7 @@ TEST(GyroOdometerFusion, DetermineDiagnosticsErrorOnTransformFailure)
 
 // determine_diagnostics: when both WARN and ERROR conditions trigger, the aggregated level is the
 // ERROR maximum, while every entry keeps its own level and the entry order is preserved.
-TEST(GyroOdometerFusion, DetermineDiagnosticsAggregatesToMaxSeverity)
+TEST(GyroOdometerDiagnostics, DetermineDiagnosticsAggregatesToMaxSeverity)
 {
   DiagnosticsState state;
   state.vehicle_twist_arrived = false;  // WARN

@@ -57,7 +57,7 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_gyro_odometer
       ${PROJECT_NAME}
-      ${PROJECT_NAME}_ros //ROS-based test can be executed only when agnocast is disabled
+      ${PROJECT_NAME}_ros # ROS-based test can be executed only when agnocast is disabled
     )
     target_include_directories(test_gyro_odometer PRIVATE
       src
