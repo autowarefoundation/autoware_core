@@ -34,6 +34,20 @@ if(BUILD_TESTING)
     src
   )
 
+# The diagnostics decision is a pure function too, so the same plain-gtest treatment applies.
+  ament_add_gtest(test_gyro_odometer_diagnostics
+    test/test_gyro_odometer_diagnostics.cpp
+  )
+  ament_target_dependencies(test_gyro_odometer_diagnostics
+    ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS}
+  )
+  target_link_libraries(test_gyro_odometer_diagnostics
+    ${PROJECT_NAME}
+  )
+  target_include_directories(test_gyro_odometer_diagnostics PRIVATE
+    src
+  )
+
   if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     ament_add_ros_isolated_gtest(test_gyro_odometer
       test/test_gyro_odometer_pubsub.cpp
