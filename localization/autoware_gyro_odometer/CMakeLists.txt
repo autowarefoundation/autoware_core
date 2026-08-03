@@ -5,19 +5,26 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
-  src/gyro_odometer_core.cpp
   src/gyro_odometer_fusion.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} fmt)
 
+# ROS layer: parameters, pub/sub, TF lookup and the diagnostics timer.
+ament_auto_add_library(${PROJECT_NAME}_ros SHARED
+  src/gyro_odometer_core.cpp
+)
+
+target_link_libraries(${PROJECT_NAME}_ros ${PROJECT_NAME})
+
 if(BUILD_TESTING)
-  ament_add_ros_isolated_gtest(test_gyro_odometer_fusion
-    test/test_main.cpp
+  # The fusion functions only do message arithmetic, so this test needs no ROS context and can use
+  # a plain gtest instead of a ROS-isolated one.
+  ament_add_gtest(test_gyro_odometer_fusion
     test/test_gyro_odometer_fusion.cpp
   )
   ament_target_dependencies(test_gyro_odometer_fusion
-    rclcpp
+    ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS}
   )
   target_link_libraries(test_gyro_odometer_fusion
     ${PROJECT_NAME}
@@ -35,6 +42,7 @@ if(BUILD_TESTING)
     )
     target_link_libraries(test_gyro_odometer
       ${PROJECT_NAME}
+      ${PROJECT_NAME}_ros //ROS-based test can be executed only when agnocast is disabled
     )
     target_include_directories(test_gyro_odometer PRIVATE
       src
