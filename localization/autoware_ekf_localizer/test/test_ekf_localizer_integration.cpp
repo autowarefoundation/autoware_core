@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include <iostream>
 #include <limits>
 #include <memory>
 #include <string>
@@ -210,6 +211,7 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
   ASSERT_NE(latest_diag_, nullptr);
   bool found_init_error = false;
   for (const auto & status : latest_diag_->status) {
+    std::cout << "LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
     if (
       status.message.find("[ERROR]initial pose is not set") != std::string::npos &&
       status.level == diagnostic_msgs::msg::DiagnosticStatus::ERROR) {
@@ -378,6 +380,7 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
 
   bool found_mahalanobis_warn = false;
   for (const auto & status : latest_diag_->status) {
+    std::cout << "LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
     if (status.message.find("[WARN]mahalanobis distance") != std::string::npos) {
       found_mahalanobis_warn = true;
     }
@@ -405,6 +408,7 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
 
   bool found_delay_warn = false;
   for (const auto & status : latest_diag_->status) {
+    std::cout << "LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
     if (status.message.find("[WARN]twist topic is delay") != std::string::npos) {
       found_delay_warn = true;
     }
@@ -516,6 +520,7 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
   ASSERT_NE(latest_diag_, nullptr);
   bool found_pose_warn = false;
   for (const auto & status : latest_diag_->status) {
+    std::cout << "LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
     if (status.message.find("pose is not updated") != std::string::npos) {
       found_pose_warn = true;
     }
@@ -527,6 +532,7 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
 
   found_pose_warn = false;
   for (const auto & status : latest_diag_->status) {
+    std::cout << "LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
     if (status.message.find("[WARN]pose is not updated") != std::string::npos) {
       found_pose_warn = true;
     }
@@ -541,6 +547,7 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
 
   bool found_pose_error = false;
   for (const auto & status : latest_diag_->status) {
+    std::cout << "LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
     if (
       status.message.find("[ERROR]pose is not updated") != std::string::npos &&
       status.level == diagnostic_msgs::msg::DiagnosticStatus::ERROR) {
