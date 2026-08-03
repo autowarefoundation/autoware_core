@@ -34,6 +34,8 @@ projector_type: Local
 
 Note that even if you input scale_factor, it will be overwritten to 1.0.
 
+The `projector_type` value is case-sensitive and must be exactly `Local`. The previously accepted lowercase `local` is no longer supported and will be rejected.
+
 #### Limitation
 
 The functionality that requires latitude and longitude will become unavailable.

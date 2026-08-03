@@ -36,7 +36,7 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   ROS2_EXECUTOR SingleThreadedExecutor
 )
 
-target_link_libraries(${PROJECT_NAME} Eigen3::Eigen)
+target_link_libraries(${PROJECT_NAME} Eigen3::Eigen fmt::fmt)
 
 function(add_testcase filepath)
   get_filename_component(filename ${filepath} NAME)

@@ -1,0 +1,67 @@
+# autoware_interface_spec_lint
+
+WARN-only static and manifest checks for the Autoware component interface specifications defined in `autoware_component_interface_specs`. This package gives fast, pre-build, human-readable warnings that complement the compile-time `all_specs_valid<>` static assertions: it catches "defined-but-unregistered" specs and manifest drift that the compiler alone does not.
+
+In this initial version every check is advisory: the tool prints findings but always exits 0 with `--warn-only`, and the pre-commit hook never fails the commit. Flipping the warnings into hard errors (the warn-to-error ratchet) is left to a follow-up change.
+
+## Checks
+
+| Check                    | Input                      | Flags (WARN)                                                                                                                                                                                        |
+| ------------------------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface_spec_concept` | domain headers             | a struct with a `name[]` that is neither a valid topic (`Message` + `depth` + `reliability` + `durability`) nor a valid service (`Service`)                                                         |
+| `spec_registered`        | domain headers             | a spec struct not listed in its namespace's `using Specs = std::tuple<...>`                                                                                                                         |
+| `version_consistency`    | headers + manifest         | a domain not declaring exactly one `version{...}`, a MAJOR that is not `0` (the standard is unstable while at `0.x`), or a manifest version that disagrees with the header version                  |
+| `qos_consistency`        | headers + manifest         | a registered spec whose `history` / `depth` / `reliability` / `durability` disagrees with its manifest `qos` block, is missing from the manifest, or names a QoS policy the manifest cannot express |
+| `manifest_fresh`         | generator + committed JSON | the rebuilt generator output differs from the committed `interface_manifest.json`                                                                                                                   |
+
+`interface_spec_concept`, `spec_registered`, `version_consistency` and `qos_consistency` are pure-Python static analyses over the domain headers and are wired into pre-commit. `manifest_fresh` is a colcon test because it needs the built manifest generator binary.
+
+A domain declares its `version` and its `Specs` tuple either literally or through `AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(MAJOR, MINOR, PATCH, ...)`, which expands to both. The header parser understands each form, including the multi-line invocation clang-format produces.
+
+### `qos_consistency` vs `manifest_fresh`
+
+Both catch QoS drift between the domain headers and the committed manifest, but `manifest_fresh` needs the built generator binary and skips without it — which is the ordinary pre-commit path. `qos_consistency` reads only the headers and the committed JSON, so `reliability` and `durability` stay verified there too. Those are the two axes ROS 2 evaluates before it will let a publisher and a subscription talk at all: a `RELIABLE` subscription never hears a `BEST_EFFORT` publisher, and a `TRANSIENT_LOCAL` one never receives the latched message a `VOLATILE` publisher dropped.
+
+Topic specs carry their own QoS. Service specs carry none, so `qos_consistency` derives theirs from the single `service_qos` profile in `utils.hpp` rather than restating the values — a second copy would be one more place for the specs and the wire to drift apart.
+
+## Suppression contract
+
+A spec struct is exempt from `spec_registered` when the marker `// interface-spec-lint: not-versioned` appears on the struct's own declaration line or on the line directly above it. Use it for a topic that is deliberately not part of the versioned interface set. The marker string is a fixed contract that other packages depend on, so do not change its text.
+
+```cpp
+// interface-spec-lint: not-versioned
+struct PlanningDebugMarkers {
+  using Message = visualization_msgs::msg::MarkerArray;
+  static constexpr char name[] = "/planning/debug/markers";
+  // ...
+};
+```
+
+The struct above is illustrative: a debug/visualization topic is the kind of interface that is deliberately outside the versioned set. It is not a real spec in this package -- the committed domain headers do not use the marker, since every struct they declare is registered.
+
+## Usage
+
+```bash
+# Lint the core specs include dir (defaults resolve relative to the repo root).
+ament_autoware_interface_spec_lint --warn-only
+
+# Lint an explicit directory and diff against a manifest.
+ament_autoware_interface_spec_lint --warn-only \
+  --spec-dir common/autoware_component_interface_specs/include/autoware/component_interface_specs \
+  --manifest common/autoware_component_interface_specs/interface_manifest.json
+```
+
+### `manifest_fresh`
+
+`manifest_fresh` needs the manifest generator binary. Point at it with `--generator <path>` or the `INTERFACE_MANIFEST_GENERATOR` environment variable. When neither is available the check skips gracefully with a warning and records nothing, so it never blocks a build.
+
+```bash
+export INTERFACE_MANIFEST_GENERATOR=$PWD/build/autoware_component_interface_specs/generate_interface_manifest
+ament_autoware_interface_spec_lint --warn-only \
+  --manifest common/autoware_component_interface_specs/interface_manifest.json \
+  --generator "$INTERFACE_MANIFEST_GENERATOR"
+```
+
+## Status
+
+The checks are advisory only. `manifest_fresh` records drift but returns success; the pre-commit hook prints warnings and exits 0. A follow-up change flips both the static checks and `manifest_fresh` to hard failures.

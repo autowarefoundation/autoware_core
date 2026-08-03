@@ -12,47 +12,57 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/localization.hpp"
 #include "gtest/gtest.h"
+#include "spec_test_utils.hpp"
+
+#include <tuple>
+
+namespace specs = autoware::component_interface_specs;
+namespace tu = autoware::component_interface_specs::test_utils;
+
+TEST(localization, concept_and_registration)
+{
+  using specs::localization::Acceleration;
+  using specs::localization::InitializationState;
+  using specs::localization::Initialize;
+  using specs::localization::KinematicState;
+  using specs::localization::Specs;
+
+  static_assert(specs::InterfaceSpec<KinematicState>);
+  static_assert(specs::InterfaceSpec<Acceleration>);
+  static_assert(specs::InterfaceSpec<InitializationState>);
+  static_assert(specs::ServiceSpec<Initialize>);
+
+  static_assert(tu::has_type<KinematicState, Specs>::value);
+  static_assert(tu::has_type<Acceleration, Specs>::value);
+  static_assert(tu::has_type<InitializationState, Specs>::value);
+  static_assert(tu::has_type<Initialize, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 4);
+  SUCCEED();
+}
 
 TEST(localization, interface)
 {
   {
-    using autoware::component_interface_specs::localization::KinematicState;
-    size_t depth = 1;
-    EXPECT_EQ(KinematicState::depth, depth);
-    EXPECT_EQ(KinematicState::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(KinematicState::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
-
-    const auto qos = autoware::component_interface_specs::get_qos<KinematicState>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
+    using specs::localization::KinematicState;
+    tu::expect_topic_qos<KinematicState>(
+      "/localization/kinematic_state", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_VOLATILE);
   }
 
   {
-    using autoware::component_interface_specs::localization::Acceleration;
-    size_t depth = 1;
-    EXPECT_EQ(Acceleration::depth, depth);
-    EXPECT_EQ(Acceleration::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(Acceleration::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
-
-    const auto qos = autoware::component_interface_specs::get_qos<Acceleration>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
+    using specs::localization::Acceleration;
+    tu::expect_topic_qos<Acceleration>(
+      "/localization/acceleration", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_VOLATILE);
   }
 
   {
-    using autoware::component_interface_specs::localization::InitializationState;
-    size_t depth = 1;
-    EXPECT_EQ(InitializationState::depth, depth);
-    EXPECT_EQ(InitializationState::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(InitializationState::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
-
-    const auto qos = autoware::component_interface_specs::get_qos<InitializationState>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
+    using specs::localization::InitializationState;
+    tu::expect_topic_qos<InitializationState>(
+      "/localization/initialization_state", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
   }
 }
