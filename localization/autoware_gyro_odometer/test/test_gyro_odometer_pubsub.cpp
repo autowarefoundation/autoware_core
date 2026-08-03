@@ -13,7 +13,6 @@
 // limitations under the License.
 
 #include "gyro_odometer_core.hpp"
-#include "test_gyro_odometer_helper.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -27,6 +26,37 @@
  */
 using geometry_msgs::msg::TwistWithCovarianceStamped;
 using sensor_msgs::msg::Imu;
+
+namespace
+{
+Imu generate_sample_imu()
+{
+  Imu imu;
+  imu.header.frame_id = "base_link";
+  imu.angular_velocity.x = 0.1;
+  imu.angular_velocity.y = 0.2;
+  imu.angular_velocity.z = 0.3;
+  return imu;
+}
+
+TwistWithCovarianceStamped generate_sample_velocity()
+{
+  TwistWithCovarianceStamped twist;
+  twist.header.frame_id = "base_link";
+  twist.twist.twist.linear.x = 1.0;
+  return twist;
+}
+
+rclcpp::NodeOptions get_node_options_with_default_params()
+{
+  rclcpp::NodeOptions node_options;
+
+  // for gyro_odometer
+  node_options.append_parameter_override("output_frame", "base_link");
+  node_options.append_parameter_override("message_timeout_sec", 1e12);
+  return node_options;
+}
+}  // namespace
 
 class ImuGenerator : public rclcpp::Node
 {
