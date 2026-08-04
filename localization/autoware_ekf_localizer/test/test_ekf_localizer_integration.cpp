@@ -410,7 +410,8 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
   pub_initial_pose_->publish(init_pose);
   spin_once_tick_once();
 
-  // Warm up delay buffer a little bit, so that delayed pose is actually delayed enough to trigger warning
+  // Warm up delay buffer a little bit, so that delayed pose is actually delayed enough to trigger
+  // warning
   for (int i = 0; i < 50; ++i) {
     step_time(0.02);
   }
