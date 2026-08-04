@@ -159,6 +159,16 @@ protected:
     publish_clock();
   }
 
+  void trigger_node() {
+    ASSERT_TRUE(client_trigger_->wait_for_service(std::chrono::seconds(1)));
+    auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
+    req->data = true;
+    auto future = client_trigger_->async_send_request(req);
+    executor_->spin_until_future_complete(future);
+    ASSERT_TRUE(future.get()->success);
+    spin_executor();    
+  }
+
   std::shared_ptr<EKFLocalizer> node_;
   std::shared_ptr<rclcpp::Node> test_node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
@@ -199,12 +209,7 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
   EXPECT_EQ(odom_count_, 0U);
 
   // 2. Trigger node init
-  ASSERT_TRUE(client_trigger_->wait_for_service(std::chrono::seconds(1)));
-  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
-  req->data = true;
-  auto future = client_trigger_->async_send_request(req);
-  executor_->spin_until_future_complete(future);
-  ASSERT_TRUE(future.get()->success);
+  trigger_node();
 
   // 3. Diagnostics should report error due to missing init pose
   latest_diag_ = nullptr;
@@ -263,11 +268,8 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
 // - Covariance to have grown due to prediction step.
 TEST_F(EKFLocalizerIntegrationHarness, DeterministicKinematics)
 {
-  // Boot up node
-  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
-  req->data = true;
-  client_trigger_->async_send_request(req);
-  spin_executor();
+  // Boot
+  trigger_node();
 
   // Init pose
   geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
@@ -322,10 +324,7 @@ TEST_F(EKFLocalizerIntegrationHarness, DeterministicKinematics)
 TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
 {
   // Boot
-  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
-  req->data = true;
-  client_trigger_->async_send_request(req);
-  executor_->spin_some();
+  trigger_node();
 
   // Init pose
   geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
@@ -434,10 +433,7 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
 TEST_F(EKFLocalizerIntegrationHarness, QueueOverflow)
 {
   // Boot
-  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
-  req->data = true;
-  client_trigger_->async_send_request(req);
-  executor_->spin_some();
+  trigger_node();
 
   // Init pose
   geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
@@ -493,10 +489,7 @@ TEST_F(EKFLocalizerIntegrationHarness, QueueOverflow)
 TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
 {
   // Boot
-  auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
-  req->data = true;
-  client_trigger_->async_send_request(req);
-  executor_->spin_some();
+  trigger_node();
 
   geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
   init_pose.header.stamp = current_time_;
