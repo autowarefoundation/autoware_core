@@ -507,3 +507,4 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
 }
 
 }  // namespace autoware::ekf_localizer
+
