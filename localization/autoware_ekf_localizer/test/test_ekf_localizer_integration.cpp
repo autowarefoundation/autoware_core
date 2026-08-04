@@ -159,20 +159,18 @@ protected:
     publish_clock();
   }
 
-  void trigger_node() {
+  void trigger_node()
+  {
     ASSERT_TRUE(client_trigger_->wait_for_service(std::chrono::seconds(1)));
     auto req = std::make_shared<std_srvs::srv::SetBool::Request>();
     req->data = true;
     auto future = client_trigger_->async_send_request(req);
     executor_->spin_until_future_complete(future);
     ASSERT_TRUE(future.get()->success);
-    spin_executor();    
+    spin_executor();
   }
 
-  geometry_msgs::msg::PoseWithCovarianceStamped make_pose(
-    double x = 0.0, 
-    double y = 0.0
-  )
+  geometry_msgs::msg::PoseWithCovarianceStamped make_pose(double x = 0.0, double y = 0.0)
   {
     geometry_msgs::msg::PoseWithCovarianceStamped pose;
     pose.header.stamp = current_time_;
@@ -180,7 +178,7 @@ protected:
     pose.pose.pose.position.x = x;
     pose.pose.pose.position.y = y;
     pose.pose.pose.orientation.w = 1.0;
-    
+
     // Mathematically safe init array
     pose.pose.covariance.fill(0.0);
     pose.pose.covariance[0] = 0.01;   // X
@@ -192,17 +190,14 @@ protected:
     return pose;
   }
 
-  geometry_msgs::msg::TwistWithCovarianceStamped make_twist(
-    double vx = 0.0, 
-    double wz = 0.0
-  )
+  geometry_msgs::msg::TwistWithCovarianceStamped make_twist(double vx = 0.0, double wz = 0.0)
   {
     geometry_msgs::msg::TwistWithCovarianceStamped twist;
     twist.header.stamp = current_time_;
     twist.header.frame_id = "base_link";
     twist.twist.twist.linear.x = vx;
     twist.twist.twist.angular.z = wz;
-    
+
     // Also a safe covariance array
     twist.twist.covariance.fill(0.0);
     twist.twist.covariance[0] = 0.1;
@@ -223,10 +218,7 @@ protected:
   }
 
   // Tick some, wait for diagnostics containing certain substring
-  bool poll_for_diagnostic(
-    const std::string & substr, 
-    int max_ticks
-  )
+  bool poll_for_diagnostic(const std::string & substr, int max_ticks)
   {
     for (int i = 0; i < max_ticks; ++i) {
       step_time(0.02);
@@ -237,8 +229,9 @@ protected:
     return false;
   }
 
-  void spin_once_tick_once() {
-    spin_executor();              // Flush queue before ticking
+  void spin_once_tick_once()
+  {
+    spin_executor();  // Flush queue before ticking
     step_time(0.02);  // Tick once (50 Hz)
   }
 
@@ -286,11 +279,8 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
 
   // 3. Diagnostics should report error due to missing init pose
   latest_diag_ = nullptr;
-  EXPECT_TRUE(
-    poll_for_diagnostic(
-      "[ERROR]initial pose is not set", 10
-    )
-  ) << "Node failed to guard against missing initial pose.";
+  EXPECT_TRUE(poll_for_diagnostic("[ERROR]initial pose is not set", 10))
+    << "Node failed to guard against missing initial pose.";
 
   // 4. Send init pose
   pub_initial_pose_->publish(make_pose(10.0, 20.0));
@@ -389,19 +379,15 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
 
   // ================== Case 2: Mahalanobis gate rejection ==================
   geometry_msgs::msg::PoseWithCovarianceStamped far_pose = make_pose(
-    10000.0, // Massive jump
-    -5000.0
-  );
+    10000.0,  // Massive jump
+    -5000.0);
 
   pub_pose_->publish(far_pose);
   spin_executor();  // Flush queue before ticking
 
   // Expects node to ignore that huge jump and emit a WARN
-  EXPECT_TRUE(
-    poll_for_diagnostic(
-      "[WARN]mahalanobis distance", 5
-    )
-  ) << "Failed to trigger Mahalanobis gate warning.";
+  EXPECT_TRUE(poll_for_diagnostic("[WARN]mahalanobis distance", 5))
+    << "Failed to trigger Mahalanobis gate warning.";
 
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 
@@ -417,11 +403,8 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
   spin_executor();  // Flush queue before ticking
 
   // Expects node to ignore ancient message and emit a WARN
-  EXPECT_TRUE(
-    poll_for_diagnostic(
-      "[WARN]twist topic is delay", 5
-    )
-  ) << "Failed to trigger Delay limit warning.";
+  EXPECT_TRUE(poll_for_diagnostic("[WARN]twist topic is delay", 5))
+    << "Failed to trigger Delay limit warning.";
 
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 }
@@ -481,11 +464,11 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
 {
   // Boot
   trigger_node();
-  
+
   geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
   pub_initial_pose_->publish(init_pose);
   spin_once_tick_once();
-  
+
   // ============ 1. Advance 40 ticks (threshold is 50 for WARN) ============
 
   for (int i = 0; i < 40; ++i) {
@@ -493,27 +476,18 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
   }
 
   // Expects node to not WARN yet
-  EXPECT_FALSE(
-    has_diagnostic(
-      "[WARN]pose is not updated"
-    )
-  ) << "Node failed to shut up before tick 50.";
+  EXPECT_FALSE(has_diagnostic("[WARN]pose is not updated"))
+    << "Node failed to shut up before tick 50.";
 
   // ============ 2. Advance 10 more tick to hit 50 (WARN state) ============
 
-  EXPECT_TRUE(
-    poll_for_diagnostic(
-      "[WARN]pose is not updated", 30
-    )
-  ) << "Node failed to WARN at 50 missed updates.";
+  EXPECT_TRUE(poll_for_diagnostic("[WARN]pose is not updated", 30))
+    << "Node failed to WARN at 50 missed updates.";
 
   // ============ 3. Advance much more ticks to hit over 100 (ERROR state) ============
 
-  EXPECT_TRUE(
-    poll_for_diagnostic(
-      "[ERROR]pose is not updated", 70
-    )
-  ) << "Node failed to ERROR at 100 missed updates.";
+  EXPECT_TRUE(poll_for_diagnostic("[ERROR]pose is not updated", 70))
+    << "Node failed to ERROR at 100 missed updates.";
 }
 
 }  // namespace autoware::ekf_localizer
