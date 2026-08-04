@@ -50,7 +50,9 @@ struct NodeInterface
   using SharedPtr = std::shared_ptr<NodeInterface>;
   using NodeType = NodeT;
 
-  explicit NodeInterface(NodeT * node) : node(node)
+  /// D is deduced separately from NodeT so a derived node does not hijack it, as in NodeAdaptor.
+  template <class D>
+  explicit NodeInterface(D * node) : node(node)
   {
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
     const std::string param = "component_interface.service_introspection";
