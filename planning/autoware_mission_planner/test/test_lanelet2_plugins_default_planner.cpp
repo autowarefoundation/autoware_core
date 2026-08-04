@@ -99,7 +99,7 @@ protected:
       node_->declare_parameter<bool>("check_footprint_inside_lanes");
     const auto vehicle_info =
       autoware::vehicle_info_utils::VehicleInfoUtils(*node_).getVehicleInfo();
-    planner_.initialize(node_.get(), param, vehicle_info);
+    planner_.initialize(param, vehicle_info);
   }
 
   ~DefaultPlannerTest() override { rclcpp::shutdown(); }

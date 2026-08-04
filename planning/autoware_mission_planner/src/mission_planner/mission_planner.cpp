@@ -108,7 +108,7 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
 
   planner_ = std::make_shared<lanelet2::DefaultPlanner>();
-  planner_->initialize(this, default_planner_param, vehicle_info);
+  planner_->initialize(default_planner_param, vehicle_info);
 
   const auto durable_qos = rclcpp::QoS(1).transient_local();
   sub_odometry_ = create_subscription<Odometry>(
@@ -464,6 +464,9 @@ LaneletRoute MissionPlanner::create_waypoint_route(
   points.push_back(transform_pose(req.goal_pose, transform_to_map));
 
   const auto plan_result = planner_->plan(points);
+  if (plan_result.warning_message) {
+    RCLCPP_WARN(get_logger(), "%s", plan_result.warning_message->c_str());
+  }
   if (plan_result.goal_footprint) {
     pub_goal_footprint_marker_->publish(
       lanelet2::DefaultPlanner::visualize_debug_footprint(*plan_result.goal_footprint));

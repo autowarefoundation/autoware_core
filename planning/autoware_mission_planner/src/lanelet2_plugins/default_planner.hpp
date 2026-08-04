@@ -18,7 +18,6 @@
 #include <autoware/route_handler/route_handler.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
-#include <rclcpp/rclcpp.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
@@ -29,6 +28,7 @@
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
 #include <optional>
+#include <string>
 #include <vector>
 
 namespace autoware::mission_planner::lanelet2
@@ -55,12 +55,13 @@ public:
   {
     LaneletRoute route;
     std::optional<autoware_utils_geometry::LinearRing2d> goal_footprint;
+    std::optional<std::string> warning_message;
   };
 
-  DefaultPlanner() : vehicle_info_(), is_graph_ready_(false), param_(), node_(nullptr) {}
+  DefaultPlanner() : vehicle_info_(), is_graph_ready_(false), param_() {}
 
   void initialize(
-    rclcpp::Node * node, const DefaultPlannerParameters & param,
+    const DefaultPlannerParameters & param,
     const autoware::vehicle_info_utils::VehicleInfo & vehicle_info);
   void set_map(const LaneletMapBin & msg);
   [[nodiscard]] bool ready() const;
@@ -80,14 +81,13 @@ protected:
 
   DefaultPlannerParameters param_;
 
-  rclcpp::Node * node_;
-
   // goal_footprint is only set once is_goal_valid() reaches the footprint computation (see
   // PlanResult::goal_footprint).
   struct GoalValidationResult
   {
     bool is_valid;
     std::optional<autoware_utils_geometry::LinearRing2d> goal_footprint;
+    std::optional<std::string> warning_message;
   };
 
   /**
