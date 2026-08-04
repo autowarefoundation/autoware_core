@@ -384,8 +384,7 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
 
   geometry_msgs::msg::PoseWithCovarianceStamped far_pose = make_pose(
     10000.0,  // Massive jump
-    -5000.0
-  );
+    -5000.0);
   pub_pose_->publish(far_pose);
   spin_executor();
 
@@ -507,4 +506,3 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
 }
 
 }  // namespace autoware::ekf_localizer
-
