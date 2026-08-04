@@ -85,7 +85,7 @@ public:
 
 private:
   RCLCPP_DISABLE_COPY(Subscription)
-  typename WrapType::SharedPtr subscription_;
+  WrapSharedPtr subscription_;
 };
 
 }  // namespace autoware::component_interface_utils
