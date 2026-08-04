@@ -28,6 +28,7 @@
 #include <lanelet2_routing/RoutingGraph.h>
 #include <lanelet2_traffic_rules/TrafficRulesFactory.h>
 
+#include <optional>
 #include <vector>
 
 namespace autoware::mission_planner::lanelet2
@@ -48,6 +49,14 @@ public:
   using LaneletMapBin = autoware_map_msgs::msg::LaneletMapBin;
   using MarkerArray = visualization_msgs::msg::MarkerArray;
 
+  // goal_footprint is only set when is_goal_valid() actually computed the footprint (some early
+  // return paths, e.g. the shoulder-lanelet check, never reach that computation).
+  struct PlanResult
+  {
+    LaneletRoute route;
+    std::optional<autoware_utils_geometry::LinearRing2d> goal_footprint;
+  };
+
   DefaultPlanner() : vehicle_info_(), is_graph_ready_(false), param_(), node_(nullptr) {}
 
   void initialize(
@@ -55,7 +64,7 @@ public:
     const autoware::vehicle_info_utils::VehicleInfo & vehicle_info);
   void set_map(const LaneletMapBin & msg);
   [[nodiscard]] bool ready() const;
-  LaneletRoute plan(const RoutePoints & points);
+  PlanResult plan(const RoutePoints & points);
   void updateRoute(const LaneletRoute & route);
   void clearRoute();
   [[nodiscard]] MarkerArray visualize(const LaneletRoute & route) const;
@@ -72,7 +81,14 @@ protected:
   DefaultPlannerParameters param_;
 
   rclcpp::Node * node_;
-  rclcpp::Publisher<MarkerArray>::SharedPtr pub_goal_footprint_marker_;
+
+  // goal_footprint is only set once is_goal_valid() reaches the footprint computation (see
+  // PlanResult::goal_footprint).
+  struct GoalValidationResult
+  {
+    bool is_valid;
+    std::optional<autoware_utils_geometry::LinearRing2d> goal_footprint;
+  };
 
   /**
    * @brief check if the goal_footprint is within the lanelets closest to the goal plus the
@@ -92,7 +108,7 @@ protected:
    * @brief return true if (1)the goal is in parking area or (2)the goal is on the lanes and the
    * footprint around the goal does not overlap the lanes
    */
-  bool is_goal_valid(const geometry_msgs::msg::Pose & goal);
+  GoalValidationResult is_goal_valid(const geometry_msgs::msg::Pose & goal);
 
   /**
    * @brief project the specified goal pose onto the goal lanelet(the last preferred lanelet of

@@ -119,6 +119,7 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   sub_vector_map_ = create_subscription<LaneletMapBin>(
     "~/input/vector_map", durable_qos, std::bind(&MissionPlanner::on_map, this, _1));
   pub_marker_ = create_publisher<MarkerArray>("~/debug/route_marker", durable_qos);
+  pub_goal_footprint_marker_ = create_publisher<MarkerArray>("~/debug/goal_footprint", durable_qos);
 
   // NOTE: The route interface should be mutually exclusive by callback group.
   srv_clear_route = create_service<ClearRouteSpecs::Service>(
@@ -462,7 +463,13 @@ LaneletRoute MissionPlanner::create_waypoint_route(
   }
   points.push_back(transform_pose(req.goal_pose, transform_to_map));
 
-  LaneletRoute route = planner_->plan(points);
+  const auto plan_result = planner_->plan(points);
+  if (plan_result.goal_footprint) {
+    pub_goal_footprint_marker_->publish(
+      lanelet2::DefaultPlanner::visualize_debug_footprint(*plan_result.goal_footprint));
+  }
+
+  LaneletRoute route = plan_result.route;
   route.header.stamp = req.header.stamp;
   route.header.frame_id = map_frame_;
   route.uuid = req.uuid;

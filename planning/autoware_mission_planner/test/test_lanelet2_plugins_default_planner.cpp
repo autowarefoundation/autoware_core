@@ -51,7 +51,10 @@ struct DefaultPlanner : public autoware::mission_planner::lanelet2::DefaultPlann
   {
     return check_goal_footprint_inside_lanes(lanelets_near_goal, goal_footprint);
   }
-  bool is_goal_valid_wrapper(const geometry_msgs::msg::Pose & goal) { return is_goal_valid(goal); }
+  bool is_goal_valid_wrapper(const geometry_msgs::msg::Pose & goal)
+  {
+    return is_goal_valid(goal).is_valid;
+  }
 
   lanelet::ConstLanelets get_lanelets_from_ids(const std::vector<lanelet::Id> & ids)
   {
@@ -323,7 +326,7 @@ TEST_F(DefaultPlannerTest, plan)
 
   route_points.push_back(start_pose);
   route_points.push_back(goal_pose);
-  const auto route = planner_.plan(route_points);
+  const auto route = planner_.plan(route_points).route;
 
   EXPECT_EQ(route.start_pose.position.x, start_pose.position.x);
   EXPECT_EQ(route.start_pose.position.y, start_pose.position.y);
@@ -354,7 +357,7 @@ TEST_F(DefaultPlannerTest, plan)
   RoutePoints route_points_to_road_shoulder;
   route_points_to_road_shoulder.push_back(start_pose);
   route_points_to_road_shoulder.push_back(goal_pose_on_road_shoulder);
-  const auto route_to_road_shoulder = planner_.plan(route_points_to_road_shoulder);
+  const auto route_to_road_shoulder = planner_.plan(route_points_to_road_shoulder).route;
 
   EXPECT_EQ(route_to_road_shoulder.start_pose.position.x, start_pose.position.x);
   EXPECT_EQ(route_to_road_shoulder.start_pose.position.y, start_pose.position.y);
