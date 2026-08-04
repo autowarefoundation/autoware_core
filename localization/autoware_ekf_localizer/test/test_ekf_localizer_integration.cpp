@@ -335,72 +335,100 @@ TEST_F(EKFLocalizerIntegrationHarness, DeterministicKinematics)
   EXPECT_NEAR(cov_x_x, 0.0120766, near_tol);
 }
 
-// TEST 3. Confirms node correctly rejects NaN/Inf, Mahalanobis gate and Delay gate violations.
-// Expects node to ignore these cases without crashing, and emit WARN messages to diagnostics:
-// - NaN/Inf pose measurements.
-// - Pose measurements that exceed Mahalanobis gate.
-// - Pose measurements that exceed Delay gate.
+// TEST 3. Confirms node correctly rejects NaN/Inf pose measurements and not crash.
 // This test will:
 // 1. Trigger node init.
 // 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
-// 3. Publish a NaN pose measurement (expect node to ignore and emit WARN).
-// 4. Publish a pose measurement that exceeds Mahalanobis gate (expect node to ignore and emit
-// WARN).
-// 5. Publish a pose measurement that exceeds Delay gate (expect node to ignore and emit WARN).
-TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
+// 3. Publish a pose with NaN coordinates.
+// 4. Expects node to ignore that NaN pose and not crash, and odometry should remain at init pose.
+TEST_F(EKFLocalizerIntegrationHarness, RejectsNanOrInfPose)
 {
   // Boot
   trigger_node();
 
   // Init pose
   geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
-
   pub_initial_pose_->publish(init_pose);
   spin_once_tick_once();
 
   // Clear diagnostics state from init
   latest_diag_ = nullptr;
 
-  // ================== Case 1: NaN/Inf ==================
   geometry_msgs::msg::PoseWithCovarianceStamped nan_pose = make_pose();
   nan_pose.pose.pose.position.x = std::numeric_limits<double>::quiet_NaN();
 
   pub_pose_->publish(nan_pose);
   spin_once_tick_once();
 
-  // Expects node to stay alive and odometry to remain at init pose
   ASSERT_NE(latest_odom_, nullptr);
   EXPECT_FALSE(std::isnan(latest_odom_->pose.pose.position.x));
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
+}
 
-  // Drain queue (5 ticks = 1.0 second)
-  for (int i = 0; i < 5; ++i) step_time(0.02);
-  spin_executor();
+// TEST 4. Confirms node correctly rejects Mahalanobis outlier pose measurements and not crash.
+// This test will:
+// 1. Trigger node init.
+// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
+// 3. Publish a pose with a massive jump (10000.0, -5000.0) to violate Mahalanobis distance gate.
+// 4. Expects node to ignore that huge jump and emit a WARN, and odometry should remain at init pose.
+TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
+{
+  trigger_node();
 
-  // ================== Case 2: Mahalanobis gate rejection ==================
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
+  pub_initial_pose_->publish(init_pose);
+  spin_once_tick_once();
+
+  latest_diag_ = nullptr;
+
   geometry_msgs::msg::PoseWithCovarianceStamped far_pose = make_pose(
+<<<<<<< HEAD
     10000.0,  // Massive jump
     -5000.0);
 
+=======
+    10000.0, // Massive jump
+    -5000.0
+  );
+>>>>>>> 0880504 ([ishikawa] split test 3 into 3 smaller tests (also their order))
   pub_pose_->publish(far_pose);
-  spin_executor();  // Flush queue before ticking
+  spin_executor();
 
   // Expects node to ignore that huge jump and emit a WARN
+<<<<<<< HEAD
   EXPECT_TRUE(poll_for_diagnostic("[WARN]mahalanobis distance", 5))
     << "Failed to trigger Mahalanobis gate warning.";
+=======
+  EXPECT_TRUE(
+    poll_for_diagnostic(
+      "[WARN]mahalanobis distance of pose topic", 5
+    )
+  ) << "Failed to trigger Mahalanobis gate warning.";
+>>>>>>> 0880504 ([ishikawa] split test 3 into 3 smaller tests (also their order))
 
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
+}
 
-  // Drain queue again
-  for (int i = 0; i < 5; ++i) step_time(0.02);
+// TEST 5. Confirms node correctly rejects delayed pose measurements and not crash.
+// This test will:
+// 1. Trigger node init.
+// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
+// 3. Publish a pose with a timestamp 50 seconds in the past (delayed beyond pose_additional_delay).
+// 4. Expects node to ignore that delayed pose and emit a WARN, and odometry should remain at init pose.
+TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
+{
+  trigger_node();
 
-  // ================== Case 3: Delay limit rejection ==================
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
+  pub_initial_pose_->publish(init_pose);
+  spin_once_tick_once();
+
+  latest_diag_ = nullptr;
+
   geometry_msgs::msg::PoseWithCovarianceStamped ancient_pose = make_pose();
-  // Stamp it 50.0 seconds to exceed extend_state_step
   ancient_pose.header.stamp = current_time_ - rclcpp::Duration::from_seconds(50.0);
-
   pub_pose_->publish(ancient_pose);
-  spin_executor();  // Flush queue before ticking
+  spin_executor();
 
   // Expects node to ignore ancient message and emit a WARN
   EXPECT_TRUE(poll_for_diagnostic("[WARN]twist topic is delay", 5))
@@ -409,7 +437,7 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 }
 
-// TEST 4. Confirms node correctly handles pose queue overflow.
+// TEST 6. Confirms node correctly handles pose queue overflow.
 // Expects node to ignore oldest messages and process newest messages without crashing.
 // This test will:
 // 1. Trigger node init.
@@ -452,7 +480,7 @@ TEST_F(EKFLocalizerIntegrationHarness, QueueOverflow)
   ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
 }
 
-// TEST 5. Confirms node correctly handles timeouts and cascaded WARN => ERROR diagnostics.
+// TEST 7. Confirms node correctly handles timeouts and cascaded WARN => ERROR diagnostics.
 // Expects node to emit WARN at 50 ticks of no pose updates, and ERROR at 100 ticks of no pose
 // updates. This test will:
 // 1. Trigger node init.
