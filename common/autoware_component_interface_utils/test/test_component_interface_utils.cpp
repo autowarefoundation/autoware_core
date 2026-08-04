@@ -43,27 +43,25 @@ namespace
 template <class MessageT>
 struct FakePublisher
 {
-  using SharedPtr = std::shared_ptr<FakePublisher>;
   void publish(const MessageT &) {}
 };
 
 template <class MessageT>
 struct FakeSubscription
 {
-  using SharedPtr = std::shared_ptr<FakeSubscription>;
 };
 
 struct FakeNode
 {
   template <class MessageT>
-  typename FakePublisher<MessageT>::SharedPtr create_publisher(
+  std::shared_ptr<FakePublisher<MessageT>> create_publisher(
     const std::string &, const rclcpp::QoS &)
   {
     return std::make_shared<FakePublisher<MessageT>>();
   }
 
   template <class MessageT, class CallbackT>
-  typename FakeSubscription<MessageT>::SharedPtr create_subscription(
+  std::shared_ptr<FakeSubscription<MessageT>> create_subscription(
     const std::string &, const rclcpp::QoS &, CallbackT &&)
   {
     return std::make_shared<FakeSubscription<MessageT>>();
@@ -278,6 +276,9 @@ TEST(interface, wrappers_deduce_endpoint_types_from_node)
   static_assert(std::is_same_v<
                 decltype(utils::NodeAdaptor(std::declval<rclcpp::Node *>())),
                 utils::NodeAdaptor<rclcpp::Node>>);
+  static_assert(std::is_same_v<
+                decltype(utils::NodeInterface(std::declval<DerivedNode *>())),
+                utils::NodeInterface<rclcpp::Node>>);
 }
 
 TEST(interface, node_adaptor_create_publisher_qos)
