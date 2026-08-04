@@ -169,6 +169,79 @@ protected:
     spin_executor();    
   }
 
+  geometry_msgs::msg::PoseWithCovarianceStamped make_pose(
+    double x = 0.0, 
+    double y = 0.0
+  )
+  {
+    geometry_msgs::msg::PoseWithCovarianceStamped pose;
+    pose.header.stamp = current_time_;
+    pose.header.frame_id = "map";
+    pose.pose.pose.position.x = x;
+    pose.pose.pose.position.y = y;
+    pose.pose.pose.orientation.w = 1.0;
+    
+    // Mathematically safe init array
+    pose.pose.covariance.fill(0.0);
+    pose.pose.covariance[0] = 0.01;   // X
+    pose.pose.covariance[7] = 0.01;   // Y
+    pose.pose.covariance[14] = 0.01;  // Z
+    pose.pose.covariance[21] = 0.01;  // Roll
+    pose.pose.covariance[28] = 0.01;  // Pitch
+    pose.pose.covariance[35] = 0.01;  // Yaw
+    return pose;
+  }
+
+  geometry_msgs::msg::TwistWithCovarianceStamped make_twist(
+    double vx = 0.0, 
+    double wz = 0.0
+  )
+  {
+    geometry_msgs::msg::TwistWithCovarianceStamped twist;
+    twist.header.stamp = current_time_;
+    twist.header.frame_id = "base_link";
+    twist.twist.twist.linear.x = vx;
+    twist.twist.twist.angular.z = wz;
+    
+    // Also a safe covariance array
+    twist.twist.covariance.fill(0.0);
+    twist.twist.covariance[0] = 0.1;
+    twist.twist.covariance[35] = 0.1;
+    return twist;
+  }
+
+  // Checks if latest diagnostics available (contains a substring)
+  bool has_diagnostic(const std::string & substr)
+  {
+    if (!latest_diag_) return false;
+    for (const auto & status : latest_diag_->status) {
+      if (status.message.find(substr) != std::string::npos) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  // Tick some, wait for diagnostics containing certain substring
+  bool poll_for_diagnostic(
+    const std::string & substr, 
+    int max_ticks
+  )
+  {
+    for (int i = 0; i < max_ticks; ++i) {
+      step_time(0.02);
+      if (has_diagnostic(substr)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  void spin_once_tick_once() {
+    spin_executor();              // Flush queue before ticking
+    step_time(0.02);  // Tick once (50 Hz)
+  }
+
   std::shared_ptr<EKFLocalizer> node_;
   std::shared_ptr<rclcpp::Node> test_node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
@@ -213,40 +286,15 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
 
   // 3. Diagnostics should report error due to missing init pose
   latest_diag_ = nullptr;
-  // Tick some, wait for diagnostics
-  for (int i = 0; i < 10 && latest_diag_ == nullptr; ++i) {
-    step_time(0.02);
-  }
-
-  ASSERT_NE(latest_diag_, nullptr);
-  bool found_init_error = false;
-  for (const auto & status : latest_diag_->status) {
-    std::cout << "TEST 1 || LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
-    if (
-      status.message.find("[ERROR]initial pose is not set") != std::string::npos &&
-      status.level == diagnostic_msgs::msg::DiagnosticStatus::ERROR) {
-      found_init_error = true;
-    }
-  }
-  EXPECT_TRUE(found_init_error) << "Node failed to guard against missing initial pose.";
+  EXPECT_TRUE(
+    poll_for_diagnostic(
+      "[ERROR]initial pose is not set", 10
+    )
+  ) << "Node failed to guard against missing initial pose.";
 
   // 4. Send init pose
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
-  init_pose.header.stamp = current_time_;
-  init_pose.header.frame_id = "map";
-  init_pose.pose.pose.position.x = 10.0;
-  init_pose.pose.pose.position.y = 20.0;
-  init_pose.pose.pose.orientation.w = 1.0;
-
-  // Also assign safe array
-  init_pose.pose.covariance.fill(0.0);
-  init_pose.pose.covariance[0] = 0.01;
-  init_pose.pose.covariance[7] = 0.01;
-  init_pose.pose.covariance[35] = 0.01;
-
-  pub_initial_pose_->publish(init_pose);
-  spin_executor();  // Make sure message clears middleware before tick
-  step_time(0.02);  // 50Hz tick
+  pub_initial_pose_->publish(make_pose(10.0, 20.0));
+  spin_once_tick_once();
 
   // 5. Expects odometry now being published at exact init coordinates
   ASSERT_NE(latest_odom_, nullptr);
@@ -272,23 +320,11 @@ TEST_F(EKFLocalizerIntegrationHarness, DeterministicKinematics)
   trigger_node();
 
   // Init pose
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
-  init_pose.header.stamp = current_time_;
-  init_pose.header.frame_id = "map";
-  init_pose.pose.pose.orientation.w = 1.0;
-  init_pose.pose.covariance.fill(0.0);
-  init_pose.pose.covariance[0] = 0.01;
-  pub_initial_pose_->publish(init_pose);
+  pub_initial_pose_->publish(make_pose(0.0, 0.0));
   spin_executor();
 
   // Constant twist (velocity X = 5.0, yaw rate = 0.0)
-  geometry_msgs::msg::TwistWithCovarianceStamped twist_msg;
-  twist_msg.header.frame_id = "base_link";
-  twist_msg.twist.twist.linear.x = 5.0;
-  twist_msg.twist.twist.angular.z = 0.0;
-  twist_msg.twist.covariance.fill(0.0);
-  twist_msg.twist.covariance[0] = 0.1;
-  twist_msg.twist.covariance[35] = 0.1;
+  geometry_msgs::msg::TwistWithCovarianceStamped twist_msg = make_twist(5.0, 0.0);
 
   // Run filter for 1 second (20 ticks at 50Hz)
   for (int i = 0; i < 50; ++i) {
@@ -327,35 +363,20 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
   trigger_node();
 
   // Init pose
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
-  init_pose.header.stamp = current_time_;
-  init_pose.header.frame_id = "map";
-  init_pose.pose.pose.orientation.w = 1.0;
-
-  // Assign safe array
-  init_pose.pose.covariance.fill(0.0);
-  init_pose.pose.covariance[0] = 0.01;   // X
-  init_pose.pose.covariance[7] = 0.01;   // Y
-  init_pose.pose.covariance[14] = 0.01;  // Z
-  init_pose.pose.covariance[21] = 0.01;  // Roll
-  init_pose.pose.covariance[28] = 0.01;  // Pitch
-  init_pose.pose.covariance[35] = 0.01;  // Yaw
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
 
   pub_initial_pose_->publish(init_pose);
-  spin_executor();  // Flush queue before ticking
-  step_time(0.02);  // Tick once (50 Hz)
+  spin_once_tick_once();
 
   // Clear diagnostics state from init
   latest_diag_ = nullptr;
 
   // ================== Case 1: NaN/Inf ==================
-  geometry_msgs::msg::PoseWithCovarianceStamped nan_pose = init_pose;
-  nan_pose.header.stamp = current_time_;
+  geometry_msgs::msg::PoseWithCovarianceStamped nan_pose = make_pose();
   nan_pose.pose.pose.position.x = std::numeric_limits<double>::quiet_NaN();
 
   pub_pose_->publish(nan_pose);
-  spin_executor();  // Flush queue before ticking
-  step_time(0.02);  // Tick once (50 Hz)
+  spin_once_tick_once();
 
   // Expects node to stay alive and odometry to remain at init pose
   ASSERT_NE(latest_odom_, nullptr);
@@ -367,57 +388,42 @@ TEST_F(EKFLocalizerIntegrationHarness, SafetyAndRejectionBoundaries)
   spin_executor();
 
   // ================== Case 2: Mahalanobis gate rejection ==================
-  geometry_msgs::msg::PoseWithCovarianceStamped far_pose = init_pose;
-  far_pose.header.stamp = current_time_;
-  far_pose.pose.pose.position.x = 10000.0;  // Massive jump
-  far_pose.pose.pose.position.y = -5000.0;
+  geometry_msgs::msg::PoseWithCovarianceStamped far_pose = make_pose(
+    10000.0, // Massive jump
+    -5000.0
+  );
 
   pub_pose_->publish(far_pose);
   spin_executor();  // Flush queue before ticking
-  // Tick short, before queue discards message, to ensure Mahalanobis gate triggers
-  for (int i = 0; i < 2; ++i) step_time(0.02);
-  spin_executor();  // Flush again to ensure diagnostics are processed
 
   // Expects node to ignore that huge jump and emit a WARN
-  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
-  ASSERT_NE(latest_diag_, nullptr);
+  EXPECT_TRUE(
+    poll_for_diagnostic(
+      "[WARN]mahalanobis distance", 5
+    )
+  ) << "Failed to trigger Mahalanobis gate warning.";
 
-  bool found_mahalanobis_warn = false;
-  for (const auto & status : latest_diag_->status) {
-    std::cout << "LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
-    if (status.message.find("[WARN]mahalanobis distance") != std::string::npos) {
-      found_mahalanobis_warn = true;
-    }
-  }
-  EXPECT_TRUE(found_mahalanobis_warn) << "Failed to trigger Mahalanobis gate warning.";
+  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 
   // Drain queue again
   for (int i = 0; i < 5; ++i) step_time(0.02);
-  spin_executor();
 
   // ================== Case 3: Delay limit rejection ==================
-  geometry_msgs::msg::PoseWithCovarianceStamped ancient_pose = init_pose;
+  geometry_msgs::msg::PoseWithCovarianceStamped ancient_pose = make_pose();
   // Stamp it 50.0 seconds to exceed extend_state_step
   ancient_pose.header.stamp = current_time_ - rclcpp::Duration::from_seconds(50.0);
 
   pub_pose_->publish(ancient_pose);
   spin_executor();  // Flush queue before ticking
-  // Tick short, before queue discards message, to ensure Delay gate triggers
-  for (int i = 0; i < 5; ++i) step_time(0.02);
-  spin_executor();  // Flush again to ensure diagnostics are processed
 
   // Expects node to ignore ancient message and emit a WARN
-  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
-  ASSERT_NE(latest_diag_, nullptr);
+  EXPECT_TRUE(
+    poll_for_diagnostic(
+      "[WARN]twist topic is delay", 5
+    )
+  ) << "Failed to trigger Delay limit warning.";
 
-  bool found_delay_warn = false;
-  for (const auto & status : latest_diag_->status) {
-    std::cout << "LEVEL: " << status.level << " || MSG: " << status.message << std::endl;
-    if (status.message.find("[WARN]twist topic is delay") != std::string::npos) {
-      found_delay_warn = true;
-    }
-  }
-  EXPECT_TRUE(found_delay_warn) << "Failed to trigger Delay limit warning.";
+  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 }
 
 // TEST 4. Confirms node correctly handles pose queue overflow.
@@ -436,28 +442,13 @@ TEST_F(EKFLocalizerIntegrationHarness, QueueOverflow)
   trigger_node();
 
   // Init pose
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
-  init_pose.header.stamp = current_time_;
-  init_pose.header.frame_id = "map";
-  init_pose.pose.pose.orientation.w = 1.0;
-
-  init_pose.pose.covariance.fill(0.0);
-  init_pose.pose.covariance[0] = 0.01;   // X
-  init_pose.pose.covariance[7] = 0.01;   // Y
-  init_pose.pose.covariance[14] = 0.01;  // Z
-  init_pose.pose.covariance[21] = 0.01;  // Roll
-  init_pose.pose.covariance[28] = 0.01;  // Pitch
-  init_pose.pose.covariance[35] = 0.01;  // Yaw
-
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
   pub_initial_pose_->publish(init_pose);
-  spin_executor();  // Flush queue before ticking
-  step_time(0.02);
+  spin_once_tick_once();
 
   // As default max_pose_queue_size is 5, we gonna flood queue with 8 messages
   for (int i = 0; i < 8; ++i) {
-    geometry_msgs::msg::PoseWithCovarianceStamped rapid_pose = init_pose;
-    rapid_pose.header.stamp = current_time_;
-    rapid_pose.pose.pose.position.x = 0.1 * i;
+    geometry_msgs::msg::PoseWithCovarianceStamped rapid_pose = make_pose(0.1 * i, 0.0);
     pub_pose_->publish(rapid_pose);
 
     // Spin executor to process subscription callbacks instantly,
@@ -490,83 +481,39 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
 {
   // Boot
   trigger_node();
-
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose;
-  init_pose.header.stamp = current_time_;
-  init_pose.header.frame_id = "map";
-  init_pose.pose.pose.orientation.w = 1.0;
-
-  init_pose.pose.covariance.fill(0.0);
-  init_pose.pose.covariance[0] = 0.01;   // X
-  init_pose.pose.covariance[7] = 0.01;   // Y
-  init_pose.pose.covariance[14] = 0.01;  // Z
-  init_pose.pose.covariance[21] = 0.01;  // Roll
-  init_pose.pose.covariance[28] = 0.01;  // Pitch
-  init_pose.pose.covariance[35] = 0.01;  // Yaw
-
+  
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
   pub_initial_pose_->publish(init_pose);
-  spin_executor();  // Flush queue before ticking
-  step_time(0.02);
-
-  // Now deny node of any /in_pose_with_covariance messages
+  spin_once_tick_once();
+  
   // ============ 1. Advance 40 ticks (threshold is 50 for WARN) ============
+
   for (int i = 0; i < 40; ++i) {
     step_time(0.02);
   }
 
   // Expects node to not WARN yet
-  ASSERT_NE(latest_diag_, nullptr);
-  bool found_pose_warn = false;
-  for (const auto & status : latest_diag_->status) {
-    // std::cout << "TEST 5.1 || LEVEL: " << status.level << " || MSG: " << status.message <<
-    // std::endl;
-    if (status.message.find("[WARN]pose is not updated") != std::string::npos) {
-      found_pose_warn = true;
-    }
-  }
-  EXPECT_FALSE(found_pose_warn) << "Node failed to shut up before tick 50.";
+  EXPECT_FALSE(
+    has_diagnostic(
+      "[WARN]pose is not updated"
+    )
+  ) << "Node failed to shut up before tick 50.";
 
   // ============ 2. Advance 10 more tick to hit 50 (WARN state) ============
-  // I built and tested fine on my local 22.04 ROS Humble, but CI failed on Jazzy.
-  // Maybe Jazzy timers coalesced clock ticks, so I loop until enough callbacks are there.
 
-  found_pose_warn = false;
-
-  for (int i = 0; i < 30; ++i) {
-    step_time(0.02);
-    if (latest_diag_ != nullptr) {
-      for (const auto & status : latest_diag_->status) {
-        // std::cout << "TEST 5.2 || LEVEL: " << status.level << " || MSG: " << status.message <<
-        // std::endl;
-        if (status.message.find("[WARN]pose is not updated") != std::string::npos) {
-          found_pose_warn = true;
-        }
-      }
-    }
-    if (found_pose_warn) break;
-  }
-  // Expects node to WARN already
-  EXPECT_TRUE(found_pose_warn) << "Node failed to WARN at 50 missed updates.";
+  EXPECT_TRUE(
+    poll_for_diagnostic(
+      "[WARN]pose is not updated", 30
+    )
+  ) << "Node failed to WARN at 50 missed updates.";
 
   // ============ 3. Advance much more ticks to hit over 100 (ERROR state) ============
 
-  bool found_pose_error = false;
-
-  for (int i = 0; i < 70; ++i) {
-    step_time(0.02);
-    if (latest_diag_ != nullptr) {
-      for (const auto & status : latest_diag_->status) {
-        // std::cout << "TEST 5.3 || LEVEL: " << status.level << " || MSG: " << status.message <<
-        // std::endl;
-        if (status.message.find("[ERROR]pose is not updated") != std::string::npos) {
-          found_pose_error = true;
-        }
-      }
-    }
-    if (found_pose_error) break;
-  }
-  // Expects node to ERROR already
-  EXPECT_TRUE(found_pose_error) << "Node failed to ERROR at 100 missed updates.";
+  EXPECT_TRUE(
+    poll_for_diagnostic(
+      "[ERROR]pose is not updated", 70
+    )
+  ) << "Node failed to ERROR at 100 missed updates.";
 }
 
 }  // namespace autoware::ekf_localizer
