@@ -410,6 +410,11 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
   pub_initial_pose_->publish(init_pose);
   spin_once_tick_once();
 
+  // Warm up delay buffer a little bit, so that delayed pose is actually delayed enough to trigger warning
+  for (int i = 0; i < 50; ++i) {
+    step_time(0.02);
+  }
+
   latest_diag_ = nullptr;
 
   geometry_msgs::msg::PoseWithCovarianceStamped ancient_pose = make_pose();
@@ -418,7 +423,7 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
   spin_executor();
 
   // Expects node to ignore ancient message and emit a WARN
-  EXPECT_TRUE(poll_for_diagnostic("[WARN]twist topic is delay", 5))
+  EXPECT_TRUE(poll_for_diagnostic("[WARN]pose topic is delay", 5))
     << "Failed to trigger Delay limit warning.";
 
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
