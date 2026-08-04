@@ -383,14 +383,9 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
   latest_diag_ = nullptr;
 
   geometry_msgs::msg::PoseWithCovarianceStamped far_pose = make_pose(
-<<<<<<< HEAD
     10000.0,  // Massive jump
-    -5000.0);
-
-=======
-    10000.0,  // Massive jump
-    -5000.0);
->>>>>>> 0880504 ([ishikawa] split test 3 into 3 smaller tests (also their order))
+    -5000.0
+  );
   pub_pose_->publish(far_pose);
   spin_executor();
 
