@@ -310,15 +310,6 @@ DefaultPlanner::PlanResult DefaultPlanner::plan(const RoutePoints & points)
 {
   const auto logger = node_->get_logger();
 
-  std::stringstream log_ss;
-  for (const auto & point : points) {
-    log_ss << "x: " << point.position.x << " "
-           << "y: " << point.position.y << std::endl;
-  }
-  RCLCPP_DEBUG_STREAM(
-    logger, "start planning route with check points: " << std::endl
-                                                       << log_ss.str());
-
   LaneletRoute route_msg;
   RouteSections route_sections;
 
@@ -360,7 +351,6 @@ DefaultPlanner::PlanResult DefaultPlanner::plan(const RoutePoints & points)
   }
 
   const auto refined_goal = refine_goal_height(goal_pose, route_sections);
-  RCLCPP_DEBUG(logger, "Goal Pose Z : %lf", refined_goal.position.z);
 
   // The header is assigned by mission planner.
   route_msg.start_pose = points.front();
