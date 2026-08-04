@@ -333,8 +333,8 @@ DefaultPlanner::PlanResult DefaultPlanner::plan(const RoutePoints & points)
 
   const auto goal_validation_result = is_goal_valid(goal_pose);
   if (!goal_validation_result.is_valid) {
-    const auto warning_message = goal_validation_result.warning_message.value_or(
-      "Goal is not valid! Please check position and angle of goal_pose");
+    const auto warning_message = goal_validation_result.warning_message.value_or("") +
+                                 "Goal is not valid! Please check position and angle of goal_pose";
     return {route_msg, goal_validation_result.goal_footprint, warning_message};
   }
 
