@@ -390,11 +390,8 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
   spin_executor();
 
   // Expects node to ignore that huge jump and emit a WARN
-  EXPECT_TRUE(
-    poll_for_diagnostic(
-      "[WARN]mahalanobis distance of pose topic", 5
-    )
-  ) << "Failed to trigger Mahalanobis gate warning.";
+  EXPECT_TRUE(poll_for_diagnostic("[WARN]mahalanobis distance of pose topic", 5))
+    << "Failed to trigger Mahalanobis gate warning.";
 
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 }
