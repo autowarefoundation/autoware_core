@@ -58,11 +58,10 @@ public:
     std::optional<std::string> warning_message;
   };
 
-  DefaultPlanner() : vehicle_info_(), is_graph_ready_(false), param_() {}
-
-  void initialize(
+  DefaultPlanner(
     const DefaultPlannerParameters & param,
     const autoware::vehicle_info_utils::VehicleInfo & vehicle_info);
+
   void set_map(const LaneletMapBin & msg);
   [[nodiscard]] bool ready() const;
   PlanResult plan(const RoutePoints & points);

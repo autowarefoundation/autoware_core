@@ -107,8 +107,7 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
 
   const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
 
-  planner_ = std::make_shared<lanelet2::DefaultPlanner>();
-  planner_->initialize(default_planner_param, vehicle_info);
+  planner_ = std::make_shared<lanelet2::DefaultPlanner>(default_planner_param, vehicle_info);
 
   const auto durable_qos = rclcpp::QoS(1).transient_local();
   sub_odometry_ = create_subscription<Odometry>(

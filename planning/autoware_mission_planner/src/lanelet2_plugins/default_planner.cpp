@@ -74,13 +74,11 @@ lanelet::ConstLanelets get_lanelets_to(
 }
 }  // namespace
 
-void DefaultPlanner::initialize(
+DefaultPlanner::DefaultPlanner(
   const DefaultPlannerParameters & param,
   const autoware::vehicle_info_utils::VehicleInfo & vehicle_info)
+: vehicle_info_(vehicle_info), is_graph_ready_(false), param_(param)
 {
-  is_graph_ready_ = false;
-  param_ = param;
-  vehicle_info_ = vehicle_info;
 }
 
 void DefaultPlanner::set_map(const LaneletMapBin & msg)
