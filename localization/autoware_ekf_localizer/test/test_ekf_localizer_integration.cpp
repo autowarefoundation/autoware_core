@@ -370,7 +370,8 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsNanOrInfPose)
 // 1. Trigger node init.
 // 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
 // 3. Publish a pose with a massive jump (10000.0, -5000.0) to violate Mahalanobis distance gate.
-// 4. Expects node to ignore that huge jump and emit a WARN, and odometry should remain at init pose.
+// 4. Expects node to ignore that huge jump and emit a WARN, and odometry should remain at init
+// pose.
 TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
 {
   trigger_node();
@@ -387,9 +388,8 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
     -5000.0);
 
 =======
-    10000.0, // Massive jump
-    -5000.0
-  );
+    10000.0,  // Massive jump
+    -5000.0);
 >>>>>>> 0880504 ([ishikawa] split test 3 into 3 smaller tests (also their order))
   pub_pose_->publish(far_pose);
   spin_executor();
@@ -399,11 +399,8 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
   EXPECT_TRUE(poll_for_diagnostic("[WARN]mahalanobis distance", 5))
     << "Failed to trigger Mahalanobis gate warning.";
 =======
-  EXPECT_TRUE(
-    poll_for_diagnostic(
-      "[WARN]mahalanobis distance of pose topic", 5
-    )
-  ) << "Failed to trigger Mahalanobis gate warning.";
+  EXPECT_TRUE(poll_for_diagnostic("[WARN]mahalanobis distance of pose topic", 5))
+    << "Failed to trigger Mahalanobis gate warning.";
 >>>>>>> 0880504 ([ishikawa] split test 3 into 3 smaller tests (also their order))
 
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
@@ -414,7 +411,8 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
 // 1. Trigger node init.
 // 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
 // 3. Publish a pose with a timestamp 50 seconds in the past (delayed beyond pose_additional_delay).
-// 4. Expects node to ignore that delayed pose and emit a WARN, and odometry should remain at init pose.
+// 4. Expects node to ignore that delayed pose and emit a WARN, and odometry should remain at init
+// pose.
 TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
 {
   trigger_node();
