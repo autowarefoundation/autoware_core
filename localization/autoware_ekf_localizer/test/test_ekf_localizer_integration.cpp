@@ -382,6 +382,7 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
   spin_once_tick_once();
 
   latest_diag_ = nullptr;
+  const size_t odom_count_before = odom_count_;
 
   geometry_msgs::msg::PoseWithCovarianceStamped far_pose = make_pose(
     10000.0,  // Massive jump
@@ -393,6 +394,8 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
   EXPECT_TRUE(poll_for_diagnostic("[WARN]mahalanobis distance of pose topic", 5))
     << "Failed to trigger Mahalanobis gate warning.";
 
+  ASSERT_GT(odom_count_, odom_count_before) << "Node stopped publishing odometry.";
+  ASSERT_NE(latest_odom_, nullptr);
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 }
 
