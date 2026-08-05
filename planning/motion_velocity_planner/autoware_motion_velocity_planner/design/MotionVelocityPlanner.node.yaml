@@ -1,0 +1,119 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: MotionVelocityPlanner.node
+package:
+  name: autoware_motion_velocity_planner
+  provider: autoware
+launch:
+  plugin: autoware::motion_velocity_planner::MotionVelocityPlannerNode
+  executable: autoware_motion_velocity_planner_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: trajectory
+    message_type: autoware_planning_msgs/msg/Trajectory
+    remap_target: input/trajectory
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    remap_target: input/vector_map
+  - name: no_ground_pointcloud
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: input/no_ground_pointcloud
+  - name: vehicle_odometry
+    message_type: nav_msgs/msg/Odometry
+    remap_target: input/vehicle_odometry
+  - name: occupancy_grid
+    message_type: nav_msgs/msg/OccupancyGrid
+    remap_target: input/occupancy_grid
+publishers:
+  - name: trajectory
+    message_type: autoware_planning_msgs/msg/Trajectory
+    remap_target: output/trajectory
+  - name: velocity_limit
+    message_type: autoware_internal_planning_msgs/msg/VelocityLimit
+    remap_target: output/velocity_limit
+  - name: clear_velocity_limit
+    message_type: autoware_internal_planning_msgs/msg/VelocityLimitClearCommand
+    remap_target: output/clear_velocity_limit
+  - name: markers
+    message_type: visualization_msgs/msg/MarkerArray
+    remap_target: debug/markers
+  - name: processed_pointcloud
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: debug/processed_pointcloud
+servers:
+  - name: load_plugin
+    message_type: autoware_internal_planning_msgs/srv/LoadPlugin
+    remap_target: service/load_plugin
+  - name: unload_plugin
+    message_type: autoware_internal_planning_msgs/srv/UnloadPlugin
+    remap_target: service/unload_plugin
+# parameters
+param_files:
+  - name: motion_velocity_planner_param
+    default: $(find-pkg-share autoware_motion_velocity_planner)/config/motion_velocity_planner.param.yaml
+param_values:
+  - name: smooth_velocity_before_planning
+    type: bool
+    default: true
+  - name: trajectory_polygon_collision_check.decimate_trajectory_step_length
+    type: double
+    default: 2.0
+  - name: trajectory_polygon_collision_check.goal_extended_trajectory_length
+    type: double
+    default: 6.0
+  - name: trajectory_polygon_collision_check.consider_current_pose.enable_to_consider_current_pose
+    type: bool
+    default: true
+  - name: trajectory_polygon_collision_check.consider_current_pose.time_to_convergence
+    type: double
+    default: 1.5
+  - name: pointcloud_preprocessing.filter_by_trajectory_polygon.enable_monolithic_crop_box
+    type: bool
+    default: false
+  - name: pointcloud_preprocessing.filter_by_trajectory_polygon.enable_multi_polygon_filtering
+    type: bool
+    default: true
+  - name: pointcloud_preprocessing.filter_by_trajectory_polygon.min_trajectory_length
+    type: double
+    default: 30.0
+  - name: pointcloud_preprocessing.filter_by_trajectory_polygon.braking_distance_scale_factor
+    type: double
+    default: 1.5
+  - name: pointcloud_preprocessing.filter_by_trajectory_polygon.lateral_margin
+    type: double
+    default: 2.0
+  - name: pointcloud_preprocessing.filter_by_trajectory_polygon.height_margin
+    type: double
+    default: 1.0
+  - name: pointcloud_preprocessing.downsample_by_voxel_grid.enable_downsample
+    type: bool
+    default: true
+  - name: pointcloud_preprocessing.downsample_by_voxel_grid.voxel_size_x
+    type: double
+    default: 0.05
+  - name: pointcloud_preprocessing.downsample_by_voxel_grid.voxel_size_y
+    type: double
+    default: 0.05
+  - name: pointcloud_preprocessing.downsample_by_voxel_grid.voxel_size_z
+    type: double
+    default: 100000.0
+  - name: pointcloud_preprocessing.euclidean_clustering.enable_clustering
+    type: bool
+    default: true
+  - name: pointcloud_preprocessing.euclidean_clustering.cluster_tolerance
+    type: double
+    default: 1.0
+  - name: pointcloud_preprocessing.euclidean_clustering.min_cluster_size
+    type: int
+    default: 1
+  - name: pointcloud_preprocessing.euclidean_clustering.max_cluster_size
+    type: int
+    default: 100000
+# processes
+processes:
+  - name: plan_motion_velocity
+    trigger_conditions:
+      - on_input: trajectory
+    outcomes:
+      - to_output: trajectory
