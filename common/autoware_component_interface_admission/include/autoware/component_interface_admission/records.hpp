@@ -27,6 +27,18 @@ namespace autoware::component_interface_admission
 // this package, so these structs stand in for the future rosidl messages; the binding to real
 // messages, once decided, is a mechanical field-by-field mapping.
 
+// QoS as carried in a v2 manifest document (schema below), JSON string-encoded rather than the RMW
+// enums autoware_component_interface_specs uses, since this package is a no-dependency leaf and
+// cannot include that package's headers. reliability is "reliable" | "best_effort"; durability is
+// "volatile" | "transient_local". depth is endpoint-local and presentational only: it never
+// participates in an admission verdict.
+struct QosRecord
+{
+  std::string reliability;
+  std::string durability;
+  int depth = 0;
+};
+
 // One interface a component provides (it is a publisher / service server / action server for it).
 struct ProvidedInterface
 {
@@ -41,6 +53,19 @@ struct ProvidedInterface
   std::uint16_t major{0};
   std::uint16_t minor{0};
   std::uint16_t patch{0};
+  // Whether major/minor/patch were present in the source manifest. A v1 document always carries
+  // them (true, the default here). A v2 document may omit all three for an endpoint whose spec is
+  // unversioned, in which case this is false and major/minor/patch stay at their 0 default; version
+  // verdicts (MAJOR_MISMATCH / MINOR_MISMATCH) must skip such an entry rather than comparing it
+  // against its all-zero default. NO_PROVIDER is NOT a version verdict -- it is a completeness
+  // verdict that fires when a required entry has no provider of its interface_name anywhere in the
+  // deploy set at all, regardless of whether that required entry itself declares a version; see
+  // admission_rule.hpp.
+  bool has_version = true;
+  // Whether `qos` below was present in the source manifest. Absent in every v1 document and in a
+  // v2 document for an endpoint that does not carry QoS in its manifest.
+  bool has_qos = false;
+  QosRecord qos;
 };
 
 // One interface a component requires (it is a subscription / service client / action client of it).
@@ -60,6 +85,13 @@ struct RequiredInterface
   std::uint16_t accept_major_min{0};
   std::uint16_t accept_major_max{0};
   std::uint16_t min_minor{0};
+  // Whether accept_major_min/accept_major_max/min_minor were present in the source manifest. See
+  // ProvidedInterface::has_version; the same v1-always-true / v2-may-omit rule applies, including
+  // the NO_PROVIDER exception (it fires for an unversioned required entry too).
+  bool has_version = true;
+  // Whether `qos` below was present in the source manifest. See ProvidedInterface::has_qos.
+  bool has_qos = false;
+  QosRecord qos;
 };
 
 // A component's interface manifest: the interfaces it provides and requires.

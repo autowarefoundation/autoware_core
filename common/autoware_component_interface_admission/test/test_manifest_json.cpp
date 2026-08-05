@@ -148,3 +148,134 @@ TEST(ManifestJson, wrong_value_type_throws_runtime_error)
   // provided must be an array.
   EXPECT_THROW(adm::from_json(R"({"node_name":"/n","provided":{}})"), std::runtime_error);
 }
+
+// --- v2 schema: QoS-carrying manifests and conditional version keys ---
+
+TEST(manifest_json, v2_qos_and_omitted_version_parse)
+{
+  const auto m = adm::from_json(R"({
+    "node_name": "/n",
+    "provided": [{"interface_name": "/t",
+                  "qos": {"reliability": "reliable", "durability": "volatile", "depth": 1}}]
+  })");
+  ASSERT_EQ(m.provided.size(), 1u);
+  EXPECT_FALSE(m.provided[0].has_version);
+  ASSERT_TRUE(m.provided[0].has_qos);
+  EXPECT_EQ(m.provided[0].qos.reliability, "reliable");
+  EXPECT_EQ(m.provided[0].qos.durability, "volatile");
+  EXPECT_EQ(m.provided[0].qos.depth, 1);
+}
+
+TEST(manifest_json, v1_doc_parses_with_has_qos_false)
+{
+  const auto m = adm::from_json(
+    R"({"node_name":"/n","provided":[{"interface_name":"/a","major":1,"minor":0,"patch":0}]})");
+  ASSERT_EQ(m.provided.size(), 1u);
+  EXPECT_TRUE(m.provided[0].has_version);
+  EXPECT_FALSE(m.provided[0].has_qos);
+}
+
+TEST(manifest_json, required_entry_version_keys_omitted_parses_unversioned)
+{
+  const auto m = adm::from_json(R"({
+    "node_name": "/n",
+    "required": [{"interface_name": "/s",
+                  "qos": {"reliability": "reliable", "durability": "volatile", "depth": 10}}]
+  })");
+  ASSERT_EQ(m.required.size(), 1u);
+  EXPECT_FALSE(m.required[0].has_version);
+  ASSERT_TRUE(m.required[0].has_qos);
+  EXPECT_EQ(m.required[0].qos.depth, 10);
+}
+
+TEST(manifest_json, partial_version_keys_throws)
+{
+  // Only "major" present out of the major/minor/patch group -- a malformed partial declaration.
+  EXPECT_THROW(
+    adm::from_json(R"({"node_name":"/n","provided":[{"interface_name":"/a","major":1}]})"),
+    std::runtime_error);
+  EXPECT_THROW(
+    adm::from_json(
+      R"({"node_name":"/n",
+          "required":[{"interface_name":"/s","accept_major_min":1,"accept_major_max":1}]})"),
+    std::runtime_error);
+}
+
+TEST(manifest_json, unknown_policy_string_throws)
+{
+  EXPECT_THROW(
+    adm::from_json(R"({
+      "node_name": "/n",
+      "provided": [{"interface_name": "/t",
+                    "qos": {"reliability": "best-effort", "durability": "volatile", "depth": 1}}]
+    })"),
+    std::runtime_error);
+  EXPECT_THROW(
+    adm::from_json(R"({
+      "node_name": "/n",
+      "provided": [{"interface_name": "/t",
+                    "qos": {"reliability": "reliable", "durability": "persistent", "depth": 1}}]
+    })"),
+    std::runtime_error);
+}
+
+TEST(manifest_json, manifests_from_json_object_root_yields_one)
+{
+  const auto manifests = adm::manifests_from_json(R"({"node_name":"/n"})");
+  ASSERT_EQ(manifests.size(), 1u);
+  EXPECT_EQ(manifests[0].node_name, "/n");
+}
+
+TEST(manifest_json, manifests_from_json_array_root_yields_n)
+{
+  const auto manifests = adm::manifests_from_json(R"([{"node_name":"/n1"}, {"node_name":"/n2"}])");
+  ASSERT_EQ(manifests.size(), 2u);
+  EXPECT_EQ(manifests[0].node_name, "/n1");
+  EXPECT_EQ(manifests[1].node_name, "/n2");
+}
+
+TEST(manifest_json, manifests_from_json_other_root_throws)
+{
+  EXPECT_THROW(adm::manifests_from_json("42"), std::runtime_error);
+  EXPECT_THROW(adm::manifests_from_json(R"("a string")"), std::runtime_error);
+}
+
+TEST(manifest_json, spec_qos_is_parsed_from_the_spec_manifest)
+{
+  // The shape autoware_component_interface_specs actually commits as interface_manifest.json.
+  const char * spec = R"({
+    "owner": "autowarefoundation",
+    "interfaces": [{"domain": "control", "interface": "/c", "type": "pkg/msg/C",
+                    "kind": "topic", "version": "0.1.0",
+                    "qos": {"history": "keep_last", "depth": 1,
+                            "reliability": "reliable", "durability": "volatile"}}]
+  })";
+  const auto spec_qos = adm::spec_qos_from_json(spec);
+  ASSERT_EQ(spec_qos.count("/c"), 1u);
+  EXPECT_EQ(spec_qos.at("/c").reliability, "reliable");
+  EXPECT_EQ(spec_qos.at("/c").durability, "volatile");
+  EXPECT_EQ(spec_qos.at("/c").depth, 1);
+}
+
+TEST(manifest_json, spec_qos_rejects_a_document_that_is_not_a_spec_manifest)
+{
+  // Accepting a document with no `interfaces` at all would hand back an empty QoS table, which
+  // silently disables the spec-conformance verdict for every endpoint. Fail closed instead.
+  EXPECT_THROW(adm::spec_qos_from_json(R"({"owner": "x"})"), std::runtime_error);
+  EXPECT_THROW(adm::spec_qos_from_json(R"({"interfaces": {}})"), std::runtime_error);
+  EXPECT_THROW(adm::spec_qos_from_json(R"([])"), std::runtime_error);
+  EXPECT_THROW(adm::spec_qos_from_json("not json"), std::runtime_error);
+}
+
+TEST(manifest_json, spec_qos_rejects_an_entry_without_qos)
+{
+  const char * missing_qos = R"({"interfaces": [{"interface": "/c"}]})";
+  EXPECT_THROW(adm::spec_qos_from_json(missing_qos), std::runtime_error);
+}
+
+TEST(manifest_json, spec_qos_accepts_an_empty_interface_list)
+{
+  // An empty list is a well-formed spec manifest that simply declares nothing; unlike a missing
+  // `interfaces` key, it is a positive statement rather than a wrong document.
+  EXPECT_TRUE(adm::spec_qos_from_json(R"({"interfaces": []})").empty());
+}
