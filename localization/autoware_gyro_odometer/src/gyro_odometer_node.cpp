@@ -77,8 +77,7 @@ void GyroOdometerNode::update_cached_transform()
   geometry_msgs::msg::TransformStamped::ConstSharedPtr tf_imu2base_ptr =
     transform_listener_->get_latest_transform(*cached_imu_frame_id_, output_frame_);
 
-  if (tf_imu2base_ptr == nullptr) {  // TODO(kazkomiya): remove this (possibly dead) path after
-                                     // confirming get_latest_transform never fails
+  if (tf_imu2base_ptr == nullptr) {
     return;
   }
   cached_transform_ = *tf_imu2base_ptr;
@@ -124,35 +123,31 @@ void GyroOdometerNode::publish_data(const GyroOdometer::OutputData & output_data
 
 void GyroOdometerNode::publish_diagnostics()
 {
-#if 0   // FIXME(kazkomiya)
+  DiagnosticsState state = gyro_odometer_.take_diagnostics_state();
+  // The three fields the fusion class cannot fill. is_succeed_transform_imu is answered here
+  // because this node owns the TF lookup and its cache, so the cache state is the authoritative
+  // answer.
+  state.is_succeed_transform_imu = cached_transform_.has_value();
+  state.message_timeout_sec = message_timeout_sec_;
+  state.output_frame = output_frame_;
+
   diagnostics_->clear();
 
   const auto vehicle_twist_time =
-    vehicle_twist_arrived_
-      ? static_cast<double>(static_cast<rclcpp::Time>(latest_vehicle_twist_ros_time_).nanoseconds())
+    state.vehicle_twist_arrived
+      ? static_cast<double>(state.latest_vehicle_twist_ros_time.nanoseconds())
       : std::nan("");
   const auto imu_time =
-    imu_arrived_
-      ? static_cast<double>(static_cast<rclcpp::Time>(latest_imu_ros_time_).nanoseconds())
-      : std::nan("");
+    state.imu_arrived ? static_cast<double>(state.latest_imu_ros_time.nanoseconds()) : std::nan("");
   diagnostics_->add_key_value("latest_vehicle_twist_time_stamp", vehicle_twist_time);
   diagnostics_->add_key_value("latest_imu_time_stamp", imu_time);
-  diagnostics_->add_key_value("is_arrived_first_vehicle_twist", vehicle_twist_arrived_);
-  diagnostics_->add_key_value("is_arrived_first_imu", imu_arrived_);
-  diagnostics_->add_key_value("vehicle_twist_time_stamp_dt", latest_vehicle_twist_dt_);
-  diagnostics_->add_key_value("imu_time_stamp_dt", latest_imu_dt_);
-  diagnostics_->add_key_value("vehicle_twist_queue_size", latest_vehicle_twist_queue_size_);
-  diagnostics_->add_key_value("imu_queue_size", latest_imu_queue_size_);
-  diagnostics_->add_key_value("is_succeed_transform_imu", is_succeed_transform_imu_);
-
-  DiagnosticsState state;
-  state.vehicle_twist_arrived = vehicle_twist_arrived_;
-  state.imu_arrived = imu_arrived_;
-  state.is_succeed_transform_imu = is_succeed_transform_imu_;
-  state.latest_vehicle_twist_dt = latest_vehicle_twist_dt_;
-  state.latest_imu_dt = latest_imu_dt_;
-  state.message_timeout_sec = message_timeout_sec_;
-  state.output_frame = output_frame_;
+  diagnostics_->add_key_value("is_arrived_first_vehicle_twist", state.vehicle_twist_arrived);
+  diagnostics_->add_key_value("is_arrived_first_imu", state.imu_arrived);
+  diagnostics_->add_key_value("vehicle_twist_time_stamp_dt", state.latest_vehicle_twist_dt);
+  diagnostics_->add_key_value("imu_time_stamp_dt", state.latest_imu_dt);
+  diagnostics_->add_key_value("vehicle_twist_queue_size", state.vehicle_twist_queue_size);
+  diagnostics_->add_key_value("imu_queue_size", state.imu_queue_size);
+  diagnostics_->add_key_value("is_succeed_transform_imu", state.is_succeed_transform_imu);
 
   const DiagnosticsResult diagnostics_result = determine_diagnostics(state);
 
@@ -169,7 +164,6 @@ void GyroOdometerNode::publish_diagnostics()
       this->get_logger(), *this->get_clock(), 1000, diagnostics_result.log_message);
 
   diagnostics_->publish(this->now());
-#endif  // FIXME(kazkomiya)
 }
 
 }  // namespace autoware::gyro_odometer

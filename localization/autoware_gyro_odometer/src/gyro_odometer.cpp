@@ -30,10 +30,23 @@ namespace autoware::gyro_odometer
 GyroOdometer::GyroOdometer()
 : vehicle_twist_arrived_(false),
   imu_arrived_(false),
-  is_succeed_transform_imu_(false),
   latest_vehicle_twist_dt_(0.0),
   latest_imu_dt_(0.0)
 {
+}
+
+DiagnosticsState GyroOdometer::take_diagnostics_state() const
+{
+  DiagnosticsState state;
+  state.vehicle_twist_arrived = vehicle_twist_arrived_;
+  state.imu_arrived = imu_arrived_;
+  state.latest_vehicle_twist_dt = latest_vehicle_twist_dt_;
+  state.latest_imu_dt = latest_imu_dt_;
+  state.latest_vehicle_twist_ros_time = latest_vehicle_twist_ros_time_;
+  state.latest_imu_ros_time = latest_imu_ros_time_;
+  state.vehicle_twist_queue_size = static_cast<int32_t>(vehicle_twist_queue_.size());
+  state.imu_queue_size = static_cast<int32_t>(gyro_queue_.size());
+  return state;
 }
 
 std::optional<GyroOdometer::OutputData> GyroOdometer::try_concat_gyro_and_odometer(
@@ -109,8 +122,6 @@ GyroOdometer::concat_gyro_and_odometer(
   }
 
   // check queue size
-  latest_vehicle_twist_queue_size_ = static_cast<int32_t>(vehicle_twist_queue_.size());
-  latest_imu_queue_size_ = static_cast<int32_t>(gyro_queue_.size());
   if (vehicle_twist_queue_.empty()) {
     // not output error and clear queue
     return std::nullopt;
@@ -120,10 +131,6 @@ GyroOdometer::concat_gyro_and_odometer(
     return std::nullopt;
   }
 
-  /*TODO(kazkomiya): remove this (maybe dead) path.
-   transform can be nullopt when imu has been never received or transformation failure
-   The former case is already handled by imu_arrived_ and get_latest_transform may not fail*/
-  is_succeed_transform_imu_ = transform.has_value();
   if (!transform) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
