@@ -21,43 +21,61 @@
 
 #include <chrono>
 #include <future>
+#include <memory>
 #include <optional>
+#include <utility>
 
 namespace autoware::component_interface_utils
 {
 
-/// The wrapper class of rclcpp::Client. Service-call tracing is provided by ROS 2
+/// Create the underlying client handle. Gated in one place because the handle type is deduced
+/// from this call, and Humble (rclcpp 16) has no rclcpp::QoS overload of create_client().
+template <class SpecT, class NodeT>
+auto create_client_handle(NodeT * node, rclcpp::CallbackGroup::SharedPtr group)
+{
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
+  return node->template create_client<typename SpecT::Service>(
+    SpecT::name, rclcpp::ServicesQoS(), group);
+#else
+  return node->template create_client<typename SpecT::Service>(
+    SpecT::name, rmw_qos_profile_services_default, group);
+#endif
+}
+
+/// The wrapper class of a service client. Service-call tracing is provided by ROS 2
 /// service introspection (enabled via NodeInterface::introspection_state), not a
-/// custom log topic.
-template <class SpecT>
+/// custom log topic. The request/response/future aliases are spelled from the spec rather than
+/// taken off the handle, so they do not depend on the node type.
+template <class SpecT, class NodeT = rclcpp::Node>
 class Client
 {
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(Client)
   using SpecType = SpecT;
-  using WrapType = rclcpp::Client<typename SpecT::Service>;
+  using NodeType = NodeT;
+  using WrapSharedPtr = decltype(create_client_handle<SpecT>(
+    std::declval<NodeT *>(), std::declval<rclcpp::CallbackGroup::SharedPtr>()));
+  using WrapType = typename WrapSharedPtr::element_type;
+
+  using SharedRequest = std::shared_ptr<typename SpecT::Service::Request>;
+  using SharedResponse = std::shared_ptr<typename SpecT::Service::Response>;
+  using SharedFuture = std::shared_future<SharedResponse>;
 
   /// Constructor.
-  Client(NodeInterface::SharedPtr interface, rclcpp::CallbackGroup::SharedPtr group)
+  Client(typename NodeInterface<NodeT>::SharedPtr interface, rclcpp::CallbackGroup::SharedPtr group)
   : interface_(interface)
   {
+    client_ = create_client_handle<SpecT>(interface_->node, group);
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
-    client_ = interface_->node->create_client<typename SpecT::Service>(
-      SpecT::name, rclcpp::ServicesQoS(), group);
     if (interface_->introspection_state != RCL_SERVICE_INTROSPECTION_OFF) {
       client_->configure_introspection(
         interface_->node->get_clock(), rclcpp::QoS(1), interface_->introspection_state);
     }
-#else
-    // ROS 2 Humble exposes only the (non-deprecated) rmw_qos_profile_t overload.
-    client_ = interface_->node->create_client<typename SpecT::Service>(
-      SpecT::name, rmw_qos_profile_services_default, group);
 #endif
   }
 
   /// Send request.
-  typename WrapType::SharedResponse call(
-    const typename WrapType::SharedRequest request, std::optional<double> timeout = std::nullopt)
+  SharedResponse call(const SharedRequest request, std::optional<double> timeout = std::nullopt)
   {
     if (!client_->service_is_ready()) {
       throw ServiceUnready(SpecT::name);
@@ -74,7 +92,7 @@ public:
   }
 
   /// Send request.
-  typename WrapType::SharedFuture async_send_request(typename WrapType::SharedRequest request)
+  SharedFuture async_send_request(SharedRequest request)
   {
     return client_->async_send_request(request).future;
   }
@@ -83,12 +101,10 @@ public:
   /// concrete-signature lambda so callers may pass a generic (auto-parameter)
   /// callback, which rclcpp::Client::async_send_request would otherwise reject.
   template <class CallbackT>
-  typename WrapType::SharedFuture async_send_request(
-    typename WrapType::SharedRequest request, CallbackT && callback)
+  SharedFuture async_send_request(SharedRequest request, CallbackT && callback)
   {
     return client_
-      ->async_send_request(
-        request, [callback](typename WrapType::SharedFuture future) { callback(future); })
+      ->async_send_request(request, [callback](SharedFuture future) { callback(future); })
       .future;
   }
 
@@ -97,8 +113,8 @@ public:
 
 private:
   RCLCPP_DISABLE_COPY(Client)
-  typename WrapType::SharedPtr client_;
-  NodeInterface::SharedPtr interface_;
+  WrapSharedPtr client_;
+  typename NodeInterface<NodeT>::SharedPtr interface_;
 };
 
 }  // namespace autoware::component_interface_utils

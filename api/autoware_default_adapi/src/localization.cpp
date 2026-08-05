@@ -16,9 +16,6 @@
 
 #include "utils/localization_conversion.hpp"
 
-#include <autoware/component_interface_specs/utils.hpp>
-#include <autoware/qos_utils/qos_compatibility.hpp>
-
 namespace autoware::default_adapi
 {
 
@@ -31,25 +28,18 @@ LocalizationNode::LocalizationNode(const rclcpp::NodeOptions & options)
   group_cli_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
 
   // AD API
-  pub_state_ = create_publisher<autoware::adapi_specs::localization::InitializationState::Message>(
-    autoware::adapi_specs::localization::InitializationState::name,
-    autoware::component_interface_specs::get_qos<
-      autoware::adapi_specs::localization::InitializationState>());
-  srv_initialize_ = create_service<autoware::adapi_specs::localization::Initialize::Service>(
-    autoware::adapi_specs::localization::Initialize::name,
-    std::bind(&LocalizationNode::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
-    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_cli_);
+  pub_state_ =
+    adaptor_.create_publisher<autoware::adapi_specs::localization::InitializationState>();
+  srv_initialize_ = adaptor_.create_service<autoware::adapi_specs::localization::Initialize>(
+    this, &LocalizationNode::on_initialize, group_cli_);
 
   // Component Interface
-  sub_state_ = create_subscription<
-    autoware::component_interface_specs::localization::InitializationState::Message>(
-    autoware::component_interface_specs::localization::InitializationState::name,
-    autoware::component_interface_specs::get_qos<
-      autoware::component_interface_specs::localization::InitializationState>(),
-    std::bind(&LocalizationNode::on_state, this, std::placeholders::_1));
+  sub_state_ =
+    adaptor_
+      .create_subscription<autoware::component_interface_specs::localization::InitializationState>(
+        this, &LocalizationNode::on_state);
   cli_initialize_ =
-    create_client<autoware::component_interface_specs::localization::Initialize::Service>(
-      autoware::component_interface_specs::localization::Initialize::name);
+    adaptor_.create_client<autoware::component_interface_specs::localization::Initialize>();
 
   state_.state = ImplState::Message::UNKNOWN;
 }
