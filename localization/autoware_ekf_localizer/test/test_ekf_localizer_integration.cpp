@@ -421,6 +421,7 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
   }
 
   latest_diag_ = nullptr;
+  const size_t odom_count_before = odom_count_;
 
   geometry_msgs::msg::PoseWithCovarianceStamped ancient_pose = make_pose();
   ancient_pose.header.stamp = current_time_ - rclcpp::Duration::from_seconds(50.0);
@@ -431,6 +432,8 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
   EXPECT_TRUE(poll_for_diagnostic("[WARN]pose topic is delay", 5))
     << "Failed to trigger Delay limit warning.";
 
+  ASSERT_GT(odom_count_, odom_count_before) << "Node stopped publishing odometry.";
+  ASSERT_NE(latest_odom_, nullptr);
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 }
 
