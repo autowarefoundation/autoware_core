@@ -15,6 +15,9 @@
 #ifndef GYRO_ODOMETER_HPP_
 #define GYRO_ODOMETER_HPP_
 
+/*logic depends on diagnostics so that it snapshots only the stuff diag actually needs*/
+#include "gyro_odometer_diagnostics.hpp"
+
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -55,6 +58,11 @@ public:
   static OutputData publish_data_internal(
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
 
+  /// \brief Copy out the fusion-owned part of the diagnostics state. The caller fills the fields it
+  /// owns itself (is_succeed_transform_imu, message_timeout_sec, output_frame). See
+  /// DiagnosticsState.
+  DiagnosticsState take_diagnostics_state() const;
+
 private:
   std::optional<OutputData> try_concat_gyro_and_odometer(
     rclcpp::Time current_time, double message_timeout_sec,
@@ -67,13 +75,10 @@ private:
 
   bool vehicle_twist_arrived_;
   bool imu_arrived_;
-  bool is_succeed_transform_imu_;
   rclcpp::Time latest_vehicle_twist_ros_time_;
   rclcpp::Time latest_imu_ros_time_;
   double latest_vehicle_twist_dt_;
   double latest_imu_dt_;
-  int32_t latest_vehicle_twist_queue_size_ = 0;
-  int32_t latest_imu_queue_size_ = 0;
   std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
   std::deque<sensor_msgs::msg::Imu> gyro_queue_;
 };
