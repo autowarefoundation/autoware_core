@@ -145,7 +145,7 @@ TEST_F(GyroOdometerNodeTest, TestGyroOdometerWithImuAndVelocity)
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   // Assert
-  auto const twist = received_twist();
+  const auto twist = received_twist();
   ASSERT_NE(twist, nullptr) << "Twist message was not received within predefined time";
 
   // The longitudinal velocity comes from the vehicle twist and the angular velocity from the IMU.
@@ -173,6 +173,6 @@ TEST_F(GyroOdometerNodeTest, TestGyroOdometerImuOnly)
   std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
   // Assert
-  auto const twist = received_twist();
+  const auto twist = received_twist();
   ASSERT_EQ(twist, nullptr) << "Twist message was received when only IMU was provided";
 }
