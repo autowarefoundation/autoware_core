@@ -21,8 +21,6 @@
 #include "pose_error_check_module.hpp"
 #include "stop_check_module.hpp"
 
-#include <autoware/qos_utils/qos_compatibility.hpp>
-
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 
 #include <memory>
@@ -33,18 +31,12 @@ namespace autoware::pose_initializer
 {
 PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
 : rclcpp::Node("pose_initializer", options),
-  group_srv_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive))
+  group_srv_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
+  pub_reset_(create_publisher<PoseWithCovarianceStamped>("pose_reset", 1))
 {
-  rclcpp::QoS qos_state(1);
-  qos_state.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-  qos_state.durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
-  pub_state_ = create_publisher<State::Message>(
-    State::name, autoware::component_interface_specs::get_qos<State>());
-  srv_initialize_ = create_service<Initialize::Service>(
-    Initialize::name,
-    std::bind(&PoseInitializer::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
-    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_srv_);
-  pub_reset_ = create_publisher<PoseWithCovarianceStamped>("pose_reset", 1);
+  pub_state_ = adaptor_.create_publisher<State>();
+  srv_initialize_ =
+    adaptor_.create_service<Initialize>(this, &PoseInitializer::on_initialize, group_srv_);
 
   output_pose_covariance_ = get_covariance_parameter(this, "output_pose_covariance");
   gnss_particle_covariance_ = get_covariance_parameter(this, "gnss_particle_covariance");

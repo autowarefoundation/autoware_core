@@ -17,8 +17,6 @@
 #include "request_state_machine.hpp"
 #include "route_builder.hpp"
 
-#include <autoware/qos_utils/qos_compatibility.hpp>
-
 #include <memory>
 
 namespace autoware::adapi_adaptors
@@ -38,18 +36,11 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
   sub_waypoint_ = create_subscription<PoseStamped>(
     "~/input/waypoint", 10, std::bind(&RoutingAdaptor::on_waypoint, this, _1));
 
-  cli_reroute_ = create_client<ChangeRoutePoints::Service>(
-    ChangeRoutePoints::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
-  cli_route_ = create_client<SetRoutePoints::Service>(
-    SetRoutePoints::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
-  cli_clear_ =
-    create_client<ClearRoute::Service>(ClearRoute::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
+  cli_reroute_ = adaptor_.create_client<ChangeRoutePoints>();
+  cli_route_ = adaptor_.create_client<SetRoutePoints>();
+  cli_clear_ = adaptor_.create_client<ClearRoute>();
 
-  const auto state_qos = rclcpp::QoS{RouteState::depth}
-                           .reliability(RouteState::reliability)
-                           .durability(RouteState::durability);
-  sub_state_ = create_subscription<RouteState::Message>(
-    RouteState::name, state_qos,
+  sub_state_ = adaptor_.create_subscription<RouteState>(
     [this](const RouteState::Message::ConstSharedPtr msg) { state_ = msg->state; });
 
   const auto rate = rclcpp::Rate(5.0);

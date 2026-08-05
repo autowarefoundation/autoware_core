@@ -19,16 +19,39 @@
 #include <autoware/component_interface_utils/rclcpp/interface.hpp>
 #include <rclcpp/node.hpp>
 
+#include <functional>
+#include <memory>
 #include <type_traits>
 #include <utility>
 
 namespace autoware::component_interface_utils
 {
 
-/// The wrapper class of rclcpp::Service. Service-call tracing is provided by ROS 2
+/// The callback handed to create_service(). Spelled from the spec rather than taken off the
+/// handle, which would make the handle type depend on itself.
+template <class SpecT>
+using ServiceCallbackFn = std::function<void(
+  typename SpecT::Service::Request::SharedPtr, typename SpecT::Service::Response::SharedPtr)>;
+
+/// Create the underlying service handle. Gated in one place because the handle type is deduced
+/// from this call, and Humble (rclcpp 16) has no rclcpp::QoS overload of create_service().
+template <class SpecT, class NodeT>
+auto create_service_handle(
+  NodeT * node, ServiceCallbackFn<SpecT> callback, rclcpp::CallbackGroup::SharedPtr group)
+{
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
+  return node->template create_service<typename SpecT::Service>(
+    SpecT::name, callback, rclcpp::ServicesQoS(), group);
+#else
+  return node->template create_service<typename SpecT::Service>(
+    SpecT::name, callback, rmw_qos_profile_services_default, group);
+#endif
+}
+
+/// The wrapper class of a service server. Service-call tracing is provided by ROS 2
 /// service introspection (enabled via NodeInterface::introspection_state), not a
 /// custom log topic.
-template <class SpecT>
+template <class SpecT, class NodeT = rclcpp::Node>
 class Service
 {
 private:
@@ -49,32 +72,32 @@ private:
 public:
   RCLCPP_SMART_PTR_DEFINITIONS(Service)
   using SpecType = SpecT;
-  using WrapType = rclcpp::Service<typename SpecT::Service>;
+  using NodeType = NodeT;
+  using CallbackType = ServiceCallbackFn<SpecT>;
+  using WrapSharedPtr = decltype(create_service_handle<SpecT>(
+    std::declval<NodeT *>(), std::declval<CallbackType>(),
+    std::declval<rclcpp::CallbackGroup::SharedPtr>()));
+  using WrapType = typename WrapSharedPtr::element_type;
 
   /// Constructor.
   template <class CallbackT>
   Service(
-    NodeInterface::SharedPtr interface, CallbackT && callback,
+    typename NodeInterface<NodeT>::SharedPtr interface, CallbackT && callback,
     rclcpp::CallbackGroup::SharedPtr group)
   : interface_(interface)
   {
+    service_ = create_service_handle<SpecT>(interface_->node, wrap(callback), group);
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
-    service_ = interface_->node->create_service<typename SpecT::Service>(
-      SpecT::name, wrap(callback), rclcpp::ServicesQoS(), group);
     if (interface_->introspection_state != RCL_SERVICE_INTROSPECTION_OFF) {
       service_->configure_introspection(
         interface_->node->get_clock(), rclcpp::QoS(1), interface_->introspection_state);
     }
-#else
-    // ROS 2 Humble exposes only the (non-deprecated) rmw_qos_profile_t overload.
-    service_ = interface_->node->create_service<typename SpecT::Service>(
-      SpecT::name, wrap(callback), rmw_qos_profile_services_default, group);
 #endif
   }
 
   /// Create a service callback that converts exceptions into the response status.
   template <class CallbackT>
-  typename WrapType::CallbackType wrap(CallbackT && callback)
+  CallbackType wrap(CallbackT && callback)
   {
     return [callback](
              typename SpecT::Service::Request::SharedPtr request,
@@ -94,8 +117,8 @@ public:
 
 private:
   RCLCPP_DISABLE_COPY(Service)
-  typename WrapType::SharedPtr service_;
-  NodeInterface::SharedPtr interface_;
+  WrapSharedPtr service_;
+  typename NodeInterface<NodeT>::SharedPtr interface_;
 };
 
 }  // namespace autoware::component_interface_utils
