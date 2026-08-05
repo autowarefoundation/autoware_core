@@ -36,7 +36,7 @@ private:
   using State = autoware::component_interface_specs::planning::RouteState;
   using Route = autoware::component_interface_specs::planning::LaneletRoute;
 
-  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_cli_;
 
   // AD API Interface

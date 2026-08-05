@@ -37,7 +37,7 @@ private:
   using ChangeRoutePoints = autoware::adapi_specs::routing::ChangeRoutePoints;
   using ClearRoute = autoware::adapi_specs::routing::ClearRoute;
   using RouteState = autoware::adapi_specs::routing::RouteState;
-  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   autoware::component_interface_utils::Client<ChangeRoutePoints>::SharedPtr cli_reroute_;
   autoware::component_interface_utils::Client<SetRoutePoints>::SharedPtr cli_route_;
   autoware::component_interface_utils::Client<ClearRoute>::SharedPtr cli_clear_;
