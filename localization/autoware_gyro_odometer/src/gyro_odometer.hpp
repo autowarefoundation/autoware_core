@@ -15,14 +15,62 @@
 #ifndef GYRO_ODOMETER_HPP_
 #define GYRO_ODOMETER_HPP_
 
+#include <autoware_utils_geometry/msg/covariance.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
 #include <array>
 #include <deque>
-
+#include <optional>
+#include <string>
+#include <tuple>
 namespace autoware::gyro_odometer
 {
+class GyroOdometer
+{
+private:
+  using COV_IDX = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
+
+public:
+  explicit GyroOdometer();
+  using OutputData = std::tuple<
+    geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped,
+    geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped>;
+
+  std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> callback_vehicle_twist_internal(
+    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg_ptr,
+    rclcpp::Time current_time, double message_timeout_sec,
+    std::optional<geometry_msgs::msg::TransformStamped> transform,
+    const std::string & output_frame);
+  std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> callback_imu_internal(
+    const sensor_msgs::msg::Imu & imu_msg_ptr, rclcpp::Time current_time,
+    double message_timeout_sec, std::optional<geometry_msgs::msg::TransformStamped> transform,
+    const std::string & output_frame);
+  static OutputData publish_data_internal(
+    const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
+
+private:
+  std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
+    rclcpp::Time current_time, double message_timeout_sec,
+    std::optional<geometry_msgs::msg::TransformStamped> transform,
+    const std::string & output_frame);
+
+  bool vehicle_twist_arrived_;
+  bool imu_arrived_;
+  bool is_succeed_transform_imu_;
+  rclcpp::Time latest_vehicle_twist_ros_time_;
+  rclcpp::Time latest_imu_ros_time_;
+  double latest_vehicle_twist_dt_;
+  double latest_imu_dt_;
+  int32_t latest_vehicle_twist_queue_size_ = 0;
+  int32_t latest_imu_queue_size_ = 0;
+  std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
+  std::deque<sensor_msgs::msg::Imu> gyro_queue_;
+};
 
 /// \brief Reduce an angular-velocity covariance (xyz layout) to an isotropic diagonal covariance.
 ///
