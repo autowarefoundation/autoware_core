@@ -89,12 +89,11 @@ void GyroOdometerNode::callback_vehicle_twist(
     vehicle_twist_msg_ptr)
 {
   update_cached_transform();
-  auto twist_with_cov = internal_gyro_odometer_.callback_vehicle_twist_internal(
+  auto output = gyro_odometer_.callback_vehicle_twist_internal(
     *vehicle_twist_msg_ptr, this->now(), message_timeout_sec_, cached_transform_, output_frame_);
 
-  if (twist_with_cov) {
-    auto output = internal_gyro_odometer_.publish_data_internal(*twist_with_cov);
-    publish_data(output);
+  if (output) {
+    publish_data(*output);
   }
 }
 
@@ -106,18 +105,17 @@ void GyroOdometerNode::callback_imu(
   }
   update_cached_transform();
 
-  auto twist_with_cov = internal_gyro_odometer_.callback_imu_internal(
+  auto output = gyro_odometer_.callback_imu_internal(
     *imu_msg_ptr, this->now(), message_timeout_sec_, cached_transform_, output_frame_);
 
-  if (twist_with_cov) {
-    auto output = internal_gyro_odometer_.publish_data_internal(*twist_with_cov);
-    publish_data(output);
+  if (output) {
+    publish_data(*output);
   }
 }
 
 void GyroOdometerNode::publish_data(const GyroOdometer::OutputData & output_data)
 {
-  auto [twist_raw, twist_with_covariance_raw, twist, twist_with_covariance] = output_data;
+  const auto & [twist_raw, twist_with_covariance_raw, twist, twist_with_covariance] = output_data;
   twist_raw_pub_->publish(twist_raw);
   twist_with_covariance_raw_pub_->publish(twist_with_covariance_raw);
   twist_pub_->publish(twist);

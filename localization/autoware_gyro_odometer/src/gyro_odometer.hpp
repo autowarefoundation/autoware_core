@@ -41,22 +41,28 @@ public:
     geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped,
     geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped>;
 
-  std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> callback_vehicle_twist_internal(
+  std::optional<OutputData> callback_vehicle_twist_internal(
     const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg_ptr,
     rclcpp::Time current_time, double message_timeout_sec,
-    std::optional<geometry_msgs::msg::TransformStamped> transform,
+    const std::optional<geometry_msgs::msg::TransformStamped> & transform,
     const std::string & output_frame);
-  std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> callback_imu_internal(
+
+  std::optional<OutputData> callback_imu_internal(
     const sensor_msgs::msg::Imu & imu_msg_ptr, rclcpp::Time current_time,
-    double message_timeout_sec, std::optional<geometry_msgs::msg::TransformStamped> transform,
+    double message_timeout_sec,
+    const std::optional<geometry_msgs::msg::TransformStamped> & transform,
     const std::string & output_frame);
   static OutputData publish_data_internal(
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
 
 private:
+  std::optional<OutputData> try_concat_gyro_and_odometer(
+    rclcpp::Time current_time, double message_timeout_sec,
+    const std::optional<geometry_msgs::msg::TransformStamped> & transform,
+    const std::string & output_frame);
   std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
     rclcpp::Time current_time, double message_timeout_sec,
-    std::optional<geometry_msgs::msg::TransformStamped> transform,
+    const std::optional<geometry_msgs::msg::TransformStamped> & transform,
     const std::string & output_frame);
 
   bool vehicle_twist_arrived_;

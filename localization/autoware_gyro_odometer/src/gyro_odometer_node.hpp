@@ -88,7 +88,7 @@ private:
     cached_transform_;  // assumes frame id of imu doesn't change, so transform also doesn't change
                         // during operation
   double message_timeout_sec_;
-  GyroOdometer internal_gyro_odometer_;
+  GyroOdometer gyro_odometer_;
 };
 
 }  // namespace autoware::gyro_odometer
