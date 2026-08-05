@@ -36,32 +36,50 @@ GyroOdometer::GyroOdometer()
 {
 }
 
-std::optional<geometry_msgs::msg::TwistWithCovarianceStamped>
-GyroOdometer::callback_vehicle_twist_internal(
+std::optional<GyroOdometer::OutputData> GyroOdometer::try_concat_gyro_and_odometer(
+  rclcpp::Time current_time, double message_timeout_sec,
+  const std::optional<geometry_msgs::msg::TransformStamped> & transform,
+  const std::string & output_frame)
+{
+  auto twist_with_cov =
+    concat_gyro_and_odometer(current_time, message_timeout_sec, transform, output_frame);
+  if (twist_with_cov) {
+    return std::make_optional(publish_data_internal(*twist_with_cov));
+  } else {
+    return std::nullopt;
+  }
+}
+
+std::optional<GyroOdometer::OutputData> GyroOdometer::callback_vehicle_twist_internal(
   const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg_ptr,
   rclcpp::Time current_time, double message_timeout_sec,
-  std::optional<geometry_msgs::msg::TransformStamped> transform, const std::string & output_frame)
+  const std::optional<geometry_msgs::msg::TransformStamped> & transform,
+  const std::string & output_frame)
 {
   vehicle_twist_arrived_ = true;
   latest_vehicle_twist_ros_time_ = vehicle_twist_msg_ptr.header.stamp;
   vehicle_twist_queue_.push_back(vehicle_twist_msg_ptr);
-  return concat_gyro_and_odometer(current_time, message_timeout_sec, transform, output_frame);
+
+  return try_concat_gyro_and_odometer(current_time, message_timeout_sec, transform, output_frame);
 }
 
-std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> GyroOdometer::callback_imu_internal(
+std::optional<GyroOdometer::OutputData> GyroOdometer::callback_imu_internal(
   const sensor_msgs::msg::Imu & imu_msg_ptr, rclcpp::Time current_time, double message_timeout_sec,
-  std::optional<geometry_msgs::msg::TransformStamped> transform, const std::string & output_frame)
+  const std::optional<geometry_msgs::msg::TransformStamped> & transform,
+  const std::string & output_frame)
 {
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg_ptr.header.stamp;
   gyro_queue_.push_back(imu_msg_ptr);
-  return concat_gyro_and_odometer(current_time, message_timeout_sec, transform, output_frame);
+
+  return try_concat_gyro_and_odometer(current_time, message_timeout_sec, transform, output_frame);
 }
 
 std::optional<geometry_msgs::msg::TwistWithCovarianceStamped>
 GyroOdometer::concat_gyro_and_odometer(
   rclcpp::Time current_time, double message_timeout_sec,
-  std::optional<geometry_msgs::msg::TransformStamped> transform, const std::string & output_frame)
+  const std::optional<geometry_msgs::msg::TransformStamped> & transform,
+  const std::string & output_frame)
 {
   // check arrive first topic
   if (!vehicle_twist_arrived_) {
