@@ -16,8 +16,6 @@
 
 #include "parameter_helper.hpp"
 
-#include <autoware/qos_utils/qos_compatibility.hpp>
-
 #include <memory>
 #include <string>
 #include <vector>
@@ -40,8 +38,7 @@ InitialPoseAdaptor::InitialPoseAdaptor(const rclcpp::NodeOptions & options)
     "~/initialpose", rclcpp::QoS(1),
     std::bind(&InitialPoseAdaptor::on_initial_pose, this, std::placeholders::_1));
 
-  cli_initialize_ =
-    create_client<Initialize::Service>(Initialize::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
+  cli_initialize_ = adaptor_.create_client<Initialize>();
 }
 
 void InitialPoseAdaptor::on_initial_pose(const PoseWithCovarianceStamped::ConstSharedPtr msg)

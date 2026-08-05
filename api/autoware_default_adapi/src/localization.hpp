@@ -17,6 +17,7 @@
 
 #include <autoware/adapi_specs/localization.hpp>
 #include <autoware/component_interface_specs/localization.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -31,16 +32,16 @@ public:
 private:
   using ImplState = autoware::component_interface_specs::localization::InitializationState;
 
+  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_cli_;
-  rclcpp::Service<autoware::adapi_specs::localization::Initialize::Service>::SharedPtr
-    srv_initialize_;
-  rclcpp::Publisher<autoware::adapi_specs::localization::InitializationState::Message>::SharedPtr
-    pub_state_;
-  rclcpp::Client<autoware::component_interface_specs::localization::Initialize::Service>::SharedPtr
-    cli_initialize_;
-  rclcpp::Subscription<
-    autoware::component_interface_specs::localization::InitializationState::Message>::SharedPtr
-    sub_state_;
+  autoware::component_interface_utils::Service<
+    autoware::adapi_specs::localization::Initialize>::SharedPtr srv_initialize_;
+  autoware::component_interface_utils::Publisher<
+    autoware::adapi_specs::localization::InitializationState>::SharedPtr pub_state_;
+  autoware::component_interface_utils::Client<
+    autoware::component_interface_specs::localization::Initialize>::SharedPtr cli_initialize_;
+  autoware::component_interface_utils::Subscription<
+    autoware::component_interface_specs::localization::InitializationState>::SharedPtr sub_state_;
 
   void diagnose_state(diagnostic_updater::DiagnosticStatusWrapper & stat);
   void on_state(const ImplState::Message::ConstSharedPtr msg);
