@@ -14,58 +14,24 @@
 
 // Deploy-time admission gate. Reads N per-component interface manifest JSON files (one per
 // component image, extracted from image metadata before boot), runs the shared rule's deploy-time
-// trigger via evaluate_deploy() (stage 1: version + interface_name only), prints one verdict line
-// per pairing, and exits:
+// trigger via evaluate_deploy() (stage 1: version + interface_name only, plus a spec QoS
+// conformance check when a --spec-manifest is given), prints one verdict line per pairing, and
+// exits:
 //   0 = every pairing ACCEPTED
-//   1 = at least one rejection (MAJOR / MINOR mismatch or NO_PROVIDER)
+//   1 = at least one rejection (MAJOR / MINOR mismatch, NO_PROVIDER, or a QOS_* verdict)
 //   2 = operational / parse error (bad usage, unreadable file, malformed manifest)
 // This is the entry point the meta-repo deploy_check.sh gate invokes before `docker compose up`.
+// See manifest_admit_cli.hpp for the full argument and exit-code contract; this file is a thin
+// argv/stdout/stderr wrapper around run_manifest_admit(), which is what is actually unit tested.
 
-#include "autoware/component_interface_admission/admission_rule.hpp"
-#include "autoware/component_interface_admission/manifest_json.hpp"
-#include "autoware/component_interface_admission/records.hpp"
+#include "autoware/component_interface_admission/manifest_admit_cli.hpp"
 
-#include <exception>
-#include <fstream>
 #include <iostream>
-#include <sstream>
 #include <string>
 #include <vector>
 
 int main(int argc, char ** argv)
 {
-  namespace adm = autoware::component_interface_admission;
-
-  if (argc < 2) {
-    std::cerr << "usage: manifest_admit <manifest.json> [<manifest.json> ...]\n";
-    return 2;
-  }
-
-  std::vector<adm::InterfaceManifest> manifests;
-  manifests.reserve(static_cast<std::size_t>(argc - 1));
-  for (int i = 1; i < argc; ++i) {
-    std::ifstream f(argv[i]);
-    if (!f) {
-      std::cerr << "manifest_admit: cannot open " << argv[i] << "\n";
-      return 2;
-    }
-    std::ostringstream ss;
-    ss << f.rdbuf();
-    try {
-      manifests.push_back(adm::from_json(ss.str()));
-    } catch (const std::exception & e) {
-      std::cerr << "manifest_admit: failed to parse " << argv[i] << ": " << e.what() << "\n";
-      return 2;
-    }
-  }
-
-  const auto results = adm::evaluate_deploy(manifests);
-  for (const auto & r : results) {
-    std::cout << r.consumer_node << " <- " << r.provider_node << " [" << r.interface_name
-              << "]: " << adm::verdict_text(r.code) << " (code=" << r.code << ")\n";
-  }
-  if (results.empty()) {
-    std::cout << "manifest_admit: no consumer/provider pairings to evaluate\n";
-  }
-  return adm::any_rejected(results) ? 1 : 0;
+  const std::vector<std::string> args(argv + 1, argv + argc);
+  return autoware::component_interface_admission::run_manifest_admit(args, std::cout, std::cerr);
 }
