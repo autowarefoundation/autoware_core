@@ -324,8 +324,9 @@ TEST_F(EKFLocalizerIntegrationHarness, DeterministicKinematics)
   }
 
   // Velocity is 5.0 m/s for 1s.
-  // Due to Kalman ramp-up, distance traveled must be positive, less than 5.0m.
+  // Due to Kalman ramp-up, distance traveled must be positive, around range (4.7999, 5.0).
   ASSERT_NE(latest_odom_, nullptr);
+  EXPECT_GT(latest_odom_->pose.pose.position.x, 4.7999);
   EXPECT_LT(latest_odom_->pose.pose.position.x, 5.0);
   EXPECT_NEAR(latest_odom_->pose.pose.position.y, 0.0, near_tol);
 
