@@ -26,9 +26,12 @@
 #include <gtest/gtest.h>
 
 #include <iostream>
+#include <chrono>
+#include <cmath>
 #include <limits>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 namespace
