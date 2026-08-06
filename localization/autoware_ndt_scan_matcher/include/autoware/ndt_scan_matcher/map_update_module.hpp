@@ -32,6 +32,7 @@
 #include <string>
 #include <variant>
 #include <vector>
+#include <utility>
 
 namespace autoware::ndt_scan_matcher
 {
