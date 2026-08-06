@@ -34,7 +34,7 @@ if(BUILD_TESTING)
     src
   )
 
-# The diagnostics decision is a pure function too, so the same plain-gtest treatment applies.
+  # The diagnostics decision is a pure function too, so the same plain-gtest treatment applies.
   ament_add_gtest(test_gyro_odometer_diagnostics
     test/test_gyro_odometer_diagnostics.cpp
   )
@@ -65,7 +65,7 @@ if(BUILD_TESTING)
   endif()
 endif()
 
-autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}_ros
   PLUGIN "autoware::gyro_odometer::GyroOdometerNode"
   EXECUTABLE ${PROJECT_NAME}_node
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
