@@ -16,15 +16,21 @@ include_directories(
 ament_auto_find_build_dependencies()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/ekf_localizer_node.cpp
+  src/utils/hyper_parameters.cpp
+  src/utils/covariance.cpp
+  src/utils/diagnostics.cpp
+  src/utils/mahalanobis.cpp
+  src/utils/measurement.cpp
+  src/utils/state_transition.cpp
+  src/utils/warning_message.cpp
   src/ekf_localizer.cpp
-  src/hyper_parameters.cpp
-  src/covariance.cpp
-  src/diagnostics.cpp
-  src/mahalanobis.cpp
-  src/measurement.cpp
-  src/state_transition.cpp
-  src/warning_message.cpp
-  src/ekf_module.cpp
+)
+
+target_include_directories(autoware_ekf_localizer
+  PUBLIC
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/src>
+  $<INSTALL_INTERFACE:include/autoware_ekf_localizer>
 )
 
 ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
@@ -44,6 +50,7 @@ function(add_testcase filepath)
 
   ament_add_gtest(${test_name} ${filepath})
   target_link_libraries("${test_name}" ${PROJECT_NAME})
+  target_include_directories("${test_name}" PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
   ament_target_dependencies(${test_name} ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
   ament_target_dependencies(${test_name} autoware_agnocast_wrapper)
   autoware_agnocast_wrapper_setup(${test_name})
@@ -65,7 +72,7 @@ if(BUILD_TESTING)
   file(GLOB_RECURSE TEST_FILES test/*.cpp)
 
   if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
-    list(FILTER TEST_FILES EXCLUDE REGEX "test_diagnostics(_topic)?\\.cpp$")
+    list(FILTER TEST_FILES EXCLUDE REGEX "test_diagnostics(_topic)?\\.cpp$|test_ekf_localizer_integration\\.cpp$")
   endif()
 
   foreach(filepath ${TEST_FILES})

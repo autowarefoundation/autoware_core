@@ -1,4 +1,4 @@
-// Copyright 2023 Autoware Foundation
+// Copyright 2022 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "utils/string.hpp"
+#ifndef UTILS__MEASUREMENT_HPP_
+#define UTILS__MEASUREMENT_HPP_
 
-#include <gtest/gtest.h>
+#include <Eigen/Core>
 
 namespace autoware::ekf_localizer
 {
 
-TEST(erase_leading_slash, SmokeTest)
-{
-  EXPECT_EQ(erase_leading_slash("/topic"), "topic");
-  EXPECT_EQ(erase_leading_slash("topic"), "topic");  // do nothing
-
-  EXPECT_EQ(erase_leading_slash(""), "");
-  EXPECT_EQ(erase_leading_slash("/"), "");
-}
+Eigen::Matrix<double, 3, 6> pose_measurement_matrix();
+Eigen::Matrix<double, 2, 6> twist_measurement_matrix();
+Eigen::Matrix3d pose_measurement_covariance(
+  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
+Eigen::Matrix2d twist_measurement_covariance(
+  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
 
 }  // namespace autoware::ekf_localizer
+
+#endif  // UTILS__MEASUREMENT_HPP_

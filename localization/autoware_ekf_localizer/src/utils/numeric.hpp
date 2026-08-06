@@ -1,4 +1,4 @@
-// Copyright 2023 Autoware Foundation
+// Copyright 2022 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,26 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "utils/string.hpp"
+#ifndef UTILS__NUMERIC_HPP_
+#define UTILS__NUMERIC_HPP_
 
-#include <gtest/gtest.h>
+#include <Eigen/Core>
+
+#include <cmath>
 
 namespace autoware::ekf_localizer
 {
 
-TEST(erase_leading_slash, SmokeTest)
+inline bool has_inf(const Eigen::MatrixXd & v)
 {
-  EXPECT_EQ(erase_leading_slash("/topic"), "topic");
-  EXPECT_EQ(erase_leading_slash("topic"), "topic");  // do nothing
+  return v.array().isInf().any();
+}
 
-  EXPECT_EQ(erase_leading_slash(""), "");
-  EXPECT_EQ(erase_leading_slash("/"), "");
+inline bool has_nan(const Eigen::MatrixXd & v)
+{
+  return v.array().isNaN().any();
 }
 
 }  // namespace autoware::ekf_localizer
+
+#endif  // UTILS__NUMERIC_HPP_

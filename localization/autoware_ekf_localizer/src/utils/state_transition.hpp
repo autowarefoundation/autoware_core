@@ -1,4 +1,4 @@
-// Copyright 2023 Autoware Foundation
+// Copyright 2022 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "utils/string.hpp"
+#ifndef UTILS__STATE_TRANSITION_HPP_
+#define UTILS__STATE_TRANSITION_HPP_
 
-#include <gtest/gtest.h>
+#include "matrix_types.hpp"
 
 namespace autoware::ekf_localizer
 {
 
-TEST(erase_leading_slash, SmokeTest)
-{
-  EXPECT_EQ(erase_leading_slash("/topic"), "topic");
-  EXPECT_EQ(erase_leading_slash("topic"), "topic");  // do nothing
-
-  EXPECT_EQ(erase_leading_slash(""), "");
-  EXPECT_EQ(erase_leading_slash("/"), "");
-}
+double normalize_yaw(const double & yaw);
+Vector6d predict_next_state(const Vector6d & X_curr, const double dt);
+Matrix6d create_state_transition_matrix(const Vector6d & X_curr, const double dt);
+Matrix6d process_noise_covariance(
+  const double proc_cov_yaw_d, const double proc_cov_vx_d, const double proc_cov_wz_d);
 
 }  // namespace autoware::ekf_localizer
+
+#endif  // UTILS__STATE_TRANSITION_HPP_

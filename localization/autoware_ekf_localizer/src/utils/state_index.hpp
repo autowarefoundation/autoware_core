@@ -1,4 +1,4 @@
-// Copyright 2023 Autoware Foundation
+// Copyright 2022 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,20 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "utils/string.hpp"
-
-#include <gtest/gtest.h>
+#ifndef UTILS__STATE_INDEX_HPP_
+#define UTILS__STATE_INDEX_HPP_
 
 namespace autoware::ekf_localizer
 {
 
-TEST(erase_leading_slash, SmokeTest)
-{
-  EXPECT_EQ(erase_leading_slash("/topic"), "topic");
-  EXPECT_EQ(erase_leading_slash("topic"), "topic");  // do nothing
-
-  EXPECT_EQ(erase_leading_slash(""), "");
-  EXPECT_EQ(erase_leading_slash("/"), "");
-}
+enum IDX {
+  X = 0,
+  Y = 1,
+  YAW = 2,
+  YAWB = 3,
+  VX = 4,
+  WZ = 5,
+};
 
 }  // namespace autoware::ekf_localizer
+
+#endif  // UTILS__STATE_INDEX_HPP_

@@ -12,20 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "utils/string.hpp"
+#ifndef UTILS__STRING_HPP_
+#define UTILS__STRING_HPP_
 
-#include <gtest/gtest.h>
+#include <string>
 
 namespace autoware::ekf_localizer
 {
 
-TEST(erase_leading_slash, SmokeTest)
+inline std::string erase_leading_slash(const std::string & s)
 {
-  EXPECT_EQ(erase_leading_slash("/topic"), "topic");
-  EXPECT_EQ(erase_leading_slash("topic"), "topic");  // do nothing
-
-  EXPECT_EQ(erase_leading_slash(""), "");
-  EXPECT_EQ(erase_leading_slash("/"), "");
+  std::string a = s;
+  if (a.front() == '/') {
+    a.erase(0, 1);
+  }
+  return a;
 }
 
 }  // namespace autoware::ekf_localizer
+
+#endif  // UTILS__STRING_HPP_
