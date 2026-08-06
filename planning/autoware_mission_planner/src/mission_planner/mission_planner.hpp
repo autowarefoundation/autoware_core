@@ -92,7 +92,7 @@ private:
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
 
-  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   autoware::component_interface_utils::Service<ClearRouteSpecs>::SharedPtr srv_clear_route;
   autoware::component_interface_utils::Service<SetLaneletRouteSpecs>::SharedPtr
     srv_set_lanelet_route;
