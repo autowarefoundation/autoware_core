@@ -82,10 +82,14 @@ MapUpdateModule::UpdateResult MapUpdateModule::callback_timer(
   }
 
   result.map_updated = builder_state_.with([&](auto & builder_state) {
-    if (should_update_map(builder_state, position.value(), diagnostics)) {
-      return update_map_internal(builder_state, position.value(), diagnostics);
+    if (!should_update_map(builder_state, position.value(), diagnostics)) {
+      return false;
     }
-    return false;
+    const bool updated = update_map_internal(builder_state, position.value(), diagnostics);
+    if (updated && param_.publish_loaded_map) {
+      result.loaded_pcd_map = loaded_pcd_map_;
+    }
+    return updated;
   });
   return result;
 }
@@ -151,6 +155,8 @@ bool MapUpdateModule::update_map_internal(
       auto param = ndt_ptr->getParams();
 
       ndt_ptr.reset(new NdtType);
+      // The map is rebuilt from scratch, so reset the accumulated debug map as well.
+      loaded_pcd_map_ = sensor_msgs::msg::PointCloud2{};
 
       ndt_ptr->setParams(param);
 
@@ -219,10 +225,13 @@ MapUpdateModule::UpdateResult MapUpdateModule::update_map(
   const geometry_msgs::msg::Point & position)
 {
   UpdateResult result;
-  result.map_updated = builder_state_.with(
-    [&](auto & builder_state) {
-      return update_map_internal(builder_state, position, result.diagnostics);
-    });
+  result.map_updated = builder_state_.with([&](auto & builder_state) {
+    const bool updated = update_map_internal(builder_state, position, result.diagnostics);
+    if (updated && param_.publish_loaded_map) {
+      result.loaded_pcd_map = loaded_pcd_map_;
+    }
+    return updated;
+  });
   return result;
 }
 
@@ -270,6 +279,12 @@ bool MapUpdateModule::update_ndt(
 
     pcl::fromROSMsg(map.pointcloud, *cloud);
     ndt.addTarget(cloud, map.cell_id);
+
+    // Accumulate the loaded cloud for the debug publish, merging the PointCloud2 directly to
+    // avoid a PCL round-trip.
+    if (param_.publish_loaded_map) {
+      pcl::concatenatePointCloud(loaded_pcd_map_, map.pointcloud, loaded_pcd_map_);
+    }
   }
 
   // Remove pcd
@@ -278,6 +293,11 @@ bool MapUpdateModule::update_ndt(
   }
 
   ndt.createVoxelKdtree();
+
+  if (param_.publish_loaded_map) {
+    loaded_pcd_map_.header.stamp = response->header.stamp;
+    loaded_pcd_map_.header.frame_id = "map";
+  }
 
   const auto exe_end_time = std::chrono::system_clock::now();
   const auto duration_micro_sec =

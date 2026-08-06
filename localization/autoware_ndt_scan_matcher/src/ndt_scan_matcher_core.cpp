@@ -236,55 +236,7 @@ NDTScanMatcher::get_differential_point_cloud_map(
     status = result.wait_for(std::chrono::seconds(1));
   }
 
-  const auto response = result.get();
-
-  // Mirror the loaded clouds for the debug partial-map publish. Keeping only the cells in
-  // request->cached_ids (then applying the diff) also handles a rebuild, where cached_ids is empty.
-  if (param_.dynamic_map_loading.publish_loaded_map && response) {
-    std::lock_guard<std::mutex> lock(loaded_pcd_map_mutex_);
-
-    std::map<std::string, pcl::PointCloud<pcl::PointXYZ>::Ptr> retained;
-    for (const std::string & cached_id : request->cached_ids) {
-      const auto it = loaded_pcd_map_.find(cached_id);
-      if (it != loaded_pcd_map_.end()) {
-        retained.emplace(cached_id, it->second);
-      }
-    }
-    loaded_pcd_map_ = std::move(retained);
-
-    for (auto & map : response->new_pointcloud_with_ids) {
-      auto cloud = pcl::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-      pcl::fromROSMsg(map.pointcloud, *cloud);
-      loaded_pcd_map_[map.cell_id] = cloud;
-    }
-    for (const std::string & id_to_remove : response->ids_to_remove) {
-      loaded_pcd_map_.erase(id_to_remove);
-    }
-  }
-
-  return response;
-}
-
-void NDTScanMatcher::publish_partial_pcd_map()
-{
-  pcl::PointCloud<pcl::PointXYZ> map_pcl;
-  {
-    std::lock_guard<std::mutex> lock(loaded_pcd_map_mutex_);
-    size_t total_points = 0;
-    for (const auto & map : loaded_pcd_map_) {
-      total_points += map.second->size();
-    }
-    map_pcl.points.reserve(total_points);
-    for (const auto & map : loaded_pcd_map_) {
-      map_pcl += *(map.second);
-    }
-  }
-
-  sensor_msgs::msg::PointCloud2 map_msg;
-  pcl::toROSMsg(map_pcl, map_msg);
-  map_msg.header.frame_id = "map";
-  map_msg.header.stamp = this->now();
-  loaded_pcd_pub_->publish(map_msg);
+  return result.get();
 }
 
 void NDTScanMatcher::apply_diagnostics_update(
@@ -310,9 +262,8 @@ void NDTScanMatcher::callback_timer()
   const auto result = map_update_module_->callback_timer(is_activated_, latest_ekf_position);
   apply_diagnostics_update(*diagnostics_map_update_, result.diagnostics);
 
-  // Publish the loaded partial map only when it was actually updated.
-  if (result.map_updated && param_.dynamic_map_loading.publish_loaded_map) {
-    publish_partial_pcd_map();
+  if (result.loaded_pcd_map) {
+    loaded_pcd_pub_->publish(*result.loaded_pcd_map);
   }
 
   diagnostics_map_update_->publish(ros_time_now);
@@ -1103,9 +1054,8 @@ void NDTScanMatcher::service_ndt_align_main(
     map_update_module_->update_map(initial_pose_msg_in_map_frame.pose.pose.position);
   apply_diagnostics_update(*diagnostics_ndt_align_, result.diagnostics);
 
-  // Publish the loaded partial map only when it was actually updated.
-  if (result.map_updated && param_.dynamic_map_loading.publish_loaded_map) {
-    publish_partial_pcd_map();
+  if (result.loaded_pcd_map) {
+    loaded_pcd_pub_->publish(*result.loaded_pcd_map);
   }
 
   ndt_ptr_.with([&](auto & ndt_ptr) {

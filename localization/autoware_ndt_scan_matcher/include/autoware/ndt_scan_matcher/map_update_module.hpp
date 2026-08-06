@@ -21,6 +21,7 @@
 
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <pcl/point_types.h>
 
@@ -97,6 +98,9 @@ public:
   {
     bool map_updated{false};
     DiagnosticsReport diagnostics;
+    // The merged loaded point cloud map for debugging. Set only when publish_loaded_map is enabled
+    // and the map was updated; the ROS node publishes it as-is.
+    std::optional<sensor_msgs::msg::PointCloud2> loaded_pcd_map;
   };
 
 private:
@@ -144,6 +148,10 @@ private:
   Guarded<std::optional<geometry_msgs::msg::Point>> last_update_position_{std::nullopt};
 
   HyperParameters::DynamicMapLoading param_;
+
+  // Merged loaded point cloud map for the debug publish, only populated when
+  // param_.publish_loaded_map is enabled. Accessed only while builder_state_'s lock is held.
+  sensor_msgs::msg::PointCloud2 loaded_pcd_map_;
 };
 
 }  // namespace autoware::ndt_scan_matcher
