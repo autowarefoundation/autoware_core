@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef HYPER_PARAMETERS_HPP_
-#define HYPER_PARAMETERS_HPP_
+#ifndef UTILS__HYPER_PARAMETERS_HPP_
+#define UTILS__HYPER_PARAMETERS_HPP_
 
 #include <autoware/agnocast_wrapper/node.hpp>
 
@@ -70,4 +70,4 @@ HyperParameters load_hyper_parameters(autoware::agnocast_wrapper::Node * node);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // HYPER_PARAMETERS_HPP_
+#endif  // UTILS__HYPER_PARAMETERS_HPP_

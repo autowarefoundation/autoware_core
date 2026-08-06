@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MAHALANOBIS_HPP_
-#define MAHALANOBIS_HPP_
+#ifndef UTILS__MAHALANOBIS_HPP_
+#define UTILS__MAHALANOBIS_HPP_
 
 #include <Eigen/Core>
 #include <Eigen/Dense>
@@ -28,4 +28,4 @@ double mahalanobis(const Eigen::VectorXd & x, const Eigen::VectorXd & y, const E
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // MAHALANOBIS_HPP_
+#endif  // UTILS__MAHALANOBIS_HPP_

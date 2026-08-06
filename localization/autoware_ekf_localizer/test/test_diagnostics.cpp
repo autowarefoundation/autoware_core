@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "autoware/localization_util/covariance_ellipse.hpp"
-#include "utils/diagnostics.hpp"
 #include "src/ekf_localizer_node.hpp"
+#include "utils/diagnostics.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 

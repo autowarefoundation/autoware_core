@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef STATE_INDEX_HPP_
-#define STATE_INDEX_HPP_
+#ifndef UTILS__STATE_INDEX_HPP_
+#define UTILS__STATE_INDEX_HPP_
 
 namespace autoware::ekf_localizer
 {
@@ -29,4 +29,4 @@ enum IDX {
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // STATE_INDEX_HPP_
+#endif  // UTILS__STATE_INDEX_HPP_
