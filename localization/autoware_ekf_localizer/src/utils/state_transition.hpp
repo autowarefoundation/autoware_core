@@ -12,17 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef COVARIANCE_HPP_
-#define COVARIANCE_HPP_
+#ifndef UTILS__STATE_TRANSITION_HPP_
+#define UTILS__STATE_TRANSITION_HPP_
 
 #include "matrix_types.hpp"
 
 namespace autoware::ekf_localizer
 {
 
-std::array<double, 36> ekf_covariance_to_pose_message_covariance(const Matrix6d & P);
-std::array<double, 36> ekf_covariance_to_twist_message_covariance(const Matrix6d & P);
+double normalize_yaw(const double & yaw);
+Vector6d predict_next_state(const Vector6d & X_curr, const double dt);
+Matrix6d create_state_transition_matrix(const Vector6d & X_curr, const double dt);
+Matrix6d process_noise_covariance(
+  const double proc_cov_yaw_d, const double proc_cov_vx_d, const double proc_cov_wz_d);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // COVARIANCE_HPP_
+#endif  // UTILS__STATE_TRANSITION_HPP_

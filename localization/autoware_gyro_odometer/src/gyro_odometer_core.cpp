@@ -14,6 +14,7 @@
 
 #include "gyro_odometer_core.hpp"
 
+#include "gyro_odometer_diagnostics.hpp"
 #include "gyro_odometer_fusion.hpp"
 
 #include <rclcpp/rclcpp.hpp>

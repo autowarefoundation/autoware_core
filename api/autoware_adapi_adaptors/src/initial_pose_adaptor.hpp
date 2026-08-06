@@ -33,7 +33,7 @@ public:
 private:
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
   using Initialize = autoware::adapi_specs::localization::Initialize;
-  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_initial_pose_;
   autoware::component_interface_utils::Client<Initialize>::SharedPtr cli_initialize_;
   std::array<double, 36> rviz_particle_covariance_;

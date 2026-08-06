@@ -46,7 +46,7 @@ private:
   using State = autoware::component_interface_specs::localization::InitializationState;
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 
-  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_srv_;
   rclcpp::Publisher<PoseWithCovarianceStamped>::SharedPtr pub_reset_;
   autoware::component_interface_utils::Publisher<State>::SharedPtr pub_state_;

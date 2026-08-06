@@ -1,4 +1,4 @@
-// Copyright 2023 TIER IV, Inc.
+// Copyright 2022 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,16 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef TEST_GYRO_ODOMETER_HELPER_HPP_
-#define TEST_GYRO_ODOMETER_HELPER_HPP_
+#ifndef UTILS__COVARIANCE_HPP_
+#define UTILS__COVARIANCE_HPP_
 
-#include <rclcpp/rclcpp.hpp>
+#include "matrix_types.hpp"
 
-#include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
-#include <sensor_msgs/msg/imu.hpp>
+namespace autoware::ekf_localizer
+{
 
-sensor_msgs::msg::Imu generate_sample_imu();
-geometry_msgs::msg::TwistWithCovarianceStamped generate_sample_velocity();
-rclcpp::NodeOptions get_node_options_with_default_params();
+std::array<double, 36> ekf_covariance_to_pose_message_covariance(const Matrix6d & P);
+std::array<double, 36> ekf_covariance_to_twist_message_covariance(const Matrix6d & P);
 
-#endif  // TEST_GYRO_ODOMETER_HELPER_HPP_
+}  // namespace autoware::ekf_localizer
+
+#endif  // UTILS__COVARIANCE_HPP_

@@ -12,20 +12,20 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef STATE_TRANSITION_HPP_
-#define STATE_TRANSITION_HPP_
+#ifndef UTILS__MAHALANOBIS_HPP_
+#define UTILS__MAHALANOBIS_HPP_
 
-#include "matrix_types.hpp"
+#include <Eigen/Core>
+#include <Eigen/Dense>
 
 namespace autoware::ekf_localizer
 {
 
-double normalize_yaw(const double & yaw);
-Vector6d predict_next_state(const Vector6d & X_curr, const double dt);
-Matrix6d create_state_transition_matrix(const Vector6d & X_curr, const double dt);
-Matrix6d process_noise_covariance(
-  const double proc_cov_yaw_d, const double proc_cov_vx_d, const double proc_cov_wz_d);
+double squared_mahalanobis(
+  const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
+
+double mahalanobis(const Eigen::VectorXd & x, const Eigen::VectorXd & y, const Eigen::MatrixXd & C);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // STATE_TRANSITION_HPP_
+#endif  // UTILS__MAHALANOBIS_HPP_

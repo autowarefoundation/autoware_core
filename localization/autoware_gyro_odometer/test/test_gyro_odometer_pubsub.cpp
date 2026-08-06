@@ -13,14 +13,15 @@
 // limitations under the License.
 
 #include "gyro_odometer_core.hpp"
-#include "test_gyro_odometer_helper.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <memory>
-#include <vector>
+#include <mutex>
+#include <thread>
 
 /*
  * This test checks if twist is published from gyro_odometer
@@ -28,138 +29,150 @@
 using geometry_msgs::msg::TwistWithCovarianceStamped;
 using sensor_msgs::msg::Imu;
 
-class ImuGenerator : public rclcpp::Node
+namespace
 {
-public:
-  ImuGenerator()
-  : Node("imu_generator"),
-    imu_pub(create_publisher<Imu>("/imu", rclcpp::QoS{1}.reliable().transient_local()))
-  {
-  }
-  rclcpp::Publisher<Imu>::SharedPtr imu_pub;
-};
-
-class VelocityGenerator : public rclcpp::Node
+Imu generate_sample_imu()
 {
-public:
-  VelocityGenerator()
-  : Node("velocity_generator"),
-    vehicle_velocity_pub(
-      create_publisher<TwistWithCovarianceStamped>(
-        "/vehicle/twist_with_covariance", rclcpp::QoS{1}.reliable().transient_local()))
-  {
-  }
-  rclcpp::Publisher<TwistWithCovarianceStamped>::SharedPtr vehicle_velocity_pub;
-};
-
-class GyroOdometerValidator : public rclcpp::Node
-{
-public:
-  GyroOdometerValidator()
-  : Node("gyro_odometer_validator"),
-    twist_sub(
-      create_subscription<TwistWithCovarianceStamped>(
-        "/twist_with_covariance", 1,
-        [this](const TwistWithCovarianceStamped::ConstSharedPtr msg) {
-          received_latest_twist_ptr = msg;
-        })),
-    received_latest_twist_ptr(nullptr)
-  {
-  }
-
-  rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr twist_sub;
-  TwistWithCovarianceStamped::ConstSharedPtr received_latest_twist_ptr;
-};
-
-template <typename NodePtrT>
-void wait_spin_some(NodePtrT node_ptr)
-{
-  for (int i = 0; i < 50; ++i) {
-    rclcpp::spin_some(node_ptr->get_node_base_interface());
-    rclcpp::WallRate(100).sleep();
-  }
+  Imu imu;
+  imu.header.frame_id = "base_link";
+  imu.angular_velocity.x = 0.1;
+  imu.angular_velocity.y = 0.2;
+  imu.angular_velocity.z = 0.3;
+  return imu;
 }
 
-bool is_twist_valid(
-  const TwistWithCovarianceStamped & twist, const TwistWithCovarianceStamped & twist_ground_truth)
+TwistWithCovarianceStamped generate_sample_velocity()
 {
-  if (twist.twist.twist.linear.x != twist_ground_truth.twist.twist.linear.x) {
-    return false;
-  }
-  if (twist.twist.twist.linear.y != twist_ground_truth.twist.twist.linear.y) {
-    return false;
-  }
-  if (twist.twist.twist.linear.z != twist_ground_truth.twist.twist.linear.z) {
-    return false;
-  }
-  if (twist.twist.twist.angular.x != twist_ground_truth.twist.twist.angular.x) {
-    return false;
-  }
-  if (twist.twist.twist.angular.y != twist_ground_truth.twist.twist.angular.y) {
-    return false;
-  }
-  if (twist.twist.twist.angular.z != twist_ground_truth.twist.twist.angular.z) {
-    return false;
-  }
-  return true;
+  TwistWithCovarianceStamped twist;
+  twist.header.frame_id = "base_link";
+  twist.twist.twist.linear.x = 1.0;
+  return twist;
 }
+
+rclcpp::NodeOptions get_node_options_with_default_params()
+{
+  rclcpp::NodeOptions node_options;
+
+  // for gyro_odometer
+  node_options.append_parameter_override("output_frame", "base_link");
+  node_options.append_parameter_override("message_timeout_sec", 1e12);
+  return node_options;
+}
+}  // namespace
+
+// Drives the node over real publish/subscribe so each test body stays a plain Arrange/Act/Assert:
+// the fixture owns the ROS context, the executor thread and the test-side pub/sub wiring.
+class GyroOdometerNodeTest : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    rclcpp::init(0, nullptr);
+
+    executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
+
+    test_control_node_ = std::make_shared<rclcpp::Node>("test_control_node");
+    twist_subscription_ = test_control_node_->create_subscription<TwistWithCovarianceStamped>(
+      "/twist_with_covariance", 1, [this](const TwistWithCovarianceStamped::SharedPtr message) {
+        std::lock_guard<std::mutex> lock(message_mutex_);
+        received_twist_ = message;
+      });
+    imu_publisher_ = test_control_node_->create_publisher<Imu>(
+      "/imu", rclcpp::QoS{1}.reliable().transient_local());
+    vehicle_twist_publisher_ = test_control_node_->create_publisher<TwistWithCovarianceStamped>(
+      "/vehicle/twist_with_covariance", rclcpp::QoS{1}.reliable().transient_local());
+    executor_->add_node(test_control_node_);
+  }
+
+  void TearDown() override
+  {
+    if (executor_) {
+      executor_->cancel();
+    }
+    if (executor_thread_.joinable()) {
+      executor_thread_.join();
+    }
+    rclcpp::shutdown();
+  }
+
+  // Bring up the gyro_odometer node and start spinning both nodes.
+  void start_gyro_odometer_node()
+  {
+    gyro_odometer_node_ = std::make_shared<autoware::gyro_odometer::GyroOdometerNode>(
+      get_node_options_with_default_params());
+    executor_->add_node(gyro_odometer_node_->get_node_base_interface());
+    executor_thread_ = std::thread([this]() { executor_->spin(); });
+
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  }
+
+  TwistWithCovarianceStamped::SharedPtr received_twist()
+  {
+    std::lock_guard<std::mutex> lock(message_mutex_);
+    return received_twist_;
+  }
+
+  std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
+  std::thread executor_thread_;
+  rclcpp::Node::SharedPtr test_control_node_;
+  rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr twist_subscription_;
+  rclcpp::Publisher<Imu>::SharedPtr imu_publisher_;
+  rclcpp::Publisher<TwistWithCovarianceStamped>::SharedPtr vehicle_twist_publisher_;
+  std::shared_ptr<autoware::gyro_odometer::GyroOdometerNode> gyro_odometer_node_;
+
+  std::mutex message_mutex_;
+  TwistWithCovarianceStamped::SharedPtr received_twist_;
+};
 
 // IMU & Velocity test
 // Verify that the gyro_odometer successfully publishes the fused twist message when both IMU and
 // velocity data are provided
-TEST(GyroOdometer, TestGyroOdometerWithImuAndVelocity)
+TEST_F(GyroOdometerNodeTest, TestGyroOdometerWithImuAndVelocity)
 {
-  Imu input_imu = generate_sample_imu();
-  TwistWithCovarianceStamped input_velocity = generate_sample_velocity();
+  // Arrange
+  const Imu input_imu = generate_sample_imu();
+  const TwistWithCovarianceStamped input_velocity = generate_sample_velocity();
+  start_gyro_odometer_node();
 
-  TwistWithCovarianceStamped expected_output_twist;
-  expected_output_twist.twist.twist.linear.x = input_velocity.twist.twist.linear.x;
-  expected_output_twist.twist.twist.angular.x = input_imu.angular_velocity.x;
-  expected_output_twist.twist.twist.angular.y = input_imu.angular_velocity.y;
-  expected_output_twist.twist.twist.angular.z = input_imu.angular_velocity.z;
-
-  auto gyro_odometer_node = std::make_shared<autoware::gyro_odometer::GyroOdometerNode>(
-    get_node_options_with_default_params());
-  auto imu_generator = std::make_shared<ImuGenerator>();
-  auto velocity_generator = std::make_shared<VelocityGenerator>();
-  auto gyro_odometer_validator_node = std::make_shared<GyroOdometerValidator>();
-
+  // Act
   // TODO(youtalk): Remove these after the refinement of the GyroOdometerNode
-  velocity_generator->vehicle_velocity_pub->publish(input_velocity);
-  imu_generator->imu_pub->publish(input_imu);
+  vehicle_twist_publisher_->publish(input_velocity);
+  imu_publisher_->publish(input_imu);
 
-  velocity_generator->vehicle_velocity_pub->publish(input_velocity);
-  imu_generator->imu_pub->publish(input_imu);
+  vehicle_twist_publisher_->publish(input_velocity);
+  imu_publisher_->publish(input_imu);
 
-  // gyro_odometer receives IMU and velocity, and publishes the fused twist data.
-  wait_spin_some(gyro_odometer_node);
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-  // validator node receives the fused twist data and store in "received_latest_twist_ptr".
-  wait_spin_some(gyro_odometer_validator_node);
+  // Assert
+  const auto twist = received_twist();
+  ASSERT_NE(twist, nullptr) << "Twist message was not received within predefined time";
 
-  EXPECT_FALSE(gyro_odometer_validator_node->received_latest_twist_ptr == nullptr);
-  EXPECT_TRUE(is_twist_valid(
-    *(gyro_odometer_validator_node->received_latest_twist_ptr), expected_output_twist));
+  // The longitudinal velocity comes from the vehicle twist and the angular velocity from the IMU.
+  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.x, input_velocity.twist.twist.linear.x);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.x, input_imu.angular_velocity.x);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.y, input_imu.angular_velocity.y);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.z, input_imu.angular_velocity.z);
+
+  // The lateral and vertical velocities are not estimated, so they stay at zero.
+  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.y, 0.0);
+  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.z, 0.0);
 }
 
 // IMU-only test
 // Verify that the gyro_odometer does NOT publish any outputs when only IMU is provided
-TEST(GyroOdometer, TestGyroOdometerImuOnly)
+TEST_F(GyroOdometerNodeTest, TestGyroOdometerImuOnly)
 {
-  Imu input_imu = generate_sample_imu();
+  // Arrange
+  const Imu input_imu = generate_sample_imu();
+  start_gyro_odometer_node();
 
-  auto gyro_odometer_node = std::make_shared<autoware::gyro_odometer::GyroOdometerNode>(
-    get_node_options_with_default_params());
-  auto imu_generator = std::make_shared<ImuGenerator>();
-  auto gyro_odometer_validator_node = std::make_shared<GyroOdometerValidator>();
+  // Act
+  imu_publisher_->publish(input_imu);
 
-  imu_generator->imu_pub->publish(input_imu);
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
 
-  // gyro_odometer receives IMU
-  wait_spin_some(gyro_odometer_node);
-
-  // validator node waits for the output fused twist from gyro_odometer
-  wait_spin_some(gyro_odometer_validator_node);
-
-  EXPECT_TRUE(gyro_odometer_validator_node->received_latest_twist_ptr == nullptr);
+  // Assert
+  const auto twist = received_twist();
+  ASSERT_EQ(twist, nullptr) << "Twist message was received when only IMU was provided";
 }

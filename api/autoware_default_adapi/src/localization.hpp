@@ -32,7 +32,7 @@ public:
 private:
   using ImplState = autoware::component_interface_specs::localization::InitializationState;
 
-  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_cli_;
   autoware::component_interface_utils::Service<
     autoware::adapi_specs::localization::Initialize>::SharedPtr srv_initialize_;

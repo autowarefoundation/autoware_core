@@ -29,7 +29,7 @@ public:
 
 private:
   using Version = autoware::adapi_specs::interface::Version;
-  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   autoware::component_interface_utils::Service<Version>::SharedPtr srv_;
 };
 
