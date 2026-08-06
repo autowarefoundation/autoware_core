@@ -72,10 +72,7 @@ public:
     std::string message;
     std::vector<DiagnosticKeyValue> key_values;
 
-    void add_key_value(DiagnosticKeyValue key_value)
-    {
-      key_values.push_back(std::move(key_value));
-    }
+    void add_key_value(DiagnosticKeyValue key_value) { key_values.push_back(std::move(key_value)); }
 
     // Accumulates like DiagnosticsInterface: raises the level and appends the message.
     void update_level_and_message(DiagnosticLevel new_level, const std::string & new_message)

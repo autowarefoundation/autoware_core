@@ -264,7 +264,8 @@ bool MapUpdateModule::update_ndt(
   auto & map_ids_to_remove = response->ids_to_remove;
 
   diagnostics.add_key_value({"maps_to_add_size", static_cast<int64_t>(maps_to_add.size())});
-  diagnostics.add_key_value({"maps_to_remove_size", static_cast<int64_t>(map_ids_to_remove.size())});
+  diagnostics.add_key_value(
+    {"maps_to_remove_size", static_cast<int64_t>(map_ids_to_remove.size())});
 
   if (maps_to_add.empty() && map_ids_to_remove.empty()) {
     return false;  // No update
