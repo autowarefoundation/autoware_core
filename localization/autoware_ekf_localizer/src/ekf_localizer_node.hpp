@@ -16,7 +16,7 @@
 #define EKF_LOCALIZER_HPP_
 
 #include "utils/aged_object_queue.hpp"
-#include "ekf_localizer.cpp"
+#include "ekf_localizer.hpp"
 #include "utils/hyper_parameters.hpp"
 #include "utils/warning.hpp"
 
