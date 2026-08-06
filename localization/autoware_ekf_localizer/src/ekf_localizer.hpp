@@ -16,8 +16,6 @@
 #define EKF_LOCALIZER_HPP_
 
 #include "utils/hyper_parameters.hpp"
-#include "utils/state_index.hpp"
-#include "utils/warning.hpp"
 
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
