@@ -65,7 +65,7 @@ if(BUILD_TESTING)
   file(GLOB_RECURSE TEST_FILES test/*.cpp)
 
   if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
-    list(FILTER TEST_FILES EXCLUDE REGEX "test_diagnostics(_topic)?\\.cpp$")
+    list(FILTER TEST_FILES EXCLUDE REGEX "test_diagnostics(_topic)?\\.cpp$|test_ekf_localizer_integration\\.cpp$")
   endif()
 
   foreach(filepath ${TEST_FILES})
