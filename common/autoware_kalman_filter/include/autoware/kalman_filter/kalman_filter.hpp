@@ -142,7 +142,7 @@ public:
    * @param Q covariance matrix for process model
    * @return bool to check matrix operations are being performed properly
    */
-  bool predict(
+  [[nodiscard]] bool predict(
     const Eigen::MatrixXd & u, const Eigen::MatrixXd & A, const Eigen::MatrixXd & B,
     const Eigen::MatrixXd & Q);
 
@@ -154,7 +154,7 @@ public:
    * @param Q covariance matrix for process model
    * @return bool to check matrix operations are being performed properly
    */
-  bool predict(
+  [[nodiscard]] bool predict(
     const Eigen::MatrixXd & x_next, const Eigen::MatrixXd & A, const Eigen::MatrixXd & Q);
 
   /**
@@ -164,7 +164,7 @@ public:
    * @param A coefficient matrix of x for process model
    * @return bool to check matrix operations are being performed properly
    */
-  bool predict(const Eigen::MatrixXd & x_next, const Eigen::MatrixXd & A);
+  [[nodiscard]] bool predict(const Eigen::MatrixXd & x_next, const Eigen::MatrixXd & A);
 
   /**
    * @brief calculate kalman filter state by prediction model with A, B and Q being class member
@@ -172,7 +172,7 @@ public:
    * @param u input for the model
    * @return bool to check matrix operations are being performed properly
    */
-  bool predict(const Eigen::MatrixXd & u);
+  [[nodiscard]] bool predict(const Eigen::MatrixXd & u);
 
   /**
    * @brief calculate kalman filter state by measurement model with y_pred, C and R matrix. This is
@@ -183,7 +183,7 @@ public:
    * @param R covariance matrix for measurement model
    * @return bool to check matrix operations are being performed properly
    */
-  bool update(
+  [[nodiscard]] bool update(
     const Eigen::MatrixXd & y, const Eigen::MatrixXd & y_pred, const Eigen::MatrixXd & C,
     const Eigen::MatrixXd & R);
 
@@ -195,7 +195,8 @@ public:
    * @param R covariance matrix for measurement model
    * @return bool to check matrix operations are being performed properly
    */
-  bool update(const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R);
+  [[nodiscard]] bool update(
+    const Eigen::MatrixXd & y, const Eigen::MatrixXd & C, const Eigen::MatrixXd & R);
 
   /**
    * @brief calculate kalman filter state by measurement model with C and R being class member
@@ -203,7 +204,7 @@ public:
    * @param y measured values
    * @return bool to check matrix operations are being performed properly
    */
-  bool update(const Eigen::MatrixXd & y);
+  [[nodiscard]] bool update(const Eigen::MatrixXd & y);
 
 protected:
   Eigen::MatrixXd x_;  //!< @brief current estimated state

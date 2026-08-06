@@ -232,7 +232,10 @@ void EKFModule::predict_with_delay(const double dt)
   const Vector6d x_next = predict_next_state(x_curr, dt);
   const Matrix6d a = create_state_transition_matrix(x_curr, dt);
   const Matrix6d q = process_noise_covariance(proc_cov_yaw_d, proc_cov_vx_d, proc_cov_wz_d);
-  kalman_filter_.predictWithDelay(x_next, a, q);
+  if (!kalman_filter_.predictWithDelay(x_next, a, q)) {
+    warning_->warn_throttle("Kalman filter prediction failed.", 2000);
+    return;
+  }
   ekf_dt_ = dt;
 }
 
@@ -318,7 +321,10 @@ bool EKFModule::measurement_update_pose(
   const Eigen::Matrix3d r =
     pose_measurement_covariance(pose.pose.covariance, params_.pose_smoothing_steps);
 
-  kalman_filter_.updateWithDelay(y, c, r, static_cast<int>(delay_step));
+  if (!kalman_filter_.updateWithDelay(y, c, r, static_cast<int>(delay_step))) {
+    warning_->warn_throttle("Kalman filter update failed. Ignore the measurement data.", 2000);
+    return false;
+  }
 
   // Update Simple 1D filter with considering change of roll, pitch and height (position z)
   // values due to measurement pose delay
@@ -441,7 +447,10 @@ bool EKFModule::measurement_update_twist(
   const Eigen::Matrix2d r =
     twist_measurement_covariance(twist.twist.covariance, params_.twist_smoothing_steps);
 
-  kalman_filter_.updateWithDelay(y, c, r, static_cast<int>(delay_step));
+  if (!kalman_filter_.updateWithDelay(y, c, r, static_cast<int>(delay_step))) {
+    warning_->warn_throttle("Kalman filter update failed. Ignore the measurement data.", 2000);
+    return false;
+  }
 
   last_angular_velocity_ = tf2::Vector3(
     twist.twist.twist.angular.x, twist.twist.twist.angular.y, twist.twist.twist.angular.z);
