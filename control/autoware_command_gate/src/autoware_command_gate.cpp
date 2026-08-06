@@ -78,7 +78,7 @@ private:
     system_state_pub_->publish(outputs.state);
   }
 
-  autoware::component_interface_utils::NodeAdaptor adaptor_{this};
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   autoware::component_interface_utils::Publisher<spec::OperationModeState>::SharedPtr state_pub_;
   autoware::component_interface_utils::Publisher<system::OperationModeState>::SharedPtr
     system_state_pub_;
