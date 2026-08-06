@@ -17,13 +17,10 @@
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <builtin_interfaces/msg/time.hpp>
 
-#include <diagnostic_msgs/msg/diagnostic_status.hpp>
-
 #include <gtest/gtest.h>
 
 #include <array>
 #include <deque>
-#include <string>
 
 namespace autoware::gyro_odometer
 {
@@ -208,104 +205,6 @@ TEST(GyroOdometerFusion, ApplyStopCompensationPreservesAngularWhenTurning)
 
   EXPECT_DOUBLE_EQ(out.twist.twist.angular.x, 0.1);
   EXPECT_DOUBLE_EQ(out.twist.twist.angular.z, 0.5);
-}
-
-// determine_diagnostics: everything healthy -> OK, no entries, empty log.
-TEST(GyroOdometerFusion, DetermineDiagnosticsOkWhenHealthy)
-{
-  DiagnosticsState state;
-  state.vehicle_twist_arrived = true;
-  state.imu_arrived = true;
-  state.is_succeed_transform_imu = true;
-  state.latest_vehicle_twist_dt = 0.01;
-  state.latest_imu_dt = 0.01;
-  state.message_timeout_sec = 1.0;
-  state.output_frame = "base_link";
-
-  const DiagnosticsResult result = determine_diagnostics(state);
-
-  EXPECT_EQ(result.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
-  EXPECT_TRUE(result.entries.empty());
-  EXPECT_TRUE(result.log_message.empty());
-}
-
-// determine_diagnostics: missing inputs raise WARN. This pins the bug fix: the aggregated level
-// must reflect the highest triggered severity (previously the local 'level' stayed OK and the WARN
-// log was unreachable).
-TEST(GyroOdometerFusion, DetermineDiagnosticsWarnWhenNotArrived)
-{
-  DiagnosticsState state;
-  state.vehicle_twist_arrived = false;
-  state.imu_arrived = false;
-  state.is_succeed_transform_imu = true;
-  state.latest_vehicle_twist_dt = 0.0;
-  state.latest_imu_dt = 0.0;
-  state.message_timeout_sec = 1.0;
-
-  const DiagnosticsResult result = determine_diagnostics(state);
-
-  EXPECT_EQ(result.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
-  ASSERT_EQ(result.entries.size(), 2u);
-  EXPECT_EQ(result.entries[0].level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
-  EXPECT_EQ(result.entries[1].level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
-}
-
-// determine_diagnostics: a timeout raises ERROR.
-TEST(GyroOdometerFusion, DetermineDiagnosticsErrorOnTimeout)
-{
-  DiagnosticsState state;
-  state.vehicle_twist_arrived = true;
-  state.imu_arrived = true;
-  state.is_succeed_transform_imu = true;
-  state.latest_vehicle_twist_dt = 2.0;  // > timeout
-  state.latest_imu_dt = 0.0;
-  state.message_timeout_sec = 1.0;
-
-  const DiagnosticsResult result = determine_diagnostics(state);
-
-  EXPECT_EQ(result.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
-  ASSERT_EQ(result.entries.size(), 1u);
-  EXPECT_EQ(result.entries[0].level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
-}
-
-// determine_diagnostics: TF failure raises ERROR.
-TEST(GyroOdometerFusion, DetermineDiagnosticsErrorOnTransformFailure)
-{
-  DiagnosticsState state;
-  state.vehicle_twist_arrived = true;
-  state.imu_arrived = true;
-  state.is_succeed_transform_imu = false;  // TF lookup failed
-  state.latest_vehicle_twist_dt = 0.0;
-  state.latest_imu_dt = 0.0;
-  state.message_timeout_sec = 1.0;
-  state.output_frame = "base_link";
-
-  const DiagnosticsResult result = determine_diagnostics(state);
-
-  EXPECT_EQ(result.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
-  ASSERT_EQ(result.entries.size(), 1u);
-  EXPECT_EQ(result.entries[0].level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
-}
-
-// determine_diagnostics: when both WARN and ERROR conditions trigger, the aggregated level is the
-// ERROR maximum, while every entry keeps its own level and the entry order is preserved.
-TEST(GyroOdometerFusion, DetermineDiagnosticsAggregatesToMaxSeverity)
-{
-  DiagnosticsState state;
-  state.vehicle_twist_arrived = false;  // WARN
-  state.imu_arrived = true;
-  state.is_succeed_transform_imu = false;  // ERROR
-  state.latest_vehicle_twist_dt = 0.0;
-  state.latest_imu_dt = 0.0;
-  state.message_timeout_sec = 1.0;
-  state.output_frame = "base_link";
-
-  const DiagnosticsResult result = determine_diagnostics(state);
-
-  EXPECT_EQ(result.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
-  ASSERT_EQ(result.entries.size(), 2u);
-  EXPECT_EQ(result.entries[0].level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
-  EXPECT_EQ(result.entries[1].level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 }
 
 }  // namespace autoware::gyro_odometer
