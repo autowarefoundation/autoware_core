@@ -15,15 +15,14 @@
 #ifndef MISSION_PLANNER__MISSION_PLANNER_HPP_
 #define MISSION_PLANNER__MISSION_PLANNER_HPP_
 
+#include "../lanelet2_plugins/default_planner.hpp"
 #include "arrival_checker.hpp"
 #include "reroute_safety.hpp"
 
 #include <autoware/component_interface_specs/planning.hpp>
-#include <autoware/mission_planner/mission_planner_plugin.hpp>
 #include <autoware/route_handler/route_handler.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <pluginlib/class_loader.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/buffer.hpp>
 #include <tf2_ros/transform_listener.hpp>
@@ -84,8 +83,7 @@ private:
     autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
 
   ArrivalChecker arrival_checker_;
-  pluginlib::ClassLoader<PlannerPlugin> plugin_loader_;
-  std::shared_ptr<PlannerPlugin> planner_;
+  std::shared_ptr<lanelet2::DefaultPlanner> planner_;
 
   std::string map_frame_;
   tf2_ros::Buffer tf_buffer_;
@@ -103,6 +101,7 @@ private:
 
   rclcpp::Subscription<LaneletMapBin>::SharedPtr sub_vector_map_;
   rclcpp::Publisher<MarkerArray>::SharedPtr pub_marker_;
+  rclcpp::Publisher<MarkerArray>::SharedPtr pub_goal_footprint_marker_;
   Odometry::ConstSharedPtr odometry_;
   OperationModeState::ConstSharedPtr operation_mode_state_;
   LaneletMapBin::ConstSharedPtr map_ptr_;
