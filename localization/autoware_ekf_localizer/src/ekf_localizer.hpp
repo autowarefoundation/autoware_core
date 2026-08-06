@@ -15,9 +15,9 @@
 #ifndef EKF_MODULE_HPP_
 #define EKF_MODULE_HPP_
 
-#include "hyper_parameters.hpp"
-#include "state_index.hpp"
-#include "warning.hpp"
+#include "utils/hyper_parameters.hpp"
+#include "utils/state_index.hpp"
+#include "utils/warning.hpp"
 
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>

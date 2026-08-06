@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include/mahalanobis.hpp"
+#include "utils/mahalanobis.hpp"
 
 #include <gtest/gtest.h>
 

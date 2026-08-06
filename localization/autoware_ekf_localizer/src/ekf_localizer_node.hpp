@@ -15,10 +15,10 @@
 #ifndef EKF_LOCALIZER_HPP_
 #define EKF_LOCALIZER_HPP_
 
-#include "aged_object_queue.hpp"
-#include "ekf_module.hpp"
-#include "hyper_parameters.hpp"
-#include "warning.hpp"
+#include "utils/aged_object_queue.hpp"
+#include "ekf_localizer.cpp"
+#include "utils/hyper_parameters.hpp"
+#include "utils/warning.hpp"
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>

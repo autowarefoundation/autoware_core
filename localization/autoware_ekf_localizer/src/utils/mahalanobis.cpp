@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include/mahalanobis.hpp"
+#include "mahalanobis.hpp"
 
 namespace autoware::ekf_localizer
 {
