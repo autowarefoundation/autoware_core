@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "gyro_odometer_fusion.hpp"
+#include "gyro_odometer.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <builtin_interfaces/msg/time.hpp>
@@ -44,7 +44,7 @@ builtin_interfaces::msg::Time make_stamp(int32_t sec, uint32_t nanosec)
 
 // transform_covariance: the maximum diagonal term is written to every diagonal term, off-diagonals
 // are zeroed.
-TEST(GyroOdometerFusion, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals)
+TEST(GyroOdometer, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals)
 {
   std::array<double, 9> cov = {};
   cov[COV_IDX_XYZ::X_X] = 1.0;
@@ -69,7 +69,7 @@ TEST(GyroOdometerFusion, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals
 
 // fuse_twist: means over multiple entries, covariance reduction by queue size, fixed Y_Y/Z_Z, and
 // the output stamp being the later of the two latest queue stamps.
-TEST(GyroOdometerFusion, FuseTwistComputesMeansCovarianceAndStamp)
+TEST(GyroOdometer, FuseTwistComputesMeansCovarianceAndStamp)
 {
   std::deque<TwistWithCovarianceStamped> vehicle_twist_queue;
   {
@@ -134,7 +134,7 @@ TEST(GyroOdometerFusion, FuseTwistComputesMeansCovarianceAndStamp)
 
 // fuse_twist: when the latest vehicle-twist stamp is later than the latest IMU stamp, the output
 // stamp follows the vehicle twist.
-TEST(GyroOdometerFusion, FuseTwistChoosesLaterVehicleTwistStamp)
+TEST(GyroOdometer, FuseTwistChoosesLaterVehicleTwistStamp)
 {
   std::deque<TwistWithCovarianceStamped> vehicle_twist_queue;
   {
@@ -159,7 +159,7 @@ TEST(GyroOdometerFusion, FuseTwistChoosesLaterVehicleTwistStamp)
 
 // apply_stop_compensation: when both |angular.z| and |linear.x| are below 0.01, all angular
 // components are zeroed.
-TEST(GyroOdometerFusion, ApplyStopCompensationZeroesAngularWhenStopped)
+TEST(GyroOdometer, ApplyStopCompensationZeroesAngularWhenStopped)
 {
   TwistWithCovarianceStamped twist;
   twist.twist.twist.linear.x = 0.005;
@@ -177,7 +177,7 @@ TEST(GyroOdometerFusion, ApplyStopCompensationZeroesAngularWhenStopped)
 }
 
 // apply_stop_compensation: when the vehicle is moving (large linear.x), angular is preserved.
-TEST(GyroOdometerFusion, ApplyStopCompensationPreservesAngularWhenMoving)
+TEST(GyroOdometer, ApplyStopCompensationPreservesAngularWhenMoving)
 {
   TwistWithCovarianceStamped twist;
   twist.twist.twist.linear.x = 3.0;  // moving
@@ -194,7 +194,7 @@ TEST(GyroOdometerFusion, ApplyStopCompensationPreservesAngularWhenMoving)
 }
 
 // apply_stop_compensation: a large yaw rate keeps angular even when linear.x is small.
-TEST(GyroOdometerFusion, ApplyStopCompensationPreservesAngularWhenTurning)
+TEST(GyroOdometer, ApplyStopCompensationPreservesAngularWhenTurning)
 {
   TwistWithCovarianceStamped twist;
   twist.twist.twist.linear.x = 0.0;

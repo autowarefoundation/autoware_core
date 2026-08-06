@@ -6,14 +6,14 @@ autoware_package()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/gyro_odometer_diagnostics.cpp
-  src/gyro_odometer_fusion.cpp
+  src/gyro_odometer.cpp
 )
 
 target_link_libraries(${PROJECT_NAME} fmt)
 
 # ROS layer: parameters, pub/sub, TF lookup and the diagnostics timer.
 ament_auto_add_library(${PROJECT_NAME}_ros SHARED
-  src/gyro_odometer_core.cpp
+  src/gyro_odometer_node.cpp
 )
 
 target_link_libraries(${PROJECT_NAME}_ros ${PROJECT_NAME})
@@ -21,16 +21,16 @@ target_link_libraries(${PROJECT_NAME}_ros ${PROJECT_NAME})
 if(BUILD_TESTING)
   # The fusion functions only do message arithmetic, so this test needs no ROS context and can use
   # a plain gtest instead of a ROS-isolated one.
-  ament_add_gtest(test_gyro_odometer_fusion
-    test/test_gyro_odometer_fusion.cpp
+  ament_add_gtest(test_gyro_odometer
+    test/test_gyro_odometer.cpp
   )
-  ament_target_dependencies(test_gyro_odometer_fusion
+  ament_target_dependencies(test_gyro_odometer
     ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS}
   )
-  target_link_libraries(test_gyro_odometer_fusion
+  target_link_libraries(test_gyro_odometer
     ${PROJECT_NAME}
   )
-  target_include_directories(test_gyro_odometer_fusion PRIVATE
+  target_include_directories(test_gyro_odometer PRIVATE
     src
   )
 
@@ -49,17 +49,17 @@ if(BUILD_TESTING)
   )
 
   if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
-    ament_add_ros_isolated_gtest(test_gyro_odometer
-      test/test_gyro_odometer_pubsub.cpp
+    ament_add_ros_isolated_gtest(test_gyro_odometer_node
+      test/test_gyro_odometer_node.cpp
     )
-    ament_target_dependencies(test_gyro_odometer
+    ament_target_dependencies(test_gyro_odometer_node
       rclcpp
     )
-    target_link_libraries(test_gyro_odometer
+    target_link_libraries(test_gyro_odometer_node
       ${PROJECT_NAME}
       ${PROJECT_NAME}_ros # ROS-based test can be executed only when agnocast is disabled
     )
-    target_include_directories(test_gyro_odometer PRIVATE
+    target_include_directories(test_gyro_odometer_node PRIVATE
       src
     )
   endif()

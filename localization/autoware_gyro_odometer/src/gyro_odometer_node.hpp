@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef GYRO_ODOMETER_CORE_HPP_
-#define GYRO_ODOMETER_CORE_HPP_
+#ifndef GYRO_ODOMETER_NODE_HPP_
+#define GYRO_ODOMETER_NODE_HPP_
 
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>
@@ -96,4 +96,4 @@ private:
 
 }  // namespace autoware::gyro_odometer
 
-#endif  // GYRO_ODOMETER_CORE_HPP_
+#endif  // GYRO_ODOMETER_NODE_HPP_
