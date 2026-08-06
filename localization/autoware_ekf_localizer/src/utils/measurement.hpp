@@ -12,26 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef NUMERIC_HPP_
-#define NUMERIC_HPP_
+#ifndef UTILS__MEASUREMENT_HPP_
+#define UTILS__MEASUREMENT_HPP_
 
 #include <Eigen/Core>
-
-#include <cmath>
 
 namespace autoware::ekf_localizer
 {
 
-inline bool has_inf(const Eigen::MatrixXd & v)
-{
-  return v.array().isInf().any();
-}
-
-inline bool has_nan(const Eigen::MatrixXd & v)
-{
-  return v.array().isNaN().any();
-}
+Eigen::Matrix<double, 3, 6> pose_measurement_matrix();
+Eigen::Matrix<double, 2, 6> twist_measurement_matrix();
+Eigen::Matrix3d pose_measurement_covariance(
+  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
+Eigen::Matrix2d twist_measurement_covariance(
+  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // NUMERIC_HPP_
+#endif  // UTILS__MEASUREMENT_HPP_

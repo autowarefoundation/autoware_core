@@ -1,4 +1,4 @@
-// Copyright 2023 Autoware Foundation
+// Copyright 2022 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,23 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef STRING_HPP_
-#define STRING_HPP_
+#ifndef UTILS__COVARIANCE_HPP_
+#define UTILS__COVARIANCE_HPP_
 
-#include <string>
+#include "matrix_types.hpp"
 
 namespace autoware::ekf_localizer
 {
 
-inline std::string erase_leading_slash(const std::string & s)
-{
-  std::string a = s;
-  if (a.front() == '/') {
-    a.erase(0, 1);
-  }
-  return a;
-}
+std::array<double, 36> ekf_covariance_to_pose_message_covariance(const Matrix6d & P);
+std::array<double, 36> ekf_covariance_to_twist_message_covariance(const Matrix6d & P);
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // STRING_HPP_
+#endif  // UTILS__COVARIANCE_HPP_

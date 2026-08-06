@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef WARNING_HPP_
-#define WARNING_HPP_
+#ifndef UTILS__WARNING_HPP_
+#define UTILS__WARNING_HPP_
 
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -61,4 +61,4 @@ private:
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // WARNING_HPP_
+#endif  // UTILS__WARNING_HPP_

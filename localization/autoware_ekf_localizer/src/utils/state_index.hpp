@@ -12,21 +12,21 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MEASUREMENT_HPP_
-#define MEASUREMENT_HPP_
-
-#include <Eigen/Core>
+#ifndef UTILS__STATE_INDEX_HPP_
+#define UTILS__STATE_INDEX_HPP_
 
 namespace autoware::ekf_localizer
 {
 
-Eigen::Matrix<double, 3, 6> pose_measurement_matrix();
-Eigen::Matrix<double, 2, 6> twist_measurement_matrix();
-Eigen::Matrix3d pose_measurement_covariance(
-  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
-Eigen::Matrix2d twist_measurement_covariance(
-  const std::array<double, 36ul> & covariance, const size_t smoothing_step);
+enum IDX {
+  X = 0,
+  Y = 1,
+  YAW = 2,
+  YAWB = 3,
+  VX = 4,
+  WZ = 5,
+};
 
 }  // namespace autoware::ekf_localizer
 
-#endif  // MEASUREMENT_HPP_
+#endif  // UTILS__STATE_INDEX_HPP_

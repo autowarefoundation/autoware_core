@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "include/covariance.hpp"
+#include "covariance.hpp"
 
-#include "include/state_index.hpp"
+#include "state_index.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
 
