@@ -163,7 +163,7 @@ private:
 
   // Forwards a diagnostics update produced by MapUpdateModule to the given DiagnosticsInterface.
   static void apply_diagnostics_update(
-    DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsUpdate & update);
+    DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsReport & report);
 
   rclcpp::TimerBase::SharedPtr map_update_timer_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;

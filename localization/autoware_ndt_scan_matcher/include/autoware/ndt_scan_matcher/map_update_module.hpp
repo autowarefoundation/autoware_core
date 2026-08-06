@@ -62,18 +62,42 @@ public:
     std::variant<bool, int64_t, double, std::string> value;
   };
 
-  // A diagnostics update emitted while updating the map: key/values to attach and, optionally, a
-  // status (level + message). Plain data, kept ROS-free on purpose.
-  struct DiagnosticsUpdate
+  // Diagnostics accumulated while updating the map: key/values plus an overall status (level +
+  // message). Returned to the ROS node, which forwards it to a DiagnosticsInterface. Plain data,
+  // kept ROS-free on purpose.
+  struct DiagnosticsReport
   {
-    std::vector<DiagnosticKeyValue> key_values;
-    std::optional<DiagnosticLevel> level;  // std::nullopt => leave the status unchanged
+    DiagnosticLevel level{DiagnosticLevel::OK};
     std::string message;
+    std::vector<DiagnosticKeyValue> key_values;
+
+    void add_key_value(DiagnosticKeyValue key_value)
+    {
+      key_values.push_back(std::move(key_value));
+    }
+
+    // Accumulates like DiagnosticsInterface: raises the level and appends the message.
+    void update_level_and_message(DiagnosticLevel new_level, const std::string & new_message)
+    {
+      if (static_cast<int8_t>(new_level) > static_cast<int8_t>(DiagnosticLevel::OK)) {
+        if (!message.empty()) {
+          message += "; ";
+        }
+        message += new_message;
+      }
+      if (static_cast<int8_t>(new_level) > static_cast<int8_t>(level)) {
+        level = new_level;
+      }
+    }
   };
 
-  // Injected by the ROS node to forward a diagnostics update. Passed per call so the node can
-  // route it to the diagnostic that matches the caller.
-  using DiagnosticsHandlingFunction = std::function<void(const DiagnosticsUpdate &)>;
+  // Result of a map update entry point: whether the NDT map changed, plus the diagnostics to
+  // report for this call.
+  struct UpdateResult
+  {
+    bool map_updated{false};
+    DiagnosticsReport diagnostics;
+  };
 
 private:
   struct BuilderState
@@ -92,28 +116,23 @@ public:
 private:
   friend class NDTScanMatcher;
 
-  // Returns true if the NDT map was actually updated.
-  bool callback_timer(
-    const bool is_activated, const std::optional<geometry_msgs::msg::Point> & position,
-    const DiagnosticsHandlingFunction & diagnostics);
+  UpdateResult callback_timer(
+    const bool is_activated, const std::optional<geometry_msgs::msg::Point> & position);
 
   [[nodiscard]] bool should_update_map(
     BuilderState & builder_state, const geometry_msgs::msg::Point & position,
-    const DiagnosticsHandlingFunction & diagnostics);
+    DiagnosticsReport & diagnostics);
 
   // Returns true if the NDT map was actually updated.
   bool update_map_internal(
     BuilderState & builder_state, const geometry_msgs::msg::Point & position,
-    const DiagnosticsHandlingFunction & diagnostics);
+    DiagnosticsReport & diagnostics);
 
   // Do not call this function while holding the lock for ndt_ptr_.
-  // Returns true if the NDT map was actually updated.
-  bool update_map(
-    const geometry_msgs::msg::Point & position, const DiagnosticsHandlingFunction & diagnostics);
+  UpdateResult update_map(const geometry_msgs::msg::Point & position);
   // Update the specified NDT
   bool update_ndt(
-    const geometry_msgs::msg::Point & position, NdtType & ndt,
-    const DiagnosticsHandlingFunction & diagnostics);
+    const geometry_msgs::msg::Point & position, NdtType & ndt, DiagnosticsReport & diagnostics);
 
   PcdLoaderFunction pcd_loader_;
 

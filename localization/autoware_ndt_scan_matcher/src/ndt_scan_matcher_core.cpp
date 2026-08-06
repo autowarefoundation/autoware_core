@@ -288,16 +288,14 @@ void NDTScanMatcher::publish_partial_pcd_map()
 }
 
 void NDTScanMatcher::apply_diagnostics_update(
-  DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsUpdate & update)
+  DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsReport & report)
 {
-  for (const auto & key_value : update.key_values) {
+  for (const auto & key_value : report.key_values) {
     std::visit(
       [&](const auto & value) { diagnostics.add_key_value(key_value.key, value); },
       key_value.value);
   }
-  if (update.level) {
-    diagnostics.update_level_and_message(static_cast<int8_t>(*update.level), update.message);
-  }
+  diagnostics.update_level_and_message(static_cast<int8_t>(report.level), report.message);
 }
 
 void NDTScanMatcher::callback_timer()
@@ -309,13 +307,11 @@ void NDTScanMatcher::callback_timer()
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
   const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
-  const bool is_map_updated = map_update_module_->callback_timer(
-    is_activated_, latest_ekf_position, [this](const MapUpdateModule::DiagnosticsUpdate & update) {
-      apply_diagnostics_update(*diagnostics_map_update_, update);
-    });
+  const auto result = map_update_module_->callback_timer(is_activated_, latest_ekf_position);
+  apply_diagnostics_update(*diagnostics_map_update_, result.diagnostics);
 
   // Publish the loaded partial map only when it was actually updated.
-  if (is_map_updated && param_.dynamic_map_loading.publish_loaded_map) {
+  if (result.map_updated && param_.dynamic_map_loading.publish_loaded_map) {
     publish_partial_pcd_map();
   }
 
@@ -1103,14 +1099,12 @@ void NDTScanMatcher::service_ndt_align_main(
   auto initial_pose_msg_in_map_frame =
     autoware::localization_util::transform(req->pose_with_covariance, transform_s2t);
   initial_pose_msg_in_map_frame.header.stamp = req->pose_with_covariance.header.stamp;
-  const bool is_map_updated = map_update_module_->update_map(
-    initial_pose_msg_in_map_frame.pose.pose.position,
-    [this](const MapUpdateModule::DiagnosticsUpdate & update) {
-      apply_diagnostics_update(*diagnostics_ndt_align_, update);
-    });
+  const auto result =
+    map_update_module_->update_map(initial_pose_msg_in_map_frame.pose.pose.position);
+  apply_diagnostics_update(*diagnostics_ndt_align_, result.diagnostics);
 
   // Publish the loaded partial map only when it was actually updated.
-  if (is_map_updated && param_.dynamic_map_loading.publish_loaded_map) {
+  if (result.map_updated && param_.dynamic_map_loading.publish_loaded_map) {
     publish_partial_pcd_map();
   }
 
