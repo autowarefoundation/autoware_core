@@ -216,8 +216,6 @@ private:
     EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
     const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
     const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
-
-  friend class EKFLocalizerNodeDiagnosticsTest;  // for test code
 };
 
 }  // namespace autoware::ekf_localizer
