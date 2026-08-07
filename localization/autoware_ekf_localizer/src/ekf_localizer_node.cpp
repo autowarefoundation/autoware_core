@@ -48,7 +48,6 @@ using std::placeholders::_1;
 
 EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("ekf_localizer", node_options),
-  warning_(std::make_shared<Warning>(this)),
   tf2_buffer_(this->get_clock()),
   tf2_listener_(tf2_buffer_, *this),
   params_(load_hyper_parameters(this)),
@@ -106,7 +105,7 @@ EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
 
   tf_br_ = std::make_shared<autoware::agnocast_wrapper::TransformBroadcaster>(*this);
 
-  ekf_localizer_ = std::make_unique<EKFLocalizer>(warning_, params_);
+  ekf_localizer_ = std::make_unique<EKFLocalizer>(params_);
   logger_configure_ = std::make_unique<
     autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
 }
@@ -118,7 +117,7 @@ void EKFLocalizerNode::update_predict_frequency(const rclcpp::Time & current_tim
 {
   if (last_predict_time_) {
     if (current_time < *last_predict_time_) {
-      warning_->warn("Detected jump back in time");
+      RCLCPP_WARN(get_logger(), "Detected jump back in time");
     } else {
       /* Measure dt */
       ekf_dt_ = (current_time - *last_predict_time_).seconds();
@@ -127,9 +126,10 @@ void EKFLocalizerNode::update_predict_frequency(const rclcpp::Time & current_tim
 
       if (ekf_dt_ > 10.0) {
         ekf_dt_ = 10.0;
-        warning_->warn(large_ekf_dt_waring_message(ekf_dt_));
+        RCLCPP_WARN(get_logger(), "%s", large_ekf_dt_waring_message(ekf_dt_).c_str());
       } else if (ekf_dt_ > static_cast<double>(params_.pose_smoothing_steps) / params_.ekf_rate) {
-        warning_->warn_throttle(too_slow_ekf_dt_waring_message(ekf_dt_), 2000);
+        RCLCPP_WARN_THROTTLE(
+          get_logger(), *get_clock(), 2000, "%s", too_slow_ekf_dt_waring_message(ekf_dt_).c_str());
       }
 
       /* Register dt and accumulate time delay */
@@ -155,12 +155,11 @@ void EKFLocalizerNode::timer_callback()
     }
   }
   while (pose_queue_.exceeded()) {
-    warning_->warn_throttle(
-      fmt::format(
-        "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
-        "max_queue_size or reducing input frequency.",
-        pose_queue_.size(), pose_queue_.max_queue_size()),
-      2000);
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+      "max_queue_size or reducing input frequency.",
+      pose_queue_.size(), pose_queue_.max_queue_size());
     pose_queue_.pop();
   }
   {
@@ -171,12 +170,11 @@ void EKFLocalizerNode::timer_callback()
     }
   }
   while (twist_queue_.exceeded()) {
-    warning_->warn_throttle(
-      fmt::format(
-        "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
-        "max_queue_size or reducing input frequency.",
-        twist_queue_.size(), twist_queue_.max_queue_size()),
-      2000);
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+      "max_queue_size or reducing input frequency.",
+      twist_queue_.size(), twist_queue_.max_queue_size());
     twist_queue_.pop();
   }
 
@@ -191,8 +189,9 @@ void EKFLocalizerNode::timer_callback()
   initialize_diagnostic_info(pose_diag_info_, twist_diag_info_, pose_queue_, twist_queue_);
 
   if (!is_activated_) {
-    warning_->warn_throttle(
-      "The node is not activated. Provide initial pose to pose_initializer", 2000);
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "The node is not activated. Provide initial pose to pose_initializer");
     // Update diagnostics before early return to ensure current status is latched
     update_diagnostics(diag_status_array, current_time);
     return;
@@ -202,8 +201,9 @@ void EKFLocalizerNode::timer_callback()
   diag_status_array.push_back(check_set_initialpose(is_set_initialpose_));
 
   if (!is_set_initialpose_) {
-    warning_->warn_throttle(
-      "Initial pose is not set. Provide initial pose to pose_initializer", 2000);
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "Initial pose is not set. Provide initial pose to pose_initializer");
     // Update diagnostics before early return to ensure current status is latched
     update_diagnostics(diag_status_array, current_time);
     return;
@@ -235,8 +235,20 @@ void EKFLocalizerNode::timer_callback()
     const size_t n = pose_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto pose = pose_queue_.pop_increment_age();
+      std::vector<CoreWarning> warnings;
       bool is_updated =
-        ekf_localizer_->measurement_update_pose(*pose, current_time, pose_diag_info_);
+        ekf_localizer_->measurement_update_pose(*pose, current_time, pose_diag_info_, warnings);
+
+      // Node executes warnings emitted by isolated core logic
+      for (const auto & warning : warnings) {
+        if (warning.throttle_ms > 0) {
+          RCLCPP_WARN_THROTTLE(
+            get_logger(), *get_clock(), warning.throttle_ms, "%s", warning.text.c_str());
+        } else {
+          RCLCPP_WARN(get_logger(), "%s", warning.text.c_str());
+        }
+      }
+
       pose_is_updated = pose_is_updated || is_updated;
     }
     DEBUG_INFO(
@@ -271,8 +283,20 @@ void EKFLocalizerNode::timer_callback()
     const size_t n = twist_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto twist = twist_queue_.pop_increment_age();
+      srd::vector<CoreWarning> warnings;
       bool is_updated =
-        ekf_localizer_->measurement_update_twist(*twist, current_time, twist_diag_info_);
+        ekf_localizer_->measurement_update_twist(*twist, current_time, twist_diag_info_, warnings);
+
+      // Node executes warnings emitted by isolated core logic
+      for (const auto & warning : warnings) {
+        if (warning.throttle_ms > 0) {
+          RCLCPP_WARN_THROTTLE(
+            get_logger(), *get_clock(), warning.throttle_ms, "%s", warning.text.c_str());
+        } else {
+          RCLCPP_WARN(get_logger(), "%s", warning.text.c_str());
+        }
+      }
+
       twist_is_updated = twist_is_updated || is_updated;
     }
     DEBUG_INFO(
@@ -293,12 +317,20 @@ void EKFLocalizerNode::timer_callback()
     "twist", twist_diag_info_.is_passed_mahalanobis_gate, twist_diag_info_.mahalanobis_distance,
     params_.twist_gate_dist));
 
-  const geometry_msgs::msg::PoseStamped current_ekf_pose =
-    ekf_localizer_->get_current_pose(current_time, false);
+  // Here node injects timestamps into core logic's raw output structs
+
+  const geometry_msgs::msg::PoseStamped current_ekf_pose = ekf_localizer_->get_current_pose(false);
+  current_ekf_pose.header.stamp = current_time;
+  current_ekf_pose.header.frame_id = params_.pose_frame_id;
+
   const geometry_msgs::msg::PoseStamped current_biased_ekf_pose =
-    ekf_localizer_->get_current_pose(current_time, true);
-  const geometry_msgs::msg::TwistStamped current_ekf_twist =
-    ekf_localizer_->get_current_twist(current_time);
+    ekf_localizer_->get_current_pose(true);
+  current_biased_ekf_pose.header.stamp = current_time;
+  current_biased_ekf_pose.header.frame_id = params_.pose_frame_id;
+
+  const geometry_msgs::msg::TwistStamped current_ekf_twist = ekf_localizer_->get_current_twist();
+  current_ekf_twist.header.stamp = current_time;
+  current_ekf_twist.header.frame_id = "base_link";
 
   // Calculate covariance ellipse and add diagnostics
   geometry_msgs::msg::PoseWithCovariance pose_cov;
@@ -345,7 +377,7 @@ bool EKFLocalizerNode::get_transform_from_tf(
     transform = tf2_buffer_.lookupTransform(parent_frame, child_frame, tf2::TimePointZero);
     return true;
   } catch (tf2::TransformException & ex) {
-    warning_->warn(ex.what());
+    RCLCPP_WARN(get_logger(), "%s", ex.what());
   }
   return false;
 }
@@ -389,13 +421,12 @@ void EKFLocalizerNode::callback_pose_with_covariance(
     }
   }
   if (dropped > 0) {
-    warning_->warn_throttle(
-      fmt::format(
-        "[EKF] Pose staging queue is exceeding max_queue_size ({}); dropped {} oldest message(s). "
-        "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
-        "frequency.",
-        pose_queue_.max_queue_size(), dropped),
-      2000);
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "[EKF] Pose staging queue is exceeding max_queue_size ({}); dropped {} oldest message(s). "
+      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
+      "frequency.",
+      pose_queue_.max_queue_size(), dropped);
   }
 
   last_pose_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
@@ -425,13 +456,12 @@ void EKFLocalizerNode::callback_twist_with_covariance(
     }
   }
   if (dropped > 0) {
-    warning_->warn_throttle(
-      fmt::format(
-        "[EKF] Twist staging queue is exceeding max_queue_size ({}); dropped {} oldest message(s). "
-        "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
-        "frequency.",
-        twist_queue_.max_queue_size(), dropped),
-      2000);
+    RCLCPP_WARN_THROTTLE(
+      get_logger(), *get_clock(), 2000,
+      "[EKF] Twist staging queue is exceeding max_queue_size ({}); dropped {} oldest message(s). "
+      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
+      "frequency.",
+      twist_queue_.max_queue_size(), dropped);
   }
 
   last_twist_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
@@ -459,8 +489,7 @@ void EKFLocalizerNode::publish_estimate_result(
 
   /* publish latest pose with covariance */
   geometry_msgs::msg::PoseWithCovarianceStamped pose_cov;
-  pose_cov.header.stamp = current_ekf_pose.header.stamp;
-  pose_cov.header.frame_id = current_ekf_pose.header.frame_id;
+  pose_cov.header = current_ekf_pose.header;
   pose_cov.pose.pose = current_ekf_pose.pose;
   pose_cov.pose.covariance = ekf_localizer_->get_current_pose_covariance();
   {
@@ -486,8 +515,7 @@ void EKFLocalizerNode::publish_estimate_result(
 
   /* publish latest twist with covariance */
   geometry_msgs::msg::TwistWithCovarianceStamped twist_cov;
-  twist_cov.header.stamp = current_ekf_twist.header.stamp;
-  twist_cov.header.frame_id = current_ekf_twist.header.frame_id;
+  twist_cov.header = current_ekf_twist.header;
   twist_cov.twist.twist = current_ekf_twist.twist;
   twist_cov.twist.covariance = ekf_localizer_->get_current_twist_covariance();
   {
@@ -507,8 +535,7 @@ void EKFLocalizerNode::publish_estimate_result(
   /* publish latest odometry */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_odom_);
-    msg->header.stamp = current_ekf_pose.header.stamp;
-    msg->header.frame_id = current_ekf_pose.header.frame_id;
+    msg->header = current_ekf_pose.header;
     msg->child_frame_id = "base_link";
     msg->pose = pose_cov.pose;
     msg->twist = twist_cov.twist;
