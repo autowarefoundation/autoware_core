@@ -156,7 +156,7 @@ void EKFLocalizer::timer_callback()
   while (pose_queue_.exceeded()) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
-      "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+      "[EKF] Pose queue size ({%zu}) is exceeding max_queue_size ({%zu}). Consider increasing "
       "max_queue_size or reducing input frequency.",
       pose_queue_.size(), pose_queue_.max_queue_size());
     pose_queue_.pop();
@@ -171,7 +171,7 @@ void EKFLocalizer::timer_callback()
   while (twist_queue_.exceeded()) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
-      "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+      "[EKF] Twist queue size ({%zu}) is exceeding max_queue_size ({%zu}). Consider increasing "
       "max_queue_size or reducing input frequency.",
       twist_queue_.size(), twist_queue_.max_queue_size());
     twist_queue_.pop();
@@ -235,8 +235,8 @@ void EKFLocalizer::timer_callback()
     for (size_t i = 0; i < n; ++i) {
       const auto pose = pose_queue_.pop_increment_age();
       std::vector<CoreWarning> warnings;
-      bool is_updated =
-        ekf_module_->measurement_update_pose(*pose, current_time, pose_diag_info_, warnings);
+      bool is_updated = ekf_module_->measurement_update_pose(
+        *pose, current_time.seconds(), pose_diag_info_, warnings);
 
       // Node executes warnings emitted by isolated core logic
       for (const auto & warning : warnings) {
@@ -282,9 +282,9 @@ void EKFLocalizer::timer_callback()
     const size_t n = twist_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto twist = twist_queue_.pop_increment_age();
-      srd::vector<CoreWarning> warnings;
-      bool is_updated =
-        ekf_module_->measurement_update_twist(*twist, current_time, twist_diag_info_, warnings);
+      std::vector<CoreWarning> warnings;
+      bool is_updated = ekf_module_->measurement_update_twist(
+        *twist, current_time.seconds(), twist_diag_info_, warnings);
 
       // Node executes warnings emitted by isolated core logic
       for (const auto & warning : warnings) {
@@ -318,16 +318,15 @@ void EKFLocalizer::timer_callback()
 
   // Here node injects timestamps into core logic's raw output structs
 
-  const geometry_msgs::msg::PoseStamped current_ekf_pose = ekf_module_->get_current_pose(false);
+  geometry_msgs::msg::PoseStamped current_ekf_pose = ekf_module_->get_current_pose(false);
   current_ekf_pose.header.stamp = current_time;
   current_ekf_pose.header.frame_id = params_.pose_frame_id;
 
-  const geometry_msgs::msg::PoseStamped current_biased_ekf_pose =
-    ekf_module_->get_current_pose(true);
+  geometry_msgs::msg::PoseStamped current_biased_ekf_pose = ekf_module_->get_current_pose(true);
   current_biased_ekf_pose.header.stamp = current_time;
   current_biased_ekf_pose.header.frame_id = params_.pose_frame_id;
 
-  const geometry_msgs::msg::TwistStamped current_ekf_twist = ekf_module_->get_current_twist();
+  geometry_msgs::msg::TwistStamped current_ekf_twist = ekf_module_->get_current_twist();
   current_ekf_twist.header.stamp = current_time;
   current_ekf_twist.header.frame_id = "base_link";
 
@@ -422,7 +421,8 @@ void EKFLocalizer::callback_pose_with_covariance(
   if (dropped > 0) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
-      "[EKF] Pose staging queue is exceeding max_queue_size ({}); dropped {} oldest message(s). "
+      "[EKF] Pose staging queue is exceeding max_queue_size ({%zu}); dropped {%zu} oldest "
+      "message(s). "
       "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
       "frequency.",
       pose_queue_.max_queue_size(), dropped);
@@ -457,7 +457,8 @@ void EKFLocalizer::callback_twist_with_covariance(
   if (dropped > 0) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
-      "[EKF] Twist staging queue is exceeding max_queue_size ({}); dropped {} oldest message(s). "
+      "[EKF] Twist staging queue is exceeding max_queue_size ({%zu}); dropped {%zu} oldest "
+      "message(s). "
       "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
       "frequency.",
       twist_queue_.max_queue_size(), dropped);

@@ -16,6 +16,7 @@
 #define EKF_LOCALIZER_HPP_
 
 #include "utils/hyper_parameters.hpp"
+#include "utils/state_index.hpp"
 
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
@@ -47,7 +48,8 @@ struct EKFDiagnosticInfo
   double mahalanobis_distance{0.0};
 };
 
-struct CoreWarning {
+struct CoreWarning
+{
   std::string text;
   uint32_t throttle_ms{0};
 };
@@ -100,13 +102,12 @@ private:
 
 class EKFModule
 {
-private:
+public:
   using PoseWithCovariance = geometry_msgs::msg::PoseWithCovarianceStamped;
   using TwistWithCovariance = geometry_msgs::msg::TwistWithCovarianceStamped;
   using Pose = geometry_msgs::msg::PoseStamped;
   using Twist = geometry_msgs::msg::TwistStamped;
 
-public:
   explicit EKFModule(const HyperParameters & params);
 
   void initialize(
@@ -120,35 +121,24 @@ public:
   [[nodiscard]] std::array<double, 36> get_current_twist_covariance() const;
 
   [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;
-  
+
   void accumulate_delay_time(const double dt);
   void predict_with_delay(const double dt);
 
   bool measurement_update_pose(
-    const PoseWithCovariance & pose, 
-    const double & t_curr_sec,
-    EKFDiagnosticInfo & pose_diag_info,
-    std::vector<CoreWarning> & warnings_out
-  );
+    const PoseWithCovariance & pose, const double t_curr_sec, EKFDiagnosticInfo & pose_diag_info,
+    std::vector<CoreWarning> & warnings_out);
 
   bool measurement_update_twist(
-    const TwistWithCovariance & twist, 
-    const double t_curr_sec,
-    EKFDiagnosticInfo & twist_diag_info, 
-    std::vector<CoreWarning> & warnings_out
-  );
+    const TwistWithCovariance & twist, const double t_curr_sec, EKFDiagnosticInfo & twist_diag_info,
+    std::vector<CoreWarning> & warnings_out);
 
   geometry_msgs::msg::PoseWithCovarianceStamped compensate_rph_with_delay(
-    const PoseWithCovariance & pose, 
-    tf2::Vector3 last_angular_velocity, 
-    const double delay_time
-  );
+    const PoseWithCovariance & pose, tf2::Vector3 last_angular_velocity, const double delay_time);
 
 private:
   void update_simple_1d_filters(
-    const geometry_msgs::msg::PoseWithCovarianceStamped & pose, 
-    const size_t smoothing_step
-  );
+    const geometry_msgs::msg::PoseWithCovarianceStamped & pose, const size_t smoothing_step);
 
   TimeDelayKalmanFilter kalman_filter_;
 
