@@ -382,12 +382,18 @@ TEST(NdtScanMatcherCharacteristics, InitialPoseIsRejectedBeforeTheFrameCheckWhen
     << ::testing::PrintToString(diag->keys_in_order());
 }
 
-/// SUSPICIOUS — a wrong `frame_id` on the initial pose is ERROR, not WARN.
+/// A wrong `frame_id` on the initial pose is an ERROR, not a WARN.
 ///
-/// Every other input-validation failure in this node is a WARN; this is the only ERROR on the
-/// subscriber paths. A pass that normalizes severities into a `determine_diagnostics()`-style
-/// helper will flatten it, and downgrading ERROR to WARN silently disarms whatever supervises
-/// the node.
+/// The node's severities split by whether the condition can resolve itself. WARN covers transient
+/// states -- not yet activated, no pose to interpolate, no map yet, a poor score. ERROR covers
+/// configuration that will never fix itself: a missing TF, an out-of-range
+/// `converged_param_type`, a map that cannot be loaded, and this. Whoever publishes
+/// `ekf_pose_with_covariance` in the wrong frame will keep doing so, so ERROR is the consistent
+/// choice rather than an outlier.
+///
+/// It is pinned because that split is a convention rather than something the code states, and a
+/// pass that normalizes severities into a `determine_diagnostics()`-style helper would flatten it.
+/// Downgrading this to WARN silently disarms whatever supervises the node.
 TEST(NdtScanMatcherCharacteristics, WrongFrameIdOnInitialPoseIsErrorNotWarn)
 {
   // Arrange
