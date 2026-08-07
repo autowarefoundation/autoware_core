@@ -34,7 +34,7 @@ TEST_F(TestNDTScanMatcher, standard_sequence_for_initial_pose_estimation)  // NO
   //---------//
   std::thread t1([&]() {
     rclcpp::executors::MultiThreadedExecutor exec;
-    exec.add_node(node_);
+    exec.add_node(node_->get_node_base_interface());
     exec.spin();
   });
   std::thread t2([&]() { rclcpp::spin(pcd_loader_); });
