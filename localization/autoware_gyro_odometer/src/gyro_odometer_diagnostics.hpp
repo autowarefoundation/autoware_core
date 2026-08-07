@@ -15,6 +15,8 @@
 #ifndef GYRO_ODOMETER_DIAGNOSTICS_HPP_
 #define GYRO_ODOMETER_DIAGNOSTICS_HPP_
 
+#include <rclcpp/time.hpp>
+
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
 
 #include <cstdint>
@@ -41,6 +43,11 @@ struct DiagnosticsState
   double latest_imu_dt{0.0};
   double message_timeout_sec{0.0};
   std::string output_frame;
+
+  rclcpp::Time latest_vehicle_twist_ros_time;
+  rclcpp::Time latest_imu_ros_time;
+  int32_t vehicle_twist_queue_size{0};
+  int32_t imu_queue_size{0};
 };
 
 /// \brief Result of evaluating the diagnostics state.

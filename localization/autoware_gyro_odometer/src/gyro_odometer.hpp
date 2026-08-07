@@ -15,14 +15,90 @@
 #ifndef GYRO_ODOMETER_HPP_
 #define GYRO_ODOMETER_HPP_
 
+/// logic depends on diagnostics so that it snapshots only the stuff diag actually needs
+#include "gyro_odometer_diagnostics.hpp"
+
+#include <autoware_utils_geometry/msg/covariance.hpp>
+#include <rclcpp/time.hpp>
+
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
 #include <array>
 #include <deque>
-
+#include <optional>
+#include <tuple>
 namespace autoware::gyro_odometer
 {
+class GyroOdometer
+{
+private:
+  using COV_IDX = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
+
+public:
+  /// \brief Construct a GyroOdometer with no messages received yet (both arrival flags false,
+  /// both queues empty).
+  explicit GyroOdometer();
+
+  /// \brief The four twist messages a successful fusion produces:
+  /// raw fused twist, raw fused twist with covariance,
+  //  stop-compensated twist, and stop-compensated twist with covariance, respectively.
+  using OutputData = std::tuple<
+    geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped,
+    geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped>;
+
+  /// \brief Record an incoming vehicle-twist message and try to fuse it with the queued IMU data.
+  ///
+  /// Marks the vehicle twist as arrived, appends \p vehicle_twist_msg to the internal queue, then
+  /// attempts fusion. \p is_succeed_transform_imu is the outcome of the caller's most recent
+  /// IMU-to-output-frame TF lookup; when false, both internal queues are cleared here too (the TF
+  /// failure is IMU-side, but it invalidates the vehicle-twist queue just the same).
+  ///
+  /// \return the fused OutputData if this call completed a fusion, std::nullopt otherwise.
+  std::optional<OutputData> input_vehicle_twist(
+    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
+    rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
+
+  /// \brief Record an incoming IMU message and try to fuse it with the queued vehicle-twist data.
+  ///
+  /// Same shape as callback_vehicle_twist_internal(): marks the IMU as arrived, appends
+  /// \p imu_msg to the internal queue, then attempts fusion using the caller-supplied
+  /// \p is_succeed_transform_imu outcome.
+  ///
+  /// \return the fused OutputData if this call completed a fusion, std::nullopt otherwise.
+  std::optional<OutputData> input_imu(
+    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
+    bool is_succeed_transform_imu);
+
+  /// \brief Copy out the fusion-owned part of the diagnostics state. The caller fills the fields it
+  /// owns itself (is_succeed_transform_imu, message_timeout_sec, output_frame). See
+  /// DiagnosticsState.
+  DiagnosticsState take_diagnostics_state() const;
+
+private:
+  std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
+    rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
+
+  static OutputData make_output(
+    const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
+
+  bool vehicle_twist_arrived_;
+  bool imu_arrived_;
+  rclcpp::Time latest_vehicle_twist_ros_time_;
+  rclcpp::Time latest_imu_ros_time_;
+  double latest_vehicle_twist_dt_;
+  double latest_imu_dt_;
+  // Snapshot of each queue's size taken inside concat_gyro_and_odometer(), right after the
+  // timeout checks. This is deliberately not a live read of the queue: a successful fusion clears
+  // both queues immediately, so a live read from take_diagnostics_state() would show ~0 almost
+  // every time and lose the "how many messages did the last fusion attempt see" information the
+  // diagnostics are meant to report.
+  int32_t latest_vehicle_twist_queue_size_ = 0;
+  int32_t latest_imu_queue_size_ = 0;
+  std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
+  std::deque<sensor_msgs::msg::Imu> gyro_queue_;
+};
 
 /// \brief Reduce an angular-velocity covariance (xyz layout) to an isotropic diagonal covariance.
 ///

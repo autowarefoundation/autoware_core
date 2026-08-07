@@ -15,6 +15,8 @@
 #ifndef GYRO_ODOMETER_NODE_HPP_
 #define GYRO_ODOMETER_NODE_HPP_
 
+#include "gyro_odometer.hpp"
+
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
@@ -31,6 +33,7 @@
 
 #include <deque>
 #include <memory>
+#include <optional>
 #include <string>
 
 namespace autoware::gyro_odometer
@@ -49,8 +52,7 @@ private:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
       vehicle_twist_msg_ptr);
   void callback_imu(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Imu) imu_msg_ptr);
-  void concat_gyro_and_odometer();
-  void publish_data(const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
+  void publish_data(const GyroOdometer::OutputData & output_data);
   void publish_diagnostics();
 
   AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) vehicle_twist_sub_;
@@ -64,8 +66,6 @@ private:
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
   twist_with_covariance_pub_;
 
-  AUTOWARE_TIMER_PTR timer_;
-
   using TransformListener = autoware_utils_tf::TransformListenerT<
     autoware::agnocast_wrapper::Node, autoware::agnocast_wrapper::Buffer,
     autoware::agnocast_wrapper::TransformListener>;
@@ -74,24 +74,16 @@ private:
     autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
     logger_configure_;
 
-  std::string output_frame_;
-  double message_timeout_sec_;
-
-  bool vehicle_twist_arrived_;
-  bool imu_arrived_;
-  bool is_succeed_transform_imu_;
-  rclcpp::Time latest_vehicle_twist_ros_time_;
-  rclcpp::Time latest_imu_ros_time_;
-  double latest_vehicle_twist_dt_;
-  double latest_imu_dt_;
-  int32_t latest_vehicle_twist_queue_size_ = 0;
-  int32_t latest_imu_queue_size_ = 0;
-  std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
-  std::deque<sensor_msgs::msg::Imu> gyro_queue_;
-
   std::unique_ptr<
     autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>
     diagnostics_;
+
+  AUTOWARE_TIMER_PTR timer_;
+
+  std::string output_frame_;
+  double message_timeout_sec_;
+  bool is_succeed_transform_imu_;
+  GyroOdometer gyro_odometer_;
 };
 
 }  // namespace autoware::gyro_odometer
