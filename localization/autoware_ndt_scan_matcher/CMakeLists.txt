@@ -44,8 +44,8 @@ endif()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_update_module.cpp
-  src/ndt_scan_matcher_core.cpp
-  src/ndt_scan_matcher_helper.cpp
+  src/ndt_scan_matcher_node.cpp
+  src/ndt_scan_matcher.cpp
   src/particle.cpp
 )
 
