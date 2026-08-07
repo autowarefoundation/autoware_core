@@ -45,7 +45,7 @@ DiagnosticsState GyroOdometer::take_diagnostics_state() const
   return state;
 }
 
-std::optional<GyroOdometer::OutputData> GyroOdometer::callback_vehicle_twist_internal(
+std::optional<GyroOdometer::OutputData> GyroOdometer::input_vehicle_twist(
   const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
   rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu)
 {
@@ -58,10 +58,10 @@ std::optional<GyroOdometer::OutputData> GyroOdometer::callback_vehicle_twist_int
   if (!twist_with_cov) {
     return std::nullopt;
   }
-  return publish_data_internal(*twist_with_cov);
+  return make_output(*twist_with_cov);
 }
 
-std::optional<GyroOdometer::OutputData> GyroOdometer::callback_imu_internal(
+std::optional<GyroOdometer::OutputData> GyroOdometer::input_imu(
   const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
   bool is_succeed_transform_imu)
 {
@@ -74,7 +74,7 @@ std::optional<GyroOdometer::OutputData> GyroOdometer::callback_imu_internal(
   if (!twist_with_cov) {
     return std::nullopt;
   }
-  return publish_data_internal(*twist_with_cov);
+  return make_output(*twist_with_cov);
 }
 
 std::optional<geometry_msgs::msg::TwistWithCovarianceStamped>
@@ -134,7 +134,7 @@ GyroOdometer::concat_gyro_and_odometer(
   return std::make_optional(twist_with_cov);
 }
 
-GyroOdometer::OutputData GyroOdometer::publish_data_internal(
+GyroOdometer::OutputData GyroOdometer::make_output(
   const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw)
 {
   geometry_msgs::msg::TwistStamped twist_raw;

@@ -56,9 +56,7 @@ public:
   /// failure is IMU-side, but it invalidates the vehicle-twist queue just the same).
   ///
   /// \return the fused OutputData if this call completed a fusion, std::nullopt otherwise.
-  ///
-  // TODO(kazkomiya): rename to input_vehicle_twist() (or similar) in a follow-up commit/PR.
-  std::optional<OutputData> callback_vehicle_twist_internal(
+  std::optional<OutputData> input_vehicle_twist(
     const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
     rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
 
@@ -69,9 +67,7 @@ public:
   /// \p is_succeed_transform_imu outcome.
   ///
   /// \return the fused OutputData if this call completed a fusion, std::nullopt otherwise.
-  ///
-  // TODO(kazkomiya): rename to input_imu() (or similar) in a follow-up commit/PR,
-  std::optional<OutputData> callback_imu_internal(
+  std::optional<OutputData> input_imu(
     const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
     bool is_succeed_transform_imu);
 
@@ -84,8 +80,7 @@ private:
   std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
     rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
 
-  // TODO(kazkomiya): rename to make_output
-  static OutputData publish_data_internal(
+  static OutputData make_output(
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
 
   bool vehicle_twist_arrived_;
