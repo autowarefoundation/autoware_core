@@ -1,0 +1,67 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: EuclideanCluster.node
+package:
+  name: autoware_euclidean_cluster_object_detector
+  provider: autoware
+launch:
+  plugin: autoware::euclidean_cluster::EuclideanClusterNode
+  executable: euclidean_cluster_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: input
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: input
+publishers:
+  - name: output
+    message_type: autoware_perception_msgs/msg/DetectedObjects
+    remap_target: output
+  - name: clusters
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: debug/clusters
+# parameters
+param_files:
+  - name: euclidean_cluster_param
+    default: $(find-pkg-share autoware_euclidean_cluster_object_detector)/config/euclidean_cluster.param.yaml
+param_values:
+  - name: max_cluster_size
+    type: int
+    default: 1000
+  - name: min_cluster_size
+    type: int
+    default: 10
+  - name: tolerance
+    type: double
+    default: 0.7
+  - name: use_height
+    type: bool
+    default: false
+  - name: max_x
+    type: double
+    default: 200.0
+  - name: min_x
+    type: double
+    default: -200.0
+  - name: max_y
+    type: double
+    default: 200.0
+  - name: min_y
+    type: double
+    default: -200.0
+  - name: max_z
+    type: double
+    default: 2.0
+  - name: min_z
+    type: double
+    default: -10.0
+  - name: negative
+    type: bool
+    default: false
+# processes
+processes:
+  - name: cluster_pointcloud
+    trigger_conditions:
+      - on_input: input
+    outcomes:
+      - to_output: output
