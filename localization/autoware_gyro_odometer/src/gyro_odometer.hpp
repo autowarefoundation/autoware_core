@@ -21,7 +21,6 @@
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <sensor_msgs/msg/imu.hpp>
@@ -44,17 +43,16 @@ public:
     geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped,
     geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped>;
 
+  /*latest transform failure of imu is referenced also in twist callback
+    to clear both internal queues*/
   std::optional<OutputData> callback_vehicle_twist_internal(
     const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg_ptr,
-    rclcpp::Time current_time, double message_timeout_sec,
-    const std::optional<geometry_msgs::msg::TransformStamped> & transform,
-    const std::string & output_frame);
+    rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
 
   std::optional<OutputData> callback_imu_internal(
     const sensor_msgs::msg::Imu & imu_msg_ptr, rclcpp::Time current_time,
-    double message_timeout_sec,
-    const std::optional<geometry_msgs::msg::TransformStamped> & transform,
-    const std::string & output_frame);
+    double message_timeout_sec, bool is_succeed_transform_imu);
+
   static OutputData publish_data_internal(
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
 
@@ -65,13 +63,9 @@ public:
 
 private:
   std::optional<OutputData> try_concat_gyro_and_odometer(
-    rclcpp::Time current_time, double message_timeout_sec,
-    const std::optional<geometry_msgs::msg::TransformStamped> & transform,
-    const std::string & output_frame);
+    rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
   std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
-    rclcpp::Time current_time, double message_timeout_sec,
-    const std::optional<geometry_msgs::msg::TransformStamped> & transform,
-    const std::string & output_frame);
+    rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
 
   bool vehicle_twist_arrived_;
   bool imu_arrived_;
