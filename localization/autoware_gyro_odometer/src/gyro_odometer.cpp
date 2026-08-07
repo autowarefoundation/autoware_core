@@ -40,8 +40,8 @@ DiagnosticsState GyroOdometer::take_diagnostics_state() const
   state.latest_imu_dt = latest_imu_dt_;
   state.latest_vehicle_twist_ros_time = latest_vehicle_twist_ros_time_;
   state.latest_imu_ros_time = latest_imu_ros_time_;
-  state.vehicle_twist_queue_size = static_cast<int32_t>(vehicle_twist_queue_.size());
-  state.imu_queue_size = static_cast<int32_t>(gyro_queue_.size());
+  state.vehicle_twist_queue_size = latest_vehicle_twist_queue_size_;
+  state.imu_queue_size = latest_imu_queue_size_;
   return state;
 }
 
@@ -109,6 +109,8 @@ GyroOdometer::concat_gyro_and_odometer(
   }
 
   // check queue size
+  latest_vehicle_twist_queue_size_ = static_cast<int32_t>(vehicle_twist_queue_.size());
+  latest_imu_queue_size_ = static_cast<int32_t>(gyro_queue_.size());
   if (vehicle_twist_queue_.empty()) {
     // not output error and clear queue
     return std::nullopt;

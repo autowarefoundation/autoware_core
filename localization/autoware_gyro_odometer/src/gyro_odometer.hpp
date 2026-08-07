@@ -89,6 +89,13 @@ private:
   rclcpp::Time latest_imu_ros_time_;
   double latest_vehicle_twist_dt_;
   double latest_imu_dt_;
+  // Snapshot of each queue's size taken inside concat_gyro_and_odometer(), right after the
+  // timeout checks. This is deliberately not a live read of the queue: a successful fusion clears
+  // both queues immediately, so a live read from take_diagnostics_state() would show ~0 almost
+  // every time and lose the "how many messages did the last fusion attempt see" information the
+  // diagnostics are meant to report.
+  int32_t latest_vehicle_twist_queue_size_ = 0;
+  int32_t latest_imu_queue_size_ = 0;
   std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
   std::deque<sensor_msgs::msg::Imu> gyro_queue_;
 };
