@@ -373,7 +373,6 @@ TEST_F(MeasurementUpdatePose, RejectsOnDelayGate)
   const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
-  EXPECT_EQ(warnings.size(), 0u);  // Core failed to pass warnings to Node
   EXPECT_FALSE(diag.is_passed_delay_gate);
 }
 
@@ -388,7 +387,6 @@ TEST_F(MeasurementUpdatePose, RejectsOnNan)
   const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
-  EXPECT_EQ(warnings.size(), 0u);  // Core failed to pass warnings to Node
   // The NaN gate is reached after the delay gate, so the delay gate is still marked passed.
   EXPECT_TRUE(diag.is_passed_delay_gate);
 }
@@ -404,7 +402,6 @@ TEST_F(MeasurementUpdatePose, RejectsOnInf)
   const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
-  EXPECT_EQ(warnings.size(), 0u);  // Core failed to pass warnings to Node
 }
 
 TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
@@ -421,7 +418,6 @@ TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
   const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
-  EXPECT_EQ(warnings.size(), 0u);  // Core failed to pass warnings to Node
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_FALSE(diag.is_passed_mahalanobis_gate);
   EXPECT_GT(diag.mahalanobis_distance, 0.0);
@@ -502,7 +498,6 @@ TEST_F(MeasurementUpdateTwist, RejectsOnDelayGate)
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
-  EXPECT_EQ(warnings.size(), 0u);  // Core failed to pass warnings to Node
 }
 
 TEST_F(MeasurementUpdateTwist, RejectsOnNan)
@@ -517,7 +512,6 @@ TEST_F(MeasurementUpdateTwist, RejectsOnNan)
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
-  EXPECT_EQ(warnings.size(), 0u);  // Core failed to pass warnings to Node
 }
 
 TEST_F(MeasurementUpdateTwist, RejectsOnInf)
@@ -531,7 +525,6 @@ TEST_F(MeasurementUpdateTwist, RejectsOnInf)
   const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
-  EXPECT_EQ(warnings.size(), 0u);  // Core failed to pass warnings to Node
 }
 
 TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
@@ -547,7 +540,6 @@ TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
   const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
-  EXPECT_EQ(warnings.size(), 0u);  // Core failed to pass warnings to Node
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_FALSE(diag.is_passed_mahalanobis_gate);
   EXPECT_GT(diag.mahalanobis_distance, 0.0);

@@ -19,6 +19,7 @@
 #include "utils/matrix_types.hpp"
 #include "utils/measurement.hpp"
 #include "utils/numeric.hpp"
+#include "utils/state_index.hpp"
 #include "utils/state_transition.hpp"
 #include "utils/warning_message.hpp"
 
@@ -354,6 +355,13 @@ geometry_msgs::msg::PoseWithCovarianceStamped EKFLocalizer::compensate_rph_with_
 
   PoseWithCovariance pose_with_delay;
   pose_with_delay = pose;
+
+  // Native timestamp addition to avoid rclcpp::Time dependency
+  double new_time_sec = pose.header.stamp.sec + (pose.header.stamp.nanosec * 1e-9) + delay_time;
+  pose_with_delay.header.stamp.sec = static_cast<int32_t>(std::floor(new_time_sec));
+  pose_with_delay.header.stamp.nanosec =
+    static_cast<uint32_t>((new_time_sec - std::floor(new_time_sec)) * 1e9);
+
   pose_with_delay.pose.pose.orientation.x = curr_orientation.x();
   pose_with_delay.pose.pose.orientation.y = curr_orientation.y();
   pose_with_delay.pose.pose.orientation.z = curr_orientation.z();

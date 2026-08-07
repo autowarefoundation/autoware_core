@@ -16,6 +16,7 @@
 #define EKF_LOCALIZER_HPP_
 
 #include "utils/hyper_parameters.hpp"
+#include "utils/state_index.hpp"
 
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
@@ -101,13 +102,12 @@ private:
 
 class EKFLocalizer
 {
-private:
+public:
   using PoseWithCovariance = geometry_msgs::msg::PoseWithCovarianceStamped;
   using TwistWithCovariance = geometry_msgs::msg::TwistWithCovarianceStamped;
   using Pose = geometry_msgs::msg::PoseStamped;
   using Twist = geometry_msgs::msg::TwistStamped;
 
-public:
   explicit EKFLocalizer(const HyperParameters & params);
 
   void initialize(
@@ -126,7 +126,7 @@ public:
   void predict_with_delay(const double dt);
 
   bool measurement_update_pose(
-    const PoseWithCovariance & pose, const double & t_curr_sec, EKFDiagnosticInfo & pose_diag_info,
+    const PoseWithCovariance & pose, const double t_curr_sec, EKFDiagnosticInfo & pose_diag_info,
     std::vector<CoreWarning> & warnings_out);
 
   bool measurement_update_twist(
