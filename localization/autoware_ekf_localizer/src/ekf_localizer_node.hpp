@@ -18,7 +18,6 @@
 #include "ekf_localizer.hpp"
 #include "utils/aged_object_queue.hpp"
 #include "utils/hyper_parameters.hpp"
-#include "utils/warning.hpp"
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
@@ -65,8 +64,6 @@ public:
   }
 
 private:
-  const std::shared_ptr<Warning> warning_;
-
   //!< @brief ekf estimated pose publisher
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) pub_pose_;
   //!< @brief estimated ekf pose with covariance publisher
@@ -219,8 +216,6 @@ private:
     EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
     const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
     const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
-
-  friend class EKFLocalizerDiagnosticsTest;  // for test code
 };
 
 }  // namespace autoware::ekf_localizer

@@ -15,7 +15,6 @@
 #include "src/ekf_localizer.hpp"
 #include "utils/hyper_parameters.hpp"
 #include "utils/state_index.hpp"
-#include "utils/warning.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -31,6 +30,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace autoware::ekf_localizer
 {
@@ -69,9 +69,7 @@ HyperParameters make_params()
 
 std::shared_ptr<EKFModule> make_module(const HyperParameters & params)
 {
-  // Warning(nullptr) is an explicitly-requested no-op logger (node_ == nullptr).
-  auto warning = std::make_shared<Warning>(nullptr);
-  return std::make_shared<EKFModule>(warning, params);
+  return std::make_shared<EKFModule>(params);
 }
 
 geometry_msgs::msg::PoseWithCovarianceStamped make_pose(
@@ -207,18 +205,6 @@ TEST(TestEKFModule, AccumulateDelayTime)
 }
 
 // ---------------------------------------------------------------------------
-// Warning: no-op logger constructed without a node
-// ---------------------------------------------------------------------------
-TEST(Warning, NoOpWhenConstructedWithNullptr)
-{
-  const Warning warning{nullptr};
-
-  // node_ == nullptr: warn/warn_throttle silently return without a ROS runtime.
-  EXPECT_NO_THROW(warning.warn("ignored"));
-  EXPECT_NO_THROW(warning.warn_throttle("ignored", 1000));
-}
-
-// ---------------------------------------------------------------------------
 // Simple1DFilter init + update
 // ---------------------------------------------------------------------------
 TEST(TestSimple1DFilter, InitAndUpdate)
@@ -345,21 +331,23 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
   // origin and the covariance unchanged, failing these postconditions.
   auto pose = make_pose(1.0, 2.0, 0.0, "map", t_curr);
 
-  const auto pose_before = module_->get_current_pose(t_curr, false);
+  const auto pose_before = module_->get_current_pose(false);
   const auto cov_before = module_->get_current_pose_covariance();
   EXPECT_DOUBLE_EQ(pose_before.pose.position.x, 0.0);
   EXPECT_DOUBLE_EQ(pose_before.pose.position.y, 0.0);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_TRUE(ok);
+  EXPECT_EQ(warnings.size(), 0u);  // No warning on valid measurement
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
 
   // Postcondition: the state is blended toward the measurement (strictly between the prior
   // estimate and the measurement), not snapped to it.
-  const auto pose_after = module_->get_current_pose(t_curr, false);
+  const auto pose_after = module_->get_current_pose(false);
   EXPECT_GT(pose_after.pose.position.x, 0.0);
   EXPECT_LT(pose_after.pose.position.x, 1.0);
   EXPECT_GT(pose_after.pose.position.y, 0.0);
@@ -379,8 +367,9 @@ TEST_F(MeasurementUpdatePose, RejectsOnDelayGate)
   const rclcpp::Time t_old(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(0.0, 0.0, 0.0, "map", t_old);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
@@ -393,7 +382,8 @@ TEST_F(MeasurementUpdatePose, RejectsOnNan)
   pose.pose.pose.position.x = std::numeric_limits<double>::quiet_NaN();
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  std::vector<CoreWarning> warnings;
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   // The NaN gate is reached after the delay gate, so the delay gate is still marked passed.
@@ -406,8 +396,9 @@ TEST_F(MeasurementUpdatePose, RejectsOnInf)
   auto pose = make_pose(0.0, 0.0, 0.0, "map", t_curr);
   pose.pose.pose.position.y = std::numeric_limits<double>::infinity();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
 }
@@ -421,8 +412,9 @@ TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(1000.0, 1000.0, 0.0, "map", t_curr);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -467,20 +459,22 @@ TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
   // the velocity estimate must move toward the measurement and the velocity covariance shrink.
   auto twist = make_twist(3.0, 1.0, "base_link", t_curr);
 
-  const auto twist_before = module_->get_current_twist(t_curr);
+  const auto twist_before = module_->get_current_twist();
   const auto cov_before = module_->get_current_twist_covariance();
   EXPECT_DOUBLE_EQ(twist_before.twist.linear.x, 0.0);
   EXPECT_DOUBLE_EQ(twist_before.twist.angular.z, 0.0);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_TRUE(ok);
+  EXPECT_EQ(warnings.size(), 0u);  // No warning on valid measurement
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
 
   // Postcondition: the velocity estimate is blended toward the measurement, not snapped to it.
-  const auto twist_after = module_->get_current_twist(t_curr);
+  const auto twist_after = module_->get_current_twist();
   EXPECT_GT(twist_after.twist.linear.x, 0.0);
   EXPECT_LT(twist_after.twist.linear.x, 3.0);
   EXPECT_GT(twist_after.twist.angular.z, 0.0);
@@ -497,8 +491,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnDelayGate)
   const rclcpp::Time t_old(100, 0, RCL_ROS_TIME);
   auto twist = make_twist(0.0, 0.0, "base_link", t_old);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
@@ -510,8 +505,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnNan)
   auto twist = make_twist(0.0, 0.0, "base_link", t_curr);
   twist.twist.twist.linear.x = std::numeric_limits<double>::quiet_NaN();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -523,8 +519,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnInf)
   auto twist = make_twist(0.0, 0.0, "base_link", t_curr);
   twist.twist.twist.angular.z = std::numeric_limits<double>::infinity();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
 }
@@ -537,8 +534,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
   auto twist = make_twist(1000.0, 1000.0, "base_link", t_curr);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
