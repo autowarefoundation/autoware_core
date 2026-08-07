@@ -20,7 +20,6 @@
 #include <algorithm>
 #include <cmath>
 #include <deque>
-#include <string>
 
 namespace autoware::gyro_odometer
 {
@@ -46,38 +45,36 @@ DiagnosticsState GyroOdometer::take_diagnostics_state() const
   return state;
 }
 
-std::optional<GyroOdometer::OutputData> GyroOdometer::try_concat_gyro_and_odometer(
-  rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu)
-{
-  auto twist_with_cov =
-    concat_gyro_and_odometer(current_time, message_timeout_sec, is_succeed_transform_imu);
-  if (twist_with_cov) {
-    return std::make_optional(publish_data_internal(*twist_with_cov));
-  } else {
-    return std::nullopt;
-  }
-}
-
 std::optional<GyroOdometer::OutputData> GyroOdometer::callback_vehicle_twist_internal(
-  const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg_ptr,
+  const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
   rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu)
 {
   vehicle_twist_arrived_ = true;
-  latest_vehicle_twist_ros_time_ = vehicle_twist_msg_ptr.header.stamp;
-  vehicle_twist_queue_.push_back(vehicle_twist_msg_ptr);
+  latest_vehicle_twist_ros_time_ = vehicle_twist_msg.header.stamp;
+  vehicle_twist_queue_.push_back(vehicle_twist_msg);
 
-  return try_concat_gyro_and_odometer(current_time, message_timeout_sec, is_succeed_transform_imu);
+  auto twist_with_cov =
+    concat_gyro_and_odometer(current_time, message_timeout_sec, is_succeed_transform_imu);
+  if (!twist_with_cov) {
+    return std::nullopt;
+  }
+  return publish_data_internal(*twist_with_cov);
 }
 
 std::optional<GyroOdometer::OutputData> GyroOdometer::callback_imu_internal(
-  const sensor_msgs::msg::Imu & imu_msg_ptr, rclcpp::Time current_time, double message_timeout_sec,
+  const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
   bool is_succeed_transform_imu)
 {
   imu_arrived_ = true;
-  latest_imu_ros_time_ = imu_msg_ptr.header.stamp;
-  gyro_queue_.push_back(imu_msg_ptr);
+  latest_imu_ros_time_ = imu_msg.header.stamp;
+  gyro_queue_.push_back(imu_msg);
 
-  return try_concat_gyro_and_odometer(current_time, message_timeout_sec, is_succeed_transform_imu);
+  auto twist_with_cov =
+    concat_gyro_and_odometer(current_time, message_timeout_sec, is_succeed_transform_imu);
+  if (!twist_with_cov) {
+    return std::nullopt;
+  }
+  return publish_data_internal(*twist_with_cov);
 }
 
 std::optional<geometry_msgs::msg::TwistWithCovarianceStamped>
