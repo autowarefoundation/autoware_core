@@ -1,0 +1,29 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: DetectedToPredictedObjectsConverter.node
+package:
+  name: autoware_perception_objects_converter
+  provider: autoware
+launch:
+  plugin: autoware::perception_objects_converter::DetectedToPredictedObjectsConverter
+  executable: detected_to_predicted_objects_converter_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: detected_objects
+    message_type: autoware_perception_msgs/msg/DetectedObjects
+    remap_target: input/detected_objects
+publishers:
+  - name: predicted_objects
+    message_type: autoware_perception_msgs/msg/PredictedObjects
+    remap_target: output/predicted_objects
+# parameters
+param_files: []
+param_values: []
+# processes
+processes:
+  - name: convert_detected_to_predicted
+    trigger_conditions:
+      - on_input: detected_objects
+    outcomes:
+      - to_output: predicted_objects
