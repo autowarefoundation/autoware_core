@@ -23,6 +23,7 @@
 #include <autoware/qos_utils/qos_compatibility.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
+#include <autoware_utils_visualization/marker_helper.hpp>
 
 #include <pcl_conversions/pcl_conversions.h>
 
@@ -38,10 +39,15 @@
 #endif
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <functional>
+#include <future>
 #include <iomanip>
+#include <map>
 #include <thread>
+#include <utility>
+#include <variant>
 
 namespace autoware::ndt_scan_matcher
 {
@@ -187,8 +193,17 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
     this->get_logger(), param_.validation.initial_pose_timeout_sec,
     param_.validation.initial_pose_distance_tolerance_m);
 
-  map_update_module_ =
-    std::make_unique<MapUpdateModule>(this, ndt_ptr_, param_.dynamic_map_loading);
+  // ROS-dependent resources for the map update module are owned by this node.
+  loaded_pcd_pub_ = this->create_publisher<sensor_msgs::msg::PointCloud2>(
+    "debug/loaded_pointcloud_map", rclcpp::QoS{1}.transient_local());
+  pcd_loader_client_ =
+    this->create_client<MapUpdateModule::GetDifferentialPointCloudMap>("pcd_loader_service");
+
+  map_update_module_ = std::make_unique<MapUpdateModule>(
+    ndt_ptr_, param_.dynamic_map_loading,
+    [this](const MapUpdateModule::GetDifferentialPointCloudMap::Request::SharedPtr & request) {
+      return this->get_differential_point_cloud_map(request);
+    });
 
   diagnostics_scan_points_ = std::make_unique<DiagnosticsInterface>(this, "scan_matching_status");
   diagnostics_initial_pose_ =
@@ -201,6 +216,40 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
 }
 
+MapUpdateModule::GetDifferentialPointCloudMap::Response::SharedPtr
+NDTScanMatcher::get_differential_point_cloud_map(
+  const MapUpdateModule::GetDifferentialPointCloudMap::Request::SharedPtr & request)
+{
+  if (!pcd_loader_client_->wait_for_service(std::chrono::seconds(1)) || !rclcpp::ok()) {
+    return nullptr;
+  }
+
+  // send a request to map_loader
+  auto result{pcd_loader_client_->async_send_request(
+    request, [](rclcpp::Client<MapUpdateModule::GetDifferentialPointCloudMap>::SharedFuture) {})};
+
+  std::future_status status = result.wait_for(std::chrono::seconds(0));
+  while (status != std::future_status::ready) {
+    if (!rclcpp::ok()) {
+      return nullptr;
+    }
+    status = result.wait_for(std::chrono::seconds(1));
+  }
+
+  return result.get();
+}
+
+void NDTScanMatcher::apply_diagnostics_update(
+  DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsReport & report)
+{
+  for (const auto & key_value : report.key_values) {
+    std::visit(
+      [&](const auto & value) { diagnostics.add_key_value(key_value.key, value); },
+      key_value.value);
+  }
+  diagnostics.update_level_and_message(static_cast<int8_t>(report.level), report.message);
+}
+
 void NDTScanMatcher::callback_timer()
 {
   const rclcpp::Time ros_time_now = this->now();
@@ -210,7 +259,12 @@ void NDTScanMatcher::callback_timer()
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
   const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
-  map_update_module_->callback_timer(is_activated_, latest_ekf_position, diagnostics_map_update_);
+  const auto result = map_update_module_->callback_timer(is_activated_, latest_ekf_position);
+  apply_diagnostics_update(*diagnostics_map_update_, result.diagnostics);
+
+  if (result.loaded_pcd_map) {
+    loaded_pcd_pub_->publish(*result.loaded_pcd_map);
+  }
 
   diagnostics_map_update_->publish(ros_time_now);
 }
@@ -996,8 +1050,13 @@ void NDTScanMatcher::service_ndt_align_main(
   auto initial_pose_msg_in_map_frame =
     autoware::localization_util::transform(req->pose_with_covariance, transform_s2t);
   initial_pose_msg_in_map_frame.header.stamp = req->pose_with_covariance.header.stamp;
-  map_update_module_->update_map(
-    initial_pose_msg_in_map_frame.pose.pose.position, diagnostics_ndt_align_);
+  const auto result =
+    map_update_module_->update_map(initial_pose_msg_in_map_frame.pose.pose.position);
+  apply_diagnostics_update(*diagnostics_ndt_align_, result.diagnostics);
+
+  if (result.loaded_pcd_map) {
+    loaded_pcd_pub_->publish(*result.loaded_pcd_map);
+  }
 
   ndt_ptr_.with([&](auto & ndt_ptr) {
     // check is_set_map_points
