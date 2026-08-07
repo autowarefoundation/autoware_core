@@ -68,7 +68,7 @@ void GyroOdometerNode::callback_vehicle_twist(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
     vehicle_twist_msg_ptr)
 {
-  auto output = gyro_odometer_.callback_vehicle_twist_internal(
+  auto output = gyro_odometer_.input_vehicle_twist(
     *vehicle_twist_msg_ptr, this->now(), message_timeout_sec_, is_succeed_transform_imu_);
 
   if (output) {
@@ -100,7 +100,7 @@ void GyroOdometerNode::callback_imu(
       transform_covariance(imu_msg_ptr->angular_velocity_covariance);
   }
 
-  auto output = gyro_odometer_.callback_imu_internal(
+  auto output = gyro_odometer_.input_imu(
     transformed_imu_msg, this->now(), message_timeout_sec_, is_succeed_transform_imu_);
 
   if (output) {
