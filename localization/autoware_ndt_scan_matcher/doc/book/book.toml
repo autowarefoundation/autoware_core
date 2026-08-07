@@ -1,0 +1,15 @@
+[book]
+title = "autoware_ndt_scan_matcher — NDT in Rust"
+authors = ["Autoware Foundation"]
+language = "en"
+src = "src"
+description = "Design and porting documentation for the Rust port of the Autoware NDT scan matcher."
+
+[output.html]
+default-theme = "light"
+preferred-dark-theme = "navy"
+git-repository-url = "https://github.com/autowarefoundation/autoware_core"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
