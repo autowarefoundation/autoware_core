@@ -15,7 +15,6 @@
 #include "src/ekf_localizer.hpp"
 #include "utils/hyper_parameters.hpp"
 #include "utils/state_index.hpp"
-#include "utils/warning.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -69,9 +68,7 @@ HyperParameters make_params()
 
 std::shared_ptr<EKFLocalizer> make_ekf_localizer(const HyperParameters & params)
 {
-  // Warning(nullptr) is an explicitly-requested no-op logger (node_ == nullptr).
-  auto warning = std::make_shared<Warning>(nullptr);
-  return std::make_shared<EKFLocalizer>(warning, params);
+  return std::make_shared<EKFLocalizer>(params);
 }
 
 geometry_msgs::msg::PoseWithCovarianceStamped make_pose(
