@@ -15,11 +15,11 @@
 #ifndef GYRO_ODOMETER_HPP_
 #define GYRO_ODOMETER_HPP_
 
-/*logic depends on diagnostics so that it snapshots only the stuff diag actually needs*/
+/// logic depends on diagnostics so that it snapshots only the stuff diag actually needs
 #include "gyro_odometer_diagnostics.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
-#include <rclcpp/rclcpp.hpp>
+#include <rclcpp/time.hpp>
 
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
@@ -28,7 +28,6 @@
 #include <array>
 #include <deque>
 #include <optional>
-#include <string>
 #include <tuple>
 namespace autoware::gyro_odometer
 {
@@ -38,23 +37,43 @@ private:
   using COV_IDX = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
 
 public:
+  /// \brief Construct a GyroOdometer with no messages received yet (both arrival flags false,
+  /// both queues empty).
   explicit GyroOdometer();
+
+  /// \brief The four twist messages a successful fusion produces:
+  /// raw fused twist, raw fused twist with covariance,
+  //  stop-compensated twist, and stop-compensated twist with covariance, respectively.
   using OutputData = std::tuple<
     geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped,
     geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped>;
 
-  /*latest transform failure of imu is referenced also in twist callback
-    to clear both internal queues*/
+  /// \brief Record an incoming vehicle-twist message and try to fuse it with the queued IMU data.
+  ///
+  /// Marks the vehicle twist as arrived, appends \p vehicle_twist_msg to the internal queue, then
+  /// attempts fusion. \p is_succeed_transform_imu is the outcome of the caller's most recent
+  /// IMU-to-output-frame TF lookup; when false, both internal queues are cleared here too (the TF
+  /// failure is IMU-side, but it invalidates the vehicle-twist queue just the same).
+  ///
+  /// \return the fused OutputData if this call completed a fusion, std::nullopt otherwise.
+  ///
+  // TODO(kazkomiya): rename to input_vehicle_twist() (or similar) in a follow-up commit/PR.
   std::optional<OutputData> callback_vehicle_twist_internal(
-    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg_ptr,
+    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
     rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
 
+  /// \brief Record an incoming IMU message and try to fuse it with the queued vehicle-twist data.
+  ///
+  /// Same shape as callback_vehicle_twist_internal(): marks the IMU as arrived, appends
+  /// \p imu_msg to the internal queue, then attempts fusion using the caller-supplied
+  /// \p is_succeed_transform_imu outcome.
+  ///
+  /// \return the fused OutputData if this call completed a fusion, std::nullopt otherwise.
+  ///
+  // TODO(kazkomiya): rename to input_imu() (or similar) in a follow-up commit/PR,
   std::optional<OutputData> callback_imu_internal(
-    const sensor_msgs::msg::Imu & imu_msg_ptr, rclcpp::Time current_time,
-    double message_timeout_sec, bool is_succeed_transform_imu);
-
-  static OutputData publish_data_internal(
-    const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
+    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
+    bool is_succeed_transform_imu);
 
   /// \brief Copy out the fusion-owned part of the diagnostics state. The caller fills the fields it
   /// owns itself (is_succeed_transform_imu, message_timeout_sec, output_frame). See
@@ -62,10 +81,12 @@ public:
   DiagnosticsState take_diagnostics_state() const;
 
 private:
-  std::optional<OutputData> try_concat_gyro_and_odometer(
-    rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
   std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
     rclcpp::Time current_time, double message_timeout_sec, bool is_succeed_transform_imu);
+
+  // TODO(kazkomiya): rename to make_output
+  static OutputData publish_data_internal(
+    const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
 
   bool vehicle_twist_arrived_;
   bool imu_arrived_;

@@ -33,16 +33,7 @@ struct DiagnosticsEntry
   std::string message;
 };
 
-/// \brief Everything the diagnostics layer observes about the node, in one snapshot.
-///
-/// This is the whole boundary between the fusion logic and diagnostics: GyroOdometer fills the
-/// fusion-owned fields via take_diagnostics_state(), the node fills the three it owns itself
-/// (is_succeed_transform_imu, message_timeout_sec, output_frame), and nothing else about the fusion
-/// class is exposed. Taking it is a single call, which also makes the read atomic with respect to a
-/// concurrently running callback.
-///
-/// determine_diagnostics() only reads the first block; the second block is reported as key-values
-/// but takes no part in the decision.
+/// \brief Inputs needed to decide the gyro_odometer diagnostics level and messages.
 struct DiagnosticsState
 {
   bool vehicle_twist_arrived{false};
@@ -53,7 +44,6 @@ struct DiagnosticsState
   double message_timeout_sec{0.0};
   std::string output_frame;
 
-  // Reported only; not part of the decision.
   rclcpp::Time latest_vehicle_twist_ros_time;
   rclcpp::Time latest_imu_ros_time;
   int32_t vehicle_twist_queue_size{0};
