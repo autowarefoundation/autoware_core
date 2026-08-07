@@ -13,12 +13,15 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_adapi_v1_msgs</depend>
+  <depend>autoware_component_interface_specs</depend>
+  <depend>nlohmann-json-dev</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
+  <depend>rmw</depend>
+  <depend>rosidl_runtime_cpp</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
-  <test_depend>autoware_component_interface_specs</test_depend>
   <test_depend>autoware_lint_common</test_depend>
 
   <export>
