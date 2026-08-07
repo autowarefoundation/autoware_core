@@ -1,0 +1,87 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: PathGenerator.node
+package:
+  name: autoware_path_generator
+  provider: autoware
+launch:
+  plugin: autoware::path_generator::PathGenerator
+  executable: path_generator_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: route
+    message_type: autoware_planning_msgs/msg/LaneletRoute
+    remap_target: input/route
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    remap_target: input/vector_map
+  - name: odometry
+    message_type: nav_msgs/msg/Odometry
+    remap_target: input/odometry
+publishers:
+  - name: path
+    message_type: autoware_internal_planning_msgs/msg/PathWithLaneId
+    remap_target: output/path
+  - name: turn_indicators_cmd
+    message_type: autoware_vehicle_msgs/msg/TurnIndicatorsCommand
+    remap_target: output/turn_indicators_cmd
+  - name: hazard_lights_cmd
+    message_type: autoware_vehicle_msgs/msg/HazardLightsCommand
+    remap_target: output/hazard_lights_cmd
+  - name: processing_time_detail_ms
+    message_type: autoware_utils_debug/msg/ProcessingTimeDetail
+    remap_target: debug/processing_time_detail_ms
+  - name: processing_time_ms
+    message_type: autoware_internal_debug_msgs/msg/Float64Stamped
+    remap_target: debug/processing_time_ms
+# parameters
+param_files:
+  - name: path_generator_param
+    default: $(find-pkg-share autoware_path_generator)/config/path_generator.param.yaml
+param_values:
+  - name: planning_hz
+    type: double
+    default: 10.0
+  - name: path_length.backward
+    type: double
+    default: 5.0
+  - name: path_length.forward
+    type: double
+    default: 300.0
+  - name: waypoint.connection_gradient_from_centerline
+    type: double
+    default: 10.0
+  - name: turn_signal.search_time
+    type: double
+    default: 3.0
+  - name: turn_signal.search_distance
+    type: double
+    default: 30.0
+  - name: turn_signal.resampling_interval
+    type: double
+    default: 1.0
+  - name: turn_signal.angle_threshold_deg
+    type: double
+    default: 15.0
+  - name: goal_connection.connection_section_length
+    type: double
+    default: 7.5
+  - name: goal_connection.pre_goal_offset
+    type: double
+    default: 1.0
+  - name: ego_nearest_dist_threshold
+    type: double
+    default: 3.0
+  - name: ego_nearest_yaw_threshold
+    type: double
+    default: 1.046
+# processes
+processes:
+  - name: generate_path
+    trigger_conditions:
+      - on_input: route
+    outcomes:
+      - to_output: path
+      - to_output: turn_indicators_cmd
+      - to_output: hazard_lights_cmd
