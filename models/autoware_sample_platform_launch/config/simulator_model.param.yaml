@@ -1,0 +1,20 @@
+/**:
+  ros__parameters:
+    simulated_frame_id: "base_link" # center of the rear axle.
+    origin_frame_id: "map"
+    vehicle_model_type: "DELAY_STEER_ACC_GEARED" # options: IDEAL_STEER_VEL / IDEAL_STEER_ACC / IDEAL_STEER_ACC_GEARED / DELAY_STEER_ACC / DELAY_STEER_ACC_GEARED
+    initialize_source: "INITIAL_POSE_TOPIC" #  options: ORIGIN / INITIAL_POSE_TOPIC
+    timer_sampling_time_ms: 25
+    add_measurement_noise: False # the Gaussian noise is added to the simulated results
+    vel_lim: 50.0 # limit of velocity
+    vel_rate_lim: 7.0 # limit of acceleration
+    steer_lim: 1.0 # limit of steering angle
+    steer_rate_lim: 5.0 # limit of steering angle change rate
+    acc_time_delay: 0.1 # dead time for the acceleration input
+    acc_time_constant: 0.1 # time constant of the 1st-order acceleration dynamics
+    steer_time_delay: 0.24 # dead time for the steering input
+    steer_time_constant: 0.27 # time constant of the 1st-order steering dynamics
+    steer_dead_band: 0.0 # dead band of the steering angle
+    x_stddev: 0.0001 # x standard deviation for dummy covariance in map coordinate
+    y_stddev: 0.0001 # y standard deviation for dummy covariance in map coordinate
+    enable_road_slope_simulation: true # if true, slopes in the lanelet map are used to apply an extra acceleration to the ego vehicle
