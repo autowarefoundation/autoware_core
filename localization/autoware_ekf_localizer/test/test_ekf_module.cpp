@@ -30,6 +30,7 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace autoware::ekf_localizer
 {
@@ -347,10 +348,12 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
   EXPECT_DOUBLE_EQ(pose_before.pose.position.x, 0.0);
   EXPECT_DOUBLE_EQ(pose_before.pose.position.y, 0.0);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_TRUE(ok);
+  EXPET_EQ(warnings.size(), 0u);  // No warning on valid measurement
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
 
@@ -376,8 +379,9 @@ TEST_F(MeasurementUpdatePose, RejectsOnDelayGate)
   const rclcpp::Time t_old(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(0.0, 0.0, 0.0, "map", t_old);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
@@ -390,7 +394,8 @@ TEST_F(MeasurementUpdatePose, RejectsOnNan)
   pose.pose.pose.position.x = std::numeric_limits<double>::quiet_NaN();
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  std::vector<CoreWarning> warnings;
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   // The NaN gate is reached after the delay gate, so the delay gate is still marked passed.
@@ -403,8 +408,9 @@ TEST_F(MeasurementUpdatePose, RejectsOnInf)
   auto pose = make_pose(0.0, 0.0, 0.0, "map", t_curr);
   pose.pose.pose.position.y = std::numeric_limits<double>::infinity();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
 }
@@ -418,8 +424,9 @@ TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(1000.0, 1000.0, 0.0, "map", t_curr);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -469,8 +476,9 @@ TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
   EXPECT_DOUBLE_EQ(twist_before.twist.linear.x, 0.0);
   EXPECT_DOUBLE_EQ(twist_before.twist.angular.z, 0.0);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_TRUE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -494,8 +502,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnDelayGate)
   const rclcpp::Time t_old(100, 0, RCL_ROS_TIME);
   auto twist = make_twist(0.0, 0.0, "base_link", t_old);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
@@ -507,8 +516,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnNan)
   auto twist = make_twist(0.0, 0.0, "base_link", t_curr);
   twist.twist.twist.linear.x = std::numeric_limits<double>::quiet_NaN();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -520,8 +530,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnInf)
   auto twist = make_twist(0.0, 0.0, "base_link", t_curr);
   twist.twist.twist.angular.z = std::numeric_limits<double>::infinity();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
 }
@@ -534,8 +545,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
   auto twist = make_twist(1000.0, 1000.0, "base_link", t_curr);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = module_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
