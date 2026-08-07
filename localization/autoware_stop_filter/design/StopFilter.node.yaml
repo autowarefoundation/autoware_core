@@ -1,0 +1,41 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: StopFilter.node
+package:
+  name: autoware_stop_filter
+  provider: autoware
+launch:
+  plugin: autoware::stop_filter::StopFilterNode
+  executable: autoware_stop_filter_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: odom
+    message_type: nav_msgs/msg/Odometry
+    remap_target: input/odom
+publishers:
+  - name: odom
+    message_type: nav_msgs/msg/Odometry
+    remap_target: output/odom
+  - name: stop_flag
+    message_type: autoware_internal_debug_msgs/msg/BoolStamped
+    remap_target: debug/stop_flag
+# parameters
+param_files:
+  - name: stop_filter_param
+    default: $(find-pkg-share autoware_stop_filter)/config/stop_filter.param.yaml
+param_values:
+  - name: vx_threshold
+    type: double
+    default: 0.1
+  - name: wz_threshold
+    type: double
+    default: 0.02
+# processes
+processes:
+  - name: filter_stop_state
+    trigger_conditions:
+      - on_input: odom
+    outcomes:
+      - to_output: odom
+      - to_output: stop_flag

@@ -1,0 +1,94 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: PoseInitializer.node
+package:
+  name: autoware_pose_initializer
+  provider: autoware
+launch:
+  plugin: autoware::pose_initializer::PoseInitializer
+  executable: autoware_pose_initializer_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: stop_check_twist
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    remap_target: stop_check_twist
+  - name: gnss_pose_cov
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: gnss_pose_cov
+  - name: pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: ~/pointcloud_map
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    remap_target: ~/vector_map
+publishers:
+  - name: initialization_state
+    message_type: autoware_adapi_v1_msgs/msg/LocalizationInitializationState
+    global: /localization/initialization_state
+  - name: pose_reset
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: pose_reset
+servers:
+  - name: initialize
+    message_type: autoware_localization_msgs/srv/InitializeLocalization
+    global: /localization/initialize
+clients:
+  - name: yabloc_align
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    remap_target: yabloc_align
+  - name: ndt_align
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    remap_target: ndt_align
+  - name: ekf_trigger_node
+    message_type: std_srvs/srv/SetBool
+    remap_target: ekf_trigger_node
+  - name: ndt_trigger_node
+    message_type: std_srvs/srv/SetBool
+    remap_target: ndt_trigger_node
+  - name: partial_map_load
+    message_type: autoware_map_msgs/srv/GetPartialPointCloudMap
+    remap_target: ~/partial_map_load
+# parameters
+param_files:
+  - name: pose_initializer_param
+    default: $(find-pkg-share autoware_pose_initializer)/config/pose_initializer.param.yaml
+param_values:
+  - name: user_defined_initial_pose.enable
+    type: bool
+    default: false
+  - name: gnss_pose_timeout
+    type: double
+    default: 3.0
+  - name: stop_check_duration
+    type: double
+    default: 3.0
+  - name: pose_error_threshold
+    type: double
+    default: 5.0
+  - name: pose_error_check_enabled
+    type: bool
+    default: false
+  - name: ekf_enabled
+    type: bool
+    default: true
+  - name: gnss_enabled
+    type: bool
+    default: true
+  - name: yabloc_enabled
+    type: bool
+    default: false
+  - name: ndt_enabled
+    type: bool
+    default: true
+  - name: stop_check_enabled
+    type: bool
+    default: true
+# processes
+processes:
+  - name: initialize_pose
+    trigger_conditions:
+      - on_input: initialize
+    outcomes:
+      - to_output: pose_reset
+      - to_output: initialization_state
