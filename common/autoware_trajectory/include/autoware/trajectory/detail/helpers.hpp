@@ -176,6 +176,14 @@ inline std::pair<std::vector<double>, std::vector<T>> remove_duplicate_points(
       out_values.push_back(values[i]);
     }
   }
+  if (out_bases.back() < bases.back()) {
+    while (out_bases.size() > 1 && bases.back() - out_bases.back() <= epsilon) {
+      out_bases.pop_back();
+      out_values.pop_back();
+    }
+    out_bases.push_back(bases.back());
+    out_values.push_back(values.back());
+  }
   return {std::move(out_bases), std::move(out_values)};
 }
 

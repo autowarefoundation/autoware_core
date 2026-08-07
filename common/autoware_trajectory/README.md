@@ -557,6 +557,8 @@ auto [cleaned_bases, cleaned_values] =
 
 `remove_duplicate_points` scans the bases from front to back and drops any point whose base difference from the last kept point is not larger than the interpolator's configured epsilon. The first point of a duplicate run is retained, the rest are discarded.
 
+The last base is an exception: it is always retained so that the cleaned bases span the same range as the input, otherwise `Trajectory::length()` would fall outside the range of the interpolator and querying near the end would emit a warning. When the last base is too close to the retained ones, those are dropped instead of it. A last base which steps backwards is not retained, since it cannot extend the range.
+
 For the current default settings:
 
 - spatial trajectory builders use `k_epsilon_distance`
