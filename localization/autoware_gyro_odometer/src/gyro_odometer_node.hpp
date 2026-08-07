@@ -54,7 +54,6 @@ private:
   void callback_imu(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Imu) imu_msg_ptr);
   void publish_data(const GyroOdometer::OutputData & output_data);
   void publish_diagnostics();
-  void update_cached_transform();
 
   AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) vehicle_twist_sub_;
   AUTOWARE_SUBSCRIPTION_PTR(sensor_msgs::msg::Imu) imu_sub_;
@@ -82,12 +81,8 @@ private:
   AUTOWARE_TIMER_PTR timer_;
 
   std::string output_frame_;
-  std::optional<std::string>
-    cached_imu_frame_id_;  // assumes frame id of imu doesn't change during operation
-  std::optional<geometry_msgs::msg::TransformStamped>
-    cached_transform_;  // assumes frame id of imu doesn't change, so transform also doesn't change
-                        // during operation
   double message_timeout_sec_;
+  bool is_succeed_transform_imu_;
   GyroOdometer gyro_odometer_;
 };
 

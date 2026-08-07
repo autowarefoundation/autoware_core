@@ -32,8 +32,8 @@ namespace autoware::gyro_odometer
 GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("gyro_odometer", node_options),
   output_frame_(declare_parameter<std::string>("output_frame")),
-  cached_imu_frame_id_(std::nullopt),
-  message_timeout_sec_(declare_parameter<double>("message_timeout_sec"))
+  message_timeout_sec_(declare_parameter<double>("message_timeout_sec")),
+  is_succeed_transform_imu_(false)
 {
   transform_listener_ = std::make_shared<TransformListener>(this);
   logger_configure_ = std::make_unique<
@@ -64,32 +64,12 @@ GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
     std::bind(&GyroOdometerNode::publish_diagnostics, this));
 }
 
-void GyroOdometerNode::update_cached_transform()
-{
-  if (cached_transform_) {
-    return;
-  }
-  if (!cached_imu_frame_id_) {
-    return;
-  }
-
-  // get transformation
-  geometry_msgs::msg::TransformStamped::ConstSharedPtr tf_imu2base_ptr =
-    transform_listener_->get_latest_transform(*cached_imu_frame_id_, output_frame_);
-
-  if (tf_imu2base_ptr == nullptr) {
-    return;
-  }
-  cached_transform_ = *tf_imu2base_ptr;
-}
-
 void GyroOdometerNode::callback_vehicle_twist(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
     vehicle_twist_msg_ptr)
 {
-  update_cached_transform();
   auto output = gyro_odometer_.callback_vehicle_twist_internal(
-    *vehicle_twist_msg_ptr, this->now(), message_timeout_sec_, cached_transform_, output_frame_);
+    *vehicle_twist_msg_ptr, this->now(), message_timeout_sec_, is_succeed_transform_imu_);
 
   if (output) {
     publish_data(*output);
@@ -99,13 +79,29 @@ void GyroOdometerNode::callback_vehicle_twist(
 void GyroOdometerNode::callback_imu(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Imu) imu_msg_ptr)
 {
-  if (!cached_imu_frame_id_) {  // TODO(kazkomiya): duplicated check with imu_arrived_
-    cached_imu_frame_id_ = std::make_optional<std::string>(imu_msg_ptr->header.frame_id);
+  geometry_msgs::msg::TransformStamped::ConstSharedPtr tf_imu2base_ptr =
+    transform_listener_->get_latest_transform(imu_msg_ptr->header.frame_id, output_frame_);
+  is_succeed_transform_imu_ = (tf_imu2base_ptr != nullptr);
+
+  sensor_msgs::msg::Imu transformed_imu_msg = *imu_msg_ptr;
+
+  if (is_succeed_transform_imu_) {
+    geometry_msgs::msg::Vector3Stamped angular_velocity;
+    angular_velocity.header = imu_msg_ptr->header;
+    angular_velocity.vector = imu_msg_ptr->angular_velocity;
+
+    geometry_msgs::msg::Vector3Stamped transformed_angular_velocity;
+    transformed_angular_velocity.header = tf_imu2base_ptr->header;
+    tf2::doTransform(angular_velocity, transformed_angular_velocity, *tf_imu2base_ptr);
+
+    transformed_imu_msg.header.frame_id = output_frame_;
+    transformed_imu_msg.angular_velocity = transformed_angular_velocity.vector;
+    transformed_imu_msg.angular_velocity_covariance =
+      transform_covariance(imu_msg_ptr->angular_velocity_covariance);
   }
-  update_cached_transform();
 
   auto output = gyro_odometer_.callback_imu_internal(
-    *imu_msg_ptr, this->now(), message_timeout_sec_, cached_transform_, output_frame_);
+    transformed_imu_msg, this->now(), message_timeout_sec_, is_succeed_transform_imu_);
 
   if (output) {
     publish_data(*output);
@@ -125,9 +121,9 @@ void GyroOdometerNode::publish_diagnostics()
 {
   DiagnosticsState state = gyro_odometer_.take_diagnostics_state();
   // The three fields the fusion class cannot fill. is_succeed_transform_imu is answered here
-  // because this node owns the TF lookup and its cache, so the cache state is the authoritative
-  // answer.
-  state.is_succeed_transform_imu = cached_transform_.has_value();
+  // because this node owns the TF lookup; it reflects the outcome of the most recent lookup
+  // (done once per incoming IMU message), not a cached/latched value.
+  state.is_succeed_transform_imu = is_succeed_transform_imu_;
   state.message_timeout_sec = message_timeout_sec_;
   state.output_frame = output_frame_;
 
