@@ -16,6 +16,7 @@
 #define POSE_INITIALIZER_CORE_HPP_
 
 #include <autoware/component_interface_specs/localization.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -45,10 +46,11 @@ private:
   using State = autoware::component_interface_specs::localization::InitializationState;
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_srv_;
   rclcpp::Publisher<PoseWithCovarianceStamped>::SharedPtr pub_reset_;
-  rclcpp::Publisher<State::Message>::SharedPtr pub_state_;
-  rclcpp::Service<Initialize::Service>::SharedPtr srv_initialize_;
+  autoware::component_interface_utils::Publisher<State>::SharedPtr pub_state_;
+  autoware::component_interface_utils::Service<Initialize>::SharedPtr srv_initialize_;
   State::Message state_;
   std::array<double, 36> output_pose_covariance_{};
   std::array<double, 36> gnss_particle_covariance_{};
