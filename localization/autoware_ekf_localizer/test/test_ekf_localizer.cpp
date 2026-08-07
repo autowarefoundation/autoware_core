@@ -343,7 +343,7 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
   // origin and the covariance unchanged, failing these postconditions.
   auto pose = make_pose(1.0, 2.0, 0.0, "map", t_curr);
 
-  const auto pose_before = ekf_localizer_->get_current_pose(t_curr, false);
+  const auto pose_before = ekf_localizer_->get_current_pose(false);
   const auto cov_before = ekf_localizer_->get_current_pose_covariance();
   EXPECT_DOUBLE_EQ(pose_before.pose.position.x, 0.0);
   EXPECT_DOUBLE_EQ(pose_before.pose.position.y, 0.0);
@@ -357,7 +357,7 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
 
   // Postcondition: the state is blended toward the measurement (strictly between the prior
   // estimate and the measurement), not snapped to it.
-  const auto pose_after = ekf_localizer_->get_current_pose(t_curr, false);
+  const auto pose_after = ekf_localizer_->get_current_pose(false);
   EXPECT_GT(pose_after.pose.position.x, 0.0);
   EXPECT_LT(pose_after.pose.position.x, 1.0);
   EXPECT_GT(pose_after.pose.position.y, 0.0);
@@ -465,7 +465,7 @@ TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
   // the velocity estimate must move toward the measurement and the velocity covariance shrink.
   auto twist = make_twist(3.0, 1.0, "base_link", t_curr);
 
-  const auto twist_before = ekf_localizer_->get_current_twist(t_curr);
+  const auto twist_before = ekf_localizer_->get_current_twist();
   const auto cov_before = ekf_localizer_->get_current_twist_covariance();
   EXPECT_DOUBLE_EQ(twist_before.twist.linear.x, 0.0);
   EXPECT_DOUBLE_EQ(twist_before.twist.angular.z, 0.0);
@@ -478,7 +478,7 @@ TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
 
   // Postcondition: the velocity estimate is blended toward the measurement, not snapped to it.
-  const auto twist_after = ekf_localizer_->get_current_twist(t_curr);
+  const auto twist_after = ekf_localizer_->get_current_twist();
   EXPECT_GT(twist_after.twist.linear.x, 0.0);
   EXPECT_LT(twist_after.twist.linear.x, 3.0);
   EXPECT_GT(twist_after.twist.angular.z, 0.0);
