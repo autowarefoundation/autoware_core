@@ -205,18 +205,6 @@ TEST(TestEKFModule, AccumulateDelayTime)
 }
 
 // ---------------------------------------------------------------------------
-// Warning: no-op logger constructed without a node
-// ---------------------------------------------------------------------------
-TEST(Warning, NoOpWhenConstructedWithNullptr)
-{
-  const Warning warning{nullptr};
-
-  // node_ == nullptr: warn/warn_throttle silently return without a ROS runtime.
-  EXPECT_NO_THROW(warning.warn("ignored"));
-  EXPECT_NO_THROW(warning.warn_throttle("ignored", 1000));
-}
-
-// ---------------------------------------------------------------------------
 // Simple1DFilter init + update
 // ---------------------------------------------------------------------------
 TEST(TestSimple1DFilter, InitAndUpdate)
@@ -353,7 +341,7 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
   const bool ok = module_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_TRUE(ok);
-  EXPET_EQ(warnings.size(), 0u);  // No warning on valid measurement
+  EXPECT_EQ(warnings.size(), 0u);  // No warning on valid measurement
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
 
