@@ -6,8 +6,10 @@ api/autoware_default_adapi/** isamu.takagi@tier4.jp junya.sasaki@tier4.jp ryohsu
 autoware_core/** mfc@autoware.org ryohsuke.mitsudome@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_agnocast_wrapper/** atsushi.yano.2@tier4.jp koichi.imai.2@tier4.jp primenumber_2_3_5@yahoo.co.jp sykwer@gmail.com tetsuhiro.kawaguchi@tier4.jp yutaro.kobayashi.2@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_component_interface_specs/** isamu.takagi@tier4.jp ryohsuke.mitsudome@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+common/autoware_component_interface_utils/** isamu.takagi@tier4.jp yukihiro.saito@tier4.jp yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_geography_utils/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_global_parameter_loader/** ryohsuke.mitsudome@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+common/autoware_interface_spec_lint/** yutaka.kondo@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_interpolation/** arjun.ram@tier4.jp fumiya.watanabe@tier4.jp junya.sasaki@tier4.jp taiki.yamada@tier4.jp takayuki.murooka@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_kalman_filter/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 common/autoware_lanelet2_utils/** kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp maxime.clement@tier4.jp @autowarefoundation/autoware-core-global-codeowners
