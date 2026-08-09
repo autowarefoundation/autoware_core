@@ -22,6 +22,8 @@
   <depend>geometry_msgs</depend>
   <depend>libgoogle-glog-dev</depend>
   <depend>message_filters</depend>
+  <depend>rcl</depend>
+  <depend>rcl_interfaces</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>tf2</depend>
