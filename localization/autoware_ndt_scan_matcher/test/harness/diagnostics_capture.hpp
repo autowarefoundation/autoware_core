@@ -116,14 +116,14 @@ public:
 
   [[nodiscard]] std::vector<Record> records(const std::string & status_name) const
   {
-    const std::lock_guard<std::mutex> lock(mutex_);
+    const std::lock_guard<std::mutex> lock(records_mutex_);
     const auto it = records_.find(status_name);
     return (it == records_.end()) ? std::vector<Record>{} : it->second;
   }
 
   [[nodiscard]] size_t count(const std::string & status_name) const
   {
-    const std::lock_guard<std::mutex> lock(mutex_);
+    const std::lock_guard<std::mutex> lock(records_mutex_);
     const auto it = records_.find(status_name);
     return (it == records_.end()) ? 0U : it->second.size();
   }
@@ -163,7 +163,7 @@ public:
 private:
   void on_message(const diagnostic_msgs::msg::DiagnosticArray & msg)
   {
-    const std::lock_guard<std::mutex> lock(mutex_);
+    const std::lock_guard<std::mutex> lock(records_mutex_);
     for (const auto & status : msg.status) {
       records_[status.name].emplace_back(status, msg.header.stamp);
     }
