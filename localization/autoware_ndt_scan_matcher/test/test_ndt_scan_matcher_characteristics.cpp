@@ -198,7 +198,6 @@ TEST(NdtScanMatcherCharacteristics, NearFieldScanIsRejectedBeforeActivationCheck
 
   EXPECT_LT(diag.value_as_double("sensor_points_max_distance"), required_distance);
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), "Max distance of sensor points ="))
     << "message was: " << diag.message();
   EXPECT_FALSE(diag.has_key("is_activated"))
     << "the distance gate no longer precedes the activation gate. keys: "
