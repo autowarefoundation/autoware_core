@@ -445,7 +445,6 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
   EXPECT_EQ(diag->value("is_set_last_update_position"), "False")
     << "a wrong-frame pose became the map anchor";
   EXPECT_EQ(diag->level(), level_warn);
-  // Pinned verbatim, missing space included: operators and diagnostic aggregators consume it.
 }
 }  // namespace
 
