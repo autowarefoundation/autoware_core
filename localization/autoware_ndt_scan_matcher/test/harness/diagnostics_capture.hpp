@@ -170,7 +170,7 @@ private:
   }
 
   rclcpp::Subscription<diagnostic_msgs::msg::DiagnosticArray>::SharedPtr subscription_;
-  mutable std::mutex mutex_;
+  mutable std::mutex records_mutex_;
   std::map<std::string, std::vector<Record>> records_;
   std::map<std::string, size_t> marks_;
 };
