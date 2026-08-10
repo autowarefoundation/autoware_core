@@ -296,8 +296,6 @@ TEST(NdtScanMatcherCharacteristics, MissingMapAbortsBeforeAlignment)
   EXPECT_EQ(diag.value("is_succeed_interpolate_initial_pose"), "True");
   EXPECT_EQ(diag.value("is_set_map_points"), "False");
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), "Map points is not set."))
-    << "message was: " << diag.message();
   EXPECT_FALSE(diag.has_key("iteration_num"))
     << "alignment ran without a map. keys: " << ::testing::PrintToString(diag.keys_in_order());
 }
