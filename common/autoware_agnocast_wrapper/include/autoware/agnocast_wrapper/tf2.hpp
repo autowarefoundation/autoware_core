@@ -295,7 +295,7 @@ public:
     tf2::BufferCore & buffer, Node & node, bool spin_thread = true,
     const rclcpp::QoS & qos = tf2_ros::DynamicListenerQoS(),
     const rclcpp::QoS & static_qos = tf2_ros::StaticListenerQoS())
-  : impl_(buffer, &node, spin_thread, qos, static_qos)
+  : impl_(buffer, node.get_rclcpp_node().get(), spin_thread, qos, static_qos)
   {
   }
 
@@ -303,7 +303,8 @@ public:
     tf2::BufferCore & buffer, Node & node, bool spin_thread, const rclcpp::QoS & qos,
     const rclcpp::QoS & static_qos, const AUTOWARE_SUBSCRIPTION_OPTIONS & options,
     const AUTOWARE_SUBSCRIPTION_OPTIONS & static_options)
-  : impl_(buffer, &node, spin_thread, qos, static_qos, options, static_options)
+  : impl_(
+      buffer, node.get_rclcpp_node().get(), spin_thread, qos, static_qos, options, static_options)
   {
   }
 
@@ -326,13 +327,13 @@ class TransformBroadcaster
 public:
   explicit TransformBroadcaster(
     Node & node, const rclcpp::QoS & qos = tf2_ros::DynamicBroadcasterQoS())
-  : impl_(&node, qos)
+  : impl_(node.get_rclcpp_node().get(), qos)
   {
   }
 
   TransformBroadcaster(
     Node & node, const rclcpp::QoS & qos, const AUTOWARE_PUBLISHER_OPTIONS & options)
-  : impl_(&node, qos, options)
+  : impl_(node.get_rclcpp_node().get(), qos, options)
   {
   }
 
@@ -360,13 +361,13 @@ class StaticTransformBroadcaster
 public:
   explicit StaticTransformBroadcaster(
     Node & node, const rclcpp::QoS & qos = tf2_ros::StaticBroadcasterQoS())
-  : impl_(&node, qos)
+  : impl_(node.get_rclcpp_node().get(), qos)
   {
   }
 
   StaticTransformBroadcaster(
     Node & node, const rclcpp::QoS & qos, const AUTOWARE_PUBLISHER_OPTIONS & options)
-  : impl_(&node, qos, options)
+  : impl_(node.get_rclcpp_node().get(), qos, options)
   {
   }
 

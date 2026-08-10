@@ -14,6 +14,8 @@
 
 #include "autoware/behavior_velocity_planner/node.hpp"
 
+#include "data_processing.hpp"
+
 #include <autoware/behavior_velocity_planner_common/utilization/path_utilization.hpp>
 #include <autoware/motion_utils/trajectory/path_with_lane_id.hpp>
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
@@ -32,6 +34,7 @@
 #include <functional>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::behavior_velocity_planner
@@ -180,57 +183,16 @@ void BehaviorVelocityPlannerNode::processOdometry(const nav_msgs::msg::Odometry:
 
   // Add velocity to buffer
   planner_data_.velocity_buffer.push_front(*current_velocity);
-  const rclcpp::Time now = this->now();
-  while (!planner_data_.velocity_buffer.empty()) {
-    // Check oldest data time
-    const auto & s = planner_data_.velocity_buffer.back().header.stamp;
-    const auto time_diff =
-      now >= s ? now - s : rclcpp::Duration(0, 0);  // Note: negative time throws an exception.
-
-    // Finish when oldest data is newer than threshold
-    if (time_diff.seconds() <= PlannerData::velocity_buffer_time_sec) {
-      break;
-    }
-
-    // Remove old data
-    planner_data_.velocity_buffer.pop_back();
-  }
+  data_processing::prune_velocity_buffer(planner_data_.velocity_buffer, this->now());
 }
 
 void BehaviorVelocityPlannerNode::processTrafficSignals(
   const autoware_perception_msgs::msg::TrafficLightGroupArray::ConstSharedPtr msg)
 {
-  // clear previous observation
-  planner_data_.traffic_light_id_map_raw_.clear();
-  const auto traffic_light_id_map_last_observed_old =
-    planner_data_.traffic_light_id_map_last_observed_;
-  planner_data_.traffic_light_id_map_last_observed_.clear();
-  for (const auto & signal : msg->traffic_light_groups) {
-    TrafficSignalStamped traffic_signal;
-    traffic_signal.stamp = msg->stamp;
-    traffic_signal.signal = signal;
-    planner_data_.traffic_light_id_map_raw_[signal.traffic_light_group_id] = traffic_signal;
-    const bool is_unknown_observation =
-      std::any_of(signal.elements.begin(), signal.elements.end(), [](const auto & element) {
-        return element.color == autoware_perception_msgs::msg::TrafficLightElement::UNKNOWN;
-      });
-    // if the observation is UNKNOWN and past observation is available, only update the timestamp
-    // and keep the body of the info
-    const auto old_data =
-      traffic_light_id_map_last_observed_old.find(signal.traffic_light_group_id);
-    if (is_unknown_observation && old_data != traffic_light_id_map_last_observed_old.end()) {
-      // copy last observation
-      planner_data_.traffic_light_id_map_last_observed_[signal.traffic_light_group_id] =
-        old_data->second;
-      // update timestamp
-      planner_data_.traffic_light_id_map_last_observed_[signal.traffic_light_group_id].stamp =
-        msg->stamp;
-    } else {
-      // if (1)the observation is not UNKNOWN or (2)the very first observation is UNKNOWN
-      planner_data_.traffic_light_id_map_last_observed_[signal.traffic_light_group_id] =
-        traffic_signal;
-    }
-  }
+  auto aggregation =
+    data_processing::apply_traffic_signals(planner_data_.traffic_light_id_map_last_observed_, *msg);
+  planner_data_.traffic_light_id_map_raw_ = std::move(aggregation.raw);
+  planner_data_.traffic_light_id_map_last_observed_ = std::move(aggregation.last_observed);
 }
 
 bool BehaviorVelocityPlannerNode::processData(rclcpp::Clock clock)

@@ -42,14 +42,6 @@ inline void convertEulerAngleToMonotonic(std::vector<double> & a)
   }
 }
 
-inline tf2::Vector3 getTransVector3(const Pose & from, const Pose & to)
-{
-  double dx = to.position.x - from.position.x;
-  double dy = to.position.y - from.position.y;
-  double dz = to.position.z - from.position.z;
-  return tf2::Vector3(dx, dy, dz);
-}
-
 inline double integ_x(double x0, double v0, double a0, double j0, double t)
 {
   return x0 + v0 * t + 0.5 * a0 * t * t + (1.0 / 6.0) * j0 * t * t * t;
@@ -83,8 +75,9 @@ TrajectoryPoint calcInterpolatedTrajectoryPoint(
     return traj_p;
   }
 
-  auto v1 = getTransVector3(trajectory.at(seg_idx).pose, trajectory.at(seg_idx + 1).pose);
-  auto v2 = getTransVector3(trajectory.at(seg_idx).pose, target_pose);
+  auto v1 = autoware_utils_geometry::point_2_tf_vector(
+    trajectory.at(seg_idx).pose, trajectory.at(seg_idx + 1).pose);
+  auto v2 = autoware_utils_geometry::point_2_tf_vector(trajectory.at(seg_idx).pose, target_pose);
   // calc internal proportion
   const double prop{std::max(0.0, std::min(1.0, v1.dot(v2) / v1.length2()))};
 

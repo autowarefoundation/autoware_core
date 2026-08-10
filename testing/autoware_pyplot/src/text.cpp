@@ -15,16 +15,26 @@
 #include <autoware/pyplot/loader.hpp>
 #include <autoware/pyplot/text.hpp>
 
+#include <utility>
+
 namespace autoware::pyplot
 {
 inline namespace text
 {
 Text::Text(const pybind11::object & object) : PyObjectWrapper(object)
 {
+  load_attrs();
 }
 
-Text::Text(pybind11::object && object) : PyObjectWrapper(object)
+Text::Text(pybind11::object && object) : PyObjectWrapper(std::move(object))
 {
+  load_attrs();
+}
+
+PyObjectWrapper Text::set_rotation(
+  const pybind11::tuple & args, const pybind11::dict & kwargs) const
+{
+  return PyObjectWrapper{set_rotation_attr(*args, **kwargs)};
 }
 
 void Text::load_attrs()

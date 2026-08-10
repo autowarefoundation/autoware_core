@@ -16,3 +16,5 @@ log/
 
 #prettier
 node_modules/
+.cache/
+lcov/

@@ -14,6 +14,32 @@ Changelog for package autoware_geography_utils
   ---------
 * Contributors: Yamato Ando, Yutaka Kondo
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* perf(autoware_geography_utils): cache EGM2008 geoid instance across height conversions (`#1097 <https://github.com/autowarefoundation/autoware_core/issues/1097>`_)
+  The WGS84 <-> EGM2008 height conversions constructed a
+  GeographicLib::Geoid each call, which opens and parses the geoid grid
+  file from disk on every invocation. Cache the instance and reuse it
+  across calls so the disk read happens once instead of per call.
+  GeographicLib::Geoid is not thread safe by default because
+  ConvertHeight() const mutates mutable members (an open file handle and a
+  single-cell cache). The cached instance is therefore declared
+  thread_local, the approach the GeographicLib documentation recommends
+  for multithreaded use: each thread gets its own lazily-initialized
+  instance, so nothing is shared across threads and concurrent
+  ConvertHeight() calls are safe. This keeps memory usage low by retaining
+  the default on-demand single-cell cache rather than loading the entire
+  grid into memory (as threadsafe=true would). The default cubic
+  interpolation is kept, so numeric results are unchanged. Public function
+  signatures and the runtime-error wrapping behavior are unchanged.
+  Add the previously missing tests: a value-checked WGS84 <-> EGM2008
+  round-trip and a convert_height dispatch check (both guarded with
+  GTEST_SKIP when the egm2008-1 dataset is absent), tests asserting the
+  std::runtime_error wrapping message when the dataset is missing, and a
+  TransverseMercator project_forward/project_reverse round-trip.
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

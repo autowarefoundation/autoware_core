@@ -19,6 +19,7 @@
 #include "autoware/behavior_velocity_planner_common/scene_module_interface.hpp"
 #include "autoware/behavior_velocity_planner_common/utilization/util.hpp"
 #include "autoware/trajectory/path_point_with_lane_id.hpp"
+#include "stop_line_util.hpp"
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>
@@ -41,9 +42,8 @@ class StopLineModule : public SceneModuleInterface
 {
 public:
   using StopLineWithLaneId = std::pair<lanelet::ConstLineString3d, int64_t>;
-  using Trajectory = autoware::experimental::trajectory::Trajectory<
-    autoware_internal_planning_msgs::msg::PathPointWithLaneId>;
-  enum class State { APPROACH, STOPPED, START };
+  using Trajectory = stop_line_utils::Trajectory;
+  using State = stop_line_utils::State;
 
   struct DebugData
   {

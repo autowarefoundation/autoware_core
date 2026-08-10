@@ -5,6 +5,46 @@ Changelog for package autoware_behavior_velocity_planner_common
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_behavior_velocity_planner_common): cover pure helpers and dedup formatIds (`#1135 <https://github.com/autowarefoundation/autoware_core/issues/1135>`_)
+  * test(autoware_behavior_velocity_planner_common): cover pure helpers and dedup formatIds
+  Add focused unit tests for under-covered pure algorithms in planning_utils and
+  deterministically pin the StateMachine STOP->GO margin-time transition, while
+  de-duplicating the verbatim formatIds helper across the stable and experimental
+  SceneModuleInterface translation units.
+  - Extract the byte-for-byte duplicated anonymous-namespace formatIds into a single
+  internal free function planning_utils::formatIds (declared in util.hpp, defined in
+  util.cpp) and call it from both scene_module_interface.cpp and
+  experimental/scene_module_interface.cpp. Additive, no public class API change.
+  - test_util_pure.cpp: assert getSortedLaneIdsFromPath order/dedup, getSubsequentLaneIdsSetOnPath
+  middle/first/not-found, findReachTime invalid-range throw plus linear/constant-accel roots,
+  calcDecelerationVelocityFromDistanceToTarget non-negative jerk/accel throws and the
+  behind-ego/const-jerk/const-accel/already-stopping branches with exact expected values, and
+  formatIds output strings.
+  - test_state_machine.cpp: drive a controllable RCL_ROS_TIME clock (ros-time override) to assert
+  the STOP->GO margin-time transition and the same-state STOP timer reset deterministically,
+  replacing the wall-clock busy-loop whose assertions self-disable on fast CI.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_behavior_velocity_planner_common): move formatIds to internal header
+  Address review feedback: the dedup helper formatIds was declared in the
+  installed public header util.hpp, growing the public API surface for a
+  symbol that is internal-only (used solely by the stable and experimental
+  SceneModuleInterface TUs, not by any test).
+  - Move the declaration to a non-installed internal header
+  src/utilization/util_internal.hpp (bare include guard per src/ header
+  convention) and keep the definition in util.cpp.
+  - Add 'src' to the library's private include dirs so all TUs include it
+  via the directory-qualified path utilization/util_internal.hpp.
+  - Drop the now-unneeded public util.hpp include from both
+  scene_module_interface TUs.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

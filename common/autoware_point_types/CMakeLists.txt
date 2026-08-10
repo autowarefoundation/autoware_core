@@ -20,6 +20,17 @@ if(BUILD_TESTING)
   ament_target_dependencies(test_autoware_point_types
     point_cloud_msg_wrapper
   )
+
+  ament_add_ros_isolated_gtest(test_autoware_point_types_memory
+    test/test_memory.cpp
+  )
+  target_include_directories(test_autoware_point_types_memory
+    PRIVATE include
+  )
+  ament_target_dependencies(test_autoware_point_types_memory
+    point_cloud_msg_wrapper
+    sensor_msgs
+  )
 endif()
 
 autoware_ament_auto_package()

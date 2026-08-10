@@ -18,6 +18,13 @@ rclcpp_components_register_node(detected_to_predicted_objects_converter
   EXECUTABLE detected_to_predicted_objects_converter_node
 )
 
+## Test
+if(BUILD_TESTING)
+  ament_auto_add_gtest(test_${PROJECT_NAME}
+    test/test_conversion.cpp
+  )
+endif()
+
 ## Install
 autoware_ament_auto_package(
   INSTALL_TO_SHARE

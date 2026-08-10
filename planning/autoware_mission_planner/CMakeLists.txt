@@ -13,22 +13,22 @@ rclcpp_components_register_node(goal_pose_visualizer_component
   EXECUTABLE goal_pose_visualizer
 )
 
+ament_auto_add_library(${PROJECT_NAME}_lanelet2_plugins SHARED
+  src/lanelet2_plugins/default_planner.cpp
+  src/lanelet2_plugins/utility_functions.cpp
+)
+
 ament_auto_add_library(${PROJECT_NAME}_component SHARED
   src/mission_planner/arrival_checker.cpp
-  src/mission_planner/service_utils.cpp
+  src/mission_planner/reroute_safety.cpp
   src/mission_planner/mission_planner.cpp
 )
+target_link_libraries(${PROJECT_NAME}_component ${PROJECT_NAME}_lanelet2_plugins)
 
 rclcpp_components_register_node(${PROJECT_NAME}_component
   PLUGIN "autoware::mission_planner::MissionPlanner"
   EXECUTABLE mission_planner
 )
-
-ament_auto_add_library(${PROJECT_NAME}_lanelet2_plugins SHARED
-  src/lanelet2_plugins/default_planner.cpp
-  src/lanelet2_plugins/utility_functions.cpp
-)
-pluginlib_export_plugin_description_file(autoware_mission_planner plugins/plugin_description.xml)
 
 if(BUILD_TESTING)
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
@@ -39,6 +39,30 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_lanelet2_plugins
   )
   ament_target_dependencies(test_${PROJECT_NAME}
+    autoware_test_utils
+  )
+
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_reroute_safety
+  test/test_reroute_safety.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_reroute_safety
+    ${PROJECT_NAME}_component
+  )
+
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_arrival_checker
+  test/test_arrival_checker.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_arrival_checker
+    ${PROJECT_NAME}_component
+  )
+
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node
+  test/test_mission_planner_node.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_node
+    ${PROJECT_NAME}_component
+  )
+  ament_target_dependencies(test_${PROJECT_NAME}_node
     autoware_test_utils
   )
 endif()

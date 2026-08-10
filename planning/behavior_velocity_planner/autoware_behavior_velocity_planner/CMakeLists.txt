@@ -6,6 +6,7 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 ament_auto_add_library(${PROJECT_NAME}_lib SHARED
+  src/data_processing.cpp
   src/node.cpp
   src/planner_manager.cpp
   src/test_utils.cpp
@@ -32,6 +33,14 @@ if(BUILD_TESTING)
     ${PROJECT_NAME}_lib
   )
   target_include_directories(test_${PROJECT_NAME} PRIVATE src)
+
+  ament_auto_add_gtest(test_${PROJECT_NAME}_data_processing
+    test/test_data_processing.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_data_processing
+    ${PROJECT_NAME}_lib
+  )
+  target_include_directories(test_${PROJECT_NAME}_data_processing PRIVATE src)
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE

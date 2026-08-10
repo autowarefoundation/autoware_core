@@ -16,6 +16,7 @@
 #define ROUTING_ADAPTOR_HPP_
 
 #include <autoware/adapi_specs/routing.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -36,10 +37,11 @@ private:
   using ChangeRoutePoints = autoware::adapi_specs::routing::ChangeRoutePoints;
   using ClearRoute = autoware::adapi_specs::routing::ClearRoute;
   using RouteState = autoware::adapi_specs::routing::RouteState;
-  rclcpp::Client<ChangeRoutePoints::Service>::SharedPtr cli_reroute_;
-  rclcpp::Client<SetRoutePoints::Service>::SharedPtr cli_route_;
-  rclcpp::Client<ClearRoute::Service>::SharedPtr cli_clear_;
-  rclcpp::Subscription<RouteState::Message>::SharedPtr sub_state_;
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
+  autoware::component_interface_utils::Client<ChangeRoutePoints>::SharedPtr cli_reroute_;
+  autoware::component_interface_utils::Client<SetRoutePoints>::SharedPtr cli_route_;
+  autoware::component_interface_utils::Client<ClearRoute>::SharedPtr cli_clear_;
+  autoware::component_interface_utils::Subscription<RouteState>::SharedPtr sub_state_;
   rclcpp::Subscription<PoseStamped>::SharedPtr sub_fixed_goal_;
   rclcpp::Subscription<PoseStamped>::SharedPtr sub_rough_goal_;
   rclcpp::Subscription<PoseStamped>::SharedPtr sub_waypoint_;
@@ -47,7 +49,7 @@ private:
   rclcpp::TimerBase::SharedPtr timer_;
 
   bool calling_service_ = false;
-  int request_timing_control_ = 0;
+  int elapsed_count_from_last_request_ = 0;
   SetRoutePoints::Service::Request::SharedPtr route_;
   RouteState::Message::_state_type state_;
 

@@ -18,6 +18,7 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
+#include <rcl/time.h>
 
 #include <chrono>
 #include <iostream>
@@ -84,4 +85,85 @@ TEST(state_machine, set_state_go_with_margin_time)
   } else {
     std::cerr << "[Warning] computational resource is not enough" << std::endl;
   }
+}
+
+namespace
+{
+// Advance the ros-time override of a RCL_ROS_TIME clock to an absolute number of seconds.
+void setClockSeconds(rclcpp::Clock & clock, const double seconds)
+{
+  const auto nanoseconds = static_cast<rcl_time_point_value_t>(seconds * 1e9);
+  ASSERT_EQ(rcl_set_ros_time_override(clock.get_clock_handle(), nanoseconds), RCL_RET_OK);
+}
+}  // namespace
+
+// Deterministic counterpart to set_state_go_with_margin_time: instead of busy-looping on
+// wall-clock time (which self-disables its assertions when CI is fast), drive a controllable
+// RCL_ROS_TIME clock so the STOP -> GO margin-time branch is asserted on every run.
+TEST(state_machine, set_state_go_with_margin_time_deterministic)
+{
+  rclcpp::Clock clock(RCL_ROS_TIME);
+  ASSERT_EQ(rcl_enable_ros_time_override(clock.get_clock_handle()), RCL_RET_OK);
+  ASSERT_NO_FATAL_FAILURE(setClockSeconds(clock, 100.0));
+
+  StateMachine state_machine = StateMachine();
+  const double margin_time = 1.0;
+  state_machine.setMarginTime(margin_time);
+  rclcpp::Logger logger = rclcpp::get_logger("test_set_state_with_margin_time_deterministic");
+
+  state_machine.setState(State::STOP);
+  ASSERT_EQ(enumToInt(state_machine.getState()), enumToInt(State::STOP));
+
+  // First GO request only arms the timer; state stays STOP and duration is still zero.
+  state_machine.setStateWithMarginTime(State::GO, logger, clock);
+  EXPECT_EQ(enumToInt(state_machine.getState()), enumToInt(State::STOP));
+  EXPECT_DOUBLE_EQ(state_machine.getDuration(), 0.0);
+
+  // Re-request GO after less than the margin time: still STOP, duration recorded but below margin.
+  ASSERT_NO_FATAL_FAILURE(setClockSeconds(clock, 100.5));
+  state_machine.setStateWithMarginTime(State::GO, logger, clock);
+  EXPECT_EQ(enumToInt(state_machine.getState()), enumToInt(State::STOP));
+  EXPECT_NEAR(state_machine.getDuration(), 0.5, 1e-6);
+  EXPECT_LE(state_machine.getDuration(), margin_time);
+
+  // Re-request GO after more than the margin time: the STOP -> GO transition must fire.
+  ASSERT_NO_FATAL_FAILURE(setClockSeconds(clock, 101.5));
+  state_machine.setStateWithMarginTime(State::GO, logger, clock);
+  EXPECT_EQ(enumToInt(state_machine.getState()), enumToInt(State::GO));
+  EXPECT_GT(state_machine.getDuration(), margin_time);
+}
+
+// A STOP request received while waiting in STOP must reset the margin timer so a subsequent
+// GO has to wait the full margin again (start_time_ is cleared on same-state requests).
+TEST(state_machine, stop_request_resets_margin_timer)
+{
+  rclcpp::Clock clock(RCL_ROS_TIME);
+  ASSERT_EQ(rcl_enable_ros_time_override(clock.get_clock_handle()), RCL_RET_OK);
+  ASSERT_NO_FATAL_FAILURE(setClockSeconds(clock, 0.0));
+
+  StateMachine state_machine = StateMachine();
+  const double margin_time = 1.0;
+  state_machine.setMarginTime(margin_time);
+  rclcpp::Logger logger = rclcpp::get_logger("test_stop_request_resets_margin_timer");
+
+  state_machine.setState(State::STOP);
+
+  // Arm the timer with a first GO request at t = 0.
+  state_machine.setStateWithMarginTime(State::GO, logger, clock);
+
+  // A STOP request at t = 0.5 resets the timer (same-state STOP clears start_time_).
+  ASSERT_NO_FATAL_FAILURE(setClockSeconds(clock, 0.5));
+  state_machine.setStateWithMarginTime(State::STOP, logger, clock);
+  EXPECT_EQ(enumToInt(state_machine.getState()), enumToInt(State::STOP));
+
+  // Even at t = 1.2 (> margin since the first GO), the very next GO only re-arms the timer,
+  // so the machine is still STOP because the timer was reset.
+  ASSERT_NO_FATAL_FAILURE(setClockSeconds(clock, 1.2));
+  state_machine.setStateWithMarginTime(State::GO, logger, clock);
+  EXPECT_EQ(enumToInt(state_machine.getState()), enumToInt(State::STOP));
+
+  // Only after another full margin elapses does it finally transition to GO.
+  ASSERT_NO_FATAL_FAILURE(setClockSeconds(clock, 2.3));
+  state_machine.setStateWithMarginTime(State::GO, logger, clock);
+  EXPECT_EQ(enumToInt(state_machine.getState()), enumToInt(State::GO));
 }

@@ -20,10 +20,20 @@
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 
+#include <unistd.h>
+#include <yaml-cpp/yaml.h>
+
+#include <cstdio>
+#include <cstdlib>
+#include <fstream>
+#include <optional>
+#include <stdexcept>
 #include <string>
+#include <vector>
 
 namespace autoware::test_utils
 {
+using autoware_internal_planning_msgs::msg::PathPointWithLaneId;
 using autoware_internal_planning_msgs::msg::PathWithLaneId;
 
 // Example YAML structure as a string for testing
@@ -881,6 +891,91 @@ TEST(ParseFunction, ParsePathWithLaneID)
     EXPECT_DOUBLE_EQ(path.right_bound.front().z, 0.77);
   } else {
     FAIL() << "Yaml file might've corrupted.";
+  }
+}
+
+namespace
+{
+// Writes the given YAML content to a unique temporary file and returns its path.
+// Throws std::runtime_error on any open/write failure so that a test-setup
+// problem is reported loudly at its source instead of surfacing as a confusing
+// downstream assertion. The mkstemp()-created file is unlinked on failure so it
+// is not leaked into /tmp across CI or repeated local test runs.
+std::string write_temp_yaml(const std::string & content)
+{
+  char path_template[] = "/tmp/autoware_test_utils_XXXXXX";
+  const int fd = mkstemp(path_template);
+  if (fd == -1) {
+    throw std::runtime_error("write_temp_yaml: mkstemp() failed to create a temporary file");
+  }
+  ::close(fd);
+  const std::string path = path_template;
+  std::ofstream ofs(path);
+  if (!ofs) {
+    ::unlink(path.c_str());
+    throw std::runtime_error("write_temp_yaml: failed to open temporary file for writing: " + path);
+  }
+  ofs << content;
+  ofs.close();
+  if (!ofs) {
+    ::unlink(path.c_str());
+    throw std::runtime_error("write_temp_yaml: failed to write content to temporary file: " + path);
+  }
+  return path;
+}
+}  // namespace
+
+TEST(ParseFunction, LaneletRouteFromFilenameNulloptOnMissingKeys)
+{
+  // start_pose and segments are present, but goal_pose is missing, so the
+  // optional overload must return nullopt instead of a parsed route.
+  const std::string yaml = R"(
+start_pose:
+  position: {x: 1.0, y: 2.0, z: 3.0}
+  orientation: {x: 0.0, y: 0.0, z: 0.0, w: 1.0}
+segments: []
+)";
+  const auto path = write_temp_yaml(yaml);
+  ASSERT_FALSE(path.empty());
+  const auto result = parse<std::optional<LaneletRoute>>(path);
+  EXPECT_FALSE(result.has_value());
+  std::remove(path.c_str());
+}
+
+TEST(ParseFunction, PathWithLaneIdFromFilenameNulloptOnMissingKeys)
+{
+  // header and points are present, but left_bound / right_bound are missing, so
+  // the optional overload must return nullopt.
+  const std::string yaml = R"(
+header:
+  stamp: {sec: 0, nanosec: 0}
+  frame_id: map
+points: []
+)";
+  const auto path = write_temp_yaml(yaml);
+  ASSERT_FALSE(path.empty());
+  const auto result = parse<std::optional<PathWithLaneId>>(path);
+  EXPECT_FALSE(result.has_value());
+  std::remove(path.c_str());
+}
+
+TEST(ParseFunction, PathPointWithLaneIdEmptyPointEarlyReturn)
+{
+  // Each list entry lacks a "point" key, so the parser must hit the early-return
+  // branch and yield default-constructed PathPointWithLaneId values.
+  const std::string yaml = R"(
+- lane_ids: [1, 2]
+- lane_ids: [3]
+)";
+  const YAML::Node node = YAML::Load(yaml);
+  const auto points = parse<std::vector<PathPointWithLaneId>>(node);
+  ASSERT_EQ(points.size(), static_cast<size_t>(2));
+  for (const auto & p : points) {
+    // Default-constructed: pose at origin, zero velocity, empty lane_ids.
+    EXPECT_DOUBLE_EQ(p.point.pose.position.x, 0.0);
+    EXPECT_DOUBLE_EQ(p.point.pose.position.y, 0.0);
+    EXPECT_FLOAT_EQ(p.point.longitudinal_velocity_mps, 0.0F);
+    EXPECT_TRUE(p.lane_ids.empty());
   }
 }
 }  // namespace autoware::test_utils

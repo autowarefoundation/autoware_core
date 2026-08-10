@@ -156,10 +156,38 @@ INSTANTIATE_TEST_SUITE_P(
 
 TEST_F(UtilsTest, getFirstSelfIntersectionArcLength)
 {
+  constexpr auto epsilon = 1e-3;
+
   {  // line string is empty
     const auto result = utils::get_first_self_intersection_arc_length(lanelet::BasicLineString2d{});
 
     ASSERT_FALSE(result);
+  }
+
+  {  // line string has fewer than 3 points
+    const auto result =
+      utils::get_first_self_intersection_arc_length(lanelet::BasicLineString2d{{0.0, 0.0}});
+
+    ASSERT_FALSE(result);
+  }
+
+  {  // line string does not self-intersect
+    const auto result = utils::get_first_self_intersection_arc_length(
+      lanelet::BasicLineString2d{{0.0, 0.0}, {1.0, 0.0}, {2.0, 0.0}, {3.0, 0.0}});
+
+    ASSERT_FALSE(result);
+  }
+
+  {  // line string self-intersects
+    // Outward path (0,0)->(4,0)->(4,2)->(2,2), then return segment (2,2)->(2,-1) crosses the first
+    // segment (0,0)->(4,0) at (2,0). Arc length of the crossing is measured along the first three
+    // segments (4 + 2 + 2 = 8) plus the offset along the latter segment from (2,2) to (2,0) = 2,
+    // giving 10.
+    const auto result = utils::get_first_self_intersection_arc_length(
+      lanelet::BasicLineString2d{{0.0, 0.0}, {4.0, 0.0}, {4.0, 2.0}, {2.0, 2.0}, {2.0, -1.0}});
+
+    ASSERT_TRUE(result.has_value());
+    ASSERT_NEAR(*result, 10.0, epsilon);  // NOLINT(bugprone-unchecked-optional-access)
   }
 }
 

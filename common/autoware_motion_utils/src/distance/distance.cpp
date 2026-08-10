@@ -299,8 +299,8 @@ std::optional<double> calcDecelDistWithJerkAndAccConstraints(
 
   // Phase 2: jerk-limited braking
   // Calculate what the velocity (v2) would be exactly when the acceleration reaches acc_limit
-  const double v2 =
-    v1 + (negative_decel_limit * negative_decel_limit - a1 * a1) / (2.0 * negative_jerk_limit);
+  const double t_ramp = (negative_decel_limit - a1) / negative_jerk_limit;
+  const double v2 = v1 + a1 * t_ramp + 0.5 * negative_jerk_limit * t_ramp * t_ramp;
 
   if (v2 <= 0.0) {
     // The vehicle reaches v = 0 before hitting the maximum deceleration limit.

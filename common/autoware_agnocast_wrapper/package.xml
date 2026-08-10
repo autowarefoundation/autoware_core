@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_agnocast_wrapper</name>
-  <version>1.8.0</version>
+  <version>1.9.0</version>
   <description>Wrapper macros for Agnocast (true zero-copy communication library)</description>
   <maintainer email="sykwer@gmail.com">Takahiro Ishikawa-Aso</maintainer>
   <maintainer email="koichi.imai.2@tier4.jp">Koichi Imai</maintainer>
@@ -20,14 +20,21 @@
   <depend>class_loader</depend>
   <depend>diagnostic_updater</depend>
   <depend>geometry_msgs</depend>
+  <depend>libgoogle-glog-dev</depend>
   <depend>message_filters</depend>
+  <depend>rcl</depend>
+  <depend>rcl_interfaces</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
 
   <exec_depend condition="$ENABLE_AGNOCAST == 1">agnocast_components</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend condition="$ENABLE_AGNOCAST == 1">ros2agnocast_discovery_agent</exec_depend>
 
+  <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
 

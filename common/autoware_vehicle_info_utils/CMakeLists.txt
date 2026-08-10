@@ -18,6 +18,13 @@ if(BUILD_TESTING)
     vehicle_info_utils
     ament_index_cpp::ament_index_cpp
   )
+
+  # Pure (no-ROS) unit tests for the vehicle_info free functions and VehicleInfo methods.
+  ament_auto_add_gtest(test_vehicle_info test/test_vehicle_info.cpp)
+
+  target_link_libraries(test_vehicle_info
+    vehicle_info_utils
+  )
 endif()
 
 install(PROGRAMS

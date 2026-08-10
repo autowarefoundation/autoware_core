@@ -12,8 +12,8 @@ set(VOXEL_GRID voxel_grid_downsample_filter)
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/random_downsample_filter/random_downsample_filter_node.cpp
   src/voxel_grid_downsample_filter/voxel_grid_downsample_filter_node.cpp
+  src/voxel_grid_downsample_filter/voxel_grid_downsample_filter.cpp
   src/voxel_grid_downsample_filter/faster_voxel_grid_downsample_filter.cpp
-  src/voxel_grid_downsample_filter/memory.cpp
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
@@ -21,12 +21,26 @@ rclcpp_components_register_node(${PROJECT_NAME}
   EXECUTABLE ${RANDOM}_node)
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::downsample_filters::VoxelGridDownsampleFilter"
+  PLUGIN "autoware::downsample_filters::VoxelGridDownsampleFilterNode"
   EXECUTABLE ${VOXEL_GRID}_node)
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_auto_add_gtest(test_voxel_grid_downsample_filter
+    test/test_voxel_grid_downsample_filter.cpp
+  )
+  target_include_directories(test_voxel_grid_downsample_filter PRIVATE src)
+
+  ament_auto_add_gtest(test_voxel_grid_downsample_filter_integration
+    test/test_voxel_grid_downsample_filter_integration.cpp
+  )
+  target_include_directories(test_voxel_grid_downsample_filter_integration PRIVATE src)
+endif()
 
 autoware_ament_auto_package(
   USE_SCOPED_HEADER_INSTALL_DIR
   INSTALL_TO_SHARE
   launch
   config
+  test
 )

@@ -14,7 +14,7 @@
 
 #include "initial_pose_adaptor.hpp"
 
-#include <autoware/qos_utils/qos_compatibility.hpp>
+#include "parameter_helper.hpp"
 
 #include <memory>
 #include <string>
@@ -27,13 +27,7 @@ using Future = typename rclcpp::Client<ServiceT>::SharedFuture;
 
 std::array<double, 36> get_covariance_parameter(rclcpp::Node * node, const std::string & name)
 {
-  const auto vector = node->declare_parameter<std::vector<double>>(name);
-  if (vector.size() != 36) {
-    throw std::invalid_argument("The covariance parameter size is not 36.");
-  }
-  std::array<double, 36> array;
-  std::copy_n(vector.begin(), array.size(), array.begin());
-  return array;
+  return vector_to_array<double, 36>(node->declare_parameter<std::vector<double>>(name));
 }
 
 InitialPoseAdaptor::InitialPoseAdaptor(const rclcpp::NodeOptions & options)
@@ -44,8 +38,7 @@ InitialPoseAdaptor::InitialPoseAdaptor(const rclcpp::NodeOptions & options)
     "~/initialpose", rclcpp::QoS(1),
     std::bind(&InitialPoseAdaptor::on_initial_pose, this, std::placeholders::_1));
 
-  cli_initialize_ =
-    create_client<Initialize::Service>(Initialize::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
+  cli_initialize_ = adaptor_.create_client<Initialize>();
 }
 
 void InitialPoseAdaptor::on_initial_pose(const PoseWithCovarianceStamped::ConstSharedPtr msg)

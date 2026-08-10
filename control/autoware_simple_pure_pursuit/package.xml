@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_simple_pure_pursuit</name>
-  <version>1.8.0</version>
+  <version>1.9.0</version>
   <description>The autoware_simple_pure_pursuit package</description>
   <maintainer email="yuki.takagi@tier4.jp">Yuki Takagi</maintainer>
   <maintainer email="kosuke.takeuchi@tier4.jp">Kosuke Takeuchi</maintainer>
@@ -22,9 +22,13 @@
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
 
+  <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_cmake_ros</test_depend>
+  <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>autoware_test_utils</test_depend>
+  <test_depend>autoware_testing</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

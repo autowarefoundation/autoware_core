@@ -19,6 +19,7 @@
 #include "autoware/object_recognition_utils/geometry.hpp"
 #include "autoware/object_recognition_utils/matching.hpp"
 #include "autoware/object_recognition_utils/object_classification.hpp"
+#include "autoware/object_recognition_utils/pointcloud_classification.hpp"
 #include "autoware/object_recognition_utils/predicted_path_utils.hpp"
 #include "autoware/object_recognition_utils/transform.hpp"
 

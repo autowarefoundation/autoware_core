@@ -14,7 +14,8 @@
 
 #include "routing_adaptor.hpp"
 
-#include <autoware/qos_utils/qos_compatibility.hpp>
+#include "request_state_machine.hpp"
+#include "route_builder.hpp"
 
 #include <memory>
 
@@ -35,18 +36,11 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
   sub_waypoint_ = create_subscription<PoseStamped>(
     "~/input/waypoint", 10, std::bind(&RoutingAdaptor::on_waypoint, this, _1));
 
-  cli_reroute_ = create_client<ChangeRoutePoints::Service>(
-    ChangeRoutePoints::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
-  cli_route_ = create_client<SetRoutePoints::Service>(
-    SetRoutePoints::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
-  cli_clear_ =
-    create_client<ClearRoute::Service>(ClearRoute::name, AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE());
+  cli_reroute_ = adaptor_.create_client<ChangeRoutePoints>();
+  cli_route_ = adaptor_.create_client<SetRoutePoints>();
+  cli_clear_ = adaptor_.create_client<ClearRoute>();
 
-  const auto state_qos = rclcpp::QoS{RouteState::depth}
-                           .reliability(RouteState::reliability)
-                           .durability(RouteState::durability);
-  sub_state_ = create_subscription<RouteState::Message>(
-    RouteState::name, state_qos,
+  sub_state_ = adaptor_.create_subscription<RouteState>(
     [this](const RouteState::Message::ConstSharedPtr msg) { state_ = msg->state; });
 
   const auto rate = rclcpp::Rate(5.0);
@@ -59,60 +53,51 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
 
 void RoutingAdaptor::on_timer()
 {
-  // Wait a moment to combine consecutive goals and checkpoints into a single request.
-  // This value is rate dependent and set the wait time for merging.
-  constexpr int delay_count = 3;  // 0.4 seconds (rate * (value - 1))
-  if (0 < request_timing_control_ && request_timing_control_ < delay_count) {
-    ++request_timing_control_;
-  }
-  if (request_timing_control_ != delay_count) {
-    return;
-  }
+  const auto decision = decide_routing_action(
+    elapsed_count_from_last_request_, calling_service_, state_ == RouteState::Message::UNSET);
+  elapsed_count_from_last_request_ = decision.elapsed_count_from_last_request;
 
-  if (!calling_service_) {
-    if (state_ != RouteState::Message::UNSET) {
+  switch (decision.action) {
+    case RoutingAction::None:
+      break;
+    case RoutingAction::CallClear: {
       const auto request = std::make_shared<ClearRoute::Service::Request>();
       calling_service_ = true;
       cli_clear_->async_send_request(
         request,
         [this](rclcpp::Client<ClearRoute::Service>::SharedFuture) { calling_service_ = false; });
-    } else {
-      request_timing_control_ = 0;
+      break;
+    }
+    case RoutingAction::CallRoute: {
       calling_service_ = true;
       cli_route_->async_send_request(
         route_, [this](rclcpp::Client<SetRoutePoints::Service>::SharedFuture) {
           calling_service_ = false;
         });
+      break;
     }
   }
 }
 
 void RoutingAdaptor::on_fixed_goal(const PoseStamped::ConstSharedPtr pose)
 {
-  request_timing_control_ = 1;
-  route_->header = pose->header;
-  route_->goal = pose->pose;
-  route_->waypoints.clear();
-  route_->option.allow_goal_modification = false;
+  elapsed_count_from_last_request_ = 1;
+  set_goal(*route_, *pose, false);
 }
 
 void RoutingAdaptor::on_rough_goal(const PoseStamped::ConstSharedPtr pose)
 {
-  request_timing_control_ = 1;
-  route_->header = pose->header;
-  route_->goal = pose->pose;
-  route_->waypoints.clear();
-  route_->option.allow_goal_modification = true;
+  elapsed_count_from_last_request_ = 1;
+  set_goal(*route_, *pose, true);
 }
 
 void RoutingAdaptor::on_waypoint(const PoseStamped::ConstSharedPtr pose)
 {
-  if (route_->header.frame_id != pose->header.frame_id) {
+  if (!append_waypoint(*route_, *pose)) {
     RCLCPP_ERROR_STREAM(get_logger(), "The waypoint frame does not match the goal.");
     return;
   }
-  request_timing_control_ = 1;
-  route_->waypoints.push_back(pose->pose);
+  elapsed_count_from_last_request_ = 1;
 }
 
 void RoutingAdaptor::on_reroute(const PoseStamped::ConstSharedPtr pose)

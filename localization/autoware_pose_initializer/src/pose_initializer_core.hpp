@@ -16,6 +16,7 @@
 #define POSE_INITIALIZER_CORE_HPP_
 
 #include <autoware/component_interface_specs/localization.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -33,8 +34,7 @@ class PoseErrorCheckModule;
 class StopCheckModule;
 class LocalizationModule;
 class GnssModule;
-class EkfLocalizationTriggerModule;
-class NdtLocalizationTriggerModule;
+class LocalizationTriggerModule;
 
 class PoseInitializer : public rclcpp::Node
 {
@@ -46,10 +46,11 @@ private:
   using State = autoware::component_interface_specs::localization::InitializationState;
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_srv_;
   rclcpp::Publisher<PoseWithCovarianceStamped>::SharedPtr pub_reset_;
-  rclcpp::Publisher<State::Message>::SharedPtr pub_state_;
-  rclcpp::Service<Initialize::Service>::SharedPtr srv_initialize_;
+  autoware::component_interface_utils::Publisher<State>::SharedPtr pub_state_;
+  autoware::component_interface_utils::Service<Initialize>::SharedPtr srv_initialize_;
   State::Message state_;
   std::array<double, 36> output_pose_covariance_{};
   std::array<double, 36> gnss_particle_covariance_{};
@@ -58,8 +59,8 @@ private:
   std::unique_ptr<LocalizationModule> yabloc_;
   std::unique_ptr<StopCheckModule> stop_check_;
   std::unique_ptr<PoseErrorCheckModule> pose_error_check_;
-  std::unique_ptr<EkfLocalizationTriggerModule> ekf_localization_trigger_;
-  std::unique_ptr<NdtLocalizationTriggerModule> ndt_localization_trigger_;
+  std::unique_ptr<LocalizationTriggerModule> ekf_localization_trigger_;
+  std::unique_ptr<LocalizationTriggerModule> ndt_localization_trigger_;
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
   std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_pose_reliable_;
   double stop_check_duration_;

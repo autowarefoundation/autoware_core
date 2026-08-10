@@ -45,3 +45,26 @@ TEST(lowpass_filter_1d, filter)
   EXPECT_NEAR(lowpass_filter_1d.filter(0.0), -0.11, epsilon);
   EXPECT_NEAR(*lowpass_filter_1d.getValue(), -0.11, epsilon);
 }
+
+TEST(lowpass_filter_1d, setGain)
+{
+  // filter(u) = gain * prev + (1 - gain) * u
+  LowpassFilter1d lowpass_filter_1d(0.1);
+
+  // With the initial gain (0.1): 0.1 * 10 + 0.9 * 0 = 1.0
+  lowpass_filter_1d.reset(10.0);
+  EXPECT_NEAR(lowpass_filter_1d.filter(0.0), 1.0, epsilon);
+
+  // After raising the gain to 0.5 the previous value (1.0) carries more weight:
+  // 0.5 * 1.0 + 0.5 * 0 = 0.5
+  lowpass_filter_1d.setGain(0.5);
+  EXPECT_NEAR(lowpass_filter_1d.filter(0.0), 0.5, epsilon);
+
+  // A gain of 0.0 makes the output follow the input exactly: 0.0 * prev + 1.0 * u = u
+  lowpass_filter_1d.setGain(0.0);
+  EXPECT_NEAR(lowpass_filter_1d.filter(7.0), 7.0, epsilon);
+
+  // A gain of 1.0 freezes the output at the previous value: 1.0 * prev + 0.0 * u = prev
+  lowpass_filter_1d.setGain(1.0);
+  EXPECT_NEAR(lowpass_filter_1d.filter(-3.0), 7.0, epsilon);
+}

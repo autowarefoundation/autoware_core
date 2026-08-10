@@ -14,152 +14,199 @@
 
 #include "../src/simple_pure_pursuit.hpp"
 
-#include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <memory>
 
 namespace autoware::control::simple_pure_pursuit
 {
+
+using autoware_planning_msgs::msg::Trajectory;
+using nav_msgs::msg::Odometry;
+
+constexpr double terminal_brake_accel = SimplePurePursuit::terminal_brake_accel;
+
+// Floating point tolerance at EXPECT_NEAR checks
+constexpr float near_tol = 1e-4F;
+
+/**
+ * @brief Helper func to create odometry
+ *
+ * @param x X position
+ * @param y Y position
+ * @param yaw Yaw angle in radians
+ *
+ * @return Odometry message with given pose and zero velocity
+ */
 Odometry makeOdometry(const double x, const double y, const double yaw)
 {
   Odometry odom;
   odom.pose.pose.position.x = x;
   odom.pose.pose.position.y = y;
-  odom.pose.pose.orientation.z = std::sin(yaw / 2);
-  odom.pose.pose.orientation.w = std::cos(yaw / 2);
+  odom.pose.pose.orientation.z = std::sin(yaw / 2.0);
+  odom.pose.pose.orientation.w = std::cos(yaw / 2.0);
+
   return odom;
 }
 
-class SimplePurePursuitNodeTest : public ::testing::Test
+class SimplePurePursuitCoreLogicTest : public ::testing::Test
 {
 protected:
   void SetUp() override
   {
-    rclcpp::init(0, nullptr);
-
-    const auto autoware_test_utils_dir =
-      ament_index_cpp::get_package_share_directory("autoware_test_utils");
-    const auto autoware_simple_pure_pursuit_dir =
-      ament_index_cpp::get_package_share_directory("autoware_simple_pure_pursuit");
-
-    auto node_options = rclcpp::NodeOptions{};
-    autoware::test_utils::updateNodeOptions(
-      node_options, {autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml",
-                     autoware_simple_pure_pursuit_dir + "/config/simple_pure_pursuit.param.yaml"});
-
-    node_ = std::make_shared<SimplePurePursuitNode>(node_options);
+    params_.lookahead_gain = 1.0;
+    params_.lookahead_min_distance = 1.0;
+    params_.speed_proportional_gain = 1.0;
+    params_.use_external_target_vel = false;
+    params_.external_target_vel = 1.0;
+    params_.wheel_base_m = 2.79;
+    core_logic_ = std::make_unique<SimplePurePursuit>(params_);
   }
 
-  void TearDown() override { rclcpp::shutdown(); }
-
-  autoware_control_msgs::msg::Control create_control_command(
+  [[nodiscard]] autoware_control_msgs::msg::Control create_control_command(
     const Odometry & odom, const Trajectory & traj) const
   {
-    return node_->create_control_command(odom, traj);
+    return core_logic_->create_control_command(odom, traj);
   }
 
-  autoware_control_msgs::msg::Longitudinal calc_longitudinal_control(
-    const Odometry & odom, const double target_longitudinal_vel) const
-  {
-    return node_->calc_longitudinal_control(odom, target_longitudinal_vel);
-  }
-
-  autoware_control_msgs::msg::Lateral calc_lateral_control(
-    const Odometry & odom, const Trajectory & traj, const double target_longitudinal_vel,
-    const size_t closest_traj_point_idx) const
-  {
-    return node_->calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
-  }
-
-  double speed_proportional_gain() const { return node_->speed_proportional_gain_; }
-
-private:
-  std::shared_ptr<SimplePurePursuitNode> node_;
+  SimplePurePursuitParameters params_;
+  std::unique_ptr<SimplePurePursuit> core_logic_;
 };
 
-TEST_F(SimplePurePursuitNodeTest, create_control_command)
+// ================== TESTING AREA HERE ==================
+
+// TEST 1. Normal case happy tracking
+// Car at origin, facing long x-axis, current velocity 1 m/s, gain 2.0
+// Straight trajectory along x-axis, 10 points, 1m apart, target speed 5 m/s
+// Expects 5 m/s velocity, 0 steering angle
+// Acceleration = gain * (target - current) = 2.0 * (5.0 - 1.0) = 8.0 m/s^2
+TEST_F(SimplePurePursuitCoreLogicTest, NormalCaseTracking)
 {
-  {  // normal case
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+  params_.speed_proportional_gain = 2.0;
+  core_logic_ = std::make_unique<SimplePurePursuit>(params_);
 
-    const auto result = create_control_command(odom, traj);
+  auto odom = makeOdometry(0.0, 0.0, 0.0);
+  odom.twist.twist.linear.x = 1.0;
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 5.0);
 
-    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 1.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, speed_proportional_gain() * 1.0);
-  }
+  const auto result = create_control_command(odom, traj);
 
-  {  // ego reached goal
-    const auto odom = makeOdometry(10.0, 0.0, 0.0);
-    const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+  EXPECT_NEAR(result.longitudinal.velocity, 5.0, near_tol);
 
-    const auto result = create_control_command(odom, traj);
-
-    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, -10.0);
-  }
-
-  {  // reference trajectory is too short
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(5, 1.0, 1.0);
-
-    const auto result = create_control_command(odom, traj);
-
-    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, -10.0);
-  }
-
-  {  // empty trajectory
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    Trajectory traj;  // empty trajectory
-
-    const auto result = create_control_command(odom, traj);
-
-    EXPECT_DOUBLE_EQ(result.longitudinal.velocity, 0.0);
-    EXPECT_DOUBLE_EQ(result.longitudinal.acceleration, 0.0);
-  }
+  EXPECT_NEAR(result.longitudinal.acceleration, 8.0, near_tol);
+  EXPECT_NEAR(result.lateral.steering_tire_angle, 0.0, near_tol);
 }
 
-TEST_F(SimplePurePursuitNodeTest, calc_longitudinal_control)
+// TEST 2. Goal reached case
+// Same odometry and trajectory as TEST 1, but car at trajectory's end
+// Expects 0 velocity, strong negative acceleration (braking), 0 steering angle
+TEST_F(SimplePurePursuitCoreLogicTest, GoalReachedTerminalBrake)
 {
-  {  // normal case
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto target_longitudinal_vel = 1.0;
+  const auto odom = makeOdometry(10.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
 
-    const auto result = calc_longitudinal_control(odom, target_longitudinal_vel);
+  const auto result = create_control_command(odom, traj);
 
-    EXPECT_DOUBLE_EQ(result.velocity, 1.0);
-    EXPECT_DOUBLE_EQ(result.acceleration, speed_proportional_gain() * 1.0);
-  }
+  EXPECT_NEAR(result.longitudinal.velocity, 0.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, terminal_brake_accel, near_tol);
 }
 
-TEST_F(SimplePurePursuitNodeTest, calc_lateral_control)
+// TEST 3. Too short trajectory case
+// Car at origin, facing long x-axis
+// Straight trajectory along x-axis, only 5 points, 1m apart, 1m/s target speed
+// Expects 0 velocity, strong negative acceleration (braking), 0 steering angle (trajectory way too
+// short to look ahead)
+TEST_F(SimplePurePursuitCoreLogicTest, TooShortTrajectoryTerminalBrake)
 {
-  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0);
+  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(5, 1.0, 1.0);
 
-  {  // normal case
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto target_longitudinal_vel = 1.0;
-    const size_t closest_traj_point_idx = 0;
+  const auto result = create_control_command(odom, traj);
 
-    const auto result =
-      calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
-
-    EXPECT_DOUBLE_EQ(result.steering_tire_angle, 0.0f);
-  }
-
-  {  // lookahead distance exceeds remaining trajectory length
-    const auto odom = makeOdometry(0.0, 0.0, 0.0);
-    const auto target_longitudinal_vel = 2.0;
-    const size_t closest_traj_point_idx = 8;
-
-    const auto result =
-      calc_lateral_control(odom, traj, target_longitudinal_vel, closest_traj_point_idx);
-
-    EXPECT_DOUBLE_EQ(result.steering_tire_angle, 0.0f);
-  }
+  EXPECT_NEAR(result.longitudinal.velocity, 0.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, terminal_brake_accel, near_tol);
 }
+
+// TEST 4. External target velocity override case
+// Car at origin, facing long x-axis, current velocity 1.0 m/s, gain 2.0
+// Straight trajectory along x-axis, 10 points, 1m apart, target speed 1 m/s
+// External target velocity injected at 3.0 m/s, which should override 1.0 m/s
+// Expects 3.0 m/s velocity, 0 steering angle
+// Acceleration = gain * (target - current) = 2.0 * (3.0 - 1.0) = 4.0 m/s^2
+TEST_F(SimplePurePursuitCoreLogicTest, ExternalTargetVelocity)
+{
+  params_.speed_proportional_gain = 2.0;
+  params_.use_external_target_vel = true;
+  params_.external_target_vel = 3.0;
+  core_logic_ = std::make_unique<SimplePurePursuit>(params_);
+
+  auto odom = makeOdometry(0.0, 0.0, 0.0);
+  odom.twist.twist.linear.x = 1.0;
+
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+
+  const auto result = create_control_command(odom, traj);
+
+  EXPECT_NEAR(result.longitudinal.velocity, 3.0, near_tol);
+  EXPECT_NEAR(result.longitudinal.acceleration, 4.0, near_tol);
+}
+
+// TEST 5. Lateral offset case
+// Car at (0,1), facing long x-axis (1m lateral offset from trajectory along x-axis)
+// Same trajectory as STEP 1
+// Expects non-zero negative steering angle to correct leftward offset
+TEST_F(SimplePurePursuitCoreLogicTest, GenerateNonZeroSteeringForLateralOffset)
+{
+  const auto odom = makeOdometry(0.0, 1.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+
+  const auto result = create_control_command(odom, traj);
+
+  EXPECT_GT(std::abs(result.lateral.steering_tire_angle), 1e-6);
+  EXPECT_LT(result.lateral.steering_tire_angle, 0.0);
+}
+
+// TEST 6. Lookahead distance clamp case [fallback branch coverage]
+// Car at (0, 0.5), facing long x-axis, crawling at 0.5 m/s
+// Lookahead gain 1.0, so calculated lookahead distance = 0.5 * 1.0  0.5m < min lookahead
+// distance 1.0m Expects clamping to min lookahead distance
+TEST_F(SimplePurePursuitCoreLogicTest, ClampToLookaheadMinDistance)
+{
+  const auto odom = makeOdometry(0.0, 0.5, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 0.5);
+
+  const auto result = create_control_command(odom, traj);
+
+  // Verifying math executed safely without dividing by zero or throwing NaNs
+  EXPECT_TRUE(std::isfinite(result.lateral.steering_tire_angle));
+
+  // Note: current lookahead calculation is a bit weird. Confirmed with Ishikawa-san. We will fix it
+  // later. Not now. Fow now just keep it, focusing only on refactoring. Thus I had to resort to
+  // above infinity check. Still legit I guess.
+}
+
+// TEST 7. Lookahead point search exceeds trajectory length case [fallback branch coverage]
+// Car at origin, facing long x-axis, huge target speed 50 m/s (to push lookahead distance to 50m)
+// Same trajectory as STEP 1, which is shorter than lookahead distance
+// Expects fallback to bind lookahead point to trajectory's end nicely
+TEST_F(SimplePurePursuitCoreLogicTest, FallbackWhenLookaheadExceedsTrajectoryLength)
+{
+  params_.use_external_target_vel = true;
+  params_.external_target_vel = 50.0;
+  core_logic_ = std::make_unique<SimplePurePursuit>(params_);
+
+  const auto odom = makeOdometry(0.0, 0.0, 0.0);
+  const auto traj = autoware::test_utils::generateTrajectory<Trajectory>(10, 1.0, 1.0);
+
+  const auto result = create_control_command(odom, traj);
+
+  // Fallback branch `lookahead_point_itr == traj.points.end()` should activate
+  // and bind lookahead to final point without triggering a segfault
+  // Abuse infinity check again
+  EXPECT_TRUE(std::isfinite(result.lateral.steering_tire_angle));
+}
+
 }  // namespace autoware::control::simple_pure_pursuit

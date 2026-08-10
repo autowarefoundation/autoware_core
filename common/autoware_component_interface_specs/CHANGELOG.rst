@@ -9,6 +9,9 @@ Changelog for package autoware_component_interface_specs
 * docs(autoware_component_interface_specs): fix `README.md` (`#363 <https://github.com/autowarefoundation/autoware_core/issues/363>`_)
 * Contributors: Takagi, Isamu, Yutaka Kondo
 
+1.9.0 (2026-06-24)
+------------------
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

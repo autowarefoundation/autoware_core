@@ -24,8 +24,11 @@
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <boost/circular_buffer.hpp>
+
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <memory>
 #include <string>
 #include <vector>
@@ -146,7 +149,7 @@ protected:
 
     // Create single executor for both nodes
     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
-    executor_->add_node(gnss_poser_node_);
+    executor_->add_node(gnss_poser_node_->get_node_base_interface());
     executor_->add_node(publisher_node_);
 
     createTestSubscriptions();
@@ -172,14 +175,14 @@ protected:
     pose_cov_received_ = false;
     fixed_status_received_ = false;
 
-    pose_sub_ = gnss_poser_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+    pose_sub_ = publisher_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
       "gnss_pose", rclcpp::QoS(1), [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         last_pose_ = *msg;
         pose_received_ = true;
       });
 
     pose_cov_sub_ =
-      gnss_poser_node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+      publisher_node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
         "gnss_pose_cov", rclcpp::QoS(1),
         [this](const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) {
           last_pose_cov_ = *msg;
@@ -187,7 +190,7 @@ protected:
         });
 
     fixed_sub_ =
-      gnss_poser_node_->create_subscription<autoware_internal_debug_msgs::msg::BoolStamped>(
+      publisher_node_->create_subscription<autoware_internal_debug_msgs::msg::BoolStamped>(
         "gnss_fixed", rclcpp::QoS(1),
         [this](const autoware_internal_debug_msgs::msg::BoolStamped::SharedPtr msg) {
           last_fixed_status_ = *msg;
@@ -218,12 +221,12 @@ protected:
     fixed_sub_.reset();
 
     // Remove old node from executor, then destroy it
-    executor_->remove_node(gnss_poser_node_);
+    executor_->remove_node(gnss_poser_node_->get_node_base_interface());
     gnss_poser_node_.reset();
 
     // Create new node and add to the same executor
     gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GNSSPoser>(options);
-    executor_->add_node(gnss_poser_node_);
+    executor_->add_node(gnss_poser_node_->get_node_base_interface());
 
     // Re-create test subscriptions on the new node
     createTestSubscriptions();
@@ -574,6 +577,139 @@ TEST_F(GNSSPoserTest, TestMedianPosition)
   EXPECT_TRUE(pose_received_);
   EXPECT_NE(last_pose_.pose.position.x, 0.0);
   EXPECT_NE(last_pose_.pose.position.y, 0.0);
+}
+
+namespace
+{
+geometry_msgs::msg::Point makePoint(double x, double y, double z)
+{
+  geometry_msgs::msg::Point point;
+  point.x = x;
+  point.y = y;
+  point.z = z;
+  return point;
+}
+
+boost::circular_buffer<geometry_msgs::msg::Point> makePositionBuffer(
+  const std::vector<geometry_msgs::msg::Point> & points)
+{
+  boost::circular_buffer<geometry_msgs::msg::Point> buffer(points.size());
+  for (const auto & point : points) {
+    buffer.push_back(point);
+  }
+  return buffer;
+}
+
+double yawOf(const geometry_msgs::msg::Quaternion & quaternion)
+{
+  tf2::Quaternion tf_quaternion;
+  tf2::fromMsg(quaternion, tf_quaternion);
+  double roll = 0.0;
+  double pitch = 0.0;
+  double yaw = 0.0;
+  tf2::Matrix3x3(tf_quaternion).getRPY(roll, pitch, yaw);
+  return yaw;
+}
+}  // namespace
+
+// Direct unit tests for the pure static helpers of GNSSPoser. The fixture is declared a friend of
+// GNSSPoser so it can reach the private static methods without spinning up a node/executor.
+class GNSSPoserHelpersTest : public ::testing::Test
+{
+protected:
+  static geometry_msgs::msg::Point getMedianPosition(
+    const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
+  {
+    return autoware::gnss_poser::GNSSPoser::get_median_position(position_buffer);
+  }
+
+  static geometry_msgs::msg::Point getAveragePosition(
+    const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
+  {
+    return autoware::gnss_poser::GNSSPoser::get_average_position(position_buffer);
+  }
+
+  static geometry_msgs::msg::Quaternion getQuaternionByPositionDifference(
+    const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point)
+  {
+    return autoware::gnss_poser::GNSSPoser::get_quaternion_by_position_difference(
+      point, prev_point);
+  }
+};
+
+// Odd-sized buffer: median is the middle element of each coordinate.
+TEST_F(GNSSPoserHelpersTest, MedianPositionOddSize)
+{
+  const auto buffer = makePositionBuffer({
+    makePoint(3.0, 30.0, 300.0),
+    makePoint(1.0, 10.0, 100.0),
+    makePoint(2.0, 20.0, 200.0),
+  });
+
+  const auto median = getMedianPosition(buffer);
+  EXPECT_DOUBLE_EQ(median.x, 2.0);
+  EXPECT_DOUBLE_EQ(median.y, 20.0);
+  EXPECT_DOUBLE_EQ(median.z, 200.0);
+}
+
+// Even-sized buffer: median averages the two central elements (previously uncovered branch).
+TEST_F(GNSSPoserHelpersTest, MedianPositionEvenSize)
+{
+  const auto buffer = makePositionBuffer({
+    makePoint(4.0, 40.0, 400.0),
+    makePoint(1.0, 10.0, 100.0),
+    makePoint(3.0, 30.0, 300.0),
+    makePoint(2.0, 20.0, 200.0),
+  });
+
+  // Sorted x: {1,2,3,4} -> median = (2+3)/2 = 2.5; same scaling applies to y and z.
+  const auto median = getMedianPosition(buffer);
+  EXPECT_DOUBLE_EQ(median.x, 2.5);
+  EXPECT_DOUBLE_EQ(median.y, 25.0);
+  EXPECT_DOUBLE_EQ(median.z, 250.0);
+}
+
+// Average asserts the actual mean values (previously only existence was checked).
+TEST_F(GNSSPoserHelpersTest, AveragePositionValues)
+{
+  const auto buffer = makePositionBuffer({
+    makePoint(1.0, 10.0, 100.0),
+    makePoint(2.0, 20.0, 200.0),
+    makePoint(6.0, 60.0, 600.0),
+  });
+
+  const auto average = getAveragePosition(buffer);
+  EXPECT_DOUBLE_EQ(average.x, 3.0);
+  EXPECT_DOUBLE_EQ(average.y, 30.0);
+  EXPECT_DOUBLE_EQ(average.z, 300.0);
+}
+
+// Orientation-from-motion across the cardinal directions, plus the identical-points edge case.
+TEST_F(GNSSPoserHelpersTest, QuaternionByPositionDifferenceHeadings)
+{
+  const auto origin = makePoint(0.0, 0.0, 0.0);
+
+  // East: dx>0, dy=0 -> yaw 0.
+  EXPECT_NEAR(
+    yawOf(getQuaternionByPositionDifference(makePoint(1.0, 0.0, 0.0), origin)), 0.0, 1e-9);
+
+  // North: dy>0, dx=0 -> yaw +PI/2.
+  EXPECT_NEAR(
+    yawOf(getQuaternionByPositionDifference(makePoint(0.0, 1.0, 0.0), origin)), M_PI / 2.0, 1e-9);
+
+  // West: dx<0, dy=0 -> yaw +-PI.
+  EXPECT_NEAR(
+    std::abs(yawOf(getQuaternionByPositionDifference(makePoint(-1.0, 0.0, 0.0), origin))), M_PI,
+    1e-9);
+
+  // South: dy<0, dx=0 -> yaw -PI/2.
+  EXPECT_NEAR(
+    yawOf(getQuaternionByPositionDifference(makePoint(0.0, -1.0, 0.0), origin)), -M_PI / 2.0, 1e-9);
+
+  // Identical points: atan2(0,0) -> yaw 0 (identity quaternion).
+  const auto identity = getQuaternionByPositionDifference(origin, origin);
+  EXPECT_NEAR(yawOf(identity), 0.0, 1e-9);
+  EXPECT_DOUBLE_EQ(identity.w, 1.0);
 }
 
 int main(int argc, char ** argv)

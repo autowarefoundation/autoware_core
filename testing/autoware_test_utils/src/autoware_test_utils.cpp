@@ -164,9 +164,7 @@ OccupancyGrid makeCostMapMsg(size_t width, size_t height, double resolution)
 
   // create data
   const size_t n_elem = width * height;
-  for (size_t i = 0; i < n_elem; ++i) {
-    costmap_msg.data.push_back(0.0);
-  }
+  costmap_msg.data.assign(n_elem, 0);
   return costmap_msg;
 }
 
@@ -336,7 +334,8 @@ LaneletRoute makeBehaviorGoalOnLeftSideRoute()
 
 // cppcheck-suppress unusedFunction
 void spinSomeNodes(
-  rclcpp::Node::SharedPtr test_node, rclcpp::Node::SharedPtr target_node, const int repeat_count)
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr test_node,
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr target_node, const int repeat_count)
 {
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(test_node);
