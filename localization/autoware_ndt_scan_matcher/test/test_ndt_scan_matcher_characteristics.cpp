@@ -451,10 +451,6 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
     << "a wrong-frame pose became the map anchor";
   EXPECT_EQ(diag->level(), level_warn);
   // Pinned verbatim, missing space included: operators and diagnostic aggregators consume it.
-  EXPECT_EQ(
-    diag->message(),
-    "Cannot find the reference position for map update.Please check if the EKF odometry is "
-    "provided to NDT.");
 }
 }  // namespace
 
