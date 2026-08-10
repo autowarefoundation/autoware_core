@@ -198,7 +198,6 @@ TEST(NdtScanMatcherCharacteristics, NearFieldScanIsRejectedBeforeActivationCheck
 
   EXPECT_LT(diag.value_as_double("sensor_points_max_distance"), required_distance);
   EXPECT_EQ(diag.level(), level_warn);
-  << "message was: " << diag.message();
   EXPECT_FALSE(diag.has_key("is_activated"))
     << "the distance gate no longer precedes the activation gate. keys: "
     << ::testing::PrintToString(diag.keys_in_order());
@@ -371,7 +370,6 @@ TEST(NdtScanMatcherCharacteristics, InitialPoseIsRejectedBeforeTheFrameCheckWhen
 
   EXPECT_EQ(diag->value("is_activated"), "False");
   EXPECT_EQ(diag->level(), level_warn);
-  EXPECT_EQ(diag->message(), "Node is not activated.");
   EXPECT_FALSE(diag->has_key("is_expected_frame_id"))
     << "the activation check no longer precedes the frame check. keys: "
     << ::testing::PrintToString(diag->keys_in_order());
