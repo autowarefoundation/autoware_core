@@ -24,10 +24,29 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <memory>
+#include <string>
+#include <type_traits>
 #include <utility>
 
 namespace autoware::component_interface_utils
 {
+
+/// True when the node can create a subscription with no callback at all, which is what the
+/// polling path below actually wants. rclcpp::Node cannot, so it keeps getting the classic
+/// idiom (a no-op callback in a callback group that is never spun); node types that can do
+/// better -- e.g. one that registers no notification at all -- are used directly. Spelled as a
+/// detection idiom so this package stays independent of any particular node type.
+template <class NodeT, class MessageT, class = void>
+struct has_callbackless_create_subscription : std::false_type
+{
+};
+template <class NodeT, class MessageT>
+struct has_callbackless_create_subscription<
+  NodeT, MessageT,
+  std::void_t<decltype(std::declval<NodeT &>().template create_subscription<MessageT>(
+    std::declval<const std::string &>(), std::declval<const rclcpp::QoS &>()))>> : std::true_type
+{
+};
 
 /// Create a client wrapper for logging. This is a private implementation.
 template <class SpecT, class NodeT>
@@ -71,6 +90,13 @@ typename Subscription<SpecT, NodeT>::SharedPtr create_subscription_impl(
     // https://github.com/ros2/rclcpp/blob/48068130edbb43cdd61076dc1851672ff1a80408/rclcpp/include/rclcpp/node.hpp#L207-L238
     auto subscription = node->template create_subscription<typename SpecT::Message>(
       SpecT::name, get_qos<SpecT>(), std::forward<CallbackT>(callback));
+    return Subscription<SpecT, NodeT>::make_shared(subscription);
+  } else if constexpr (has_callbackless_create_subscription<NodeT, typename SpecT::Message>::
+                         value) {
+    // If the callback is nullptr, create a subscription for polling. The node builds whatever
+    // a callback-less subscription means for it.
+    auto subscription = node->template create_subscription<typename SpecT::Message>(
+      SpecT::name, get_qos<SpecT>());
     return Subscription<SpecT, NodeT>::make_shared(subscription);
   } else {
     // If the callback is nullptr, create a subscription for polling.
