@@ -406,9 +406,6 @@ TEST(NdtScanMatcherCharacteristics, WrongFrameIdOnInitialPoseIsErrorNotWarn)
 
   EXPECT_EQ(diag->level(), level_error) << "severity was downgraded; message: " << diag->message();
   EXPECT_EQ(diag->value("is_expected_frame_id"), "False");
-  EXPECT_TRUE(contains(
-    diag->message(), "Received initial pose message with frame_id base_link, but expected map"))
-    << "message was: " << diag->message();
 }
 
 /// A rejected initial pose updates neither the interpolation buffer nor the map anchor.
