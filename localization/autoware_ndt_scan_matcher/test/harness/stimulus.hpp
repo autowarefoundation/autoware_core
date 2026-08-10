@@ -88,14 +88,18 @@ inline pcl::PointCloud<pcl::PointXYZ> make_corner_cloud(
   for (int face = 0; face < 3; ++face) {
     for (int i = 0; i < points_per_line; ++i) {
       for (int j = 0; j < points_per_line; ++j) {
+        // `u` and `v` sweep the face currently being emitted, each from 0 to `box_edge_length`.
+        // Which two world axes they land on is the only thing that differs between the faces; the
+        // remaining axis stays at the cloud's own corner, which is what keeps all three planar and
+        // meeting at that corner.
         const float u = interval * static_cast<float>(j);
         const float v = interval * static_cast<float>(i);
         if (face == 0) {
-          cloud.points.emplace_back(base_x + u, base_y + v, 0.0F);  // xy
+          cloud.points.emplace_back(base_x + u, base_y + v, 0.0F);  // xy: u->x, v->y, z fixed
         } else if (face == 1) {
-          cloud.points.emplace_back(base_x, base_y + u, v);  // yz
+          cloud.points.emplace_back(base_x, base_y + u, v);  // yz: u->y, v->z, x fixed
         } else {
-          cloud.points.emplace_back(base_x + u, base_y, v);  // zx
+          cloud.points.emplace_back(base_x + u, base_y, v);  // zx: u->x, v->z, y fixed
         }
       }
     }
