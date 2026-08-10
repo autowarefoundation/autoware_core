@@ -70,11 +70,11 @@ def launch_setup(context, *args, **kwargs):
     # use_sim_time
     set_use_sim_time = SetParameter(name="use_sim_time", value=LaunchConfiguration("use_sim_time"))
 
+    # vehicle_info
     vehicle_description_pkg = FindPackageShare(
         [LaunchConfiguration("vehicle_model"), "_description"]
     ).perform(context)
 
-    # vehicle_info
     load_vehicle_info = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             [FindPackageShare("autoware_vehicle_info_utils"), "/launch/vehicle_info.launch.py"]
