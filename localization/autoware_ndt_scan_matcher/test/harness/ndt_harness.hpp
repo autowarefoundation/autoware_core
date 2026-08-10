@@ -131,11 +131,13 @@ public:
       std::make_unique<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions{}, 4);
     node_executor_->add_node(node_);
     node_thread_ = std::thread([this] { node_executor_->spin(); });
+    wait_until_spinning(*node_executor_);
 
     map_loader_ = std::make_shared<StubMapLoader>();
     loader_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
     loader_executor_->add_node(map_loader_);
     loader_thread_ = std::thread([this] { loader_executor_->spin(); });
+    wait_until_spinning(*loader_executor_);
   }
 
   ~NdtHarness()
@@ -370,6 +372,25 @@ public:
   }
 
 private:
+  /// @brief Block until `executor` has actually entered `spin()`.
+  ///
+  /// `Executor::cancel()` clears the same `spinning` flag that `spin()` sets on entry, so a cancel
+  /// arriving first is simply lost: `spin()` sets the flag back to true and then loops until its
+  /// context shuts down, and the `join()` in the destructor never returns. Nothing otherwise
+  /// guarantees the spawned thread wins that race -- the gate cases tear their harness down about
+  /// 20 ms after building it, and the loader executor is never exercised at all -- so construction
+  /// waits for the flag rather than assuming.
+  ///
+  /// This was a real hang, roughly one full run in fifteen under `ctest -j4`, which ctest killed at
+  /// its own timeout and so reported as a plain failure with no output. Delaying the loader
+  /// thread's entry into `spin()` by 50 ms reproduces it every time without this wait.
+  static void wait_until_spinning(rclcpp::Executor & executor)
+  {
+    while (rclcpp::ok() && !executor.is_spinning()) {
+      std::this_thread::sleep_for(1ms);
+    }
+  }
+
   /// @brief Process observer-side work that is currently ready.
   void pump() { observer_executor_->spin_some(5ms); }
 
