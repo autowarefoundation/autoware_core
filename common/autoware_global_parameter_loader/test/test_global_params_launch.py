@@ -16,6 +16,7 @@
 
 import os
 from pathlib import Path
+import re
 from xml.sax.saxutils import quoteattr
 
 from ament_index_python.packages import get_package_share_directory
@@ -24,35 +25,45 @@ from launch import LaunchContext
 from launch.frontend import Parser
 from launch.utilities import visit_all_entities_and_collect_futures
 import pytest
+import yaml
+
+GLOBAL_PARAMS_LAUNCH = Path(__file__).resolve().parent.parent / "launch" / "global_params.launch.py"
 
 VEHICLE_MODEL = "test_global_params"
 # vehicle_info is not under test here, but the launch file always loads it, so a minimal
 # parameter file has to exist. Its parameters are excluded from the assertions below.
-REQUIRED_VEHICLE_INFO = "/**:\n  ros__parameters:\n    wheel_radius: 0.39\n"
-ALWAYS_LOADED_PARAMS = {"use_sim_time", "wheel_radius"}
-FIRST_PARAMS = "/**:\n  ros__parameters:\n    first: 1\n    shared: from_first\n"
-SECOND_PARAMS = "/**:\n  ros__parameters:\n    second: 2\n    shared: from_second\n"
+REQUIRED_VEHICLE_INFO = {"wheel_radius": 0.39}
+ALWAYS_LOADED_PARAMS = {"use_sim_time", *REQUIRED_VEHICLE_INFO}
+
+FIRST_PARAMS = {"first": 1, "shared": "from_first"}
+SECOND_PARAMS = {"second": 2, "shared": "from_second"}
 
 
-def find_global_params_launch():
-    """Return the path of the launch file under test, from the source tree or the install space."""
-    in_source_tree = Path(__file__).resolve().parent.parent / "launch" / "global_params.launch.py"
-    if in_source_tree.is_file():
-        return in_source_tree
-    share = get_package_share_directory("autoware_global_parameter_loader")
-    return Path(share) / "launch" / "global_params.launch.py"
+def write_param_file(path, params):
+    """Write the parameters in the format expected by the launch file, and return the path."""
+    path.write_text(yaml.safe_dump({"/**": {"ros__parameters": params}}))
+    return path
 
 
-def register_package(prefix, package, share_dir):
-    """Make a package findable through the ament index of the given prefix."""
+def register_package(prefix, package):
+    """Make a package findable through the ament index of the prefix, and return its share dir."""
     marker = prefix / "share" / "ament_index" / "resource_index" / "packages" / package
     marker.parent.mkdir(parents=True, exist_ok=True)
     marker.write_text("")
-    share_dir.mkdir(parents=True, exist_ok=True)
+
+    share = prefix / "share" / package
+    share.mkdir(parents=True, exist_ok=True)
+    return share
 
 
 def register_vehicle_info_utils_from_source_tree(prefix):
-    """Fall back to the source tree when the workspace is not built and sourced."""
+    """
+    Register autoware_vehicle_info_utils from the source tree if it is not installed.
+
+    The launch file under test always includes vehicle_info.launch.py of that package. It is
+    installed when the tests run as part of a build, so this fallback only exists to keep
+    the tests runnable with pytest alone, in a workspace that has not been built yet.
+    """
     package = "autoware_vehicle_info_utils"
     try:
         get_package_share_directory(package)
@@ -64,20 +75,17 @@ def register_vehicle_info_utils_from_source_tree(prefix):
     if not (source / "launch" / "vehicle_info.launch.py").is_file():
         pytest.skip(f"{package} is neither installed nor available in the source tree")
 
-    share = prefix / "share" / package
-    register_package(prefix, package, share)
-    (share / "launch").symlink_to(source / "launch")
+    (register_package(prefix, package) / "launch").symlink_to(source / "launch")
 
 
-@pytest.fixture(scope="module", autouse=True)
+@pytest.fixture(scope="module")
 def vehicle_description_package(tmp_path_factory):
     """Register the <vehicle_model>_description package that the launch file always needs."""
     prefix = tmp_path_factory.mktemp("prefix")
-    package = f"{VEHICLE_MODEL}_description"
 
-    config = prefix / "share" / package / "config"
-    register_package(prefix, package, config)
-    (config / "vehicle_info.param.yaml").write_text(REQUIRED_VEHICLE_INFO)
+    config = register_package(prefix, f"{VEHICLE_MODEL}_description") / "config"
+    config.mkdir()
+    write_param_file(config / "vehicle_info.param.yaml", REQUIRED_VEHICLE_INFO)
 
     original = os.environ.get("AMENT_PREFIX_PATH", "")
     os.environ["AMENT_PREFIX_PATH"] = os.pathsep.join([str(prefix), original])
@@ -88,20 +96,16 @@ def vehicle_description_package(tmp_path_factory):
 
 @pytest.fixture()
 def first_param_file(tmp_path):
-    path = tmp_path / "first.param.yaml"
-    path.write_text(FIRST_PARAMS)
-    return path
+    return write_param_file(tmp_path / "first.param.yaml", FIRST_PARAMS)
 
 
 @pytest.fixture()
 def second_param_file(tmp_path):
-    path = tmp_path / "second.param.yaml"
-    path.write_text(SECOND_PARAMS)
-    return path
+    return write_param_file(tmp_path / "second.param.yaml", SECOND_PARAMS)
 
 
 @pytest.fixture()
-def launch_from_xml(tmp_path):
+def launch_from_xml(tmp_path, vehicle_description_package):
     """Return a function that runs an XML launch file and returns the global parameters."""
 
     def run(param_files, scoped="false"):
@@ -109,7 +113,7 @@ def launch_from_xml(tmp_path):
         xml.write_text(
             "<launch>\n"
             f'  <group scoped="{scoped}">\n'
-            f'    <include file="{find_global_params_launch()}">\n'
+            f'    <include file="{GLOBAL_PARAMS_LAUNCH}">\n'
             f'      <arg name="vehicle_model" value="{VEHICLE_MODEL}"/>\n'
             '      <arg name="global_parameter_loader_param_files"'
             f" value={quoteattr(str(param_files))}/>\n"
@@ -131,8 +135,13 @@ def optional_params(params):
     return {k: v for k, v in params.items() if k not in ALWAYS_LOADED_PARAMS}
 
 
-def test_no_param_file(launch_from_xml):
-    assert optional_params(launch_from_xml("")) == {}
+@pytest.mark.parametrize(
+    "param_files",
+    ["", "   ", ",", " , ,, "],
+    ids=["empty", "spaces only", "separator only", "separators and spaces"],
+)
+def test_no_param_file(launch_from_xml, param_files):
+    assert optional_params(launch_from_xml(param_files)) == {}
 
 
 def test_single_param_file(launch_from_xml, first_param_file):
@@ -151,7 +160,6 @@ def test_multiple_param_files(launch_from_xml, first_param_file, second_param_fi
 @pytest.mark.parametrize(
     "template",
     [
-        "{first},{second}",
         "{first}, {second}",
         "{first} ,{second}",
         "{first} , {second}",
@@ -160,7 +168,6 @@ def test_multiple_param_files(launch_from_xml, first_param_file, second_param_fi
         ",{first},,{second},",
     ],
     ids=[
-        "plain",
         "space after separator",
         "space before separator",
         "spaces around separator",
@@ -182,6 +189,11 @@ def test_same_param_file_twice(launch_from_xml, first_param_file):
     assert params["shared"] == "from_first"
 
 
+def test_only_existing_param_files_are_loaded(launch_from_xml, first_param_file, tmp_path):
+    params = launch_from_xml(f"{tmp_path / 'does_not_exist.param.yaml'},{first_param_file}")
+    assert params["first"] == 1
+
+
 def test_symbolic_link_is_followed(launch_from_xml, first_param_file, tmp_path):
     link = tmp_path / "link.param.yaml"
     link.symlink_to(first_param_file)
@@ -189,61 +201,50 @@ def test_symbolic_link_is_followed(launch_from_xml, first_param_file, tmp_path):
 
 
 def test_path_containing_a_space(launch_from_xml, tmp_path):
-    spaced = tmp_path / "with space.param.yaml"
-    spaced.write_text(FIRST_PARAMS)
+    spaced = write_param_file(tmp_path / "with space.param.yaml", FIRST_PARAMS)
     assert launch_from_xml(spaced)["first"] == 1
 
 
 def test_relative_path(launch_from_xml, first_param_file, monkeypatch):
-    """A relative path is resolved against the working directory of the launch process."""
+    """A relative path works, but it depends on the working directory, so it is discouraged."""
     monkeypatch.chdir(first_param_file.parent)
     assert launch_from_xml(first_param_file.name)["first"] == 1
 
 
-@pytest.mark.parametrize(
-    "param_files",
-    ["", "   ", ",", " , ,, "],
-    ids=["empty", "spaces only", "separator only", "separators and spaces"],
-)
-def test_no_param_file_variants(launch_from_xml, param_files):
-    assert optional_params(launch_from_xml(param_files)) == {}
-
-
-def test_non_existent_param_file_is_skipped(launch_from_xml, tmp_path):
-    assert optional_params(launch_from_xml(tmp_path / "does_not_exist.param.yaml")) == {}
-
-
-def test_directory_is_skipped(launch_from_xml, tmp_path):
-    assert optional_params(launch_from_xml(tmp_path)) == {}
-
-
-def test_broken_symbolic_link_is_skipped(launch_from_xml, tmp_path):
+def broken_symbolic_link(tmp_path):
     link = tmp_path / "broken.param.yaml"
     link.symlink_to(tmp_path / "does_not_exist.param.yaml")
-    assert optional_params(launch_from_xml(link)) == {}
-
-
-def test_path_containing_the_separator_is_not_supported(launch_from_xml, tmp_path):
-    """A path with a separator in it is split, so it cannot be found. This is a known limit."""
-    with_separator = tmp_path / "with,separator.param.yaml"
-    with_separator.write_text(FIRST_PARAMS)
-    assert optional_params(launch_from_xml(with_separator)) == {}
+    return link
 
 
 @pytest.mark.parametrize(
-    "param_files",
-    ["~/first.param.yaml", "$PARAM_DIR/first.param.yaml", '"{first}"'],
-    ids=["home directory", "environment variable", "quoted path"],
+    "make_param_files",
+    [
+        lambda tmp_path: tmp_path / "does_not_exist.param.yaml",
+        lambda tmp_path: tmp_path,
+        broken_symbolic_link,
+        lambda tmp_path: write_param_file(tmp_path / "with,separator.param.yaml", FIRST_PARAMS),
+        lambda tmp_path: "~/first.param.yaml",
+        lambda tmp_path: "$PARAM_DIR/first.param.yaml",
+        lambda tmp_path: f'"{write_param_file(tmp_path / "quoted.param.yaml", FIRST_PARAMS)}"',
+    ],
+    ids=[
+        "non-existent file",
+        "directory",
+        "broken symbolic link",
+        # the remaining paths point at an existing file, but cannot be resolved as given
+        "path containing the separator",
+        "home directory, which is not expanded",
+        "environment variable, which is not expanded",
+        "quoted path",
+    ],
 )
-def test_paths_are_taken_literally(launch_from_xml, first_param_file, monkeypatch, param_files):
-    """Neither the shell nor launch expands the given paths, so they are simply not found."""
-    monkeypatch.setenv("PARAM_DIR", str(first_param_file.parent))
-    assert optional_params(launch_from_xml(param_files.format(first=first_param_file))) == {}
+def test_unusable_path_is_skipped(launch_from_xml, tmp_path, monkeypatch, make_param_files):
+    """A path that cannot be resolved to a file is skipped instead of aborting the launch."""
+    write_param_file(tmp_path / "first.param.yaml", FIRST_PARAMS)
+    monkeypatch.setenv("PARAM_DIR", str(tmp_path))
 
-
-def test_only_existing_param_files_are_loaded(launch_from_xml, first_param_file, tmp_path):
-    params = launch_from_xml(f"{tmp_path / 'does_not_exist.param.yaml'},{first_param_file}")
-    assert params["first"] == 1
+    assert optional_params(launch_from_xml(make_param_files(tmp_path))) == {}
 
 
 @pytest.mark.parametrize(
@@ -261,18 +262,20 @@ def test_invalid_param_file_reports_its_path(launch_from_xml, tmp_path, content)
     invalid = tmp_path / "invalid.param.yaml"
     invalid.write_text(content)
 
-    with pytest.raises(RuntimeError, match=str(invalid)):
+    with pytest.raises(RuntimeError, match=re.escape(str(invalid))):
         launch_from_xml(invalid)
 
 
-@pytest.mark.skipif(os.geteuid() == 0, reason="the root user can read a file without permission")
-def test_unreadable_param_file_reports_its_path(launch_from_xml, first_param_file):
-    first_param_file.chmod(0)
+def test_unreadable_param_file_reports_its_path(launch_from_xml, tmp_path):
+    unreadable = write_param_file(tmp_path / "unreadable.param.yaml", FIRST_PARAMS)
+    unreadable.chmod(0)
+    if os.access(unreadable, os.R_OK):
+        pytest.skip("a privileged user can read a file without the read permission")
 
-    with pytest.raises(RuntimeError, match=str(first_param_file)):
-        launch_from_xml(first_param_file)
+    with pytest.raises(RuntimeError, match=re.escape(str(unreadable))):
+        launch_from_xml(unreadable)
 
 
-def test_scoped_group_hides_the_parameters(launch_from_xml, first_param_file):
-    """Confirm that the caller has to use <group scoped="false"> to get global parameters."""
+def test_parameters_are_not_set_in_a_scoped_group(launch_from_xml, first_param_file):
+    """The parameters must reach the enclosing scope, so the launch file must not scope them."""
     assert launch_from_xml(first_param_file, scoped="true") == {}
