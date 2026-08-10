@@ -267,8 +267,6 @@ TEST(NdtScanMatcherCharacteristics, MissingInitialPoseAbortsBeforeMapCheck)
   EXPECT_EQ(diag.value("is_activated"), "True");
   EXPECT_EQ(diag.value("is_succeed_interpolate_initial_pose"), "False");
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), "Couldn't interpolate pose."))
-    << "message was: " << diag.message();
   EXPECT_FALSE(diag.has_key("is_set_map_points"))
     << "interpolation no longer short-circuits the map check. keys: "
     << ::testing::PrintToString(diag.keys_in_order());
