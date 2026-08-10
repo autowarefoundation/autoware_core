@@ -19,6 +19,7 @@ from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import ComposableNodeContainer
+from launch_ros.actions import Node
 from launch_ros.descriptions import ComposableNode
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
@@ -35,6 +36,22 @@ def create_api_node(node_name, class_name):
     )
 
 
+def create_standalone_api_node(node_name, executable):
+    """Launch a node that derives from autoware::agnocast_wrapper::Node.
+
+    Those nodes need an AgnocastOnly executor when ENABLE_AGNOCAST=1, which a shared component
+    container cannot provide, so they run as their own process instead of being composed.
+    """
+    fullname = pathlib.Path("adapi/node") / node_name
+    return Node(
+        namespace=str(fullname.parent),
+        name=str(fullname.name),
+        package="autoware_default_adapi",
+        executable=executable,
+        parameters=[ParameterFile(LaunchConfiguration("config"))],
+    )
+
+
 def get_default_config():
     path = FindPackageShare("autoware_default_adapi")
     path = PathJoinSubstitution([path, "config/default_adapi.param.yaml"])
@@ -42,9 +59,11 @@ def get_default_config():
 
 
 def generate_launch_description():
+    standalone_nodes = [
+        create_standalone_api_node("interface", "interface_node"),
+        create_standalone_api_node("localization", "localization_node"),
+    ]
     components = [
-        create_api_node("interface", "InterfaceNode"),
-        create_api_node("localization", "LocalizationNode"),
         create_api_node("routing", "RoutingNode"),
     ]
     container = ComposableNodeContainer(
@@ -56,4 +75,4 @@ def generate_launch_description():
         composable_node_descriptions=components,
     )
     argument = DeclareLaunchArgument("config", default_value=get_default_config())
-    return launch.LaunchDescription([argument, container])
+    return launch.LaunchDescription([argument, container, *standalone_nodes])

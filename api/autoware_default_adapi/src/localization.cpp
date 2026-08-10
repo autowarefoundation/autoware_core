@@ -20,7 +20,7 @@ namespace autoware::default_adapi
 {
 
 LocalizationNode::LocalizationNode(const rclcpp::NodeOptions & options)
-: Node("localization", options), diagnostics_(this)
+: autoware::agnocast_wrapper::Node("localization", options), diagnostics_(this)
 {
   diagnostics_.setHardwareID("none");
   diagnostics_.add("state", this, &LocalizationNode::diagnose_state);
