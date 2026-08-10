@@ -64,8 +64,7 @@ void RoutingAdaptor::on_timer()
       const auto request = std::make_shared<ClearRoute::Service::Request>();
       calling_service_ = true;
       cli_clear_->async_send_request(
-        request,
-        [this](Cli<ClearRoute>::SharedFuture) { calling_service_ = false; });
+        request, [this](Cli<ClearRoute>::SharedFuture) { calling_service_ = false; });
       break;
     }
     case RoutingAction::CallRoute: {

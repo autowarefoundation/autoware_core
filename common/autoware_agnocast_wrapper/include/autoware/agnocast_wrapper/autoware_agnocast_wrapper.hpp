@@ -916,8 +916,7 @@ public:
   ///
   /// Taking by const reference rather than by value keeps `async_send_request(std::move(req))`
   /// unambiguous: an rvalue still binds better to the rvalue-reference overloads.
-  FutureAndRequestId async_send_request(
-    const std::shared_ptr<typename ServiceT::Request> & request)
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
   {
     return async_send_request(copy_into_owned_request(request));
   }
@@ -1491,8 +1490,7 @@ public:
   ///
   /// Taking by const reference rather than by value keeps `async_send_request(std::move(req))`
   /// unambiguous: an rvalue still binds better to the rvalue-reference overloads.
-  FutureAndRequestId async_send_request(
-    const std::shared_ptr<typename ServiceT::Request> & request)
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
   {
     return async_send_request(copy_into_owned_request(request));
   }

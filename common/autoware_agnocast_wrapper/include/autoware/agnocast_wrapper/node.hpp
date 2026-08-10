@@ -229,8 +229,7 @@ public:
     !std::is_same_v<std::decay_t<Func>, rclcpp::SubscriptionOptions>;
 
   template <
-    typename MessageT, typename Func,
-    std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
@@ -248,8 +247,7 @@ public:
   }
 
   template <
-    typename MessageT, typename Func,
-    std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, size_t qos_history_depth, Func && callback,
     const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
@@ -262,8 +260,7 @@ public:
   /// rclcpp::SubscriptionOptions overload, so call sites written against rclcpp::Node compile
   /// unchanged. The three fields Agnocast understands map one to one.
   template <
-    typename MessageT, typename Func,
-    std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const rclcpp::SubscriptionOptions & options)
@@ -748,8 +745,7 @@ public:
 
   template <
     typename MessageT, typename Func,
-    std::enable_if_t<
-      !std::is_same_v<std::decay_t<Func>, rclcpp::SubscriptionOptions>, int> = 0>
+    std::enable_if_t<!std::is_same_v<std::decay_t<Func>, rclcpp::SubscriptionOptions>, int> = 0>
   typename rclcpp::Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, size_t qos_history_depth, Func && callback,
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})

@@ -91,12 +91,12 @@ typename Subscription<SpecT, NodeT>::SharedPtr create_subscription_impl(
     auto subscription = node->template create_subscription<typename SpecT::Message>(
       SpecT::name, get_qos<SpecT>(), std::forward<CallbackT>(callback));
     return Subscription<SpecT, NodeT>::make_shared(subscription);
-  } else if constexpr (has_callbackless_create_subscription<NodeT, typename SpecT::Message>::
-                         value) {
+  } else if constexpr (has_callbackless_create_subscription<
+                         NodeT, typename SpecT::Message>::value) {
     // If the callback is nullptr, create a subscription for polling. The node builds whatever
     // a callback-less subscription means for it.
-    auto subscription = node->template create_subscription<typename SpecT::Message>(
-      SpecT::name, get_qos<SpecT>());
+    auto subscription =
+      node->template create_subscription<typename SpecT::Message>(SpecT::name, get_qos<SpecT>());
     return Subscription<SpecT, NodeT>::make_shared(subscription);
   } else {
     // If the callback is nullptr, create a subscription for polling.

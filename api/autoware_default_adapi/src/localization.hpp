@@ -16,9 +16,9 @@
 #define LOCALIZATION_HPP_
 
 #include <autoware/adapi_specs/localization.hpp>
-#include <autoware/component_interface_specs/localization.hpp>
 #include <autoware/agnocast_wrapper/diagnostic_updater.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/component_interface_specs/localization.hpp>
 #include <autoware/component_interface_utils/rclcpp.hpp>
 #include <rclcpp/rclcpp.hpp>
 
@@ -43,9 +43,11 @@ private:
   autoware::component_interface_utils::Publisher<
     autoware::adapi_specs::localization::InitializationState, NodeT>::SharedPtr pub_state_;
   autoware::component_interface_utils::Client<
-    autoware::component_interface_specs::localization::Initialize, NodeT>::SharedPtr cli_initialize_;
+    autoware::component_interface_specs::localization::Initialize, NodeT>::SharedPtr
+    cli_initialize_;
   autoware::component_interface_utils::Subscription<
-    autoware::component_interface_specs::localization::InitializationState, NodeT>::SharedPtr sub_state_;
+    autoware::component_interface_specs::localization::InitializationState, NodeT>::SharedPtr
+    sub_state_;
 
   void diagnose_state(diagnostic_updater::DiagnosticStatusWrapper & stat);
   void on_state(const ImplState::Message::ConstSharedPtr msg);
