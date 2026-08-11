@@ -129,6 +129,11 @@ public:
   [[nodiscard]] std::array<double, 36> get_current_pose_covariance() const;
   [[nodiscard]] std::array<double, 36> get_current_twist_covariance() const;
 
+  void push_pose(const std::shared_ptr<const PoseWithCovariance> & pose);
+  void push_twist(const std::shared_ptr<const TwistWithCovariance> & twist);
+  EKFUpdateResult update_step(const double t_curr_sec);
+  void reset();
+
 private:
   [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;
 
