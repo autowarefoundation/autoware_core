@@ -48,7 +48,9 @@ EKFLocalizer::EKFLocalizer(const HyperParameters & params)
   accumulated_delay_times_(params.extend_state_step, 1.0E15),
   params_(params),
   last_angular_velocity_(0.0, 0.0, 0.0),
-  ekf_dt_(0.0)
+  ekf_dt_(0.0),
+  pose_queue_(params.pose_smoothing_steps, params.max_pose_queue_size),
+  twist_queue_(params.twist_smoothing_steps, params.max_twist_queue_size)
 {
   Eigen::MatrixXd x = Eigen::MatrixXd::Zero(dim_x_, 1);
   Eigen::MatrixXd p = Eigen::MatrixXd::Identity(dim_x_, dim_x_) * 1.0E15;  // for x & y
