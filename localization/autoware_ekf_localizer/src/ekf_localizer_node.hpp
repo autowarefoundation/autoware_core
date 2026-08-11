@@ -94,8 +94,6 @@ private:
   AUTOWARE_TIMER_PTR timer_control_;
   //!< @brief calls publish_diagnostics() at diagnostics_publish_period
   AUTOWARE_TIMER_PTR diagnostics_publish_timer_;
-  //!< @brief last predict time
-  std::shared_ptr<const rclcpp::Time> last_predict_time_;
   //!< @brief trigger_node service
   AUTOWARE_SERVICE_PTR(std_srvs::srv::SetBool) service_trigger_node_;
 
@@ -116,13 +114,8 @@ private:
 
   const HyperParameters params_;
 
-  double ekf_dt_;
-
   std::atomic<bool> is_activated_{false};
   std::atomic<bool> is_set_initialpose_{false};
-
-  EKFDiagnosticInfo pose_diag_info_;
-  EKFDiagnosticInfo twist_diag_info_;
 
   //!< @brief temporary queues written by subscription callbacks; drained into main queues by timer
   std::queue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_tmp_;
@@ -168,11 +161,6 @@ private:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg);
 
   /**
-   * @brief update predict frequency
-   */
-  void update_predict_frequency(const rclcpp::Time & current_time);
-
-  /**
    * @brief get transform from frame_id
    */
   bool get_transform_from_tf(
@@ -208,11 +196,6 @@ private:
 
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
-
-  void initialize_diagnostic_info(
-    EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
-    const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
-    const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
 };
 
 }  // namespace autoware::ekf_localizer
