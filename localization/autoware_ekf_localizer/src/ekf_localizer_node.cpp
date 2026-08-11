@@ -51,9 +51,6 @@ EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
   tf2_buffer_(this->get_clock()),
   tf2_listener_(tf2_buffer_, *this),
   params_(load_hyper_parameters(this)),
-  ekf_dt_(params_.ekf_dt),
-  pose_queue_(params_.pose_smoothing_steps, params_.max_pose_queue_size),
-  twist_queue_(params_.twist_smoothing_steps, params_.max_twist_queue_size),
   cb_group_pose_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
   cb_group_twist_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
   merged_diagnostic_last_transition_time_(0, 0, RCL_ROS_TIME)
@@ -63,7 +60,7 @@ EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
 
   /* initialize ros system */
   timer_control_ = autoware::agnocast_wrapper::create_timer(
-    this, get_clock(), rclcpp::Duration::from_seconds(ekf_dt_),
+    this, get_clock(), rclcpp::Duration::from_seconds(params_.ekf_dt),
     std::bind(&EKFLocalizerNode::timer_callback, this));
 
   pub_pose_ = create_publisher<geometry_msgs::msg::PoseStamped>("ekf_pose", 1);
@@ -108,35 +105,6 @@ EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
   ekf_localizer_ = std::make_unique<EKFLocalizer>(params_);
   logger_configure_ = std::make_unique<
     autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
-}
-
-/*
- * update_predict_frequency
- */
-void EKFLocalizerNode::update_predict_frequency(const rclcpp::Time & current_time)
-{
-  if (last_predict_time_) {
-    if (current_time < *last_predict_time_) {
-      RCLCPP_WARN(get_logger(), "Detected jump back in time");
-    } else {
-      /* Measure dt */
-      ekf_dt_ = (current_time - *last_predict_time_).seconds();
-      DEBUG_INFO(
-        get_logger(), "[EKF] update ekf_dt_ to %f seconds (= %f hz)", ekf_dt_, 1 / ekf_dt_);
-
-      if (ekf_dt_ > 10.0) {
-        ekf_dt_ = 10.0;
-        RCLCPP_WARN(get_logger(), "%s", large_ekf_dt_waring_message(ekf_dt_).c_str());
-      } else if (ekf_dt_ > static_cast<double>(params_.pose_smoothing_steps) / params_.ekf_rate) {
-        RCLCPP_WARN_THROTTLE(
-          get_logger(), *get_clock(), 2000, "%s", too_slow_ekf_dt_waring_message(ekf_dt_).c_str());
-      }
-
-      /* Register dt and accumulate time delay */
-      ekf_localizer_->accumulate_delay_time(ekf_dt_);
-    }
-  }
-  last_predict_time_ = std::make_shared<const rclcpp::Time>(current_time);
 }
 
 /*
@@ -651,8 +619,7 @@ void EKFLocalizerNode::service_trigger_node(
       std::lock_guard<std::mutex> lock(twist_mtx_);
       twist_queue_tmp_ = {};
     }
-    pose_queue_.clear();
-    twist_queue_.clear();
+    ekf_localizer_->reset();
     is_activated_ = true;
   } else {
     is_activated_ = false;
