@@ -129,6 +129,7 @@ public:
   [[nodiscard]] std::array<double, 36> get_current_pose_covariance() const;
   [[nodiscard]] std::array<double, 36> get_current_twist_covariance() const;
 
+private:
   [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;
 
   void accumulate_delay_time(const double dt);
@@ -145,7 +146,6 @@ public:
   geometry_msgs::msg::PoseWithCovarianceStamped compensate_rph_with_delay(
     const PoseWithCovariance & pose, tf2::Vector3 last_angular_velocity, const double delay_time);
 
-private:
   void update_simple_1d_filters(
     const geometry_msgs::msg::PoseWithCovarianceStamped & pose, const size_t smoothing_step);
 
