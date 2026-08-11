@@ -33,6 +33,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <limits>
 #include <utility>
 #include <vector>
 
@@ -65,6 +66,129 @@ EKFLocalizer::EKFLocalizer(const HyperParameters & params)
   z_filter_.set_proc_var(params_.z_filter_proc_dev * params_.z_filter_proc_dev);
   roll_filter_.set_proc_var(params_.roll_filter_proc_dev * params_.roll_filter_proc_dev);
   pitch_filter_.set_proc_var(params_.pitch_filter_proc_dev * params_.pitch_filter_proc_dev);
+}
+
+void EKFLocalizer::push_pose(const std::shared_ptr<const PoseWithCovariance> & pose)
+{
+  pose_queue_.push(pose);
+}
+
+void EKFLocalizer::push_twist(const std::shared_ptr<const TwistWithCovariance> & twist)
+{
+  twist_queue_.push(twist);
+}
+
+void EKFLocalizer::reset()
+{
+  pose_queue_.clear();
+  twist_queue_.clear();
+  last_predict_time_sec_ = std::nullopt;
+  pose_diag_info_ = EKFDiagnosticInfo();
+  twist_diag_info_ = EKFDiagnosticInfo();
+}
+
+EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
+{
+  EKFUpdateResult result;
+
+  // 1. Init per-tick diagnostics
+  pose_diag_info_.queue_size = pose_queue_.size();
+  pose_diag_info_.is_passed_delay_gate = false;
+  pose_diag_info_.delay_time = std::numeric_limits<double>::quiet_NaN();
+  pose_diag_info_.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
+  pose_diag_info_.is_passed_mahalanobis_gate = false;
+  pose_diag_info_.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
+
+  twist_diag_info_.queue_size = twist_queue_.size();
+  twist_diag_info_.is_passed_delay_gate = false;
+  twist_diag_info_.delay_time = std::numeric_limits<double>::quiet_NaN();
+  twist_diag_info_.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
+  twist_diag_info_.is_passed_mahalanobis_gate = false;
+  twist_diag_info_.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
+
+  // 2. Queue cap checks
+  while (pose_queue_.exceeded()) {
+    result.warnings.push_back(
+      {fmt::format(
+         "[EKF] Pose queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+         "max_queue_size or reducing input frequency.",
+         pose_queue_.size(), pose_queue_.max_queue_size()),
+       2000});
+    pose_queue_.pop();
+  }
+
+  while (twist_queue_.exceeded()) {
+    result.warnings.push_back(
+      {fmt::format(
+         "[EKF] Twist queue size ({}) is exceeding max_queue_size ({}). Consider increasing "
+         "max_queue_size or reducing input frequency.",
+         twist_queue_.size(), twist_queue_.max_queue_size()),
+       2000});
+    twist_queue_.pop();
+  }
+
+  // 3. Time delta (dt) calculation
+  if (last_predict_time_sec_) {
+    if (t_curr_sec < *last_predict_time_sec_) {
+      result.warnings.push_back({"Detected jump back in time", 0});
+    } else {
+      ekf_dt_ = t_curr_sec - *last_predict_time_sec_;
+      if (ekf_dt_ > 10.0) {
+        ekf_dt_ = 10.0;
+        result.warnings.push_back({large_ekf_dt_waring_message(ekf_dt_), 0});
+      } else if (ekf_dt_ > static_cast<double>(params_.pose_smoothing_steps) / params_.ekf_rate) {
+        result.warnings.push_back({too_slow_ekf_dt_waring_message(ekf_dt_), 2000});
+      }
+      accumulate_delay_time(ekf_dt_);
+    }
+  }
+
+  last_predict_time_sec_ = t_curr_sec;
+
+  // 4. Prediction
+  predict_with_delay(ekf_dt_);
+
+  // 5. Update pose
+  bool pose_is_updated = false;
+
+  if (!pose_queue_.empty()) {
+    pose_diag_info_.is_passed_delay_gate = true;
+    pose_diag_info_.is_passed_mahalanobis_gate = true;
+
+    const size_t n = pose_queue_.size();
+    for (size_t i = 0; i < n; ++i) {
+      const auto pose = pose_queue_.pop_increment_age();
+      bool is_updated =
+        measurement_update_pose(*pose, t_curr_sec, pose_diag_info_, result.warnings);
+      pose_is_updated = pose_is_updated || is_updated;
+    }
+  }
+
+  pose_diag_info_.no_update_count = pose_is_updated ? 0 : (pose_diag_info_.no_update_count + 1);
+
+  // 6. Update twist
+  bool twist_is_updated = false;
+
+  if (!twist_queue_.empty()) {
+    twist_diag_info_.is_passed_delay_gate = true;
+    twist_diag_info_.is_passed_mahalanobis_gate = true;
+
+    const size_t n = twist_queue_.size();
+    for (size_t i = 0; i < n; ++i) {
+      const auto twist = twist_queue_.pop_increment_age();
+      bool is_updated =
+        measurement_update_twist(*twist, t_curr_sec, twist_diag_info_, result.warnings);
+      twist_is_updated = twist_is_updated || is_updated;
+    }
+  }
+
+  twist_diag_info_.no_update_count = twist_is_updated ? 0 : (twist_diag_info_.no_update_count + 1);
+
+  // 7. Result
+  result.pose_diag_info = pose_diag_info_;
+  result.twist_diag_info = twist_diag_info_;
+
+  return result;
 }
 
 void EKFLocalizer::initialize(
