@@ -170,6 +170,12 @@ private:
   tf2::Vector3 last_angular_velocity_;
 
   double ekf_dt_;
+
+  std::optional<double> last_predict_time_sec_;
+  EKFDiagnosticInfo pose_diag_info_;
+  EKFDiagnosticInfo twist_diag_info_;
+  AgedObjectQueue<std::shared_ptr<const PoseWithCovariance>> pose_queue_;
+  AgedObjectQueue<std::shared_ptr<const TwistWithCovariance>> twist_queue_;
 };
 
 }  // namespace autoware::ekf_localizer
