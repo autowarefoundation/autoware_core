@@ -19,6 +19,7 @@
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/parameter_client.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
 #include <tf2_ros/transform_listener.hpp>
@@ -53,7 +54,9 @@ struct MapHeightFitter::Impl
   std::optional<Point> fit(const Point & position, const std::string & frame);
 
   tf2::BufferCore tf2_buffer_;
-  tf2_ros::TransformListener tf2_listener_;
+  // The wrapper's listener, not tf2_ros', because an AgnocastOnly executor does not spin a
+  // plain tf2_ros::TransformListener -- the agnocast backend has to own the /tf subscription.
+  autoware::agnocast_wrapper::TransformListener tf2_listener_;
   std::string map_frame_;
   // Only the logger is kept, not the node: the endpoints this class needs are all created in the
   // constructor (or by the closures below), so holding the node would mean templating everything
@@ -80,7 +83,7 @@ struct MapHeightFitter::Impl
 };
 
 MapHeightFitter::Impl::Impl(autoware::agnocast_wrapper::Node * node)
-: tf2_listener_(tf2_buffer_), logger_(node->get_logger())
+: tf2_listener_(tf2_buffer_, *node), logger_(node->get_logger())
 {
   fit_target_ = node->declare_parameter<std::string>("map_height_fitter.target");
   if (fit_target_ == "pointcloud_map") {
