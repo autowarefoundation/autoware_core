@@ -146,12 +146,31 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
   last_predict_time_sec_ = t_curr_sec;
 
   // 4. Prediction
+  if (params_.show_debug_info) {
+    result.debug_logs.emplace_back(
+      "------------------------- start prediction -------------------------");
+  }
+  stop_watch_.tic();
+
   predict_with_delay(ekf_dt_);
+
+  if (params_.show_debug_info) {
+    result.debug_logs.push_back(
+      fmt::format("[EKF] predictKinematicsModel calc time = {:f} [ms]", stop_watch_.toc()));
+    result.debug_logs.emplace_back(
+      "------------------------- end prediction -------------------------\n");
+  }
 
   // 5. Update pose
   bool pose_is_updated = false;
 
   if (!pose_queue_.empty()) {
+    if (params_.show_debug_info) {
+      result.debug_logs.emplace_back(
+        "------------------------- start Pose -------------------------");
+    }
+    stop_watch_.tic();
+
     pose_diag_info_.is_passed_delay_gate = true;
     pose_diag_info_.is_passed_mahalanobis_gate = true;
 
@@ -162,6 +181,13 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
         measurement_update_pose(*pose, t_curr_sec, pose_diag_info_, result.warnings);
       pose_is_updated = pose_is_updated || is_updated;
     }
+
+    if (params_.show_debug_info) {
+      result.debug_logs.push_back(
+        fmt::format("[EKF] measurement_update_pose calc time = {:f} [ms]", stop_watch_.toc()));
+      result.debug_logs.emplace_back(
+        "------------------------- end Pose -------------------------\n");
+    }
   }
 
   pose_diag_info_.no_update_count = pose_is_updated ? 0 : (pose_diag_info_.no_update_count + 1);
@@ -170,6 +196,12 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
   bool twist_is_updated = false;
 
   if (!twist_queue_.empty()) {
+    if (params_.show_debug_info) {
+      result.debug_logs.emplace_back(
+        "------------------------- start Twist -------------------------");
+    }
+    stop_watch_.tic();
+
     twist_diag_info_.is_passed_delay_gate = true;
     twist_diag_info_.is_passed_mahalanobis_gate = true;
 
@@ -179,6 +211,13 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
       bool is_updated =
         measurement_update_twist(*twist, t_curr_sec, twist_diag_info_, result.warnings);
       twist_is_updated = twist_is_updated || is_updated;
+    }
+
+    if (params_.show_debug_info) {
+      result.debug_logs.push_back(
+        fmt::format("[EKF] measurement_update_twist calc time = {:f} [ms]", stop_watch_.toc()));
+      result.debug_logs.emplace_back(
+        "------------------------- end Twist -------------------------\n");
     }
   }
 

@@ -21,6 +21,7 @@
 
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <tf2/utils.hpp>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -30,6 +31,7 @@
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
 #include <array>
+#include <chrono>
 #include <memory>
 #include <optional>
 #include <string>
@@ -61,6 +63,7 @@ struct EKFUpdateResult
   EKFDiagnosticInfo pose_diag_info;
   EKFDiagnosticInfo twist_diag_info;
   std::vector<CoreWarning> warnings;
+  std::vector<std::string> debug_logs;
 };
 
 class Simple1DFilter
@@ -176,6 +179,7 @@ private:
   EKFDiagnosticInfo twist_diag_info_;
   AgedObjectQueue<std::shared_ptr<const PoseWithCovariance>> pose_queue_;
   AgedObjectQueue<std::shared_ptr<const TwistWithCovariance>> twist_queue_;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
 };
 
 }  // namespace autoware::ekf_localizer
