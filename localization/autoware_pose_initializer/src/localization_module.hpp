@@ -15,6 +15,8 @@
 #ifndef LOCALIZATION_MODULE_HPP_
 #define LOCALIZATION_MODULE_HPP_
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_localization_msgs/srv/pose_with_covariance_stamped.hpp>
@@ -32,12 +34,12 @@ private:
   using RequestPoseAlignment = autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped;
 
 public:
-  LocalizationModule(rclcpp::Node * node, const std::string & service_name);
+  LocalizationModule(autoware::agnocast_wrapper::Node * node, const std::string & service_name);
   std::tuple<PoseWithCovarianceStamped, bool> align_pose(const PoseWithCovarianceStamped & pose);
 
 private:
   rclcpp::Logger logger_;
-  rclcpp::Client<RequestPoseAlignment>::SharedPtr cli_align_;
+  AUTOWARE_CLIENT_PTR(RequestPoseAlignment) cli_align_;
 };
 }  // namespace autoware::pose_initializer
 

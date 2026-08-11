@@ -16,7 +16,7 @@
 
 namespace autoware::pose_initializer
 {
-StopCheckModule::StopCheckModule(rclcpp::Node * node, double buffer_duration)
+StopCheckModule::StopCheckModule(autoware::agnocast_wrapper::Node * node, double buffer_duration)
 : VehicleStopCheckerBase(node, buffer_duration)
 {
   sub_twist_ = node->create_subscription<TwistWithCovarianceStamped>(

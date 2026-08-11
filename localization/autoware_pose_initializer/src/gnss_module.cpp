@@ -24,7 +24,7 @@
 
 namespace autoware::pose_initializer
 {
-GnssModule::GnssModule(rclcpp::Node * node)
+GnssModule::GnssModule(autoware::agnocast_wrapper::Node * node)
 : fitter_(node),
   clock_(node->get_clock()),
   timeout_(node->declare_parameter<double>("gnss_pose_timeout"))
