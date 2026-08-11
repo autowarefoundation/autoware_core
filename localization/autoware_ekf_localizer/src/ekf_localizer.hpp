@@ -15,6 +15,7 @@
 #ifndef EKF_LOCALIZER_HPP_
 #define EKF_LOCALIZER_HPP_
 
+#include "utils/aged_object_queue.hpp"
 #include "utils/hyper_parameters.hpp"
 #include "utils/state_index.hpp"
 
@@ -30,6 +31,7 @@
 
 #include <array>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -52,6 +54,13 @@ struct CoreWarning
 {
   std::string text;
   uint32_t throttle_ms{0};
+};
+
+struct EKFUpdateResult
+{
+  EKFDiagnosticInfo pose_diag_info;
+  EKFDiagnosticInfo twist_diag_info;
+  std::vector<CoreWarning> warnings;
 };
 
 class Simple1DFilter
