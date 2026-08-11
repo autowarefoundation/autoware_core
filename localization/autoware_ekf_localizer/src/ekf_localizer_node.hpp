@@ -16,7 +16,6 @@
 #define EKF_LOCALIZER_NODE_HPP_
 
 #include "ekf_localizer.hpp"
-#include "utils/aged_object_queue.hpp"
 #include "utils/hyper_parameters.hpp"
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
@@ -125,8 +124,6 @@ private:
   EKFDiagnosticInfo pose_diag_info_;
   EKFDiagnosticInfo twist_diag_info_;
 
-  AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
-  AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
   //!< @brief temporary queues written by subscription callbacks; drained into main queues by timer
   std::queue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_tmp_;
   std::queue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_tmp_;
