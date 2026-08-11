@@ -18,20 +18,26 @@ autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
 # These nodes derive from autoware::agnocast_wrapper::Node, which requires an AgnocastOnly
 # executor, so they run as standalone executables rather than inside a component container.
+# They were composed into component_container_mt, so keep a multi-threaded executor:
+# LocalizationNode blocks on a client call from inside a service callback and would deadlock
+# on a single-threaded one.
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::default_adapi::InterfaceNode"
   EXECUTABLE interface_node
-  AGNOCAST_EXECUTOR AgnocastOnlySingleThreadedExecutor
+  ROS2_EXECUTOR MultiThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyMultiThreadedExecutor
 )
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::default_adapi::LocalizationNode"
   EXECUTABLE localization_node
-  AGNOCAST_EXECUTOR AgnocastOnlySingleThreadedExecutor
+  ROS2_EXECUTOR MultiThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyMultiThreadedExecutor
 )
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::default_adapi::RoutingNode"
   EXECUTABLE routing_node
-  AGNOCAST_EXECUTOR AgnocastOnlySingleThreadedExecutor
+  ROS2_EXECUTOR MultiThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyMultiThreadedExecutor
 )
 
 if(BUILD_TESTING)
