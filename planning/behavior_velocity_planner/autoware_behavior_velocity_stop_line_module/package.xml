@@ -28,12 +28,14 @@
   <depend>autoware_utils_rclcpp</depend>
   <depend>eigen</depend>
   <depend>geometry_msgs</depend>
+  <depend>lanelet2_core</depend>
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>visualization_msgs</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
+  <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
 
