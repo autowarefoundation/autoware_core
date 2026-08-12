@@ -754,10 +754,10 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides()
 ///
 /// Insertion order is deliberately *not* asserted. Nothing consumes it -- the aggregator matches on
 /// `status.name` and copies `values` through untouched, and no other package names these keys -- so
-/// the only change it would catch is a regrouping that harms no one, while the hazards that really
-/// are order-sensitive (`*_before` reading the previous scan, `skipping_publish_num` updating a
-/// static) corrupt values rather than key positions. The literal below is still written in
-/// insertion order, because that is how the callback reads.
+/// the only change it would catch is a regrouping that harms no one, while the one hazard that
+/// really is order-sensitive -- `skipping_publish_num` updating a static -- corrupts a value rather
+/// than a key position. The literal below is still written in insertion order, because that is how
+/// the callback reads.
 TEST(NdtScanMatcherCharacteristics, ScanMatchingStatusEmitsExactlyTheseNineteenKeys)
 {
   // Arrange
