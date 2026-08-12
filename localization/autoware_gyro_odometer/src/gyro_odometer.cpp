@@ -17,29 +17,24 @@
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <rclcpp/time.hpp>
 
-#include <geometry_msgs/msg/transform_stamped.hpp>
-#include <geometry_msgs/msg/vector3_stamped.hpp>
-#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-
 #include <algorithm>
 #include <cmath>
 #include <deque>
-#include <string>
 
 namespace autoware::gyro_odometer
 {
 
 std::optional<GyroOdometer::OutputData> GyroOdometer::input_vehicle_twist(
   const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
-  rclcpp::Time current_time, double message_timeout_sec, TransformListener & transform_listener,
-  const std::string & output_frame)
+  rclcpp::Time current_time, double message_timeout_sec,
+  const GyroQueueTransformFunc & transform_gyro_queue_func)
 {
   vehicle_twist_arrived_ = true;
   latest_vehicle_twist_ros_time_ = vehicle_twist_msg.header.stamp;
   vehicle_twist_queue_.push_back(vehicle_twist_msg);
 
   const auto twist_with_cov =
-    concat_gyro_and_odometer(current_time, message_timeout_sec, transform_listener, output_frame);
+    concat_gyro_and_odometer(current_time, message_timeout_sec, transform_gyro_queue_func);
   if (!twist_with_cov) {
     return std::nullopt;
   }
@@ -48,14 +43,14 @@ std::optional<GyroOdometer::OutputData> GyroOdometer::input_vehicle_twist(
 
 std::optional<GyroOdometer::OutputData> GyroOdometer::input_imu(
   const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
-  TransformListener & transform_listener, const std::string & output_frame)
+  const GyroQueueTransformFunc & transform_gyro_queue_func)
 {
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg.header.stamp;
   gyro_queue_.push_back(imu_msg);
 
   const auto twist_with_cov =
-    concat_gyro_and_odometer(current_time, message_timeout_sec, transform_listener, output_frame);
+    concat_gyro_and_odometer(current_time, message_timeout_sec, transform_gyro_queue_func);
   if (!twist_with_cov) {
     return std::nullopt;
   }
@@ -79,8 +74,8 @@ GyroOdometer::Status GyroOdometer::take_status() const
 
 std::optional<geometry_msgs::msg::TwistWithCovarianceStamped>
 GyroOdometer::concat_gyro_and_odometer(
-  rclcpp::Time current_time, double message_timeout_sec, TransformListener & transform_listener,
-  const std::string & output_frame)
+  rclcpp::Time current_time, double message_timeout_sec,
+  const GyroQueueTransformFunc & transform_gyro_queue_func)
 {
   // check arrive first topic
   if (!vehicle_twist_arrived_) {
@@ -120,29 +115,12 @@ GyroOdometer::concat_gyro_and_odometer(
     return std::nullopt;
   }
 
-  // get transformation
-  geometry_msgs::msg::TransformStamped::ConstSharedPtr tf_imu2base_ptr =
-    transform_listener.get_latest_transform(gyro_queue_.front().header.frame_id, output_frame);
-  is_succeed_transform_imu_ = (tf_imu2base_ptr != nullptr);
+  // get transformation; gyro_queue_ is transformed in place
+  is_succeed_transform_imu_ = transform_gyro_queue_func(gyro_queue_);
   if (!is_succeed_transform_imu_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return std::nullopt;
-  }
-
-  // transform gyro frame
-  for (auto & gyro : gyro_queue_) {
-    geometry_msgs::msg::Vector3Stamped angular_velocity;
-    angular_velocity.header = gyro.header;
-    angular_velocity.vector = gyro.angular_velocity;
-
-    geometry_msgs::msg::Vector3Stamped transformed_angular_velocity;
-    transformed_angular_velocity.header = tf_imu2base_ptr->header;
-    tf2::doTransform(angular_velocity, transformed_angular_velocity, *tf_imu2base_ptr);
-
-    gyro.header.frame_id = output_frame;
-    gyro.angular_velocity = transformed_angular_velocity.vector;
-    gyro.angular_velocity_covariance = transform_covariance(gyro.angular_velocity_covariance);
   }
 
   // fuse the vehicle twist and the (already transformed) gyro queue

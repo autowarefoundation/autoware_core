@@ -18,20 +18,38 @@
 #include "gyro_odometer.hpp"
 
 #include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
+#include <autoware_utils_tf/transform_listener.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
+#include <deque>
 #include <memory>
 #include <string>
 
 namespace autoware::gyro_odometer
 {
+
+using TransformListener = autoware_utils_tf::TransformListenerT<
+  autoware::agnocast_wrapper::Node, autoware::agnocast_wrapper::Buffer,
+  autoware::agnocast_wrapper::TransformListener>;
+
+/// \brief Look up the transform from \p gyro_queue's frame to \p output_frame and apply it in
+/// place to every queued sample.
+///
+/// The lookup uses the frame of the oldest queued sample; callers that invoke this once per fusion
+/// attempt therefore repeat the lookup on every attempt rather than caching it.
+/// \return true if the transform was found and applied, false if it is unavailable. \p gyro_queue
+/// is left unmodified in that case.
+bool transform_gyro_queue(
+  std::deque<sensor_msgs::msg::Imu> & gyro_queue, TransformListener & transform_listener,
+  const std::string & output_frame);
 
 class GyroOdometerNode : public autoware::agnocast_wrapper::Node
 {
@@ -69,6 +87,7 @@ private:
 
   std::string output_frame_;
   double message_timeout_sec_;
+  GyroQueueTransformFunc transform_gyro_queue_func_;
 
   std::unique_ptr<
     autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>

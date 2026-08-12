@@ -19,20 +19,54 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/vector3_stamped.hpp>
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
+
 #include <chrono>
 #include <cmath>
+#include <deque>
 #include <memory>
 #include <string>
 
 namespace autoware::gyro_odometer
 {
 
+bool transform_gyro_queue(
+  std::deque<sensor_msgs::msg::Imu> & gyro_queue, TransformListener & transform_listener,
+  const std::string & output_frame)
+{
+  geometry_msgs::msg::TransformStamped::ConstSharedPtr tf_imu2base_ptr =
+    transform_listener.get_latest_transform(gyro_queue.front().header.frame_id, output_frame);
+  if (tf_imu2base_ptr == nullptr) {
+    return false;
+  }
+
+  for (auto & gyro : gyro_queue) {
+    geometry_msgs::msg::Vector3Stamped angular_velocity;
+    angular_velocity.header = gyro.header;
+    angular_velocity.vector = gyro.angular_velocity;
+
+    geometry_msgs::msg::Vector3Stamped transformed_angular_velocity;
+    transformed_angular_velocity.header = tf_imu2base_ptr->header;
+    tf2::doTransform(angular_velocity, transformed_angular_velocity, *tf_imu2base_ptr);
+
+    gyro.header.frame_id = output_frame;
+    gyro.angular_velocity = transformed_angular_velocity.vector;
+    gyro.angular_velocity_covariance = transform_covariance(gyro.angular_velocity_covariance);
+  }
+  return true;
+}
+
 GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("gyro_odometer", node_options),
+  transform_listener_(std::make_shared<TransformListener>(this)),
   output_frame_(declare_parameter<std::string>("output_frame")),
-  message_timeout_sec_(declare_parameter<double>("message_timeout_sec"))
+  message_timeout_sec_(declare_parameter<double>("message_timeout_sec")),
+  transform_gyro_queue_func_([this](std::deque<sensor_msgs::msg::Imu> & gyro_queue) {
+    return transform_gyro_queue(gyro_queue, *transform_listener_, output_frame_);
+  })
 {
-  transform_listener_ = std::make_shared<TransformListener>(this);
   logger_configure_ = std::make_unique<
     autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
 
@@ -66,7 +100,7 @@ void GyroOdometerNode::callback_vehicle_twist(
     vehicle_twist_msg_ptr)
 {
   const auto output = gyro_odometer_.input_vehicle_twist(
-    *vehicle_twist_msg_ptr, this->now(), message_timeout_sec_, *transform_listener_, output_frame_);
+    *vehicle_twist_msg_ptr, this->now(), message_timeout_sec_, transform_gyro_queue_func_);
 
   if (output) {
     publish_data(*output);
@@ -77,7 +111,7 @@ void GyroOdometerNode::callback_imu(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Imu) imu_msg_ptr)
 {
   const auto output = gyro_odometer_.input_imu(
-    *imu_msg_ptr, this->now(), message_timeout_sec_, *transform_listener_, output_frame_);
+    *imu_msg_ptr, this->now(), message_timeout_sec_, transform_gyro_queue_func_);
 
   if (output) {
     publish_data(*output);
