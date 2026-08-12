@@ -59,6 +59,9 @@ def test_allow_list_exempts_a_denied_name():
 def test_service_with_denied_substring_is_out_of_scope():
     # /map/get_differential_pointcloud_map contains "pointcloud_map" but is a
     # request/response service, not a heavy-raw broadcast stream: not flagged.
+    # The gate scopes on kind == "topic" and never on the name, so this one case
+    # covers every deny spelling -- adding a substring cannot start flagging a
+    # sanctioned service.
     mf = _mf(_service("/map/get_differential_pointcloud_map"))
     assert no_raw_spec_topic([mf], deny=DENY, allow=[]) == []
 
@@ -76,9 +79,3 @@ def test_committed_deny_list_catches_the_point_cloud_map_topic():
     findings = no_raw_spec_topic([mf], deny=DENY, allow=[])
     assert len(findings) == 1
     assert "/map/point_cloud_map" in findings[0].message
-
-
-def test_differential_pcd_map_service_stays_out_of_scope():
-    # Adding the topic-name substring must not start flagging the sanctioned service.
-    mf = _mf(_service("/map/get_differential_pointcloud_map"))
-    assert no_raw_spec_topic([mf], deny=DENY, allow=[]) == []
