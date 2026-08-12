@@ -224,6 +224,26 @@ public:
     return found;
   }
 
+  /// @brief Wait for a record of `status_name` newer than the last `mark()`.
+  ///
+  /// The counterpart of `wait_for_diag_stamp` for the statuses published with `now()` instead of an
+  /// input stamp. A service response can arrive before the diagnostics its handler published, so
+  /// reading `newest_since_mark` straight after the call is a race rather than a correlation. It is
+  /// narrow enough to pass on an ordinary build and lose on a slow one -- a coverage-instrumented
+  /// run is what caught it.
+  std::optional<Record> wait_for_diag_since_mark(
+    const std::string & status_name, const std::chrono::nanoseconds timeout = 10s)
+  {
+    std::optional<Record> found;
+    wait_until(
+      [&] {
+        found = diagnostics_->newest_since_mark(status_name);
+        return found.has_value();
+      },
+      timeout);
+    return found;
+  }
+
   /// @brief Wait for any record of `status_name` satisfying `predicate`.
   std::optional<Record> wait_for_diag(
     const std::string & status_name, const std::function<bool(const Record &)> & predicate,

@@ -233,7 +233,8 @@ TEST(NdtScanMatcherCharacteristics, SensorPointsAreStoredEvenWhileDeactivated)
   // Assert
   ASSERT_TRUE(response.has_value()) << "ndt_align_srv did not answer";
 
-  const auto diag = harness->diag().newest_since_mark(ndt_align_status);
+  // Waited for, not sampled: the service response can outrun the diagnostics its handler published.
+  const auto diag = harness->wait_for_diag_since_mark(ndt_align_status);
   ASSERT_TRUE(diag.has_value());
   EXPECT_EQ(diag->value("is_set_sensor_points"), "True")
     << "the scan received while deactivated was discarded, so ndt_align can no longer run "
