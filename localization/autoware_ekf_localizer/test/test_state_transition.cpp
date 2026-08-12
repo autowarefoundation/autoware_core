@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #define _USE_MATH_DEFINES
-#include "include/state_index.hpp"
-#include "include/state_transition.hpp"
+#include "utils/state_index.hpp"
+#include "utils/state_transition.hpp"
 
 #include <gtest/gtest.h>
 
