@@ -26,7 +26,6 @@
   <depend>autoware_utils_geometry</depend>
   <depend>autoware_utils_logging</depend>
   <depend>diagnostic_msgs</depend>
-  <depend>fmt</depend>
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
