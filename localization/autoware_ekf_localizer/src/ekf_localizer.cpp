@@ -34,6 +34,7 @@
 #include <algorithm>
 #include <cmath>
 #include <limits>
+#include <memory>
 #include <utility>
 #include <vector>
 
