@@ -18,6 +18,7 @@
 #include "diagnostics_capture.hpp"
 #include "stimulus.hpp"
 #include "stub_map_loader.hpp"
+#include "topic_capture.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
@@ -53,7 +54,18 @@ struct InitialPoseSpec
   /// Position of the *older* pose.
   double x{map_center_x};
   double y{map_center_y};
+  /// Third on purpose, so a case needing a non-default frame can write `{x, y, frame}` rather than
+  /// spelling out the numeric fields that would otherwise sit in between. Only `{x, y}` is
+  /// initialized positionally today; everything below is reached by naming it.
   std::string frame_id{map_frame};
+  /// Offset of the *newer* pose from the older one. Non-zero makes the interpolated position
+  /// distinguishable from both endpoints. Must stay within
+  /// `validation.initial_pose_distance_tolerance_m` (10 m) or interpolation is rejected.
+  double delta_x{0.0};
+  /// Covariance of each pose. `SmartPoseBuffer` copies the *old* pose's covariance into the
+  /// interpolated result verbatim, so differing values make that choice observable.
+  double old_variance_xy{0.25};
+  double new_variance_xy{0.25};
 };
 
 /// @brief One scan-driving attempt's parameters.
@@ -79,6 +91,9 @@ struct ScanOutcome
 {
   builtin_interfaces::msg::Time stamp{};
   DiagnosticsCapture::Record diag{};
+  /// Which attempt produced this. Non-zero means an earlier attempt was abandoned, so a
+  /// "published exactly once" assertion may be counting two alignments rather than one node bug.
+  int attempt{0};
 };
 
 /// @brief Drives a real `NDTScanMatcher` and observes everything it emits.
@@ -175,6 +190,21 @@ public:
 
   [[nodiscard]] DiagnosticsCapture & diag() const { return *diagnostics_; }
   [[nodiscard]] rclcpp::Time now() const { return observer_->now(); }
+
+  /// @brief Start recording a topic. Must be called before the stimulus that could publish it,
+  /// otherwise "was not published" assertions are vacuous.
+  ///
+  /// A capture that outlives the harness stops receiving rather than dangling: `TopicCapture` holds
+  /// only the `Subscription::SharedPtr`, and that keeps the underlying `rcl_node_t` alive even once
+  /// the observer `rclcpp::Node` is gone. So the constraint is about meaning, not safety -- counts
+  /// read after the harness is destroyed are frozen, not wrong. Test-local variables declared after
+  /// the harness avoid the question entirely by destruction order.
+  template <typename MsgT>
+  std::shared_ptr<TopicCapture<MsgT>> capture(
+    const std::string & topic, const rclcpp::QoS & qos = rclcpp::QoS(rclcpp::KeepAll()).reliable())
+  {
+    return std::make_shared<TopicCapture<MsgT>>(observer_.get(), topic, qos);
+  }
 
   // ------------------------------------------------------------------ pumping
 
@@ -276,16 +306,18 @@ public:
   /// Returns the response's `success`, or nullopt on timeout.
   std::optional<bool> activate(const std::chrono::nanoseconds timeout = 10s)
   {
-    if (!trigger_client_->wait_for_service(5s)) {
-      return std::nullopt;
-    }
-    auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
-    request->data = true;
-    auto future = trigger_client_->async_send_request(request);
-    if (!wait_until([&] { return future.wait_for(0s) == std::future_status::ready; }, timeout)) {
-      return std::nullopt;
-    }
-    return future.get()->success;
+    return set_activation(true, timeout);
+  }
+
+  /// @brief The same service with `false`, as `autoware_pose_initializer` does while it is
+  /// estimating the initial pose.
+  ///
+  /// A deactivated node rejects scans at its activation gate, and that gate is also one of the two
+  /// things that reset the skip counter — which is how the non-converged case cleans up the
+  /// process-global counter it advanced.
+  std::optional<bool> deactivate(const std::chrono::nanoseconds timeout = 10s)
+  {
+    return set_activation(false, timeout);
   }
 
   /// @brief Call `ndt_align_srv`. The timeout is generous because the handler synchronously loads
@@ -301,6 +333,7 @@ public:
     request->pose_with_covariance = pose;
     auto future = align_client_->async_send_request(request);
     if (!wait_until([&] { return future.wait_for(0s) == std::future_status::ready; }, timeout)) {
+      align_client_->remove_pending_request(future);
       return std::nullopt;
     }
     return *future.get();
@@ -326,7 +359,6 @@ public:
 
   void publish_scan(const sensor_msgs::msg::PointCloud2 & cloud) { scan_pub_->publish(cloud); }
 
-  /// @brief Wait until the node's subscriptions have matched our publishers.
   /// @brief Wait until the node has matched every publisher a test drives it through.
   ///
   /// `/tf_static` is included because a scan that arrives before the node's listener holds
@@ -346,6 +378,26 @@ public:
 
   // -------------------------------------------------------- composite drivers
 
+  /// @brief Activate the node and wait for the 1 Hz timer to load the stub map.
+  ///
+  /// This is what makes the scan-matching hot path reachable *without* `ndt_align_srv`, and
+  /// therefore without constructing a `TreeStructuredParzenEstimator`, whose RNG engine is a
+  /// process-global `std::mt19937_64` seeded once. `should_update_map` returns true unconditionally
+  /// while `last_update_position_` is unset, so one initial pose is enough to make the timer load.
+  bool ensure_map_loaded(const std::chrono::nanoseconds timeout = 30s)
+  {
+    const auto activated = activate(timeout);
+    if (!activated.has_value() || !activated.value()) {
+      return false;
+    }
+    publish_initial_pose(make_pose_at(now(), map_center_x, map_center_y));
+    return wait_for_diag(
+             map_update_status,
+             [](const Record & record) { return record.value("is_updated_map") == "True"; },
+             timeout)
+      .has_value();
+  }
+
   /// @brief Publish one scan, with optional bracketing initial poses, and return the
   /// `scan_matching_status` record it produced.
   ///
@@ -361,10 +413,11 @@ public:
 
       if (drive.initial_pose.has_value()) {
         const auto & spec = drive.initial_pose.value();
-        const auto older =
-          make_pose_at(target - rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id);
-        const auto newer =
-          make_pose_at(target + rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id);
+        const auto older = make_pose_at(
+          target - rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id, spec.old_variance_xy);
+        const auto newer = make_pose_at(
+          target + rclcpp::Duration(100ms), spec.x + spec.delta_x, spec.y, spec.frame_id,
+          spec.new_variance_xy);
         if (!publish_initial_pose_and_confirm(older) || !publish_initial_pose_and_confirm(newer)) {
           continue;
         }
@@ -385,13 +438,31 @@ public:
         if (lost_tf_race) {
           continue;
         }
-        return ScanOutcome{target, record.value()};
+        return ScanOutcome{target, record.value(), attempt};
       }
     }
     return std::nullopt;
   }
 
 private:
+  /// @brief Call `trigger_node_srv` with `enable`. Returns `success`, or nullopt on timeout.
+  std::optional<bool> set_activation(const bool enable, const std::chrono::nanoseconds timeout)
+  {
+    if (!trigger_client_->wait_for_service(5s)) {
+      return std::nullopt;
+    }
+    auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
+    request->data = enable;
+    auto future = trigger_client_->async_send_request(request);
+    if (!wait_until([&] { return future.wait_for(0s) == std::future_status::ready; }, timeout)) {
+      // Otherwise the request stays pending on the client, and a late reply can be matched against
+      // the next call. This harness calls the service more than once per node.
+      trigger_client_->remove_pending_request(future);
+      return std::nullopt;
+    }
+    return future.get()->success;
+  }
+
   /// @brief Block until `executor` has actually entered `spin()`.
   ///
   /// `Executor::cancel()` clears the same `spinning` flag that `spin()` sets on entry, so a cancel

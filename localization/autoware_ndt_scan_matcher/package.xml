@@ -24,6 +24,7 @@
   <depend>autoware_utils_logging</depend>
   <depend>autoware_utils_pcl</depend>
   <depend>autoware_utils_visualization</depend>
+  <depend>builtin_interfaces</depend>
   <depend>diagnostic_msgs</depend>
   <depend>fmt</depend>
   <depend>geometry_msgs</depend>
@@ -49,6 +50,7 @@
   <test_depend>launch_testing_ament_cmake</test_depend>
   <test_depend>rcl_yaml_param_parser</test_depend>
   <test_depend>ros_testing</test_depend>
+  <test_depend>tf2_msgs</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

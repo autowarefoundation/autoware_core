@@ -101,7 +101,7 @@ if(BUILD_TESTING)
   )
   target_link_libraries(test_ndt_scan_matcher_characteristics ${PROJECT_NAME})
   ament_target_dependencies(test_ndt_scan_matcher_characteristics
-    ament_index_cpp rcl_yaml_param_parser)
+    ament_index_cpp rcl_yaml_param_parser tf2_msgs)
 
   # Fast, dependency-light unit tests for the pure covariance / oscillation math.
   ament_auto_add_gtest(test_estimate_covariance

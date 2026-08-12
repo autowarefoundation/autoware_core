@@ -34,16 +34,53 @@
 ///
 /// One binary, one node per test: each test builds its own `NdtHarness`, whose destructor tears
 /// the node down in a specific order. Tests never call `rclcpp::shutdown()`.
+///
+/// **Run this through ctest, not by invoking the binary.** `ament_add_ros_isolated_gtest` hands the
+/// target an unused `ROS_DOMAIN_ID`; run directly, it lands on the default domain and shares topic
+/// and service names with anything else there. Two concurrent instances are enough: the
+/// `count() == 1` assertions see the other instance's publications, and its
+/// `/ekf_pose_with_covariance` and `/trigger_node_srv` traffic drives this instance's node, so
+/// interpolation and map state come out wrong. Measured across two- and four-way runs, anywhere
+/// from a few to sixteen assertions fail per process, varying widely between runs — and every one
+/// of them reads like a defect in the node. A node built from patched sources on the same domain
+/// can break the absence assertions too, so a mutation experiment running next door is enough —
+/// though only some runs get that far, because the level assertion ahead of them aborts the body
+/// first. Debugging a single case directly is fine; set `ROS_DOMAIN_ID` yourself first.
+///
+/// **The counter values in these comments assume declaration order.** `skipping_publish_num` is a
+/// function-local `static`, so one counter is shared by every node this binary builds, and the
+/// trajectory the cases below describe -- reaching 5 by
+/// `RejectedInitialPoseUpdatesNeitherBufferNorMapAnchor` -- is the one declaration order produces.
+/// `--gtest_shuffle` and `--gtest_repeat` change it, and `--gtest_filter` to a subset drops the
+/// cases that reset it, so those numbers stop describing what happens.
+///
+/// Shuffling has been measured to pass, over a dozen seeds. What survives it is the assertions:
+/// reaching the shipped threshold of 5 appends an "exceed limit" WARN, and nothing here compares a
+/// whole message or expects OK from a case that already warns. So this is a note about which
+/// numbers to trust while reading, and a latent hazard for whoever adds a case that does compare a
+/// whole message -- not a reason to avoid the flag.
 
 #include "harness/ndt_harness.hpp"
 #include "harness/stimulus.hpp"
 
+#include <builtin_interfaces/msg/time.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
+#include <autoware_internal_debug_msgs/msg/int32_stamped.hpp>
 #include <diagnostic_msgs/msg/diagnostic_status.hpp>
+#include <geometry_msgs/msg/pose_array.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
+#include <tf2_msgs/msg/tf_message.hpp>
+#include <visualization_msgs/msg/marker_array.hpp>
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
+#include <cmath>
+#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -56,11 +93,13 @@ namespace
 using ndt_test::InitialPoseSpec;
 using ndt_test::NdtHarness;
 using ndt_test::ScanDrive;
+using ndt_test::TopicCapture;
 
 using ndt_test::base_link_frame;
 using ndt_test::map_center_x;
 using ndt_test::map_center_y;
 using ndt_test::map_frame;
+using ndt_test::ndt_base_frame;
 
 using ndt_test::initial_pose_status;
 using ndt_test::map_update_status;
@@ -71,6 +110,12 @@ using ndt_test::make_empty_scan;
 using ndt_test::make_near_field_scan;
 using ndt_test::make_pose_at;
 
+using Float32Stamped = autoware_internal_debug_msgs::msg::Float32Stamped;
+using Int32Stamped = autoware_internal_debug_msgs::msg::Int32Stamped;
+
+using namespace std::chrono_literals;  // NOLINT(build/namespaces)
+
+constexpr int8_t level_ok = diagnostic_msgs::msg::DiagnosticStatus::OK;
 constexpr int8_t level_warn = diagnostic_msgs::msg::DiagnosticStatus::WARN;
 constexpr int8_t level_error = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
 
@@ -110,6 +155,96 @@ std::unique_ptr<NdtHarness> make_ready_harness(std::vector<rclcpp::Parameter> ov
 bool contains(const std::string & haystack, const std::string & needle)
 {
   return haystack.find(needle) != std::string::npos;
+}
+
+/// @brief Runs `action` on destruction, so cleanup happens on the failing paths too.
+///
+/// A failed `ASSERT_*` returns from the test body immediately, which would skip any cleanup written
+/// as ordinary trailing statements.
+///
+/// `action` runs inside a destructor, which is implicitly `noexcept`, so anything it lets escape
+/// would call `std::terminate`. Cleanup here reaches into rclcpp, which throws, and it runs exactly
+/// when a case has already failed — so an unguarded throw would take the gtest report down with it,
+/// which is the opposite of the point. Failures are reported instead.
+class ScopeExit
+{
+public:
+  explicit ScopeExit(std::function<void()> action) : action_(std::move(action)) {}
+  ~ScopeExit()
+  {
+    try {
+      action_();
+    } catch (const std::exception & e) {
+      ADD_FAILURE() << "cleanup threw: " << e.what();
+    } catch (...) {
+      ADD_FAILURE() << "cleanup threw a non-standard exception";
+    }
+  }
+  ScopeExit(const ScopeExit &) = delete;
+  ScopeExit & operator=(const ScopeExit &) = delete;
+  ScopeExit(ScopeExit &&) = delete;
+  ScopeExit & operator=(ScopeExit &&) = delete;
+
+private:
+  std::function<void()> action_;
+};
+
+/// @brief Deactivate the node and drive one more scan, which resets the skip counter.
+///
+/// `skipping_publish_num` is a function-local `static` shared by every node this binary builds, so
+/// a case that leaves it advanced hands the next one a value it does not expect. The
+/// `!is_activated_` branch is one of the counter's two resets, and driving a scan through it both
+/// pins that branch and leaves the counter clean. Called from a `ScopeExit` so a failed assertion
+/// cannot skip it.
+///
+/// `ADD_FAILURE` plus an explicit return rather than `ASSERT_*`, because `ASSERT_*` compiles only
+/// in a function returning void and this is called from a lambda that may not stay one.
+void reset_skip_counter_via_deactivation(NdtHarness & harness)
+{
+  if (harness.deactivate() != std::optional<bool>(true)) {
+    ADD_FAILURE() << "could not deactivate the node to reset the skip counter";
+    return;
+  }
+  // No initial pose: the activation gate rejects the scan before one would matter.
+  ScanDrive reset_drive;
+  const auto reset_outcome = harness.drive_one_scan(reset_drive);
+  if (!reset_outcome.has_value()) {
+    ADD_FAILURE() << "the deactivated scan produced no scan_matching_status";
+    return;
+  }
+  EXPECT_EQ(reset_outcome->diag.value("skipping_publish_num"), "0")
+    << "deactivating no longer resets the skip counter";
+}
+
+/// @brief Wait until each capture has matched the node's publisher.
+///
+/// Only needed for the captures an absence assertion reads. For the ones a test expects to receive,
+/// arrival is itself proof that discovery finished; for "this was never published", nothing else
+/// distinguishes a silent node from a subscription that had not matched yet. This is the same gate
+/// `wait_for_diagnostics_ready` applies to `/diagnostics`, which the suite already treats as
+/// mandatory.
+template <typename... Captures>
+bool wait_for_capture_discovery(NdtHarness & harness, const Captures &... captures)
+{
+  return harness.wait_until([&] { return (... && (captures->publisher_count() >= 1)); }, 10s);
+}
+
+/// @brief Did the node broadcast `map -> ndt_base_link` on `/tf`?
+///
+/// `/tf` is read as raw `TFMessage` rather than through a `tf2_ros::Buffer` because the question is
+/// whether a message was *sent*, which a buffer's time-based lookup would obscure.
+bool has_ndt_base_link_transform(const TopicCapture<tf2_msgs::msg::TFMessage> & capture)
+{
+  for (const auto & message : capture.messages()) {
+    const bool found =
+      std::any_of(message.transforms.begin(), message.transforms.end(), [](const auto & transform) {
+        return transform.child_frame_id == ndt_base_frame && transform.header.frame_id == map_frame;
+      });
+    if (found) {
+      return true;
+    }
+  }
+  return false;
 }
 
 // ---------------------------------------------------------------------------------------------
@@ -510,6 +645,528 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
   EXPECT_EQ(diag->value("is_set_last_update_position"), "False");
   EXPECT_EQ(diag->level(), level_warn);
 }
+
+// ---------------------------------------------------------------------------------------------
+// The converged hot path. Reached via the 1 Hz map-update timer, not `ndt_align_srv`, so no
+// `TreeStructuredParzenEstimator` is constructed and the process-global RNG stays untouched.
+// ---------------------------------------------------------------------------------------------
+
+/// The diagonal of `covariance.output_pose_covariance`, which the covariance case reads back.
+constexpr double param_variance_xyz = 0.0225;
+constexpr double param_variance_angular = 0.000625;
+
+/// @brief The shipped `output_pose_covariance`, rebuilt from the two constants above.
+///
+/// Pinned rather than trusted so that the numbers the covariance case asserts are *definitions*
+/// instead of a copy of the yaml that a config change could silently invalidate.
+std::vector<double> output_pose_covariance()
+{
+  std::vector<double> covariance(36, 0.0);
+  covariance[0] = covariance[7] = covariance[14] = param_variance_xyz;
+  covariance[21] = covariance[28] = covariance[35] = param_variance_angular;
+  return covariance;
+}
+
+/// @brief Overrides that make a converged scan deterministic.
+///
+/// Every one of these is pinned even where it matches the shipped yaml, so that a config change
+/// cannot silently move a test into a different branch. The two large tolerances neutralize the
+/// timing- and geometry-dependent WARNs so that `level == OK` is stable under CI load; the huge
+/// `skipping_publish_num` keeps the process-global skip counter (a function-local `static`, shared
+/// across the nodes this binary builds) from ever tripping its WARN.
+std::vector<rclcpp::Parameter> converged_hot_path_overrides()
+{
+  return {
+    rclcpp::Parameter("ndt.num_threads", 1),  // removes OpenMP reduction nondeterminism
+    rclcpp::Parameter("ndt.max_iterations", 30),
+    // The three that decide whether this scene converges at all, and by how much. The measured NVTL
+    // is about 3.2 against the 2.3 threshold below, so the margin is under one point and
+    // `ndt.resolution` is what moves it most. Left unpinned, a resolution change would fail three
+    // cases at once with "scan did not converge", which points at the node rather than the config.
+    rclcpp::Parameter("ndt.resolution", 2.0),
+    rclcpp::Parameter("ndt.step_size", 0.1),
+    rclcpp::Parameter("ndt.trans_epsilon", 0.01),
+    // All three frames, because assertions read all three. `ndt_base_frame` and `map_frame` are the
+    // child and parent `has_ndt_base_link_transform` matches on, and `map_frame` is also the
+    // `header.frame_id` the converged case pins on `/ndt_pose`; `base_frame` is the target the
+    // harness's static `base_link -> sensor_frame` transform has to name for a scan to transform at
+    // all.
+    rclcpp::Parameter("frame.ndt_base_frame", ndt_base_frame),
+    rclcpp::Parameter("frame.map_frame", map_frame),
+    rclcpp::Parameter("frame.base_frame", base_frame),
+    rclcpp::Parameter("score_estimation.converged_param_type", 1),  // NVTL
+    rclcpp::Parameter(
+      "score_estimation.converged_param_nearest_voxel_transformation_likelihood", 2.3),
+    rclcpp::Parameter("score_estimation.no_ground_points.enable", false),
+    rclcpp::Parameter("covariance.output_pose_covariance", output_pose_covariance()),
+    rclcpp::Parameter("covariance.covariance_estimation.covariance_estimation_type", 0),
+    rclcpp::Parameter("validation.critical_upper_bound_exe_time_ms", 1.0e9),
+    rclcpp::Parameter("validation.initial_to_result_distance_tolerance_m", 1.0e9),
+    rclcpp::Parameter("validation.skipping_publish_num", 1000000),
+    // The three groups below are pinned by the same argument as `ndt.resolution`: `level == OK`
+    // depends on them, and a config change would abort or warn somewhere far from the cause.
+    //
+    // Both sensor-points gates run ahead of everything else, and either rejects or warns before
+    // alignment. `required_distance` is geometry -- a 28.3 m cloud against 10 m -- so it is pinned
+    // at the shipped value. `timeout_sec` is wall clock, and the delay it measures includes the two
+    // blocking initial-pose round-trips `drive_one_scan` makes after taking the scan stamp, so CI
+    // load lands on it directly. It is relaxed rather than pinned, for the same reason
+    // `critical_upper_bound_exe_time_ms` is: the latency WARN is not this case's subject.
+    // `StaleScanWarnsButProcessingContinues` pins it with its own override.
+    rclcpp::Parameter("sensor_points.timeout_sec", 1.0e9),
+    rclcpp::Parameter("sensor_points.required_distance", 10.0),
+    // The bracketing poses `drive_one_scan` sends sit +/-100 ms around the scan stamp and up to
+    // `delta_x` apart, so both of these have to hold for interpolation to succeed.
+    rclcpp::Parameter("validation.initial_pose_timeout_sec", 1.0),
+    rclcpp::Parameter("validation.initial_pose_distance_tolerance_m", 10.0),
+    // The map-range check appends a WARN once the lidar radius reaches past the loaded radius, and
+    // `update_distance` decides whether moving `delta_x` triggers a second map load -- which would
+    // reset `ndt_ptr` mid-case.
+    rclcpp::Parameter("dynamic_map_loading.map_radius", 150.0),
+    rclcpp::Parameter("dynamic_map_loading.lidar_radius", 100.0),
+    rclcpp::Parameter("dynamic_map_loading.update_distance", 20.0),
+    // Enabling regularization would put `add_regularization_pose` into the hot path, where it
+    // interpolates a second buffer that nothing here feeds -- one more branch between the stimulus
+    // and the publishes, taken for reasons this suite does not control.
+    //
+    // It also adds a sixth `/diagnostics` publisher. That does not break
+    // `wait_for_diagnostics_ready`, which tests `publisher_count() >= expected_publishers`; it just
+    // lets the gate return with five of the six matched, which is weaker than the exact count the
+    // rest of the suite relies on.
+    rclcpp::Parameter("ndt.regularization.enable", false),
+  };
+}
+
+/// What the node records about its own reasoning: nineteen keys, these names.
+///
+/// This is the one thing a converged scan reports that no other test observes. An extraction that
+/// groups the decisions into a result struct can drop or rename one of them and stay green
+/// everywhere else.
+///
+/// Insertion order is deliberately *not* asserted. Nothing consumes it -- the aggregator matches on
+/// `status.name` and copies `values` through untouched, and no other package names these keys -- so
+/// the only change it would catch is a regrouping that harms no one, while the hazards that really
+/// are order-sensitive (`*_before` reading the previous scan, `skipping_publish_num` updating a
+/// static) corrupt values rather than key positions. The literal below is still written in
+/// insertion order, because that is how the callback reads.
+TEST(NdtScanMatcherCharacteristics, ScanMatchingStatusEmitsExactlyTheseNineteenKeys)
+{
+  // Arrange
+  auto harness = make_ready_harness(converged_hot_path_overrides());
+  ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  const std::vector<std::string> expected_keys{
+    "topic_time_stamp",
+    "sensor_points_size",
+    "sensor_points_delay_time_sec",
+    "is_succeed_transform_sensor_points",
+    "sensor_points_max_distance",
+    "is_activated",
+    "is_succeed_interpolate_initial_pose",
+    "is_set_map_points",
+    "iteration_num",
+    "local_optimal_solution_oscillation_num",
+    "transform_probability",
+    "nearest_voxel_transformation_likelihood",
+    "transform_probability_diff",
+    "transform_probability_before",
+    "nearest_voxel_transformation_likelihood_diff",
+    "nearest_voxel_transformation_likelihood_before",
+    "distance_initial_to_result",
+    "execution_time",
+    "skipping_publish_num",
+  };
+  // Sorted before comparing, so the count is still pinned and only the positions are free. It does
+  // not also pin "no duplicates": `add_key_value` overwrites an existing key rather than appending,
+  // so a repeated key cannot reach the array in the first place.
+  auto sorted = [](std::vector<std::string> keys) {
+    std::sort(keys.begin(), keys.end());
+    return keys;
+  };
+  EXPECT_EQ(sorted(diag.keys_in_order()), sorted(expected_keys));
+
+  // Neither the message nor the hardware id is asserted, because neither could fail here.
+  // `create_diagnostics_array` rewrites the message to "OK" whenever the level is OK, and
+  // `DiagnosticsInterface` builds `name` as `get_name() + ": " + diagnostic_name` alongside
+  // `hardware_id = get_name()` — so a record found under `scan_matching_status` can only carry
+  // "ndt_scan_matcher". Both would be testing `autoware_utils_diagnostics`, not this node.
+  EXPECT_EQ(diag.level(), level_ok) << "message was: " << diag.message();
+}
+
+/// The node's whole output surface for one converged scan.
+///
+/// The "absent" half carries most of the value, and its two halves are not equal.
+/// `score_estimation.no_ground_points.enable` withholds three topics and is the one conditional
+/// here nothing else reaches: forcing it true fails this case.
+///
+/// The two `multi_*` assertions are weaker. They pin "at FIXED_VALUE the multi-search arrays stay
+/// silent", not the `!= FIXED_VALUE` gate: measured, removing that gate keeps every case green,
+/// because `estimate_covariance` then falls to its final `else`, and only MULTI_NDT and
+/// MULTI_NDT_SCORE publish those arrays. Catching the gate needs a case that selects one of them.
+///
+/// `voxel_score_points` is deliberately not captured. The node only publishes it when its
+/// publisher already has a subscriber, so subscribing in order to assert absence would create the
+/// very condition being tested.
+TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose)
+{
+  // Arrange
+  auto harness = make_ready_harness(converged_hot_path_overrides());
+
+  // Captures must exist before the stimulus, or the absence assertions prove nothing.
+  auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
+  auto ndt_pose_with_cov =
+    harness->capture<geometry_msgs::msg::PoseWithCovarianceStamped>("/ndt_pose_with_covariance");
+  auto initial_pose_with_cov = harness->capture<geometry_msgs::msg::PoseWithCovarianceStamped>(
+    "/initial_pose_with_covariance");
+  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
+  auto exe_time = harness->capture<Float32Stamped>("/exe_time_ms");
+  auto transform_probability = harness->capture<Float32Stamped>("/transform_probability");
+  auto nvtl = harness->capture<Float32Stamped>("/nearest_voxel_transformation_likelihood");
+  auto iteration_num = harness->capture<Int32Stamped>("/iteration_num");
+  auto ndt_marker = harness->capture<visualization_msgs::msg::MarkerArray>("/ndt_marker");
+  auto relative_pose =
+    harness->capture<geometry_msgs::msg::PoseStamped>("/initial_to_result_relative_pose");
+  auto distance = harness->capture<Float32Stamped>("/initial_to_result_distance");
+  auto distance_old = harness->capture<Float32Stamped>("/initial_to_result_distance_old");
+  auto distance_new = harness->capture<Float32Stamped>("/initial_to_result_distance_new");
+  auto tf = harness->capture<tf2_msgs::msg::TFMessage>("/tf");
+
+  auto no_ground_points =
+    harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned_no_ground");
+  auto no_ground_tp = harness->capture<Float32Stamped>("/no_ground_transform_probability");
+  auto no_ground_nvtl =
+    harness->capture<Float32Stamped>("/no_ground_nearest_voxel_transformation_likelihood");
+  auto multi_ndt_pose = harness->capture<geometry_msgs::msg::PoseArray>("/multi_ndt_pose");
+  auto multi_initial_pose = harness->capture<geometry_msgs::msg::PoseArray>("/multi_initial_pose");
+
+  // The five captures the absence assertions read must have matched before the stimulus, or those
+  // assertions say nothing about the node.
+  ASSERT_TRUE(wait_for_capture_discovery(
+    *harness, no_ground_points, no_ground_tp, no_ground_nvtl, multi_ndt_pose, multi_initial_pose))
+    << "a capture never matched the node's publisher; the absence assertions would be vacuous";
+
+  ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  ASSERT_EQ(outcome->diag.level(), level_ok)
+    << "scan did not converge: " << outcome->diag.message();
+
+  // Every expected publication, not a couple of early ones: the observer is a separate node on a
+  // separate executor, so publish order inside the callback says nothing about arrival order, and
+  // waiting on TF and `ndt_pose` alone would leave the counts below racing the publisher.
+  //
+  // The absence assertions rest elsewhere -- on the discovery gate above, and on the diagnostics
+  // record `drive_one_scan` returned, which `scan_matching_status` publishes after
+  // `callback_sensor_points_main` returns, so every publish call for this scan has happened. That
+  // is not proof of delivery, since DDS orders nothing across writers; the guarantee is empirical,
+  // from forcing `no_ground_points.enable` true and watching this case fail.
+  ASSERT_TRUE(harness->wait_until(
+    [&] {
+      return ndt_pose->count() >= 1 && ndt_pose_with_cov->count() >= 1 &&
+             initial_pose_with_cov->count() >= 1 && exe_time->count() >= 1 &&
+             transform_probability->count() >= 1 && nvtl->count() >= 1 &&
+             iteration_num->count() >= 1 && ndt_marker->count() >= 1 &&
+             relative_pose->count() >= 1 && distance->count() >= 1 && distance_old->count() >= 1 &&
+             distance_new->count() >= 1 && tf->count() >= 1 && points_aligned->count() >= 1;
+    },
+    5s))
+    << "not every expected publication arrived";
+
+  // A retry inside `drive_one_scan` can drive alignment twice, which would make every count below
+  // read 2 as if the node had published twice. `attempt` is how a failure here says which happened.
+  //
+  // `attempts = 1` would rule it out and is deliberately not used: of the three retry paths only a
+  // lost `scan_matching_status` can follow a completed `align`, and that record travels a reliable
+  // `KeepAll` subscription while the scan itself goes into best-effort `SensorDataQoS`. Dropping
+  // the retry trades a rare double count for a common hard failure on a dropped scan.
+  EXPECT_EQ(ndt_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
+  EXPECT_EQ(ndt_pose_with_cov->count(), 1U);
+  EXPECT_EQ(initial_pose_with_cov->count(), 1U);
+  EXPECT_EQ(points_aligned->count(), 1U);
+  EXPECT_EQ(exe_time->count(), 1U);
+  EXPECT_EQ(transform_probability->count(), 1U);
+  EXPECT_EQ(nvtl->count(), 1U);
+  EXPECT_EQ(iteration_num->count(), 1U);
+  EXPECT_EQ(ndt_marker->count(), 1U);
+  EXPECT_EQ(relative_pose->count(), 1U);
+  EXPECT_EQ(distance->count(), 1U);
+  EXPECT_EQ(distance_old->count(), 1U);
+  EXPECT_EQ(distance_new->count(), 1U);
+
+  const auto published_pose = ndt_pose->first();
+  ASSERT_TRUE(published_pose.has_value());
+  EXPECT_EQ(published_pose->header.frame_id, map_frame);
+  // The retry hazard bites hardest here: `first()` is the earliest attempt's pose while
+  // `outcome->stamp` is the last attempt's window, so a retry makes this read as the node stamping
+  // its output wrongly. `attempt` separates the two readings.
+  EXPECT_EQ(published_pose->header.stamp, outcome->stamp)
+    << "scan drive attempt was " << outcome->attempt;
+
+  EXPECT_TRUE(has_ndt_base_link_transform(*tf))
+    << "map -> ndt_base_link was not broadcast for a converged scan";
+
+  EXPECT_EQ(no_ground_points->count(), 0U) << "no_ground scoring is disabled";
+  EXPECT_EQ(no_ground_tp->count(), 0U);
+  EXPECT_EQ(no_ground_nvtl->count(), 0U);
+  EXPECT_EQ(multi_ndt_pose->count(), 0U) << "covariance_estimation_type is FIXED_VALUE";
+  EXPECT_EQ(multi_initial_pose->count(), 0U);
+}
+
+/// SUSPICIOUS — a non-converged scan suppresses the pose but still broadcasts the TF.
+///
+/// `publish_tf` is called unconditionally while `publish_pose` gates on `is_converged` *inside*
+/// itself. Lifting that gate to the call site — the obvious cleanup — also gates the TF, and the
+/// vehicle then silently loses `map -> ndt_base_link` whenever NDT scores poorly. Moving the gate
+/// the other way feeds a bad pose to the EKF. Neither direction is caught by anything else.
+TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadcastsTf)
+{
+  // Arrange
+  auto overrides = converged_hot_path_overrides();
+  // Unreachable score threshold: convergence is forced to fail on the score, not on iterations.
+  overrides.emplace_back(
+    "score_estimation.converged_param_nearest_voxel_transformation_likelihood", 1.0e9);
+  auto harness = make_ready_harness(std::move(overrides));
+
+  auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
+  auto ndt_pose_with_cov =
+    harness->capture<geometry_msgs::msg::PoseWithCovarianceStamped>("/ndt_pose_with_covariance");
+  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
+  auto exe_time = harness->capture<Float32Stamped>("/exe_time_ms");
+  auto nvtl = harness->capture<Float32Stamped>("/nearest_voxel_transformation_likelihood");
+  auto iteration_num = harness->capture<Int32Stamped>("/iteration_num");
+  auto ndt_marker = harness->capture<visualization_msgs::msg::MarkerArray>("/ndt_marker");
+  auto distance = harness->capture<Float32Stamped>("/initial_to_result_distance");
+  auto tf = harness->capture<tf2_msgs::msg::TFMessage>("/tf");
+
+  // The two captures whose emptiness is the point of this case.
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, ndt_pose, ndt_pose_with_cov))
+    << "a capture never matched the node's publisher; the absence assertions would be vacuous";
+
+  ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
+
+  // Declared after the map is loaded on purpose: nothing above drives a scan, so the counter cannot
+  // have advanced yet, and a failure in `ensure_map_loaded` would otherwise bury its own cause
+  // under a pointless cleanup. This scan leaves the counter advanced, so the guard resets it
+  // through the
+  // `!is_activated_` branch -- which also pins that branch, since asserting `"0"` on a converged
+  // scan would pin nothing.
+  const ScopeExit reset_skip_counter([&] { reset_skip_counter_via_deactivation(*harness); });
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_EQ(diag.level(), level_warn);
+  EXPECT_TRUE(contains(diag.message(), "Score is below the threshold. Score: "))
+    << "message was: " << diag.message();
+
+  // Every expected publication, for the reason the converged case gives: publish *order* inside the
+  // callback says nothing about arrival order at a separate node on a separate executor. Waiting
+  // for `points_aligned` because it is published last would be relying on exactly the inference
+  // that case rejects — and a small `Float32Stamped` overtaking a 1,323-point cloud is the easy
+  // direction for that to go wrong.
+  ASSERT_TRUE(harness->wait_until(
+    [&] {
+      return points_aligned->count() >= 1 && tf->count() >= 1 && exe_time->count() >= 1 &&
+             nvtl->count() >= 1 && iteration_num->count() >= 1 && ndt_marker->count() >= 1 &&
+             distance->count() >= 1;
+    },
+    5s))
+    << "the alignment outputs never arrived";
+
+  // The alignment ran and everything else was published ...
+  EXPECT_EQ(points_aligned->count(), 1U) << "scan drive attempt was " << outcome->attempt;
+  EXPECT_EQ(exe_time->count(), 1U);
+  EXPECT_EQ(nvtl->count(), 1U);
+  EXPECT_EQ(iteration_num->count(), 1U);
+  EXPECT_EQ(ndt_marker->count(), 1U);
+  EXPECT_EQ(distance->count(), 1U);
+  // ... including the TF, which is not gated on convergence ...
+  EXPECT_TRUE(has_ndt_base_link_transform(*tf))
+    << "map -> ndt_base_link is now gated on convergence; downstream TF consumers would break";
+  // ... but the pose itself was withheld.
+  EXPECT_EQ(ndt_pose->count(), 0U) << "a non-converged pose reached ndt_pose";
+  EXPECT_EQ(ndt_pose_with_cov->count(), 0U)
+    << "a non-converged pose reached ndt_pose_with_covariance";
+
+  // The other half of the counter's contract: a scan rejected while the node is activated advances
+  // it. `reset_skip_counter` at the top of this case pins the reset, and cleans it up.
+  // `value_as_double` rather than comparing the string: `value()` returns "" for a missing key, and
+  // "" != "0" would pass if the key disappeared altogether. NaN fails this comparison.
+  EXPECT_GT(diag.value_as_double("skipping_publish_num"), 0.0)
+    << "a scan rejected while activated no longer advances the skip counter";
+}
+
+/// SUSPICIOUS — an estimated covariance overwrites exactly four of the thirty-six entries.
+///
+/// The published covariance is the *parameter* matrix rotated into the map frame, with only indices
+/// 0, 7, 1 and 6 replaced by the estimate. Those four hand-written indices beg to be folded into a
+/// loop, and the `[1] <- (1,0)` / `[6] <- (0,1)` pairing invites a transpose slip. Getting it wrong
+/// mis-weights NDT in the EKF forever and fires no diagnostic.
+///
+/// The untouched entries are exact for two separate reasons: `rotate_covariance` only rotates the
+/// 3x3 position block, so 21, 28 and 35 pass through verbatim, and that block is isotropic here, so
+/// rotating it is an identity operation and 14 does too.
+///
+/// `scale_factor` is far above 1 on purpose. `adjust_diagonal_covariance` floors the diagonal at
+/// the parameter variance, and at the default scale the estimate for this scene lands below it --
+/// the floor wins and "written" becomes indistinguishable from "never written". Measured, this
+/// scale puts the diagonal near 18: 800x the floor, 80x the bound below. A failure there means
+/// re-measuring, not relaxing the bound.
+///
+/// It does *not* pin the multiply-then-floor order: swapping them keeps every case green, because
+/// flooring first still gives `0.0225 * scale_factor`. Catching that needs an upper bound on a
+/// published variance, which is an NDT number.
+TEST(NdtScanMatcherCharacteristics, EstimatedCovarianceOverwritesOnlyFourOfThirtySixEntries)
+{
+  // Arrange
+  constexpr double scale_factor = 1.0e6;
+
+  auto overrides = converged_hot_path_overrides();
+  // LAPLACE_APPROXIMATION: an estimate that needs no extra alignments.
+  overrides.emplace_back("covariance.covariance_estimation.covariance_estimation_type", 1);
+  overrides.emplace_back("covariance.covariance_estimation.scale_factor", scale_factor);
+  auto harness = make_ready_harness(std::move(overrides));
+
+  auto ndt_pose_with_cov =
+    harness->capture<geometry_msgs::msg::PoseWithCovarianceStamped>("/ndt_pose_with_covariance");
+
+  ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  ASSERT_EQ(outcome->diag.level(), level_ok)
+    << "scan did not converge: " << outcome->diag.message();
+
+  ASSERT_TRUE(harness->wait_until([&] { return ndt_pose_with_cov->count() >= 1; }, 5s));
+  const auto published = ndt_pose_with_cov->first();
+  ASSERT_TRUE(published.has_value());
+  const auto & covariance = published->pose.covariance;
+
+  constexpr double tolerance = 1e-12;
+
+  // Untouched by both the rotation and the four-index overwrite.
+  EXPECT_NEAR(covariance[14], param_variance_xyz, tolerance) << "z variance was overwritten";
+  EXPECT_NEAR(covariance[21], param_variance_angular, tolerance) << "roll variance was overwritten";
+  EXPECT_NEAR(covariance[28], param_variance_angular, tolerance)
+    << "pitch variance was overwritten";
+  EXPECT_NEAR(covariance[35], param_variance_angular, tolerance) << "yaw variance was overwritten";
+
+  // Overwritten by the scaled estimate, which `scale_factor` puts well clear of the floor. If the
+  // estimation branch were skipped these would still read exactly `param_variance_xyz`.
+  EXPECT_GT(covariance[0], param_variance_xyz * 10.0)
+    << "the x variance still looks like the parameter value; was the estimate written at all?";
+  EXPECT_GT(covariance[7], param_variance_xyz * 10.0)
+    << "the y variance still looks like the parameter value; was the estimate written at all?";
+  // The magnitude first, because symmetry alone cannot see the mutation that a loop conversion
+  // actually produces: dropping *both* off-diagonal writes leaves the two entries equal, at the
+  // ~1e-27 dust the rotation leaves behind, and the sweep below skips indices 1 and 6. Measured for
+  // this scene the estimate is about -0.04, so this floor sits 21 orders of magnitude above the
+  // dust and 4 to 5 below the estimate -- clear of both, without asserting an NDT number.
+  EXPECT_GT(std::abs(covariance[1]), 1.0e-6) << "the xy cross terms were never written";
+  // Then symmetry, which catches one of the two writes being dropped. It cannot catch a
+  // transposition: the Laplace estimate is symmetric, so `(0,1)` and `(1,0)` are equal at the
+  // source. Only a unit test on the extracted function can feed it an asymmetric input.
+  EXPECT_NEAR(covariance[1], covariance[6], std::abs(covariance[1]) * 1e-9 + tolerance)
+    << "only one of covariance[1] / covariance[6] was written";
+
+  // Every other entry stays zero: the parameter matrix is diagonal and the estimate only reaches
+  // the four indices above.
+  for (size_t i = 0; i < 36; ++i) {
+    if (i == 0 || i == 1 || i == 6 || i == 7 || i == 14 || i == 21 || i == 28 || i == 35) {
+      continue;
+    }
+    EXPECT_NEAR(covariance[i], 0.0, 1e-12) << "unexpected non-zero at covariance[" << i << "]";
+  }
+}
+
+/// The published initial pose carries the *older* pose's covariance, never an interpolated one.
+///
+/// `SmartPoseBuffer::interpolate` interpolates the position and then assigns
+/// `old_pose.covariance` verbatim, with a comment saying so. Anyone reimplementing interpolation
+/// will interpolate the covariance too, because that is the obvious thing to do, and nothing else
+/// observes the difference.
+TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseCarriesOldPoseCovarianceNotInterpolated)
+{
+  // Arrange
+  auto harness = make_ready_harness(converged_hot_path_overrides());
+
+  auto initial_pose_with_cov = harness->capture<geometry_msgs::msg::PoseWithCovarianceStamped>(
+    "/initial_pose_with_covariance");
+
+  ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
+
+  // Neither value is `make_pose_at`'s default, which `ensure_map_loaded` above has already put into
+  // the buffer. Reusing the default here would let the assertion pass on the wrong pose's
+  // covariance.
+  constexpr double older_pose_variance = 0.09;
+  constexpr double newer_pose_variance = 4.0;
+  constexpr double newer_pose_delta_x = 2.0;
+
+  ScanDrive drive;
+  InitialPoseSpec spec;
+  spec.delta_x = newer_pose_delta_x;  // so the interpolated position differs from both endpoints
+  spec.old_variance_xy = older_pose_variance;
+  spec.new_variance_xy = newer_pose_variance;
+  drive.initial_pose = spec;
+
+  // Act
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  ASSERT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "True");
+  // Convergence is asserted even though this case is about the covariance, because the
+  // non-converged case's cleanup reasoning depends on it: every converged-path case except that one
+  // resets the process-global skip counter by matching successfully. Left implicit, this case could
+  // stop converging and start leaving the counter advanced without saying so.
+  ASSERT_EQ(outcome->diag.level(), level_ok)
+    << "scan did not converge: " << outcome->diag.message();
+
+  ASSERT_TRUE(harness->wait_until([&] { return initial_pose_with_cov->count() >= 1; }, 5s));
+  const auto published = initial_pose_with_cov->first();
+  ASSERT_TRUE(published.has_value());
+  const auto & interpolated = *published;
+
+  EXPECT_DOUBLE_EQ(interpolated.pose.covariance[0], older_pose_variance)
+    << "the covariance is now interpolated instead of copied from the older pose";
+  EXPECT_DOUBLE_EQ(interpolated.pose.covariance[7], older_pose_variance);
+
+  // The position *is* interpolated: the scan stamp sits exactly between the two poses.
+  EXPECT_GT(interpolated.pose.pose.position.x, map_center_x);
+  EXPECT_LT(interpolated.pose.pose.position.x, map_center_x + newer_pose_delta_x);
+  EXPECT_NEAR(interpolated.pose.pose.position.x, map_center_x + newer_pose_delta_x / 2.0, 1e-6);
+}
+
 }  // namespace
 
 int main(int argc, char ** argv)

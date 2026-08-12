@@ -35,6 +35,9 @@ namespace ndt_test
 inline constexpr const char * map_frame = "map";
 inline constexpr const char * base_link_frame = "base_link";
 inline constexpr const char * sensor_frame = "sensor_frame";
+/// The child frame the node broadcasts its result on. Matches `frame.ndt_base_frame`, which the
+/// converged cases pin explicitly.
+inline constexpr const char * ndt_base_frame = "ndt_base_link";
 
 /// @brief Diagnostic status names published by the node under test.
 inline constexpr const char * scan_matching_status = "ndt_scan_matcher: scan_matching_status";
@@ -164,10 +167,15 @@ inline sensor_msgs::msg::PointCloud2 make_near_field_scan(
   return cloud;
 }
 
-/// @brief An EKF-like pose, with the covariance `align_pose` samples its search from.
+/// @brief An EKF-like initial pose, with an isotropic xy variance.
+///
+/// `variance_xy` reaches two different consumers. `SmartPoseBuffer::interpolate` copies the *older*
+/// pose's covariance into its result verbatim, so a pair with differing values makes that choice
+/// observable; and `align_pose` takes the square roots of the covariance diagonal as the standard
+/// deviations of its initial-pose search, so the value decides how widely `ndt_align_srv` searches.
 inline geometry_msgs::msg::PoseWithCovarianceStamped make_pose_at(
   const builtin_interfaces::msg::Time & stamp, const double x, const double y,
-  const std::string & frame_id = map_frame)
+  const std::string & frame_id = map_frame, const double variance_xy = 0.25)
 {
   geometry_msgs::msg::PoseWithCovarianceStamped pose{};
   pose.header.stamp = stamp;
@@ -176,8 +184,8 @@ inline geometry_msgs::msg::PoseWithCovarianceStamped make_pose_at(
   pose.pose.pose.position.y = y;
   pose.pose.pose.position.z = 0.0;
   pose.pose.pose.orientation.w = 1.0;
-  pose.pose.covariance[0] = 0.25;
-  pose.pose.covariance[7] = 0.25;
+  pose.pose.covariance[0] = variance_xy;
+  pose.pose.covariance[7] = variance_xy;
   pose.pose.covariance[14] = 0.0025;
   pose.pose.covariance[21] = 0.0006853891909122467;
   pose.pose.covariance[28] = 0.0006853891909122467;
