@@ -15,14 +15,99 @@
 #ifndef GYRO_ODOMETER_HPP_
 #define GYRO_ODOMETER_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
+#include <autoware_utils_tf/transform_listener.hpp>
+#include <rclcpp/time.hpp>
+
+#include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
 #include <array>
+#include <cstdint>
 #include <deque>
+#include <optional>
+#include <string>
+#include <tuple>
 
 namespace autoware::gyro_odometer
 {
+
+using TransformListener = autoware_utils_tf::TransformListenerT<
+  autoware::agnocast_wrapper::Node, autoware::agnocast_wrapper::Buffer,
+  autoware::agnocast_wrapper::TransformListener>;
+
+/// \brief Queue-and-fuse logic of the gyro odometer, independent of ROS communication.
+///
+/// Messages are fed in through input_vehicle_twist() / input_imu(), each of which returns the fused
+/// output at the moment a fusion completes. The current time and the transform listener used for
+/// the IMU-to-output-frame lookup are both supplied by the caller through those calls, so this
+/// class holds no clock state and does not own the listener.
+class GyroOdometer
+{
+public:
+  /// \brief The four twist messages a successful fusion produces: raw fused twist, raw fused twist
+  /// with covariance, stop-compensated twist, and stop-compensated twist with covariance,
+  /// respectively.
+  using OutputData = std::tuple<
+    geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped,
+    geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped>;
+
+  /// \brief Snapshot of the internal state that the caller reports as diagnostics.
+  ///
+  /// The queue sizes are the values observed during the most recent fusion attempt, not a live
+  /// read: a successful fusion empties both queues immediately, so a live read would almost always
+  /// be 0.
+  struct Status
+  {
+    bool vehicle_twist_arrived{false};
+    bool imu_arrived{false};
+    bool is_succeed_transform_imu{false};
+    double latest_vehicle_twist_dt{0.0};
+    double latest_imu_dt{0.0};
+    rclcpp::Time latest_vehicle_twist_ros_time;
+    rclcpp::Time latest_imu_ros_time;
+    int32_t vehicle_twist_queue_size{0};
+    int32_t imu_queue_size{0};
+  };
+
+  /// \brief Queue \p vehicle_twist_msg and attempt a fusion.
+  /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
+  std::optional<OutputData> input_vehicle_twist(
+    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
+    rclcpp::Time current_time, double message_timeout_sec, TransformListener & transform_listener,
+    const std::string & output_frame);
+
+  /// \brief Queue \p imu_msg and attempt a fusion.
+  /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
+  std::optional<OutputData> input_imu(
+    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
+    TransformListener & transform_listener, const std::string & output_frame);
+
+  /// \brief Read the current state for diagnostics reporting.
+  Status take_status() const;
+
+private:
+  std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
+    rclcpp::Time current_time, double message_timeout_sec, TransformListener & transform_listener,
+    const std::string & output_frame);
+
+  static OutputData make_output(
+    const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
+
+  bool vehicle_twist_arrived_{false};
+  bool imu_arrived_{false};
+  bool is_succeed_transform_imu_{false};
+  rclcpp::Time latest_vehicle_twist_ros_time_;
+  rclcpp::Time latest_imu_ros_time_;
+  double latest_vehicle_twist_dt_{0.0};
+  double latest_imu_dt_{0.0};
+  int32_t latest_vehicle_twist_queue_size_{0};
+  int32_t latest_imu_queue_size_{0};
+  std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
+  std::deque<sensor_msgs::msg::Imu> gyro_queue_;
+};
 
 /// \brief Reduce an angular-velocity covariance (xyz layout) to an isotropic diagonal covariance.
 ///
