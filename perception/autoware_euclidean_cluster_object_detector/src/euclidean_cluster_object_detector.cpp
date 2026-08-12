@@ -191,22 +191,15 @@ VoxelGridBasedEuclideanClusterDetector::cluster_voxel_grid(
   ec.extract(cluster_indices);
 
   // 4. Create map to search cluster index from voxel grid index
+  // `centroid_idx` is the value that `getCentroidIndexAt()` returns for the raw points in
+  // step 5, so the loop uses it as the map key. Do not recompute the key from the centroid
+  // coordinates. Float rounding at cell boundaries then loses points.
   std::unordered_map<int, size_t> voxel_to_cluster_map;
   voxel_to_cluster_map.reserve(voxel_centroids->points.size());
 
   for (size_t cluster_id = 0; cluster_id < cluster_indices.size(); ++cluster_id) {
     for (const auto & centroid_idx : cluster_indices[cluster_id].indices) {
-      const auto & p = voxel_centroids->points[centroid_idx];
-
-// Temporarily disable array-bounds warning for this specific PCL function call
-// This is a known issue with PCL 1.14 and GCC 13 due to Eigen alignment
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warray-bounds"
-      int voxel_1d_idx =
-        voxel_grid.getCentroidIndexAt(voxel_grid.getGridCoordinates(p.x, p.y, p.z));
-#pragma GCC diagnostic pop
-
-      voxel_to_cluster_map[voxel_1d_idx] = cluster_id;
+      voxel_to_cluster_map[centroid_idx] = cluster_id;
     }
   }
 

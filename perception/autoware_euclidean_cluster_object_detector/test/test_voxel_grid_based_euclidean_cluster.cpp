@@ -144,6 +144,48 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
   EXPECT_EQ(result.cluster_message.objects.size(), 0);
 }
 
+// Regression test: points that sit exactly on a voxel boundary must stay in their cluster.
+// All 100 points form one cluster with more points than max_cluster_size, so the detector must
+// reject it and return 0 objects. The centroid of the boundary voxel is a float mean. When the
+// boundary voxel holds 6 identical points at x = 0.3, the mean rounds to 0.29999998f, one float
+// step under the 0.3f boundary. A detector that drops these boundary points shrinks the cluster
+// to fewer points than max_cluster_size and wrongly accepts it.
+TEST(VoxelGridBasedEuclideanClusterTest, BoundaryVoxelPointsAreNotDropped)
+{
+  constexpr int nb_points = 100;
+  constexpr int nb_boundary_points = 6;
+
+  sensor_msgs::msg::PointCloud2 pointcloud;
+  pointcloud.header.frame_id = "dummy_frame_id";
+  sensor_msgs::PointCloud2Modifier modifier(pointcloud);
+  modifier.setPointCloud2FieldsByString(1, "xyz");
+  modifier.resize(nb_points);
+
+  sensor_msgs::PointCloud2Iterator<float> iter_x(pointcloud, "x");
+  sensor_msgs::PointCloud2Iterator<float> iter_y(pointcloud, "y");
+  sensor_msgs::PointCloud2Iterator<float> iter_z(pointcloud, "z");
+  for (int i = 0; i < nb_points; ++i, ++iter_x, ++iter_y, ++iter_z) {
+    *iter_x = i < nb_boundary_points ? 0.3f : 0.1f;
+    *iter_y = 0.1f;
+    *iter_z = 0.0f;
+  }
+
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = false;
+  param.min_cluster_size = 1;
+  param.max_cluster_size = nb_points - 1;
+  param.tolerance = 0.7f;
+  param.voxel_leaf_size = 0.3f;
+  param.min_points_number_per_voxel = 1;
+
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
+  auto result = cluster.cluster(pointcloud);
+
+  // all points form one cluster that exceeds max_cluster_size, so it must be rejected
+  EXPECT_EQ(result.cluster_message.objects.size(), 0);
+  EXPECT_EQ(result.skipped_cluster_count, 1);
+}
+
 // Helper function: Generate a point cloud with multiple clusters
 sensor_msgs::msg::PointCloud2 generateMultiClusterPointCloud(
   int point_per_cluster, int num_clusters)
