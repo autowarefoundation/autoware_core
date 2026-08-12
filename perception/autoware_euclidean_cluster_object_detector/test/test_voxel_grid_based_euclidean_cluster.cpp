@@ -165,6 +165,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, BoundaryVoxelPointsAreNotDropped)
   sensor_msgs::PointCloud2Iterator<float> iter_y(pointcloud, "y");
   sensor_msgs::PointCloud2Iterator<float> iter_z(pointcloud, "z");
   for (int i = 0; i < nb_points; ++i, ++iter_x, ++iter_y, ++iter_z) {
+    // put the first `nb_boundary_points` points exactly on the voxel boundary at x = 0.3
     *iter_x = i < nb_boundary_points ? 0.3f : 0.1f;
     *iter_y = 0.1f;
     *iter_z = 0.0f;
@@ -173,6 +174,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, BoundaryVoxelPointsAreNotDropped)
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
   param.min_cluster_size = 1;
+  // one point fewer than the cluster holds, so the cluster exceeds `max_cluster_size`
   param.max_cluster_size = nb_points - 1;
   param.tolerance = 0.7f;
   param.voxel_leaf_size = 0.3f;
