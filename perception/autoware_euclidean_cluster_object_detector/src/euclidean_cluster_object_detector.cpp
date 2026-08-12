@@ -190,7 +190,7 @@ VoxelGridBasedEuclideanClusterDetector::cluster_voxel_grid(
   ec.setInputCloud(flattened_centroids);
   ec.extract(cluster_indices);
 
-  // 4. Create map to search cluster index from voxel grid index
+  // 4. Create map from centroid index to cluster index
   // `centroid_idx` is the value that `getCentroidIndexAt()` returns for the raw points in
   // step 5, so the loop uses it as the map key. Do not recompute the key from the centroid
   // coordinates. Float rounding at cell boundaries then loses points.
