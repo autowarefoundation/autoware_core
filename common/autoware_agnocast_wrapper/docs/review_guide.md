@@ -840,7 +840,7 @@ ros2 launch autoware_launch ...
 
 - [agnocast::Node and rclcpp::Node Interface Comparison](https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_node_interface_comparison.md) - API differences between `agnocast::Node` and `rclcpp::Node`
 
-- [Agnocast Autoware Integration Guide](https://github.com/autowarefoundation/agnocast/blob/main/docs/autoware_integration.md) - Detailed documentation on integrating Agnocast into Autoware
+- [Agnocast Migration Guide](https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/) - Step-by-step guide for migrating ROS 2 nodes to Agnocast
 
 - [Agnocast message_filters Migration Guide](https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/message-filters/) - How to use Agnocast's message_filters
 

@@ -87,7 +87,6 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   map_ptr_(nullptr)
 {
   using std::placeholders::_1;
-  using std::placeholders::_2;
 
   // cppcheck-suppress useInitializationList
   map_frame_ = declare_parameter<std::string>("map_frame");
@@ -121,16 +120,13 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   pub_goal_footprint_marker_ = create_publisher<MarkerArray>("~/debug/goal_footprint", durable_qos);
 
   // NOTE: The route interface should be mutually exclusive by callback group.
-  srv_clear_route = create_service<ClearRouteSpecs::Service>(
-    "~/clear_route", std::bind(&MissionPlanner::on_clear_route, this, _1, _2));
-  srv_set_lanelet_route = create_service<SetLaneletRouteSpecs::Service>(
-    "~/set_lanelet_route", std::bind(&MissionPlanner::on_set_lanelet_route, this, _1, _2));
-  srv_set_waypoint_route = create_service<SetWaypointRouteSpecs::Service>(
-    "~/set_waypoint_route", std::bind(&MissionPlanner::on_set_waypoint_route, this, _1, _2));
-  pub_route_ = create_publisher<LaneletRouteSpecs::Message>(
-    "~/route", autoware::component_interface_specs::get_qos<LaneletRouteSpecs>());
-  pub_state_ = create_publisher<RouteStateSpecs::Message>(
-    "~/state", autoware::component_interface_specs::get_qos<RouteStateSpecs>());
+  srv_clear_route = adaptor_.create_service<ClearRouteSpecs>(this, &MissionPlanner::on_clear_route);
+  srv_set_lanelet_route =
+    adaptor_.create_service<SetLaneletRouteSpecs>(this, &MissionPlanner::on_set_lanelet_route);
+  srv_set_waypoint_route =
+    adaptor_.create_service<SetWaypointRouteSpecs>(this, &MissionPlanner::on_set_waypoint_route);
+  pub_route_ = adaptor_.create_publisher<LaneletRouteSpecs>();
+  pub_state_ = adaptor_.create_publisher<RouteStateSpecs>();
   on_change_state_ = [this](RouteState::_state_type state) {
     RouteState msg;
     msg.stamp = now();

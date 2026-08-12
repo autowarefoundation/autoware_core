@@ -20,6 +20,7 @@
 #include "reroute_safety.hpp"
 
 #include <autoware/component_interface_specs/planning.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
 #include <autoware/route_handler/route_handler.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
@@ -89,11 +90,14 @@ private:
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
 
-  rclcpp::Service<ClearRouteSpecs::Service>::SharedPtr srv_clear_route;
-  rclcpp::Service<SetLaneletRouteSpecs::Service>::SharedPtr srv_set_lanelet_route;
-  rclcpp::Service<SetWaypointRouteSpecs::Service>::SharedPtr srv_set_waypoint_route;
-  rclcpp::Publisher<RouteStateSpecs::Message>::SharedPtr pub_state_;
-  rclcpp::Publisher<LaneletRouteSpecs::Message>::SharedPtr pub_route_;
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
+  autoware::component_interface_utils::Service<ClearRouteSpecs>::SharedPtr srv_clear_route;
+  autoware::component_interface_utils::Service<SetLaneletRouteSpecs>::SharedPtr
+    srv_set_lanelet_route;
+  autoware::component_interface_utils::Service<SetWaypointRouteSpecs>::SharedPtr
+    srv_set_waypoint_route;
+  autoware::component_interface_utils::Publisher<RouteStateSpecs>::SharedPtr pub_state_;
+  autoware::component_interface_utils::Publisher<LaneletRouteSpecs>::SharedPtr pub_route_;
 
   rclcpp::Subscription<PoseWithUuidStamped>::SharedPtr sub_modified_goal_;
   rclcpp::Subscription<Odometry>::SharedPtr sub_odometry_;
