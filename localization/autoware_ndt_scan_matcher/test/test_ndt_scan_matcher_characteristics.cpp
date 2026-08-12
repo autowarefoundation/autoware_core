@@ -272,6 +272,11 @@ TEST(NdtScanMatcherCharacteristics, EmptyScanIsRejectedWithAWarning)
   EXPECT_EQ(diag.level(), level_warn);
   EXPECT_TRUE(contains(diag.message(), "Sensor points is empty."))
     << "message was: " << diag.message();
+  // And it stopped there. Without this the case pins only the warning, so dropping the gate's
+  // `return false;` and letting an empty cloud run on would keep it green -- measured.
+  // `sensor_points_delay_time_sec` is the next key the callback adds.
+  EXPECT_FALSE(diag.has_key("sensor_points_delay_time_sec"))
+    << "an empty cloud was processed past its gate";
 }
 
 /// SUSPICIOUS — the early return for a late scan is commented out on purpose.
@@ -392,6 +397,10 @@ TEST(NdtScanMatcherCharacteristics, SensorPointsAreStoredEvenWhileDeactivated)
   const auto outcome = harness->drive_one_scan(ScanDrive{});
   ASSERT_TRUE(outcome.has_value());
   ASSERT_EQ(outcome->diag.value("is_activated"), "False");
+  // The gate also stopped the callback: dropping its `return false;` lets a deactivated scan reach
+  // interpolation, which nothing else here would notice -- measured.
+  EXPECT_FALSE(outcome->diag.has_key("is_succeed_interpolate_initial_pose"))
+    << "a scan was processed past the activation gate";
 
   // Act
   ASSERT_EQ(harness->activate(), std::optional<bool>(true));
@@ -1079,6 +1088,48 @@ TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPos
   ASSERT_TRUE(harness->wait_until([&] { return points_aligned->count() >= 1; }, 5s))
     << "the alignment never ran";
   EXPECT_EQ(ndt_pose->count(), 0U) << "a pose that hit the iteration limit reached ndt_pose";
+}
+
+/// A converged scan resets the skip counter; that reset is a branch of its own.
+///
+/// `skipping_publish_num` is assigned `(is_succeed_scan_matching || !is_activated_) ? 0 : n + 1`.
+/// The deactivation arm is pinned by the two non-converging cases, which reset through it. Nothing
+/// pinned the success arm: an assertion that a converged scan reports "0" is unconditionally true
+/// while the arm exists, so it says nothing, and dropping the arm passed every other case --
+/// measured. What makes it observable is arriving at the converged scan with the counter already
+/// advanced.
+///
+/// The near-field scan is what advances it: rejected at the distance gate while the node is
+/// activated, which is the increment condition, and rejected deterministically rather than by
+/// timing.
+TEST(NdtScanMatcherCharacteristics, ConvergedScanResetsTheSkipCounter)
+{
+  // Arrange
+  auto harness = make_ready_harness(converged_hot_path_overrides());
+  ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
+
+  ScanDrive rejected;
+  rejected.initial_pose = InitialPoseSpec{};
+  rejected.make_cloud = [](const builtin_interfaces::msg::Time & stamp) {
+    return make_near_field_scan(stamp);
+  };
+  const auto advanced = harness->drive_one_scan(rejected);
+  ASSERT_TRUE(advanced.has_value());
+  ASSERT_GT(advanced->diag.value_as_double("skipping_publish_num"), 0.0)
+    << "the near-field scan did not advance the counter, so the reset below proves nothing";
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  ASSERT_EQ(outcome->diag.level(), level_ok)
+    << "scan did not converge: " << outcome->diag.message();
+  EXPECT_EQ(outcome->diag.value("skipping_publish_num"), "0")
+    << "a converged scan no longer resets the skip counter";
 }
 
 /// SUSPICIOUS — an estimated covariance overwrites exactly four of the thirty-six entries.
