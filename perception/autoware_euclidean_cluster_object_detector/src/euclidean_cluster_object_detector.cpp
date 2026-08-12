@@ -207,6 +207,8 @@ VoxelGridBasedEuclideanClusterDetector::cluster_voxel_grid(
   std::vector<pcl::PointCloud<pcl::PointXYZ>> temp_clusters(cluster_indices.size());
 
   for (const auto & point : input_cloud->points) {
+// Temporarily disable array-bounds warning for this specific PCL function call
+// This is a known issue with PCL 1.14 and GCC 13 due to Eigen alignment
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
     int voxel_1d_idx =
