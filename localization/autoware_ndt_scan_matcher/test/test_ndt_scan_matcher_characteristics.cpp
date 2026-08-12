@@ -1020,6 +1020,67 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
     << "a scan rejected while activated no longer advances the skip counter";
 }
 
+/// The other arm of `is_converged`'s `||`: hitting the iteration limit withholds the pose even when
+/// the score is fine.
+///
+/// `is_converged` is `(is_ok_iteration_num || is_local_optimal_solution_oscillation) &&
+/// is_ok_score`. The case above drives the `is_ok_score` half; without this one, rewriting the
+/// whole expression to `is_converged = is_ok_score` passes every case in the file, which is
+/// measured and was the state of this suite before this case existed. That rewrite is exactly what
+/// extracting the judgement into a helper invites.
+///
+/// `ndt.max_iterations: 1` is what makes the arm reachable through the node: the alignment reports
+/// one iteration, so `iteration_num < max_iterations` is false, while the geometry still scores
+/// above the threshold. `count_oscillation` needs three poses before it can even look at a
+/// reversal, so the oscillation arm stays false here.
+///
+/// The remaining combination -- oscillation rescuing a hit limit, two bad signals reading as
+/// converged -- needs eleven consecutive step reversals and is not reachable from this stimulus.
+/// Pinning it needs `decide_convergence` moved into `ndt_scan_matcher_helper`, where a truth table
+/// reaches it directly. That is the next step in the plan.
+TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPose)
+{
+  // Arrange
+  auto overrides = converged_hot_path_overrides();
+  overrides.emplace_back("ndt.max_iterations", 1);
+  auto harness = make_ready_harness(std::move(overrides));
+
+  auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
+  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
+
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, ndt_pose))
+    << "a capture never matched the node's publisher; the absence assertion would be vacuous";
+
+  ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
+
+  // Non-converging while activated, so this case advances the shared skip counter too.
+  const ScopeExit reset_skip_counter([&] { reset_skip_counter_via_deactivation(*harness); });
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  // The limit was reached, and it alone decided the outcome: the score arm is satisfied here.
+  EXPECT_EQ(diag.value("iteration_num"), "1");
+  EXPECT_EQ(diag.value("local_optimal_solution_oscillation_num"), "0");
+  EXPECT_EQ(diag.level(), level_warn);
+  EXPECT_TRUE(contains(diag.message(), "The number of iterations has reached its upper limit."))
+    << "message was: " << diag.message();
+  EXPECT_FALSE(contains(diag.message(), "Score is below the threshold."))
+    << "the score arm also failed, so this case no longer isolates the iteration arm: "
+    << diag.message();
+
+  ASSERT_TRUE(harness->wait_until([&] { return points_aligned->count() >= 1; }, 5s))
+    << "the alignment never ran";
+  EXPECT_EQ(ndt_pose->count(), 0U) << "a pose that hit the iteration limit reached ndt_pose";
+}
+
 /// SUSPICIOUS — an estimated covariance overwrites exactly four of the thirty-six entries.
 ///
 /// The published covariance is the *parameter* matrix rotated into the map frame, with only indices
