@@ -16,6 +16,7 @@
 #define INTERFACE_HPP_
 
 #include <autoware/adapi_specs/interface.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 namespace autoware::default_adapi
@@ -28,7 +29,8 @@ public:
 
 private:
   using Version = autoware::adapi_specs::interface::Version;
-  rclcpp::Service<Version::Service>::SharedPtr srv_;
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
+  autoware::component_interface_utils::Service<Version>::SharedPtr srv_;
 };
 
 }  // namespace autoware::default_adapi
