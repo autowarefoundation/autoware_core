@@ -189,17 +189,22 @@ protected:
     operation_mode_state_publisher_ = test_node_->create_publisher<OperationModeState>(
       "/mission_planner/input/operation_mode_state", durable_qos);
 
+    // NOTE: These four names are the component_interface_specs absolute names (not the node's
+    // own relative "~/..." names) because MissionPlanner creates these endpoints via
+    // NodeAdaptor, which always binds to the spec's absolute name regardless of node
+    // namespace/name. They must match autoware::component_interface_specs::planning exactly.
+    // The fifth migrated endpoint, clear_route, has no client in this test.
     route_subscription_ = test_node_->create_subscription<LaneletRoute>(
-      "/mission_planner/route", durable_qos,
+      "/planning/route", durable_qos,
       [this](const LaneletRoute::SharedPtr message) { received_route_ = message; });
     state_subscription_ = test_node_->create_subscription<RouteState>(
-      "/mission_planner/state", durable_qos,
+      "/planning/route_state", durable_qos,
       [this](const RouteState::SharedPtr message) { received_state_ = message; });
 
     set_lanelet_route_client_ =
-      test_node_->create_client<SetLaneletRoute>("/mission_planner/set_lanelet_route");
+      test_node_->create_client<SetLaneletRoute>("/planning/set_lanelet_route");
     set_waypoint_route_client_ =
-      test_node_->create_client<SetWaypointRoute>("/mission_planner/set_waypoint_route");
+      test_node_->create_client<SetWaypointRoute>("/planning/set_waypoint_route");
   }
 
   void initialize_mission_planner_node()
