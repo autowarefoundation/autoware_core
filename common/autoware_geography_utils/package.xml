@@ -16,10 +16,12 @@
 
   <depend>autoware_lanelet2_extension</depend>
   <depend>autoware_map_msgs</depend>
+  <depend>eigen</depend>
   <depend>geographic_msgs</depend>
   <depend>geographiclib</depend>
   <depend>geometry_msgs</depend>
   <depend>lanelet2_io</depend>
+  <depend>lanelet2_projection</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
