@@ -112,8 +112,18 @@ TEST(type_hashes, committed_lockfile_is_up_to_date)
   if (std::getenv("AUTOWARE_CIS_CHECK_TYPE_HASHES") == nullptr) {
     GTEST_SKIP() << "opt-in gate; set AUTOWARE_CIS_CHECK_TYPE_HASHES to enable";
   }
+  // The message states the DECISION the developer owes, not the remedy: a bare regeneration
+  // launders an unreviewed type change into the lockfile and defeats the whole gate.
   EXPECT_EQ(regenerate(), read_file(COMMITTED_HASHES))
-    << "interface_type_hashes.jazzy.lock is stale -- regenerate it, see README.md";
+    << "A registered type's RIHS01 hash no longer matches interface_type_hashes.jazzy.lock.\n"
+       "Do NOT regenerate the lockfile before deciding which of these happened:\n"
+       "  (1) You intentionally changed a registered type definition. Bump the affected "
+       "domain's version, then regenerate the lockfile in the SAME pull request.\n"
+       "  (2) You did not touch any type definition. Then the change arrived through a "
+       "message-repository dependency: find that upstream change, review whether it is "
+       "acceptable for this interface surface, and reference it in the pull request before "
+       "accepting the new hash.\n"
+       "See the \"When the freshness gate fails\" section of README.md.";
 }
 
 #else  // type-hash API unavailable (e.g. Humble)

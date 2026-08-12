@@ -119,7 +119,7 @@ The generator emits the same layout Prettier produces, so the committed file is 
 
 RIHS01 hashes exist only on ROS 2 Iron and newer, so the lockfile is Jazzy-specific and the generator's hash-emitting path is `#if __has_include(<rosidl_runtime_c/type_hash.h>)`-guarded — on Humble the tool is a no-op and the freshness test skips.
 
-Regenerate it (Jazzy only) after changing any registered spec or after an intentional upstream type change:
+Regenerate it (Jazzy only) once you have established that the type change behind the new hash is intentional and reviewed — see "When the freshness gate fails" below before running this:
 
 ```bash
 colcon build --symlink-install --packages-select autoware_component_interface_specs
@@ -128,5 +128,14 @@ colcon build --symlink-install --packages-select autoware_component_interface_sp
 ```
 
 `test_type_hashes.cpp` diffs the generator's output against the committed file, but only when `AUTOWARE_CIS_CHECK_TYPE_HASHES` is set — this repo's own GitHub Actions sets it, while the ROS build farm's devel jobs do not, so a dependency-version skew on the build farm can never turn those jobs red. The always-on `covers_every_manifest_type` test still guarantees the lockfile and `interface_manifest.json` describe the same set of types.
+
+### When the freshness gate fails
+
+A red `committed_lockfile_is_up_to_date` means a registered type's definition changed relative to the last state a reviewer approved. **Regenerating the lockfile is the last step, not the first** — a bare refresh launders an unreviewed type change into the committed file and leaves the gate with nothing to catch. Decide which case you are in:
+
+1. **You intentionally changed a registered type definition.** Bump the affected domain's version in its header, then regenerate the lockfile in the _same_ pull request. The version bump is what tells consumers the interface moved; the lockfile only records that it did.
+2. **You did not touch any type definition.** Then the change arrived through a message-repository dependency — most often `autoware_msgs`, or a type owned by `geometry_msgs` / `nav_msgs` / `autoware_adapi_v1_msgs`. Find the upstream commit that moved the hash, decide whether that change is acceptable for this interface surface, and reference it in the pull request. If it is not acceptable, the fix belongs upstream, not here.
+
+**For reviewers.** A commit that only refreshes `interface_type_hashes.jazzy.lock`, with no accompanying domain version bump and no reference to the upstream change that moved the hash, should be rejected — it is indistinguishable from silencing the gate. The lockfile's value is entirely in the review it forces; a hash diff nobody explained has bought nothing.
 
 **Coverage limit.** A RIHS01 hash does **not** cover message constants or field default values, so an enum-only `.msg` edit or a default-value change does not change the hash. The lockfile is therefore a _structural/wire_ tripwire — the **secondary** check. The **primary** enforcement is a path-based gate that requires a domain version bump when a registered type's `.msg`/`.srv` changes in the same repository; it becomes fully effective once the message definitions and this package live together (tracked in autoware_msgs#169). Until then, the lockfile is the available mechanism for every row.
