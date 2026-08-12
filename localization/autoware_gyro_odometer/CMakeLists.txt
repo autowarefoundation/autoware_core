@@ -48,36 +48,24 @@ if(BUILD_TESTING)
     src
   )
 
+  # What is only observable on the node's topics: where each output is published, the IMU frame
+  # lookup, and how the reported state composes into a diagnostics level and message. The clock is
+  # simulated, hence rosgraph_msgs, and a frame is published to make the lookup succeed, hence
+  # tf2_ros.
   if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     ament_add_ros_isolated_gtest(test_gyro_odometer_node
       test/test_gyro_odometer_node.cpp
     )
     ament_target_dependencies(test_gyro_odometer_node
       rclcpp
+      rosgraph_msgs
+      tf2_ros
     )
     target_link_libraries(test_gyro_odometer_node
       ${PROJECT_NAME}
       ${PROJECT_NAME}_ros # ROS-based test can be executed only when agnocast is disabled
     )
     target_include_directories(test_gyro_odometer_node PRIVATE
-      src
-    )
-
-    # Pins the behaviour observable on the node's topics, so that it stays available as an oracle
-    # while the implementation behind those topics is restructured.
-    ament_add_ros_isolated_gtest(test_gyro_odometer_node_characterization
-      test/test_gyro_odometer_node_characterization.cpp
-    )
-    ament_target_dependencies(test_gyro_odometer_node_characterization
-      rclcpp
-      rosgraph_msgs
-      tf2_ros
-    )
-    target_link_libraries(test_gyro_odometer_node_characterization
-      ${PROJECT_NAME}
-      ${PROJECT_NAME}_ros # ROS-based test can be executed only when agnocast is disabled
-    )
-    target_include_directories(test_gyro_odometer_node_characterization PRIVATE
       src
     )
   endif()
