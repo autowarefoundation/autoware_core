@@ -609,10 +609,9 @@ TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuFrameDropsPendingData)
     << "reported message was: " << diagnostics.message;
 }
 
-// An IMU sample whose frame cannot be resolved must never have its rate reach an output. Here one
-// arrives ahead of a resolvable sample, so it is at the head of the queue when a vehicle twist
-// completes the pair, and the whole attempt is dropped rather than fusing what could not be brought
-// into the output frame.
+// An IMU sample whose frame cannot be resolved must never have its rate reach an output, not even
+// one that resolvable samples complete afterwards. It is kept out of the queue rather than fused,
+// so the resolvable sample that follows it is free to be fused on its own.
 TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuKeepsItsRateOutOfEveryOutput)
 {
   start_node("base_link", 10.0);
@@ -625,15 +624,21 @@ TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuKeepsItsRateOutOfEveryOu
 
   // Unresolvable, and carrying a rate nothing else in this scenario could account for.
   send_imu(make_imu(stamp, "unresolvable_link", 10.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-  // Resolvable, and the only sample a fusion could legitimately draw on.
+  // Resolvable, and the only sample a fusion is allowed to draw on.
   send_imu(make_imu(stamp, "base_link", 0.0, 0.0, 0.3, 0.01, 0.01, 0.01));
   send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
 
-  EXPECT_FALSE(take_output().has_value())
-    << "fused while a sample that could not be brought into the output frame was queued";
+  const auto output = take_output();
+  ASSERT_TRUE(output.has_value());
+  const auto & fused = output->twist_with_covariance_raw;
+
+  EXPECT_DOUBLE_EQ(fused.twist.twist.angular.x, 0.0)
+    << "the unresolvable sample was fused: its rate is showing up in the output";
+  EXPECT_DOUBLE_EQ(fused.twist.twist.angular.z, 0.3);
 
   const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_FALSE(reported_flag(diagnostics, "is_succeed_transform_imu"));
+  EXPECT_EQ(reported_int(diagnostics, "imu_queue_size"), 1)
+    << "the unresolvable sample was queued alongside the resolvable one";
 }
 
 // A fusion that completes leaves nothing for the diagnostics to complain about.
@@ -653,10 +658,9 @@ TEST_F(GyroOdometerNodeCharacterization, CompletedFusionReportsOk)
   EXPECT_TRUE(reported_flag(diagnostics, "is_succeed_transform_imu"));
 }
 
-// An age past the tolerance is decided before the IMU frame is ever looked up: an IMU sample that
-// is both too old and in an unresolvable frame is reported as timed out only, and leaves the
-// transform status of the previous fusion standing.
-TEST_F(GyroOdometerNodeCharacterization, AgeIsDecidedBeforeTheImuFrameIsLookedUp)
+// An IMU sample that is both too old and in an unresolvable frame is reported as both, so that
+// neither problem hides the other.
+TEST_F(GyroOdometerNodeCharacterization, StaleAndUnresolvableImuIsReportedAsBoth)
 {
   start_node("base_link", 1.0);
   const auto stamp = make_stamp(100, 0);
@@ -673,15 +677,31 @@ TEST_F(GyroOdometerNodeCharacterization, AgeIsDecidedBeforeTheImuFrameIsLookedUp
   EXPECT_FALSE(take_output().has_value());
 
   const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_TRUE(reported_flag(diagnostics, "is_succeed_transform_imu"));
+  EXPECT_FALSE(reported_flag(diagnostics, "is_succeed_transform_imu"));
   EXPECT_EQ(
     diagnostics.message,
-    "Vehicle twist msg is timeout. vehicle_twist_dt: 5[sec], tolerance 1[sec]");
+    "Vehicle twist msg is timeout. vehicle_twist_dt: 5[sec], tolerance 1[sec]; "
+    "Please publish TF from base_link to frame of IMU.");
 }
 
-// The transform status only ever reflects a fusion attempt that got as far as needing the frame.
-// IMU samples that arrive with nothing to fuse against leave it alone.
-TEST_F(GyroOdometerNodeCharacterization, ImuAloneLeavesTheTransformStatusUntouched)
+// An unresolvable IMU sample arriving before any vehicle twist has to be survivable: there is no
+// vehicle twist yet whose age could be worked out, and the node still has to carry on reporting.
+TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuBeforeAnyVehicleTwistIsSurvivable)
+{
+  start_node("base_link", 10.0);
+  const auto stamp = make_stamp(100, 0);
+
+  send_imu(make_imu(stamp, "imu_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+
+  const DiagnosticsSnapshot diagnostics = take_diagnostics();
+  EXPECT_TRUE(reported_flag(diagnostics, "is_arrived_first_imu"));
+  EXPECT_FALSE(reported_flag(diagnostics, "is_arrived_first_vehicle_twist"));
+  EXPECT_FALSE(reported_flag(diagnostics, "is_succeed_transform_imu"));
+}
+
+// The transform status describes the IMU sample that arrived most recently, whether or not there
+// was anything to fuse it against.
+TEST_F(GyroOdometerNodeCharacterization, ImuAloneStillReportsItsTransformStatus)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
@@ -690,11 +710,8 @@ TEST_F(GyroOdometerNodeCharacterization, ImuAloneLeavesTheTransformStatusUntouch
   send_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
 
   const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_FALSE(reported_flag(diagnostics, "is_succeed_transform_imu"));
-  EXPECT_NE(
-    diagnostics.message.find("Please publish TF from base_link to frame of IMU."),
-    std::string::npos)
-    << "reported message was: " << diagnostics.message;
+  EXPECT_TRUE(reported_flag(diagnostics, "is_succeed_transform_imu"));
+  EXPECT_EQ(diagnostics.message, "Twist msg has not been arrived yet.");
 }
 
 // With the IMU frame resolvable, the queued angular velocity is rotated by the looked-up transform

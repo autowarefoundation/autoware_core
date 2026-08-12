@@ -24,28 +24,19 @@
 #include <array>
 #include <cstdint>
 #include <deque>
-#include <functional>
 #include <optional>
 #include <tuple>
 
 namespace autoware::gyro_odometer
 {
 
-/// \brief Brings the queued IMU samples into the output frame on behalf of GyroOdometer.
-///
-/// Supplied by the caller, which owns whatever frame machinery is involved. GyroOdometer calls it
-/// once per fusion attempt and never learns how the transformation is obtained. The queue is
-/// transformed in place to avoid copying it.
-/// \return true if the transformation was applied, false when it is unavailable. In the latter
-/// case the fusion attempt fails and both queues are discarded.
-using GyroQueueTransformFunc = std::function<bool(std::deque<sensor_msgs::msg::Imu> &)>;
-
 /// \brief Queue-and-fuse logic of the gyro odometer, independent of ROS communication and TF.
 ///
 /// Messages are fed in through input_vehicle_twist() / input_imu(), each of which returns the fused
-/// output at the moment a fusion completes. The current time and the IMU-to-output-frame
-/// transformation are both supplied by the caller through those calls, so this class holds no
-/// clock or TF state of its own.
+/// output at the moment a fusion completes. IMU samples are expected to already be expressed in the
+/// output frame; bringing them there is the caller's business, and a sample the caller could not
+/// bring there is handed to input_untransformable_imu() instead. The current time is supplied by
+/// the caller as well, so this class holds no clock or frame state of its own.
 class GyroOdometer
 {
 public:
@@ -71,7 +62,6 @@ public:
   {
     bool vehicle_twist_arrived{false};
     bool imu_arrived{false};
-    bool is_succeed_transform_imu{false};
     double latest_vehicle_twist_dt{0.0};
     double latest_imu_dt{0.0};
     rclcpp::Time latest_vehicle_twist_ros_time;
@@ -84,20 +74,28 @@ public:
   /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
   std::optional<OutputData> input_vehicle_twist(
     const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
-    rclcpp::Time current_time, const GyroQueueTransformFunc & transform_gyro_queue_func);
+    rclcpp::Time current_time);
 
-  /// \brief Queue \p imu_msg and attempt a fusion.
+  /// \brief Queue \p imu_msg, which must already be expressed in the output frame, and attempt a
+  /// fusion.
   /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
   std::optional<OutputData> input_imu(
-    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time,
-    const GyroQueueTransformFunc & transform_gyro_queue_func);
+    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time);
+
+  /// \brief Account for an IMU sample the caller could not bring into the output frame.
+  ///
+  /// The sample counts as having arrived but never takes part in a fusion, and whatever was queued
+  /// on either side is dropped with it, because it can no longer be paired with a sample of the
+  /// same age. How old both sides are is still recorded, so that a sample which is unusable and
+  /// stale at the same time is reported as both rather than only the former.
+  void input_untransformable_imu(const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time);
 
   /// \brief Read the current state for diagnostics reporting.
   Status take_status() const;
 
 private:
   std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
-    rclcpp::Time current_time, const GyroQueueTransformFunc & transform_gyro_queue_func);
+    rclcpp::Time current_time);
 
   static OutputData make_output(
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
@@ -105,7 +103,6 @@ private:
   double message_timeout_sec_;
   bool vehicle_twist_arrived_{false};
   bool imu_arrived_{false};
-  bool is_succeed_transform_imu_{false};
   rclcpp::Time latest_vehicle_twist_ros_time_;
   rclcpp::Time latest_imu_ros_time_;
   double latest_vehicle_twist_dt_{0.0};
