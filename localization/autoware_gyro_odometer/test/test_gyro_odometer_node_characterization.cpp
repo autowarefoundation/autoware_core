@@ -48,12 +48,12 @@ using COV_IDX_XYZRPY = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_
 
 // The diagnostics timer period. Advancing the simulated clock by this much is what makes the node
 // emit one diagnostics message.
-constexpr std::chrono::milliseconds kDiagnosticsPeriod{100};
+constexpr std::chrono::milliseconds diagnostics_period{100};
 // Wall-clock budget for the loopback delivery of a single published message. Only one message is
 // ever in flight, so this only has to cover the delivery itself.
-constexpr std::chrono::milliseconds kDeliveryBudget{50};
+constexpr std::chrono::milliseconds delivery_budget{50};
 // Wall-clock budget for anything the test actively waits on.
-constexpr std::chrono::milliseconds kWaitBudget{2000};
+constexpr std::chrono::milliseconds wait_budget{2000};
 
 // ---------------------------------------------------------------------------
 // Input builders
@@ -232,7 +232,7 @@ protected:
     clock_pub_->publish(clock_msg);
 
     const bool taken_up = pump_until(
-      [this, now]() { return gyro_odometer_node_->get_clock()->now() >= now; }, kWaitBudget);
+      [this, now]() { return gyro_odometer_node_->get_clock()->now() >= now; }, wait_budget);
     ASSERT_TRUE(taken_up) << "the node did not take up the simulated clock";
   }
 
@@ -241,13 +241,13 @@ protected:
   void send_vehicle_twist(const TwistWithCovarianceStamped & vehicle_twist)
   {
     vehicle_twist_pub_->publish(vehicle_twist);
-    pump(kDeliveryBudget);
+    pump(delivery_budget);
   }
 
   void send_imu(const Imu & imu)
   {
     imu_pub_->publish(imu);
-    pump(kDeliveryBudget);
+    pump(delivery_budget);
   }
 
   // Make a frame pair resolvable, with the rotation the node will apply to the queued samples.
@@ -264,7 +264,7 @@ protected:
     transform.transform.rotation.z = qz;
     transform.transform.rotation.w = qw;
     static_transform_broadcaster_->sendTransform(transform);
-    pump(kDeliveryBudget);
+    pump(delivery_budget);
   }
 
   // Consume whatever fusion output has been received since the last call.
@@ -286,9 +286,9 @@ protected:
   DiagnosticsSnapshot take_diagnostics()
   {
     const uint64_t before = diagnostics_count_;
-    set_now(sim_now_ + rclcpp::Duration(kDiagnosticsPeriod));
+    set_now(sim_now_ + rclcpp::Duration(diagnostics_period));
     const bool reported =
-      pump_until([this, before]() { return diagnostics_count_ > before; }, kWaitBudget);
+      pump_until([this, before]() { return diagnostics_count_ > before; }, wait_budget);
     EXPECT_TRUE(reported) << "the node did not report diagnostics";
     return latest_diagnostics_;
   }
@@ -642,8 +642,8 @@ TEST_F(GyroOdometerNodeCharacterization, ResolvableImuFrameRotatesTheAngularVelo
   const auto stamp = make_stamp(100, 0);
 
   // A quarter turn about the vertical axis, which sends (x, y, z) to (-y, x, z).
-  constexpr double kQuarterTurn = 0.7071067811865476;
-  broadcast_static_transform("imu_link", "base_link", 0.0, 0.0, kQuarterTurn, kQuarterTurn);
+  constexpr double quarter_turn = 0.7071067811865476;
+  broadcast_static_transform("imu_link", "base_link", 0.0, 0.0, quarter_turn, quarter_turn);
 
   send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
   send_imu(make_imu(stamp, "imu_link", 0.1, 0.2, 0.3, 0.01, 0.02, 0.03));
