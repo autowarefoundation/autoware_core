@@ -89,8 +89,8 @@ EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
   AUTOWARE_SUBSCRIPTION_OPTIONS pose_sub_opt;
   pose_sub_opt.callback_group = cb_group_pose_;
   sub_pose_with_cov_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "in_pose_with_covariance", 1, std::bind(&EKFLocalizerNode::callback_pose_with_covariance, this, _1),
-    pose_sub_opt);
+    "in_pose_with_covariance", 1,
+    std::bind(&EKFLocalizerNode::callback_pose_with_covariance, this, _1), pose_sub_opt);
 
   AUTOWARE_SUBSCRIPTION_OPTIONS twist_sub_opt;
   twist_sub_opt.callback_group = cb_group_twist_;
@@ -234,7 +234,8 @@ void EKFLocalizerNode::timer_callback()
     const size_t n = pose_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto pose = pose_queue_.pop_increment_age();
-      bool is_updated = ekf_localizer_->measurement_update_pose(*pose, current_time, pose_diag_info_);
+      bool is_updated =
+        ekf_localizer_->measurement_update_pose(*pose, current_time, pose_diag_info_);
       pose_is_updated = pose_is_updated || is_updated;
     }
     DEBUG_INFO(

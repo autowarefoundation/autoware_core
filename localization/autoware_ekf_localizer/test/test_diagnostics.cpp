@@ -424,7 +424,8 @@ protected:
     return ekf_localizer->twist_diag_info_.no_update_count;
   }
 
-  static void set_is_activated(autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer, bool value)
+  static void set_is_activated(
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer, bool value)
   {
     ekf_localizer->is_activated_ = value;
   }
@@ -578,7 +579,8 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_reflects_pose_no_updat
   EXPECT_TRUE(has_timestamp);
 }
 
-TEST_F(EKFLocalizerNodeDiagnosticsTest, update_diagnostics_deescalates_error_to_warn_when_merge_warn)
+TEST_F(
+  EKFLocalizerNodeDiagnosticsTest, update_diagnostics_deescalates_error_to_warn_when_merge_warn)
 {
   // ERROR→WARN when merge worst is WARN (covariance ellipse etc. omitted — controlled merge).
   const double ekf_rate = 100.0;
@@ -673,7 +675,8 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_updates_when_previous_
     merged_status.message.find("cov_ellipse") != std::string::npos);
 }
 
-TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_ok_when_only_activation_and_initialpose_ok)
+TEST_F(
+  EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_ok_when_only_activation_and_initialpose_ok)
 {
   // Minimal OK merge (activation + initial pose only) sets merged diagnostic to OK even after ERROR
   const double ekf_rate = 100.0;
