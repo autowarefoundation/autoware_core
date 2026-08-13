@@ -1,0 +1,35 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: PathToTrajectory.node
+package:
+  name: autoware_planning_topic_converter
+  provider: autoware
+launch:
+  plugin: autoware::planning_topic_converter::PathToTrajectoryNode
+  executable: path_to_trajectory_converter
+  node_output: screen
+# interfaces
+subscribers:
+  - name: path
+    message_type: autoware_planning_msgs/msg/Path
+    remap_target: input_topic
+publishers:
+  - name: trajectory
+    message_type: autoware_planning_msgs/msg/Trajectory
+    remap_target: output_topic
+# parameters
+param_files: []
+param_values:
+  - name: input_topic
+    type: string
+    default: ""
+  - name: output_topic
+    type: string
+    default: ""
+# processes
+processes:
+  - name: convert_path_to_trajectory
+    trigger_conditions:
+      - on_input: path
+    outcomes:
+      - to_output: trajectory
