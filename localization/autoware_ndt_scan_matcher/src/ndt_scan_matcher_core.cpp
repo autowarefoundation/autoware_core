@@ -259,10 +259,11 @@ void NDTScanMatcher::callback_timer()
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
   const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
-  const auto result = map_update_module_->callback_timer(is_activated_, latest_ekf_position);
+  auto result = map_update_module_->callback_timer(is_activated_, latest_ekf_position);
   apply_diagnostics_update(*diagnostics_map_update_, result.diagnostics);
 
   if (result.loaded_pcd_map) {
+    result.loaded_pcd_map->header.stamp = ros_time_now;
     loaded_pcd_pub_->publish(*result.loaded_pcd_map);
   }
 
@@ -1050,11 +1051,11 @@ void NDTScanMatcher::service_ndt_align_main(
   auto initial_pose_msg_in_map_frame =
     autoware::localization_util::transform(req->pose_with_covariance, transform_s2t);
   initial_pose_msg_in_map_frame.header.stamp = req->pose_with_covariance.header.stamp;
-  const auto result =
-    map_update_module_->update_map(initial_pose_msg_in_map_frame.pose.pose.position);
+  auto result = map_update_module_->update_map(initial_pose_msg_in_map_frame.pose.pose.position);
   apply_diagnostics_update(*diagnostics_ndt_align_, result.diagnostics);
 
   if (result.loaded_pcd_map) {
+    result.loaded_pcd_map->header.stamp = this->now();
     loaded_pcd_pub_->publish(*result.loaded_pcd_map);
   }
 

@@ -27,6 +27,7 @@
 
 #include <cstdint>
 #include <functional>
+#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -136,6 +137,9 @@ private:
   bool update_ndt(
     const geometry_msgs::msg::Point & position, NdtType & ndt, DiagnosticsReport & diagnostics);
 
+  // Concatenates the cells kept in loaded_pcd_map_ into a single cloud for the debug publish.
+  [[nodiscard]] sensor_msgs::msg::PointCloud2 merge_loaded_pcd_map() const;
+
   PcdLoaderFunction pcd_loader_;
 
   // To prevent deadlocks, acquire locks in the following order:
@@ -147,9 +151,10 @@ private:
 
   HyperParameters::DynamicMapLoading param_;
 
-  // Merged loaded point cloud map for the debug publish, only populated when
-  // param_.publish_loaded_map is enabled. Accessed only while builder_state_'s lock is held.
-  sensor_msgs::msg::PointCloud2 loaded_pcd_map_;
+  // Loaded point cloud map cells for the debug publish, keyed by cell id so that cells dropped by
+  // a differential update can be erased. Only populated when param_.publish_loaded_map is enabled.
+  // Accessed only while builder_state_'s lock is held.
+  std::map<std::string, sensor_msgs::msg::PointCloud2> loaded_pcd_map_;
 };
 
 }  // namespace autoware::ndt_scan_matcher
