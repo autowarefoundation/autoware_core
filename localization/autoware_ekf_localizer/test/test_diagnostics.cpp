@@ -224,7 +224,7 @@ TEST(TestEkfDiagnostics, merge_diagnostic_status)
 }
 
 // Friend class to access private members of EKFLocalizerNode for testing
-class EKFLocalizerDiagnosticsTest : public ::testing::Test
+class EKFLocalizerNodeDiagnosticsTest : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -504,7 +504,7 @@ protected:
 
 // Note: Periodic /diagnostics uses an EKF node timer calling publish_diagnostics().
 
-TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_reflects_pose_no_update_warn_then_error)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_reflects_pose_no_update_warn_then_error)
 {
   // Merged diagnostic reflects pose no-update WARN then ERROR as stale count crosses thresholds.
   const double ekf_rate = 100.0;
@@ -578,7 +578,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_reflects_pose_no_update_wa
   EXPECT_TRUE(has_timestamp);
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, update_diagnostics_deescalates_error_to_warn_when_merge_warn)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, update_diagnostics_deescalates_error_to_warn_when_merge_warn)
 {
   // ERROR→WARN when merge worst is WARN (covariance ellipse etc. omitted — controlled merge).
   const double ekf_rate = 100.0;
@@ -611,7 +611,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, update_diagnostics_deescalates_error_to_warn
   EXPECT_TRUE(merged_status_after.message.find("pose is not updated") != std::string::npos);
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_updates_when_previous_merge_was_ok)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_updates_when_previous_merge_was_ok)
 {
   // When previous merged status was OK, the next update_diagnostics reflects new severity
   // (OK→WARN).
@@ -673,7 +673,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_updates_when_previous_merg
     merged_status.message.find("cov_ellipse") != std::string::npos);
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_when_only_activation_and_initialpose_ok)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_ok_when_only_activation_and_initialpose_ok)
 {
   // Minimal OK merge (activation + initial pose only) sets merged diagnostic to OK even after ERROR
   const double ekf_rate = 100.0;
@@ -715,7 +715,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_when_only_activation_an
   EXPECT_EQ(merged_status_after.message, "OK");
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_after_force_update_and_minimal_merge)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_ok_after_force_update_and_minimal_merge)
 {
   // After publish_diagnostics(), activation-only update_diagnostics sets merged status to OK
   // (no special reset path)
@@ -778,7 +778,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, merged_diagnostic_ok_after_force_update_and_
   EXPECT_TRUE(found_transition_ts);
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, last_level_transition_timestamp_when_non_ok)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, last_level_transition_timestamp_when_non_ok)
 {
   // last_level_transition_timestamp KeyValue matches merged_diagnostic_last_transition_time_
   const double ekf_rate = 100.0;
@@ -835,7 +835,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, last_level_transition_timestamp_when_non_ok)
     error_time.nanoseconds());
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_not_activated)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_updated_when_not_activated)
 {
   // Test that diagnostics are updated even when is_activated_ is false (early return case)
   const double ekf_rate = 100.0;
@@ -870,7 +870,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_not_activated)
   EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_initialpose_not_set)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_updated_when_initialpose_not_set)
 {
   // Test that diagnostics are updated even when is_set_initialpose_ is false (early return case)
   const double ekf_rate = 100.0;
@@ -905,7 +905,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_updated_when_initialpose_not_set
 }
 
 TEST_F(
-  EKFLocalizerDiagnosticsTest,
+  EKFLocalizerNodeDiagnosticsTest,
   measurement_diag_fields_reset_on_timer_early_return_not_activated_or_no_initial_pose)
 {
   // Regression: timer_callback must call initialize_diagnostic_info before early returns so
@@ -936,7 +936,7 @@ TEST_F(
   EXPECT_EQ(get_twist_diag_info_no_update_count(ekf_localizer.get()), k_persisted_no_update);
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_at_specified_period)
 {
   // When diagnostics_publish_period > 0, EKF node's diagnostics_publish_timer_ publishes at that
   // period (via publish_diagnostics())
@@ -986,7 +986,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_specified_period)
   EXPECT_GE(diag_count, 1) << "Expected at least one /diagnostics message within 250 ms at 10 Hz";
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_message_names)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_message_names)
 {
   // publish_diagnostics() uses names "localization: <node>" (+ ": callback_*" for the two
   // callbacks).
@@ -1076,7 +1076,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_message_names)
 }
 
 TEST_F(
-  EKFLocalizerDiagnosticsTest, callback_pose_and_twist_published_at_period_when_period_positive)
+  EKFLocalizerNodeDiagnosticsTest, callback_pose_and_twist_published_at_period_when_period_positive)
 {
   // When diagnostics_publish_period > 0, callback_pose and callback_twist are published at the
   // configured period via publish_diagnostics(). This test verifies that
@@ -1158,7 +1158,7 @@ TEST_F(
     << "Expected at least one callback_twist diagnostic at diagnostics period when period > 0";
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_parameter_period)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_at_parameter_period)
 {
   // Verify /diagnostics is emitted at roughly diagnostics_publish_period (EKF diagnostics timer).
   // Feed pose/twist occasionally so merged diagnostics stay OK: otherwise no_update_count rises,
@@ -1267,7 +1267,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_at_parameter_period)
   }
 }
 
-TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_immediately_on_severity_increase)
+TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_immediately_on_severity_increase)
 {
   // With a very long diagnostics period, only publish_diagnostics() on severity increase should
   // publish /diagnostics. Slow EKF timer so executor-driven ticks do not merge to ERROR before we

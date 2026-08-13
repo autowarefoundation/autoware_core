@@ -220,7 +220,7 @@ private:
     const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
     const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
 
-  friend class EKFLocalizerDiagnosticsTest;  // for test code
+  friend class EKFLocalizerNodeDiagnosticsTest;  // for test code
 };
 
 }  // namespace autoware::ekf_localizer
