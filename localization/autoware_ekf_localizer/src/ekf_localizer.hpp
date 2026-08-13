@@ -91,7 +91,7 @@ private:
   double proc_var_x_c_;
 };
 
-class EKFModule
+class EKFLocalizer
 {
 private:
   using PoseWithCovariance = geometry_msgs::msg::PoseWithCovarianceStamped;
@@ -100,7 +100,7 @@ private:
   using Twist = geometry_msgs::msg::TwistStamped;
 
 public:
-  EKFModule(std::shared_ptr<Warning> warning, const HyperParameters & params);
+  EKFLocalizer(std::shared_ptr<Warning> warning, const HyperParameters & params);
 
   void initialize(
     const PoseWithCovariance & initial_pose,

@@ -37,7 +37,7 @@ namespace autoware::ekf_localizer
 
 namespace
 {
-// Build a HyperParameters instance with hand-set values, so EKFModule can be exercised without a
+// Build a HyperParameters instance with hand-set values, so EKFLocalizer can be exercised without a
 // live rclcpp::Node. HyperParameters is a plain data struct (no rclcpp dependency); the test owns
 // the values it cares about and value-initializes the rest to zero/empty.
 HyperParameters make_params()
@@ -67,11 +67,11 @@ HyperParameters make_params()
   return params;
 }
 
-std::shared_ptr<EKFModule> make_module(const HyperParameters & params)
+std::shared_ptr<EKFLocalizer> make_module(const HyperParameters & params)
 {
   // Warning(nullptr) is an explicitly-requested no-op logger (node_ == nullptr).
   auto warning = std::make_shared<Warning>(nullptr);
-  return std::make_shared<EKFModule>(warning, params);
+  return std::make_shared<EKFLocalizer>(warning, params);
 }
 
 geometry_msgs::msg::PoseWithCovarianceStamped make_pose(
@@ -331,7 +331,7 @@ protected:
   }
 
   HyperParameters params_;
-  std::shared_ptr<EKFModule> module_;
+  std::shared_ptr<EKFLocalizer> module_;
 };
 
 TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
@@ -455,7 +455,7 @@ protected:
   }
 
   HyperParameters params_;
-  std::shared_ptr<EKFModule> module_;
+  std::shared_ptr<EKFLocalizer> module_;
 };
 
 TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
