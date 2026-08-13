@@ -36,7 +36,7 @@ target_include_directories(autoware_ekf_localizer
 ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::ekf_localizer::EKFLocalizer"
+  PLUGIN "autoware::ekf_localizer::EKFLocalizerNode"
   EXECUTABLE ${PROJECT_NAME}_node
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
