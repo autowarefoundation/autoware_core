@@ -354,7 +354,7 @@ protected:
       // Calculate covariance ellipse and add diagnostics
       geometry_msgs::msg::PoseWithCovariance pose_cov;
       pose_cov.pose = current_ekf_pose.pose;
-      pose_cov.covariance = ekf_localizer->ekf_module_->get_current_pose_covariance();
+      pose_cov.covariance = ekf_localizer->ekf_localizer_->get_current_pose_covariance();
       const autoware::localization_util::Ellipse ellipse =
         autoware::localization_util::calculate_xy_ellipse(
           pose_cov, ekf_localizer->params_.ellipse_scale);
@@ -450,7 +450,7 @@ protected:
     transform.transform.rotation.x = 0.0;
     transform.transform.rotation.y = 0.0;
     transform.transform.rotation.z = 0.0;
-    ekf_localizer->ekf_module_->initialize(initial_pose, transform);
+    ekf_localizer->ekf_localizer_->initialize(initial_pose, transform);
   }
 
   static void force_diagnostics_update(autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
@@ -521,7 +521,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_reflects_pose_no_updat
   current_ekf_pose.pose.position.z = 0.0;
   current_ekf_pose.pose.orientation.w = 1.0;
 
-  // Initialize ekf_module_ to avoid covariance ellipse errors
+  // Initialize ekf_localizer_ to avoid covariance ellipse errors
   geometry_msgs::msg::PoseWithCovarianceStamped initial_pose;
   initial_pose.header.stamp = current_time;
   initial_pose.header.frame_id = "map";
@@ -629,7 +629,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_updates_when_previous_
   current_ekf_pose.pose.position.z = 0.0;
   current_ekf_pose.pose.orientation.w = 1.0;
 
-  // Initialize ekf_module_ to avoid covariance ellipse errors
+  // Initialize ekf_localizer_ to avoid covariance ellipse errors
   geometry_msgs::msg::PoseWithCovarianceStamped initial_pose;
   initial_pose.header.stamp = current_time;
   initial_pose.header.frame_id = "map";
@@ -733,7 +733,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_ok_after_force_update_
   current_ekf_pose.pose.position.z = 0.0;
   current_ekf_pose.pose.orientation.w = 1.0;
 
-  // Initialize ekf_module_
+  // Initialize ekf_localizer_
   geometry_msgs::msg::PoseWithCovarianceStamped initial_pose;
   initial_pose.header.stamp = current_time;
   initial_pose.header.frame_id = "map";
@@ -795,7 +795,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, last_level_transition_timestamp_when_non
   current_ekf_pose.pose.position.z = 0.0;
   current_ekf_pose.pose.orientation.w = 1.0;
 
-  // Initialize ekf_module_
+  // Initialize ekf_localizer_
   geometry_msgs::msg::PoseWithCovarianceStamped initial_pose;
   initial_pose.header.stamp = error_time;
   initial_pose.header.frame_id = "map";

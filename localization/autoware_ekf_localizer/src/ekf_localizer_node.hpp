@@ -116,7 +116,7 @@ private:
     logger_configure_;
 
   //!< @brief  extended kalman filter instance.
-  std::unique_ptr<EKFLocalizer> ekf_module_;
+  std::unique_ptr<EKFLocalizer> ekf_localizer_;
 
   const HyperParameters params_;
 
