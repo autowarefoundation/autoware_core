@@ -1,0 +1,92 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: BehaviorVelocityPlannerExperimental.node
+package:
+  name: autoware_behavior_velocity_planner
+  provider: autoware
+launch:
+  plugin: autoware::behavior_velocity_planner::experimental::BehaviorVelocityPlannerNode
+  executable: experimental_autoware_behavior_velocity_planner_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: path_with_lane_id
+    message_type: autoware_internal_planning_msgs/msg/PathWithLaneId
+    remap_target: input/path_with_lane_id
+  - name: dynamic_objects
+    message_type: autoware_perception_msgs/msg/PredictedObjects
+    remap_target: input/dynamic_objects
+  - name: no_ground_pointcloud
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: input/no_ground_pointcloud
+  - name: vehicle_odometry
+    message_type: nav_msgs/msg/Odometry
+    remap_target: input/vehicle_odometry
+  - name: accel
+    message_type: geometry_msgs/msg/AccelWithCovarianceStamped
+    remap_target: input/accel
+  - name: traffic_signals
+    message_type: autoware_perception_msgs/msg/TrafficLightGroupArray
+    remap_target: input/traffic_signals
+  - name: occupancy_grid
+    message_type: nav_msgs/msg/OccupancyGrid
+    remap_target: input/occupancy_grid
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    remap_target: input/vector_map
+  - name: external_velocity_limit_mps
+    message_type: autoware_internal_planning_msgs/msg/VelocityLimit
+    remap_target: input/external_velocity_limit_mps
+publishers:
+  - name: path
+    message_type: autoware_planning_msgs/msg/Path
+    remap_target: output/path
+  - name: debug_path
+    message_type: visualization_msgs/msg/MarkerArray
+    remap_target: debug/path
+  - name: processing_time_ms
+    message_type: autoware_internal_debug_msgs/msg/Float64Stamped
+    remap_target: debug/processing_time_ms
+servers:
+  - name: load_plugin
+    message_type: autoware_internal_planning_msgs/srv/LoadPlugin
+    remap_target: service/load_plugin
+  - name: unload_plugin
+    message_type: autoware_internal_planning_msgs/srv/UnloadPlugin
+    remap_target: service/unload_plugin
+# parameters
+param_files:
+  - name: behavior_velocity_planner_param
+    default: $(find-pkg-share autoware_behavior_velocity_planner)/config/behavior_velocity_planner.param.yaml
+param_values:
+  - name: forward_path_length
+    type: double
+    default: 1000.0
+  - name: backward_path_length
+    type: double
+    default: 5.0
+  - name: behavior_output_path_interval
+    type: double
+    default: 1.0
+  - name: planning_factor_console_output.enable
+    type: bool
+    default: false
+  - name: planning_factor_console_output.duration
+    type: int
+    default: 1000
+  - name: is_simulation
+    type: bool
+    default: false
+  - name: ego_nearest_dist_threshold
+    type: double
+    default: 3.0
+  - name: ego_nearest_yaw_threshold
+    type: double
+    default: 1.046
+# processes
+processes:
+  - name: plan_behavior_velocity
+    trigger_conditions:
+      - on_input: path_with_lane_id
+    outcomes:
+      - to_output: path
