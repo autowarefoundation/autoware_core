@@ -223,7 +223,7 @@ TEST(TestEkfDiagnostics, merge_diagnostic_status)
   EXPECT_EQ(merged_stat.message, "ERROR0; ERROR1");
 }
 
-// Friend class to access private members of EKFLocalizer for testing
+// Friend class to access private members of EKFLocalizerNode for testing
 class EKFLocalizerDiagnosticsTest : public ::testing::Test
 {
 protected:
@@ -287,17 +287,17 @@ protected:
     return options;
   }
 
-  static std::shared_ptr<autoware::ekf_localizer::EKFLocalizer> create_ekf_localizer(
+  static std::shared_ptr<autoware::ekf_localizer::EKFLocalizerNode> create_ekf_localizer(
     double diagnostics_publish_period, double ekf_rate)
   {
-    return std::make_shared<autoware::ekf_localizer::EKFLocalizer>(
+    return std::make_shared<autoware::ekf_localizer::EKFLocalizerNode>(
       make_ekf_localizer_options(1.0 / diagnostics_publish_period, ekf_rate));
   }
 
   // Helper methods to access private members through friend class
 
   static void update_diagnostics(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer,
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer,
     const geometry_msgs::msg::PoseStamped & current_ekf_pose, const rclcpp::Time & current_time)
   {
     // Create diagnostic status array matching timer_callback early-return logic
@@ -371,7 +371,7 @@ protected:
   }
 
   static void update_diagnostics_raw(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer,
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer,
     const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
     const rclcpp::Time & current_time)
   {
@@ -380,7 +380,7 @@ protected:
 
   /** Only activation and initial-pose checks (merged OK) — for tests that need merged status OK. */
   static void update_diagnostics_activation_and_initialpose_only(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, const rclcpp::Time & current_time)
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer, const rclcpp::Time & current_time)
   {
     std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
     diag_status_array.push_back(check_process_activated(ekf_localizer->is_activated_));
@@ -389,54 +389,54 @@ protected:
   }
 
   static diagnostic_msgs::msg::DiagnosticStatus get_merged_diagnostic_status(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
   {
     return ekf_localizer->merged_diagnostic_status_;
   }
 
   static rclcpp::Time get_merged_diagnostic_last_transition_time(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
   {
     return ekf_localizer->merged_diagnostic_last_transition_time_;
   }
 
   static void set_pose_diag_info_no_update_count(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, size_t count)
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer, size_t count)
   {
     ekf_localizer->pose_diag_info_.no_update_count = count;
   }
 
   static void set_twist_diag_info_no_update_count(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, size_t count)
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer, size_t count)
   {
     ekf_localizer->twist_diag_info_.no_update_count = count;
   }
 
   static size_t get_pose_diag_info_no_update_count(
-    const autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+    const autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
   {
     return ekf_localizer->pose_diag_info_.no_update_count;
   }
 
   static size_t get_twist_diag_info_no_update_count(
-    const autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+    const autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
   {
     return ekf_localizer->twist_diag_info_.no_update_count;
   }
 
-  static void set_is_activated(autoware::ekf_localizer::EKFLocalizer * ekf_localizer, bool value)
+  static void set_is_activated(autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer, bool value)
   {
     ekf_localizer->is_activated_ = value;
   }
 
   static void set_is_set_initialpose(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer, bool value)
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer, bool value)
   {
     ekf_localizer->is_set_initialpose_ = value;
   }
 
   static void initialize_ekf_module(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer,
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose)
   {
     geometry_msgs::msg::TransformStamped transform;
@@ -453,12 +453,12 @@ protected:
     ekf_localizer->ekf_module_->initialize(initial_pose, transform);
   }
 
-  static void force_diagnostics_update(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+  static void force_diagnostics_update(autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
   {
     ekf_localizer->publish_diagnostics();
   }
 
-  static void call_timer_callback(autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+  static void call_timer_callback(autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
   {
     ekf_localizer->timer_callback();
   }
@@ -466,7 +466,7 @@ protected:
   /** Values that initialize_diagnostic_info() clears each timer tick (regression: early return
    * too). */
   static void set_stale_pose_twist_measurement_diag_fields(
-    autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+    autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
   {
     ekf_localizer->pose_diag_info_.queue_size = 999;
     ekf_localizer->pose_diag_info_.is_passed_delay_gate = true;
@@ -484,7 +484,7 @@ protected:
   }
 
   static void expect_measurement_diag_fields_initialized(
-    const autoware::ekf_localizer::EKFLocalizer * ekf_localizer)
+    const autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer)
   {
     EXPECT_EQ(ekf_localizer->pose_diag_info_.queue_size, ekf_localizer->pose_queue_.size());
     EXPECT_FALSE(ekf_localizer->pose_diag_info_.is_passed_delay_gate);
@@ -1275,7 +1275,7 @@ TEST_F(EKFLocalizerDiagnosticsTest, diagnostics_published_immediately_on_severit
   const double ekf_rate = 0.01;
   const double slow_diagnostics_frequency = 0.01;  // 100 s period
 
-  auto ekf_localizer = std::make_shared<autoware::ekf_localizer::EKFLocalizer>(
+  auto ekf_localizer = std::make_shared<autoware::ekf_localizer::EKFLocalizerNode>(
     make_ekf_localizer_options(slow_diagnostics_frequency, ekf_rate));
 
   rclcpp::Time current_time = ekf_localizer->now();

@@ -45,7 +45,7 @@ namespace autoware::ekf_localizer
 
 using std::placeholders::_1;
 
-EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
+EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("ekf_localizer", node_options),
   warning_(std::make_shared<Warning>(this)),
   tf2_buffer_(this->get_clock()),
@@ -64,7 +64,7 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
   /* initialize ros system */
   timer_control_ = autoware::agnocast_wrapper::create_timer(
     this, get_clock(), rclcpp::Duration::from_seconds(ekf_dt_),
-    std::bind(&EKFLocalizer::timer_callback, this));
+    std::bind(&EKFLocalizerNode::timer_callback, this));
 
   pub_pose_ = create_publisher<geometry_msgs::msg::PoseStamped>("ekf_pose", 1);
   pub_pose_cov_ =
@@ -85,22 +85,22 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
     this, get_clock(), rclcpp::Duration::from_seconds(params_.diagnostics_publish_period),
     [this]() { publish_diagnostics(); });
   sub_initialpose_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "initialpose", 1, std::bind(&EKFLocalizer::callback_initial_pose, this, _1));
+    "initialpose", 1, std::bind(&EKFLocalizerNode::callback_initial_pose, this, _1));
   AUTOWARE_SUBSCRIPTION_OPTIONS pose_sub_opt;
   pose_sub_opt.callback_group = cb_group_pose_;
   sub_pose_with_cov_ = create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
-    "in_pose_with_covariance", 1, std::bind(&EKFLocalizer::callback_pose_with_covariance, this, _1),
+    "in_pose_with_covariance", 1, std::bind(&EKFLocalizerNode::callback_pose_with_covariance, this, _1),
     pose_sub_opt);
 
   AUTOWARE_SUBSCRIPTION_OPTIONS twist_sub_opt;
   twist_sub_opt.callback_group = cb_group_twist_;
   sub_twist_with_cov_ = create_subscription<geometry_msgs::msg::TwistWithCovarianceStamped>(
     "in_twist_with_covariance", 1,
-    std::bind(&EKFLocalizer::callback_twist_with_covariance, this, _1), twist_sub_opt);
+    std::bind(&EKFLocalizerNode::callback_twist_with_covariance, this, _1), twist_sub_opt);
   service_trigger_node_ = this->create_service<std_srvs::srv::SetBool>(
     "trigger_node_srv",
     std::bind(
-      &EKFLocalizer::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
+      &EKFLocalizerNode::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
     rclcpp::ServicesQoS());
 
   tf_br_ = std::make_shared<autoware::agnocast_wrapper::TransformBroadcaster>(*this);
@@ -113,7 +113,7 @@ EKFLocalizer::EKFLocalizer(const rclcpp::NodeOptions & node_options)
 /*
  * update_predict_frequency
  */
-void EKFLocalizer::update_predict_frequency(const rclcpp::Time & current_time)
+void EKFLocalizerNode::update_predict_frequency(const rclcpp::Time & current_time)
 {
   if (last_predict_time_) {
     if (current_time < *last_predict_time_) {
@@ -141,7 +141,7 @@ void EKFLocalizer::update_predict_frequency(const rclcpp::Time & current_time)
 /*
  * timer_callback
  */
-void EKFLocalizer::timer_callback()
+void EKFLocalizerNode::timer_callback()
 {
   stop_watch_timer_cb_.tic();
 
@@ -332,7 +332,7 @@ void EKFLocalizer::timer_callback()
 /*
  * get_transform_from_tf
  */
-bool EKFLocalizer::get_transform_from_tf(
+bool EKFLocalizerNode::get_transform_from_tf(
   std::string parent_frame, std::string child_frame,
   geometry_msgs::msg::TransformStamped & transform)
 {
@@ -351,7 +351,7 @@ bool EKFLocalizer::get_transform_from_tf(
 /*
  * callback_initial_pose
  */
-void EKFLocalizer::callback_initial_pose(
+void EKFLocalizerNode::callback_initial_pose(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg)
 {
   geometry_msgs::msg::TransformStamped transform;
@@ -368,7 +368,7 @@ void EKFLocalizer::callback_initial_pose(
 /*
  * callback_pose_with_covariance
  */
-void EKFLocalizer::callback_pose_with_covariance(
+void EKFLocalizerNode::callback_pose_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg)
 {
   if (!is_activated_ && !is_set_initialpose_) {
@@ -402,7 +402,7 @@ void EKFLocalizer::callback_pose_with_covariance(
 /*
  * callback_twist_with_covariance
  */
-void EKFLocalizer::callback_twist_with_covariance(
+void EKFLocalizerNode::callback_twist_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
   auto twist_msg = std::make_shared<geometry_msgs::msg::TwistWithCovarianceStamped>(*msg);
@@ -438,7 +438,7 @@ void EKFLocalizer::callback_twist_with_covariance(
 /*
  * publish_estimate_result
  */
-void EKFLocalizer::publish_estimate_result(
+void EKFLocalizerNode::publish_estimate_result(
   const geometry_msgs::msg::PoseStamped & current_ekf_pose,
   const geometry_msgs::msg::PoseStamped & current_biased_ekf_pose,
   const geometry_msgs::msg::TwistStamped & current_ekf_twist)
@@ -519,7 +519,7 @@ void EKFLocalizer::publish_estimate_result(
   tf_br_->sendTransform(transform_stamped);
 }
 
-void EKFLocalizer::publish_diagnostics()
+void EKFLocalizerNode::publish_diagnostics()
 {
   const std::string node_name = this->get_name();
   const std::string main_name = "localization: " + node_name;
@@ -564,7 +564,7 @@ void EKFLocalizer::publish_diagnostics()
   pub_diagnostics_->publish(std::move(msg));
 }
 
-void EKFLocalizer::update_diagnostics(
+void EKFLocalizerNode::update_diagnostics(
   const std::vector<diagnostic_msgs::msg::DiagnosticStatus> & diag_status_array,
   const rclcpp::Time & current_time)
 {
@@ -608,7 +608,7 @@ void EKFLocalizer::update_diagnostics(
 /**
  * @brief trigger node
  */
-void EKFLocalizer::service_trigger_node(
+void EKFLocalizerNode::service_trigger_node(
   const AUTOWARE_SERVER_REQUEST_PTR(std_srvs::srv::SetBool) req,
   AUTOWARE_SERVER_RESPONSE_PTR(std_srvs::srv::SetBool) res)
 {
@@ -631,7 +631,7 @@ void EKFLocalizer::service_trigger_node(
   res->success = true;
 }
 
-void EKFLocalizer::initialize_diagnostic_info(
+void EKFLocalizerNode::initialize_diagnostic_info(
   EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
   const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
   const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue)
@@ -656,4 +656,4 @@ void EKFLocalizer::initialize_diagnostic_info(
 }  // namespace autoware::ekf_localizer
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::ekf_localizer::EKFLocalizer)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::ekf_localizer::EKFLocalizerNode)
