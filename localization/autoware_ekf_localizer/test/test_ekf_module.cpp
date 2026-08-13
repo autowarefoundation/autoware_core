@@ -128,7 +128,7 @@ geometry_msgs::msg::TransformStamped identity_transform()
 // ---------------------------------------------------------------------------
 // find_closest_delay_time_index
 // ---------------------------------------------------------------------------
-TEST(TestEKFModule, FindClosestDelayTimeIndex)
+TEST(TestEKFLocalizer, FindClosestDelayTimeIndex)
 {
   const auto params = make_params();
   auto module = make_module(params);
@@ -163,7 +163,7 @@ TEST(TestEKFModule, FindClosestDelayTimeIndex)
 // find_closest_delay_time_index() must not dereference .back() on the empty table; it returns the
 // safe index 0 (== size()) for any target instead of crashing. The default of 50 must NOT mask
 // this, so the test sets extend_state_step to 0 explicitly.
-TEST(TestEKFModule, FindClosestDelayTimeIndexEmptyTable)
+TEST(TestEKFLocalizer, FindClosestDelayTimeIndexEmptyTable)
 {
   HyperParameters params = make_params();
   params.extend_state_step = 0;
@@ -178,7 +178,7 @@ TEST(TestEKFModule, FindClosestDelayTimeIndexEmptyTable)
 // ---------------------------------------------------------------------------
 // accumulate_delay_time: copy_backward shift + accumulation
 // ---------------------------------------------------------------------------
-TEST(TestEKFModule, AccumulateDelayTime)
+TEST(TestEKFLocalizer, AccumulateDelayTime)
 {
   HyperParameters params = make_params();
   params.extend_state_step = 4;
@@ -255,7 +255,7 @@ TEST(TestSimple1DFilter, ProcessVarianceInflatesPrediction)
 // ---------------------------------------------------------------------------
 // compensate_rph_with_delay: zero vs non-zero angular velocity, delta_z correction
 // ---------------------------------------------------------------------------
-TEST(TestEKFModule, CompensateRphWithDelayZeroAngularVelocity)
+TEST(TestEKFLocalizer, CompensateRphWithDelayZeroAngularVelocity)
 {
   const auto params = make_params();
   auto module = make_module(params);
@@ -282,7 +282,7 @@ TEST(TestEKFModule, CompensateRphWithDelayZeroAngularVelocity)
   EXPECT_NEAR(compensated.pose.pose.position.z, pose.pose.pose.position.z, 1e-9);
 }
 
-TEST(TestEKFModule, CompensateRphWithDelayNonZeroAngularVelocity)
+TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity)
 {
   const auto params = make_params();
   auto module = make_module(params);
