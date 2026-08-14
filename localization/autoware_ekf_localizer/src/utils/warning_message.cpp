@@ -13,9 +13,9 @@
 // limitations under the License.
 
 #include "warning_message.hpp"
-#include <fmt/format.h>
 
 #include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <string>
 #include <string_view>
