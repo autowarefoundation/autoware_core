@@ -535,22 +535,22 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_reflects_pose_no_updat
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
 
   // Set activated and initialpose to true to enable pose diagnostics
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   // Initially merged status should be OK
-  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
   // Simulate WARN condition: pose not updated for threshold_warn count
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 50);  // threshold_warn = 50
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 50);  // threshold_warn = 50
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, current_time);
 
   // Merged status should be WARN (or ERROR if covariance ellipse check fails)
-  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   // Note: If covariance ellipse check returns ERROR, merged status will be ERROR
   // So we check that the level is at least WARN
   EXPECT_GE(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
@@ -560,11 +560,11 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_reflects_pose_no_updat
     merged_status.message.find("cov_ellipse") != std::string::npos);
 
   // Simulate ERROR condition: pose not updated for threshold_error count
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 100);  // threshold_error = 100
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, current_time);
 
   // Merged status should be ERROR
-  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
   EXPECT_TRUE(merged_status.message.find("pose is not updated") != std::string::npos);
 
@@ -576,7 +576,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_reflects_pose_no_updat
       EXPECT_EQ(
         value.value,
         std::to_string(
-          get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds()));
+          get_merged_diagnostic_last_transition_time(ekf_localizer_node.get()).nanoseconds()));
       break;
     }
   }
@@ -601,8 +601,8 @@ TEST_F(
   diag.push_back(check_set_initialpose(true));
   diag.push_back(check_measurement_updated("pose", thr_e, thr_w, thr_e));  // ERROR
   diag.push_back(check_measurement_updated("twist", 0, thr_w, thr_e));
-  update_diagnostics_raw(ekf_localizer.get(), diag, current_time);
-  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer.get());
+  update_diagnostics_raw(ekf_localizer_node.get(), diag, current_time);
+  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
   diag.clear();
@@ -610,9 +610,9 @@ TEST_F(
   diag.push_back(check_set_initialpose(true));
   diag.push_back(check_measurement_updated("pose", thr_w, thr_w, thr_e));  // WARN
   diag.push_back(check_measurement_updated("twist", 0, thr_w, thr_e));
-  update_diagnostics_raw(ekf_localizer.get(), diag, current_time);
+  update_diagnostics_raw(ekf_localizer_node.get(), diag, current_time);
 
-  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer.get());
+  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
   EXPECT_TRUE(merged_status_after.message.find("pose is not updated") != std::string::npos);
 }
@@ -644,32 +644,32 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_updates_when_previous_
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
 
   // Set activated and initialpose to true to enable pose diagnostics
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   // Initially merged status should be OK
-  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
   // Update with OK status
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 0);
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 0);
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, current_time);
 
   // Merged status should remain OK (or ERROR if covariance ellipse check fails)
   // Note: If covariance ellipse check returns ERROR, merged status will be ERROR
-  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   // If covariance ellipse check fails, level might be ERROR, but we check that it's at least OK
   EXPECT_GE(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 
   // Update with WARN status (when previous merge was OK, merged status should update)
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 50);  // threshold_warn = 50
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 50);  // threshold_warn = 50
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, current_time);
 
   // Merged status should be WARN (or ERROR if covariance ellipse check fails)
-  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   // Note: If covariance ellipse check returns ERROR, merged status will be ERROR
   // So we check that the level is at least WARN
   EXPECT_GE(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
@@ -704,20 +704,20 @@ TEST_F(
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
 
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
-  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer.get());
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 100);  // threshold_error = 100
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, current_time);
+  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_GE(merged_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
   // Full pose/ellipse merge may stay non-OK; activation-only merge must yield OK merged status
-  update_diagnostics_activation_and_initialpose_only(ekf_localizer.get(), current_time);
+  update_diagnostics_activation_and_initialpose_only(ekf_localizer_node.get(), current_time);
 
-  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer.get());
+  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
   EXPECT_EQ(merged_status_after.message, "OK");
 }
@@ -748,24 +748,24 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_ok_after_force_update_
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
 
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   // Merged ERROR from pose no-update
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
-  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer.get());
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 100);  // threshold_error = 100
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, current_time);
+  auto merged_status_before = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_GE(merged_status_before.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
-  force_diagnostics_update(ekf_localizer.get());
+  force_diagnostics_update(ekf_localizer_node.get());
 
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 0);
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 0);
   // Next update_diagnostics with minimal OK merge (as after a publish tick)
-  update_diagnostics_activation_and_initialpose_only(ekf_localizer.get(), current_time);
+  update_diagnostics_activation_and_initialpose_only(ekf_localizer_node.get(), current_time);
 
-  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer.get());
+  auto merged_status_after = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status_after.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
   EXPECT_EQ(merged_status_after.message, "OK");
   bool found_transition_ts = false;
@@ -775,10 +775,11 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_ok_after_force_update_
       EXPECT_FALSE(found_transition_ts);
       found_transition_ts = true;
       EXPECT_EQ(
-        kv.value, std::to_string(
-                    get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds()));
+        kv.value,
+        std::to_string(
+          get_merged_diagnostic_last_transition_time(ekf_localizer_node.get()).nanoseconds()));
       EXPECT_EQ(
-        get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds(),
+        get_merged_diagnostic_last_transition_time(ekf_localizer_node.get()).nanoseconds(),
         current_time.nanoseconds());
     }
   }
@@ -810,16 +811,16 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, last_level_transition_timestamp_when_non
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
 
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   // Merged ERROR from pose no-update
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);  // threshold_error = 100
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, error_time);
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 100);  // threshold_error = 100
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, error_time);
 
-  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_GE(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 
   bool has_timestamp = false;
@@ -834,11 +835,12 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, last_level_transition_timestamp_when_non
   EXPECT_TRUE(has_timestamp);
   EXPECT_EQ(
     timestamp_value,
-    std::to_string(get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds()));
+    std::to_string(
+      get_merged_diagnostic_last_transition_time(ekf_localizer_node.get()).nanoseconds()));
 
   // Verify timestamp matches the error time
   EXPECT_EQ(
-    get_merged_diagnostic_last_transition_time(ekf_localizer.get()).nanoseconds(),
+    get_merged_diagnostic_last_transition_time(ekf_localizer_node.get()).nanoseconds(),
     error_time.nanoseconds());
 }
 
@@ -856,24 +858,24 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_updated_when_not_activated)
   current_ekf_pose.header.frame_id = "map";
 
   // Ensure is_activated_ is false
-  set_is_activated(ekf_localizer.get(), false);
-  set_is_set_initialpose(ekf_localizer.get(), false);
+  set_is_activated(ekf_localizer_node.get(), false);
+  set_is_set_initialpose(ekf_localizer_node.get(), false);
 
   // Update diagnostics (simulating early return in timer_callback)
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, current_time);
 
   // Merged status should reflect that process is not activated (WARN)
-  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
   EXPECT_TRUE(merged_status.message.find("process is not activated") != std::string::npos);
 
-  force_diagnostics_update(ekf_localizer.get());
+  force_diagnostics_update(ekf_localizer_node.get());
 
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
-  update_diagnostics_activation_and_initialpose_only(ekf_localizer.get(), current_time);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
+  update_diagnostics_activation_and_initialpose_only(ekf_localizer_node.get(), current_time);
 
-  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 }
 
@@ -891,23 +893,23 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_updated_when_initialpose_not
   current_ekf_pose.header.frame_id = "map";
 
   // Set is_activated_ to true but is_set_initialpose_ to false
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), false);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), false);
 
   // Update diagnostics (simulating early return in timer_callback)
-  update_diagnostics(ekf_localizer.get(), current_ekf_pose, current_time);
+  update_diagnostics(ekf_localizer_node.get(), current_ekf_pose, current_time);
 
   // Merged status should reflect that initial pose is not set (ERROR)
-  auto merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  auto merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
   EXPECT_TRUE(merged_status.message.find("initial pose is not set") != std::string::npos);
 
-  force_diagnostics_update(ekf_localizer.get());
+  force_diagnostics_update(ekf_localizer_node.get());
 
-  set_is_set_initialpose(ekf_localizer.get(), true);
-  update_diagnostics_activation_and_initialpose_only(ekf_localizer.get(), current_time);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
+  update_diagnostics_activation_and_initialpose_only(ekf_localizer_node.get(), current_time);
 
-  merged_status = get_merged_diagnostic_status(ekf_localizer.get());
+  merged_status = get_merged_diagnostic_status(ekf_localizer_node.get());
   EXPECT_EQ(merged_status.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
 }
 
@@ -923,24 +925,24 @@ TEST_F(
   auto ekf_localizer_node = create_ekf_localizer_node(diagnostics_publish_period, ekf_rate);
 
   constexpr size_t k_persisted_no_update = 42;
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), k_persisted_no_update);
-  set_twist_diag_info_no_update_count(ekf_localizer.get(), k_persisted_no_update);
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), k_persisted_no_update);
+  set_twist_diag_info_no_update_count(ekf_localizer_node.get(), k_persisted_no_update);
 
-  set_stale_pose_twist_measurement_diag_fields(ekf_localizer.get());
-  set_is_activated(ekf_localizer.get(), false);
-  set_is_set_initialpose(ekf_localizer.get(), true);
-  call_timer_callback(ekf_localizer.get());
-  expect_measurement_diag_fields_initialized(ekf_localizer.get());
-  EXPECT_EQ(get_pose_diag_info_no_update_count(ekf_localizer.get()), k_persisted_no_update);
-  EXPECT_EQ(get_twist_diag_info_no_update_count(ekf_localizer.get()), k_persisted_no_update);
+  set_stale_pose_twist_measurement_diag_fields(ekf_localizer_node.get());
+  set_is_activated(ekf_localizer_node.get(), false);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
+  call_timer_callback(ekf_localizer_node.get());
+  expect_measurement_diag_fields_initialized(ekf_localizer_node.get());
+  EXPECT_EQ(get_pose_diag_info_no_update_count(ekf_localizer_node.get()), k_persisted_no_update);
+  EXPECT_EQ(get_twist_diag_info_no_update_count(ekf_localizer_node.get()), k_persisted_no_update);
 
-  set_stale_pose_twist_measurement_diag_fields(ekf_localizer.get());
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), false);
-  call_timer_callback(ekf_localizer.get());
-  expect_measurement_diag_fields_initialized(ekf_localizer.get());
-  EXPECT_EQ(get_pose_diag_info_no_update_count(ekf_localizer.get()), k_persisted_no_update);
-  EXPECT_EQ(get_twist_diag_info_no_update_count(ekf_localizer.get()), k_persisted_no_update);
+  set_stale_pose_twist_measurement_diag_fields(ekf_localizer_node.get());
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), false);
+  call_timer_callback(ekf_localizer_node.get());
+  expect_measurement_diag_fields_initialized(ekf_localizer_node.get());
+  EXPECT_EQ(get_pose_diag_info_no_update_count(ekf_localizer_node.get()), k_persisted_no_update);
+  EXPECT_EQ(get_twist_diag_info_no_update_count(ekf_localizer_node.get()), k_persisted_no_update);
 }
 
 TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_at_specified_period)
@@ -968,9 +970,9 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_at_specified_perio
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   int diag_count = 0;
   auto sub = ekf_localizer_node->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
@@ -1018,9 +1020,9 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_message_names)
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   // Wait for a full update (three tasks) from the periodic diagnostics_publish_timer_ path.
   diagnostic_msgs::msg::DiagnosticArray::SharedPtr full_diag_msg;
@@ -1110,9 +1112,9 @@ TEST_F(
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   bool received_callback_pose_diag = false;
   bool received_callback_twist_diag = false;
@@ -1194,9 +1196,9 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_at_parameter_perio
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   auto pub_pose =
     ekf_localizer_node->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
@@ -1305,9 +1307,9 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_immediately_on_sev
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer.get(), initial_pose);
-  set_is_activated(ekf_localizer.get(), true);
-  set_is_set_initialpose(ekf_localizer.get(), true);
+  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  set_is_activated(ekf_localizer_node.get(), true);
+  set_is_set_initialpose(ekf_localizer_node.get(), true);
 
   int diag_count = 0;
   bool saw_error_main_diag = false;
@@ -1340,8 +1342,8 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_immediately_on_sev
   const int count_before = diag_count;
 
   saw_error_main_diag = false;
-  set_pose_diag_info_no_update_count(ekf_localizer.get(), 100);
-  call_timer_callback(ekf_localizer.get());
+  set_pose_diag_info_no_update_count(ekf_localizer_node.get(), 100);
+  call_timer_callback(ekf_localizer_node.get());
 
   for (int i = 0; i < 80 && rclcpp::ok(); ++i) {
     executor.spin_some(std::chrono::milliseconds(10));
