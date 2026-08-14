@@ -735,16 +735,12 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides()
 
 /// What the node records about its own reasoning: nineteen keys, these names.
 ///
-/// This is the one thing a converged scan reports that no other test observes. An extraction that
-/// groups the decisions into a result struct can drop or rename one of them and stay green
-/// everywhere else.
+/// No other case observes them, so an extraction that groups the decisions into a result struct can
+/// drop or rename one and stay green everywhere else.
 ///
-/// Insertion order is deliberately *not* asserted. Nothing consumes it -- the aggregator matches on
-/// `status.name` and copies `values` through untouched, and no other package names these keys -- so
-/// the only change it would catch is a regrouping that harms no one, while the one hazard that
-/// really is order-sensitive -- `skipping_publish_num` updating a static -- corrupts a value rather
-/// than a key position. The literal below is still written in insertion order, because that is how
-/// the callback reads.
+/// Insertion order is deliberately not asserted, because nothing consumes it: the aggregator
+/// matches on `status.name` and copies `values` through untouched, and no other package names these
+/// keys. The literal below is in insertion order anyway, to read alongside the callback.
 TEST(NdtScanMatcherCharacteristics, ScanMatchingStatusEmitsExactlyTheseNineteenKeys)
 {
   // Arrange
@@ -782,9 +778,7 @@ TEST(NdtScanMatcherCharacteristics, ScanMatchingStatusEmitsExactlyTheseNineteenK
     "execution_time",
     "skipping_publish_num",
   };
-  // Sorted before comparing, so the count is still pinned and only the positions are free. It does
-  // not also pin "no duplicates": `add_key_value` overwrites an existing key rather than appending,
-  // so a repeated key cannot reach the array in the first place.
+  // Sorted, so the count stays pinned and only the positions are free.
   auto sorted = [](std::vector<std::string> keys) {
     std::sort(keys.begin(), keys.end());
     return keys;
