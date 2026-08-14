@@ -67,7 +67,7 @@ HyperParameters make_params()
   return params;
 }
 
-std::shared_ptr<EKFLocalizer> make_module(const HyperParameters & params)
+std::shared_ptr<EKFLocalizer> make_ekf_localizer(const HyperParameters & params)
 {
   // Warning(nullptr) is an explicitly-requested no-op logger (node_ == nullptr).
   auto warning = std::make_shared<Warning>(nullptr);
@@ -131,7 +131,7 @@ geometry_msgs::msg::TransformStamped identity_transform()
 TEST(TestEKFLocalizer, FindClosestDelayTimeIndex)
 {
   const auto params = make_params();
-  auto module = make_module(params);
+  auto module = make_ekf_localizer(params);
 
   // Build a strictly increasing delay-time table: front becomes 0 and the rest accumulate.
   // After one accumulate_delay_time(dt), the table is [0, 1e15 + dt, 1e15 + dt, ...].
@@ -167,7 +167,7 @@ TEST(TestEKFLocalizer, FindClosestDelayTimeIndexEmptyTable)
 {
   HyperParameters params = make_params();
   params.extend_state_step = 0;
-  auto module = make_module(params);
+  auto module = make_ekf_localizer(params);
 
   EXPECT_EQ(module->find_closest_delay_time_index(-1.0), 0u);
   EXPECT_EQ(module->find_closest_delay_time_index(0.0), 0u);
@@ -182,7 +182,7 @@ TEST(TestEKFLocalizer, AccumulateDelayTime)
 {
   HyperParameters params = make_params();
   params.extend_state_step = 4;
-  auto module = make_module(params);
+  auto module = make_ekf_localizer(params);
 
   // Initial table is filled with 1.0E15. find_closest_delay_time_index uses the table directly,
   // so we can probe its boundary behaviour to characterize the shift/accumulation.
@@ -258,7 +258,7 @@ TEST(TestSimple1DFilter, ProcessVarianceInflatesPrediction)
 TEST(TestEKFLocalizer, CompensateRphWithDelayZeroAngularVelocity)
 {
   const auto params = make_params();
-  auto module = make_module(params);
+  auto module = make_ekf_localizer(params);
 
   const rclcpp::Time stamp(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(1.0, 2.0, 0.3, "map", stamp);
@@ -285,7 +285,7 @@ TEST(TestEKFLocalizer, CompensateRphWithDelayZeroAngularVelocity)
 TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity)
 {
   const auto params = make_params();
-  auto module = make_module(params);
+  auto module = make_ekf_localizer(params);
 
   const rclcpp::Time stamp(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(0.0, 0.0, 0.0, "map", stamp);
@@ -320,7 +320,7 @@ protected:
   // run a prediction so the EKF state is well-defined.
   void reset_module()
   {
-    module_ = make_module(params_);
+    module_ = make_ekf_localizer(params_);
     const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
     auto initial_pose = make_pose(0.0, 0.0, 0.0, "map", t0);
     module_->initialize(initial_pose, identity_transform());
@@ -444,7 +444,7 @@ protected:
 
   void reset_module()
   {
-    module_ = make_module(params_);
+    module_ = make_ekf_localizer(params_);
     const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
     auto initial_pose = make_pose(0.0, 0.0, 0.0, "map", t0);
     module_->initialize(initial_pose, identity_transform());
