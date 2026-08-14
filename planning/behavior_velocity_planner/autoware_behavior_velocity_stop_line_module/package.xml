@@ -6,12 +6,12 @@
   <description>The autoware_behavior_velocity_stop_line_module package</description>
 
   <maintainer email="yukinari.hisaki.2@tier4.jp">Yukinari Hisaki</maintainer>
-  <maintainer email="satoshi.ota@tier4.jp">Satoshi Ota</maintainer>
 
   <license>Apache License 2.0</license>
 
   <author email="fumiya.watanabe@tier4.jp">Fumiya Watanabe</author>
   <author email="yutaka.shimizu@tier4.jp">Yutaka Shimizu</author>
+  <author email="satoshi.ota@tier4.jp">Satoshi Ota</author>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
