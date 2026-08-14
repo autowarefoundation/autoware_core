@@ -321,18 +321,18 @@ protected:
   // node), and run a prediction so the EKF state is well-defined.
   void reset_ekf_localizer()
   {
-    module_ = make_ekf_localizer(params_);
+    ekf_localizer_ = make_ekf_localizer(params_);
     const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
     auto initial_pose = make_pose(0.0, 0.0, 0.0, "map", t0);
-    module_->initialize(initial_pose, identity_transform());
+    ekf_localizer_->initialize(initial_pose, identity_transform());
     for (size_t i = 0; i < params_.extend_state_step; ++i) {
-      module_->accumulate_delay_time(params_.ekf_dt);
+      ekf_localizer_->accumulate_delay_time(params_.ekf_dt);
     }
-    module_->predict_with_delay(params_.ekf_dt);
+    ekf_localizer_->predict_with_delay(params_.ekf_dt);
   }
 
   HyperParameters params_;
-  std::shared_ptr<EKFLocalizer> module_;
+  std::shared_ptr<EKFLocalizer> ekf_localizer_;
 };
 
 TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
@@ -346,13 +346,13 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
   // origin and the covariance unchanged, failing these postconditions.
   auto pose = make_pose(1.0, 2.0, 0.0, "map", t_curr);
 
-  const auto pose_before = module_->get_current_pose(t_curr, false);
-  const auto cov_before = module_->get_current_pose_covariance();
+  const auto pose_before = ekf_localizer_->get_current_pose(t_curr, false);
+  const auto cov_before = ekf_localizer_->get_current_pose_covariance();
   EXPECT_DOUBLE_EQ(pose_before.pose.position.x, 0.0);
   EXPECT_DOUBLE_EQ(pose_before.pose.position.y, 0.0);
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr, diag);
 
   EXPECT_TRUE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -360,14 +360,14 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
 
   // Postcondition: the state is blended toward the measurement (strictly between the prior
   // estimate and the measurement), not snapped to it.
-  const auto pose_after = module_->get_current_pose(t_curr, false);
+  const auto pose_after = ekf_localizer_->get_current_pose(t_curr, false);
   EXPECT_GT(pose_after.pose.position.x, 0.0);
   EXPECT_LT(pose_after.pose.position.x, 1.0);
   EXPECT_GT(pose_after.pose.position.y, 0.0);
   EXPECT_LT(pose_after.pose.position.y, 2.0);
 
   // Postcondition: the position covariance is reduced by incorporating the measurement.
-  const auto cov_after = module_->get_current_pose_covariance();
+  const auto cov_after = ekf_localizer_->get_current_pose_covariance();
   EXPECT_LT(cov_after[COV_IDX::X_X], cov_before[COV_IDX::X_X]);
   EXPECT_LT(cov_after[COV_IDX::Y_Y], cov_before[COV_IDX::Y_Y]);
 }
@@ -381,7 +381,7 @@ TEST_F(MeasurementUpdatePose, RejectsOnDelayGate)
   auto pose = make_pose(0.0, 0.0, 0.0, "map", t_old);
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr, diag);
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
@@ -394,7 +394,7 @@ TEST_F(MeasurementUpdatePose, RejectsOnNan)
   pose.pose.pose.position.x = std::numeric_limits<double>::quiet_NaN();
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr, diag);
 
   EXPECT_FALSE(ok);
   // The NaN gate is reached after the delay gate, so the delay gate is still marked passed.
@@ -408,7 +408,7 @@ TEST_F(MeasurementUpdatePose, RejectsOnInf)
   pose.pose.pose.position.y = std::numeric_limits<double>::infinity();
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr, diag);
 
   EXPECT_FALSE(ok);
 }
@@ -423,7 +423,7 @@ TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
   auto pose = make_pose(1000.0, 1000.0, 0.0, "map", t_curr);
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr, diag);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -445,18 +445,18 @@ protected:
 
   void reset_ekf_localizer()
   {
-    module_ = make_ekf_localizer(params_);
+    ekf_localizer_ = make_ekf_localizer(params_);
     const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
     auto initial_pose = make_pose(0.0, 0.0, 0.0, "map", t0);
-    module_->initialize(initial_pose, identity_transform());
+    ekf_localizer_->initialize(initial_pose, identity_transform());
     for (size_t i = 0; i < params_.extend_state_step; ++i) {
-      module_->accumulate_delay_time(params_.ekf_dt);
+      ekf_localizer_->accumulate_delay_time(params_.ekf_dt);
     }
-    module_->predict_with_delay(params_.ekf_dt);
+    ekf_localizer_->predict_with_delay(params_.ekf_dt);
   }
 
   HyperParameters params_;
-  std::shared_ptr<EKFLocalizer> module_;
+  std::shared_ptr<EKFLocalizer> ekf_localizer_;
 };
 
 TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
@@ -468,27 +468,27 @@ TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
   // the velocity estimate must move toward the measurement and the velocity covariance shrink.
   auto twist = make_twist(3.0, 1.0, "base_link", t_curr);
 
-  const auto twist_before = module_->get_current_twist(t_curr);
-  const auto cov_before = module_->get_current_twist_covariance();
+  const auto twist_before = ekf_localizer_->get_current_twist(t_curr);
+  const auto cov_before = ekf_localizer_->get_current_twist_covariance();
   EXPECT_DOUBLE_EQ(twist_before.twist.linear.x, 0.0);
   EXPECT_DOUBLE_EQ(twist_before.twist.angular.z, 0.0);
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr, diag);
 
   EXPECT_TRUE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
 
   // Postcondition: the velocity estimate is blended toward the measurement, not snapped to it.
-  const auto twist_after = module_->get_current_twist(t_curr);
+  const auto twist_after = ekf_localizer_->get_current_twist(t_curr);
   EXPECT_GT(twist_after.twist.linear.x, 0.0);
   EXPECT_LT(twist_after.twist.linear.x, 3.0);
   EXPECT_GT(twist_after.twist.angular.z, 0.0);
   EXPECT_LT(twist_after.twist.angular.z, 1.0);
 
   // Postcondition: the velocity covariance (vx maps to twist covariance X_X) is reduced.
-  const auto cov_after = module_->get_current_twist_covariance();
+  const auto cov_after = ekf_localizer_->get_current_twist_covariance();
   EXPECT_LT(cov_after[COV_IDX::X_X], cov_before[COV_IDX::X_X]);
 }
 
@@ -499,7 +499,7 @@ TEST_F(MeasurementUpdateTwist, RejectsOnDelayGate)
   auto twist = make_twist(0.0, 0.0, "base_link", t_old);
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr, diag);
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
@@ -512,7 +512,7 @@ TEST_F(MeasurementUpdateTwist, RejectsOnNan)
   twist.twist.twist.linear.x = std::numeric_limits<double>::quiet_NaN();
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr, diag);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -525,7 +525,7 @@ TEST_F(MeasurementUpdateTwist, RejectsOnInf)
   twist.twist.twist.angular.z = std::numeric_limits<double>::infinity();
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr, diag);
 
   EXPECT_FALSE(ok);
 }
@@ -539,7 +539,7 @@ TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
   auto twist = make_twist(1000.0, 1000.0, "base_link", t_curr);
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr, diag);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
