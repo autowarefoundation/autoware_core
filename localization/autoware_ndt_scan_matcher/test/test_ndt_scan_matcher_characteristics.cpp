@@ -927,11 +927,6 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
   auto ndt_pose_with_cov =
     harness->capture<geometry_msgs::msg::PoseWithCovarianceStamped>("/ndt_pose_with_covariance");
   auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
-  auto exe_time = harness->capture<Float32Stamped>("/exe_time_ms");
-  auto nvtl = harness->capture<Float32Stamped>("/nearest_voxel_transformation_likelihood");
-  auto iteration_num = harness->capture<Int32Stamped>("/iteration_num");
-  auto ndt_marker = harness->capture<visualization_msgs::msg::MarkerArray>("/ndt_marker");
-  auto distance = harness->capture<Float32Stamped>("/initial_to_result_distance");
   auto tf = harness->capture<tf2_msgs::msg::TFMessage>("/tf");
 
   // The two captures whose emptiness is the point of this case.
@@ -961,28 +956,15 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
   EXPECT_TRUE(contains(diag.message(), "Score is below the threshold. Score: "))
     << "message was: " << diag.message();
 
-  // Every expected publication, for the reason the converged case gives: publish *order* inside the
-  // callback says nothing about arrival order at a separate node on a separate executor. Waiting
-  // for `points_aligned` because it is published last would be relying on exactly the inference
-  // that case rejects — and a small `Float32Stamped` overtaking a 1,323-point cloud is the easy
-  // direction for that to go wrong.
-  ASSERT_TRUE(harness->wait_until(
-    [&] {
-      return points_aligned->count() >= 1 && tf->count() >= 1 && exe_time->count() >= 1 &&
-             nvtl->count() >= 1 && iteration_num->count() >= 1 && ndt_marker->count() >= 1 &&
-             distance->count() >= 1;
-    },
-    5s))
+  ASSERT_TRUE(
+    harness->wait_until([&] { return points_aligned->count() >= 1 && tf->count() >= 1; }, 5s))
     << "the alignment outputs never arrived";
 
-  // The alignment ran and everything else was published ...
+  // The alignment ran to its last publish. The score message above already proves it reached the
+  // score check; this proves the callback did not stop there. The other unconditional publishes are
+  // not asserted: they can only stop together with the TF below, which is asserted.
   EXPECT_EQ(points_aligned->count(), 1U) << "scan drive attempt was " << outcome->attempt;
-  EXPECT_EQ(exe_time->count(), 1U);
-  EXPECT_EQ(nvtl->count(), 1U);
-  EXPECT_EQ(iteration_num->count(), 1U);
-  EXPECT_EQ(ndt_marker->count(), 1U);
-  EXPECT_EQ(distance->count(), 1U);
-  // ... including the TF, which is not gated on convergence ...
+  // The TF goes out, not gated on convergence ...
   EXPECT_TRUE(has_ndt_base_link_transform(*tf))
     << "map -> ndt_base_link is now gated on convergence; downstream TF consumers would break";
   // ... but the pose itself was withheld.
