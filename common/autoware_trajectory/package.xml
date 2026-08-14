@@ -28,10 +28,10 @@
   <depend>fmt</depend>
   <depend>geometry_msgs</depend>
   <depend>lanelet2_core</depend>
+  <depend>libexpected-dev</depend>
   <depend>rclcpp</depend>
   <depend>tf2</depend>
   <depend>tf2_geometry_msgs</depend>
-  <depend>tl_expected</depend>
 
   <test_depend>ament_cmake_auto</test_depend>
   <test_depend>ament_index_cpp</test_depend>
