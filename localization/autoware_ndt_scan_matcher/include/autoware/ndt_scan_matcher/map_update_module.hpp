@@ -119,8 +119,7 @@ public:
 private:
   friend class NDTScanMatcher;
 
-  UpdateResult callback_timer(
-    const bool is_activated, const std::optional<geometry_msgs::msg::Point> & position);
+  UpdateResult callback_timer(const geometry_msgs::msg::Point & position);
 
   [[nodiscard]] bool should_update_map(
     BuilderState & builder_state, const geometry_msgs::msg::Point & position,

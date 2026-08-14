@@ -258,8 +258,29 @@ void NDTScanMatcher::callback_timer()
 
   diagnostics_map_update_->add_key_value("timer_callback_time_stamp", ros_time_now.nanoseconds());
 
+  // check is_activated
+  diagnostics_map_update_->add_key_value("is_activated", static_cast<bool>(is_activated_));
+  if (!is_activated_) {
+    diagnostics_map_update_->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::WARN, "Node is not activated.");
+    diagnostics_map_update_->publish(ros_time_now);
+    return;
+  }
+
+  // check is_set_last_update_position
   const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
-  auto result = map_update_module_->callback_timer(is_activated_, latest_ekf_position);
+  const bool is_set_last_update_position = (latest_ekf_position != std::nullopt);
+  diagnostics_map_update_->add_key_value("is_set_last_update_position", is_set_last_update_position);
+  if (!is_set_last_update_position) {
+    diagnostics_map_update_->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::WARN,
+      "Cannot find the reference position for map update."
+      "Please check if the EKF odometry is provided to NDT.");
+    diagnostics_map_update_->publish(ros_time_now);
+    return;
+  }
+
+  auto result = map_update_module_->callback_timer(latest_ekf_position.value());
   apply_diagnostics_update(*diagnostics_map_update_, result.diagnostics);
 
   if (result.loaded_pcd_map) {

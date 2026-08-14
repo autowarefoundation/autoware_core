@@ -58,34 +58,16 @@ MapUpdateModule::MapUpdateModule(
 }
 
 MapUpdateModule::UpdateResult MapUpdateModule::callback_timer(
-  const bool is_activated, const std::optional<geometry_msgs::msg::Point> & position)
+  const geometry_msgs::msg::Point & position)
 {
   UpdateResult result;
   DiagnosticsReport & diagnostics = result.diagnostics;
 
-  // check is_activated
-  diagnostics.add_key_value({"is_activated", is_activated});
-  if (!is_activated) {
-    diagnostics.update_level_and_message(DiagnosticLevel::WARN, "Node is not activated.");
-    return result;
-  }
-
-  // check is_set_last_update_position
-  const bool is_set_last_update_position = (position != std::nullopt);
-  diagnostics.add_key_value({"is_set_last_update_position", is_set_last_update_position});
-  if (!is_set_last_update_position) {
-    diagnostics.update_level_and_message(
-      DiagnosticLevel::WARN,
-      "Cannot find the reference position for map update."
-      "Please check if the EKF odometry is provided to NDT.");
-    return result;
-  }
-
   result.map_updated = builder_state_.with([&](auto & builder_state) {
-    if (!should_update_map(builder_state, position.value(), diagnostics)) {
+    if (!should_update_map(builder_state, position, diagnostics)) {
       return false;
     }
-    const bool updated = update_map_internal(builder_state, position.value(), diagnostics);
+    const bool updated = update_map_internal(builder_state, position, diagnostics);
     if (updated && param_.publish_loaded_map) {
       result.loaded_pcd_map = merge_loaded_pcd_map();
     }
