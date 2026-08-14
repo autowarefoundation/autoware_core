@@ -131,32 +131,32 @@ geometry_msgs::msg::TransformStamped identity_transform()
 TEST(TestEKFLocalizer, FindClosestDelayTimeIndex)
 {
   const auto params = make_params();
-  auto module = make_ekf_localizer(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
   // Build a strictly increasing delay-time table: front becomes 0 and the rest accumulate.
   // After one accumulate_delay_time(dt), the table is [0, 1e15 + dt, 1e15 + dt, ...].
   // Repeatedly accumulating builds a monotonically-increasing prefix.
   const double dt = 0.1;
   for (size_t i = 0; i < params.extend_state_step; ++i) {
-    module->accumulate_delay_time(dt);
+    ekf_localizer->accumulate_delay_time(dt);
   }
   // After extend_state_step accumulations the table is [0, dt, 2*dt, ..., (n-1)*dt].
 
   // target below the first element -> lower_bound at begin -> index 0
-  EXPECT_EQ(module->find_closest_delay_time_index(-1.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(-1.0), 0u);
 
   // target exactly the first element (0) -> begin -> index 0
-  EXPECT_EQ(module->find_closest_delay_time_index(0.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.0), 0u);
 
   // closest-of-two: a value between two grid points snaps to the nearer one.
   // grid is 0, 0.1, 0.2, ...; 0.14 is closer to 0.1 (index 1) than 0.2 (index 2).
-  EXPECT_EQ(module->find_closest_delay_time_index(0.14), 1u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.14), 1u);
   // 0.16 is closer to 0.2 (index 2).
-  EXPECT_EQ(module->find_closest_delay_time_index(0.16), 2u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.16), 2u);
 
   // target beyond the last element -> returns size (== extend_state_step).
   const double beyond = static_cast<double>(params.extend_state_step) * dt + 1.0;
-  EXPECT_EQ(module->find_closest_delay_time_index(beyond), params.extend_state_step);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(beyond), params.extend_state_step);
 }
 
 // Degenerate configuration: extend_state_step == 0 leaves accumulated_delay_times_ empty.
@@ -167,12 +167,12 @@ TEST(TestEKFLocalizer, FindClosestDelayTimeIndexEmptyTable)
 {
   HyperParameters params = make_params();
   params.extend_state_step = 0;
-  auto module = make_ekf_localizer(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
-  EXPECT_EQ(module->find_closest_delay_time_index(-1.0), 0u);
-  EXPECT_EQ(module->find_closest_delay_time_index(0.0), 0u);
-  EXPECT_EQ(module->find_closest_delay_time_index(1.0), 0u);
-  EXPECT_EQ(module->find_closest_delay_time_index(1.0e15), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(-1.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(1.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(1.0e15), 0u);
 }
 
 // ---------------------------------------------------------------------------
@@ -182,28 +182,28 @@ TEST(TestEKFLocalizer, AccumulateDelayTime)
 {
   HyperParameters params = make_params();
   params.extend_state_step = 4;
-  auto module = make_ekf_localizer(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
   // Initial table is filled with 1.0E15. find_closest_delay_time_index uses the table directly,
   // so we can probe its boundary behaviour to characterize the shift/accumulation.
   const double dt = 0.2;
 
   // First accumulation: front -> 0, others -> 1e15 + dt (still huge).
-  module->accumulate_delay_time(dt);
+  ekf_localizer->accumulate_delay_time(dt);
   // Index 0 corresponds to delay 0.
-  EXPECT_EQ(module->find_closest_delay_time_index(0.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.0), 0u);
 
   // Second accumulation shifts and the second element becomes 0 + dt = dt, the rest stay huge.
-  module->accumulate_delay_time(dt);
+  ekf_localizer->accumulate_delay_time(dt);
   // Now table[0] = 0, table[1] = dt, table[2..] huge. A target at dt snaps to index 1.
-  EXPECT_EQ(module->find_closest_delay_time_index(dt), 1u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(dt), 1u);
 
   // Third accumulation: table[0]=0, table[1]=dt, table[2]=2*dt, table[3] huge.
-  module->accumulate_delay_time(dt);
-  EXPECT_EQ(module->find_closest_delay_time_index(2.0 * dt), 2u);
+  ekf_localizer->accumulate_delay_time(dt);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(2.0 * dt), 2u);
 
   // A target larger than the (still huge) last element returns size().
-  EXPECT_EQ(module->find_closest_delay_time_index(2.0e15), params.extend_state_step);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(2.0e15), params.extend_state_step);
 }
 
 // ---------------------------------------------------------------------------
@@ -258,7 +258,7 @@ TEST(TestSimple1DFilter, ProcessVarianceInflatesPrediction)
 TEST(TestEKFLocalizer, CompensateRphWithDelayZeroAngularVelocity)
 {
   const auto params = make_params();
-  auto module = make_ekf_localizer(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
   const rclcpp::Time stamp(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(1.0, 2.0, 0.3, "map", stamp);
@@ -266,7 +266,7 @@ TEST(TestEKFLocalizer, CompensateRphWithDelayZeroAngularVelocity)
   const tf2::Vector3 zero_angular_velocity(0.0, 0.0, 0.0);
   const double delay_time = 0.2;
   const auto compensated =
-    module->compensate_rph_with_delay(pose, zero_angular_velocity, delay_time);
+    ekf_localizer->compensate_rph_with_delay(pose, zero_angular_velocity, delay_time);
 
   // With zero angular velocity the orientation is unchanged (delta is identity).
   EXPECT_NEAR(compensated.pose.pose.orientation.x, pose.pose.pose.orientation.x, 1e-9);
@@ -278,14 +278,14 @@ TEST(TestEKFLocalizer, CompensateRphWithDelayZeroAngularVelocity)
   const rclcpp::Time compensated_stamp(compensated.header.stamp);
   EXPECT_NEAR(compensated_stamp.seconds(), stamp.seconds() + delay_time, 1e-9);
 
-  // With a fresh module (VX == 0) and zero pitch, delta_z is 0.
+  // With a fresh ekf_localizer (VX == 0) and zero pitch, delta_z is 0.
   EXPECT_NEAR(compensated.pose.pose.position.z, pose.pose.pose.position.z, 1e-9);
 }
 
 TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity)
 {
   const auto params = make_params();
-  auto module = make_ekf_localizer(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
   const rclcpp::Time stamp(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(0.0, 0.0, 0.0, "map", stamp);
@@ -293,7 +293,8 @@ TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity)
   // Non-zero yaw rate -> orientation must rotate by omega * delay_time about Z.
   const tf2::Vector3 angular_velocity(0.0, 0.0, 1.0);
   const double delay_time = 0.5;
-  const auto compensated = module->compensate_rph_with_delay(pose, angular_velocity, delay_time);
+  const auto compensated =
+    ekf_localizer->compensate_rph_with_delay(pose, angular_velocity, delay_time);
 
   // Expected yaw delta = |omega| * delay_time = 1.0 * 0.5 = 0.5 rad.
   tf2::Quaternion q(
@@ -315,9 +316,9 @@ protected:
     reset_module();
   }
 
-  // (Re)build the module from the current params_, initialize at the origin, fill the delay-time
-  // table with realistic small values (one accumulation per predict cycle in the real node), and
-  // run a prediction so the EKF state is well-defined.
+  // (Re)build the ekf_localizer from the current params_, initialize at the origin, fill the
+  // delay-time table with realistic small values (one accumulation per predict cycle in the real
+  // node), and run a prediction so the EKF state is well-defined.
   void reset_module()
   {
     module_ = make_ekf_localizer(params_);
