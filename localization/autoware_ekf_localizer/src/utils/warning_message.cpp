@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "warning_message.hpp"
+#include <fmt/format.h>
 
 #include <fmt/core.h>
 

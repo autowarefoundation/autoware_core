@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "gyro_odometer_diagnostics.hpp"
+#include <fmt/format.h>
 
 #include <fmt/core.h>
 

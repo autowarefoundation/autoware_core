@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "ekf_localizer.hpp"
+#include <fmt/format.h>
 
 #include "utils/covariance.hpp"
 #include "utils/mahalanobis.hpp"
