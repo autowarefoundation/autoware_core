@@ -437,7 +437,7 @@ protected:
     ekf_localizer_node->is_set_initialpose_ = value;
   }
 
-  static void initialize_ekf_module(
+  static void initialize_ekf_localizer(
     autoware::ekf_localizer::EKFLocalizerNode * ekf_localizer_node,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose)
   {
@@ -535,7 +535,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_reflects_pose_no_updat
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
 
   // Set activated and initialpose to true to enable pose diagnostics
   set_is_activated(ekf_localizer_node.get(), true);
@@ -644,7 +644,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_updates_when_previous_
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
 
   // Set activated and initialpose to true to enable pose diagnostics
   set_is_activated(ekf_localizer_node.get(), true);
@@ -704,7 +704,7 @@ TEST_F(
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
 
   set_is_activated(ekf_localizer_node.get(), true);
   set_is_set_initialpose(ekf_localizer_node.get(), true);
@@ -748,7 +748,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, merged_diagnostic_ok_after_force_update_
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
 
   set_is_activated(ekf_localizer_node.get(), true);
   set_is_set_initialpose(ekf_localizer_node.get(), true);
@@ -811,7 +811,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, last_level_transition_timestamp_when_non
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
 
   set_is_activated(ekf_localizer_node.get(), true);
   set_is_set_initialpose(ekf_localizer_node.get(), true);
@@ -970,7 +970,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_at_specified_perio
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
   set_is_activated(ekf_localizer_node.get(), true);
   set_is_set_initialpose(ekf_localizer_node.get(), true);
 
@@ -1020,7 +1020,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_message_names)
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
   set_is_activated(ekf_localizer_node.get(), true);
   set_is_set_initialpose(ekf_localizer_node.get(), true);
 
@@ -1112,7 +1112,7 @@ TEST_F(
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
   set_is_activated(ekf_localizer_node.get(), true);
   set_is_set_initialpose(ekf_localizer_node.get(), true);
 
@@ -1196,7 +1196,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_at_parameter_perio
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
   set_is_activated(ekf_localizer_node.get(), true);
   set_is_set_initialpose(ekf_localizer_node.get(), true);
 
@@ -1307,7 +1307,7 @@ TEST_F(EKFLocalizerNodeDiagnosticsTest, diagnostics_published_immediately_on_sev
   for (size_t i = 0; i < 36; ++i) {
     initial_pose.pose.covariance[i] = (i == 0 || i == 7 || i == 14) ? 0.01 : 0.0;
   }
-  initialize_ekf_module(ekf_localizer_node.get(), initial_pose);
+  initialize_ekf_localizer(ekf_localizer_node.get(), initial_pose);
   set_is_activated(ekf_localizer_node.get(), true);
   set_is_set_initialpose(ekf_localizer_node.get(), true);
 
