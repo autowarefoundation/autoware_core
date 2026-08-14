@@ -99,7 +99,7 @@ using ndt_test::base_link_frame;
 using ndt_test::map_center_x;
 using ndt_test::map_center_y;
 using ndt_test::map_frame;
-using ndt_test::ndt_base_frame;
+using ndt_test::ndt_base_link_frame;
 
 using ndt_test::initial_pose_status;
 using ndt_test::map_update_status;
@@ -238,7 +238,8 @@ bool has_ndt_base_link_transform(const TopicCapture<tf2_msgs::msg::TFMessage> & 
   for (const auto & message : capture.messages()) {
     const bool found =
       std::any_of(message.transforms.begin(), message.transforms.end(), [](const auto & transform) {
-        return transform.child_frame_id == ndt_base_frame && transform.header.frame_id == map_frame;
+        return transform.child_frame_id == ndt_base_link_frame &&
+               transform.header.frame_id == map_frame;
       });
     if (found) {
       return true;
@@ -695,14 +696,14 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides()
     rclcpp::Parameter("ndt.resolution", 2.0),
     rclcpp::Parameter("ndt.step_size", 0.1),
     rclcpp::Parameter("ndt.trans_epsilon", 0.01),
-    // All three frames, because assertions read all three. `ndt_base_frame` and `map_frame` are the
-    // child and parent `has_ndt_base_link_transform` matches on, and `map_frame` is also the
-    // `header.frame_id` the converged case pins on `/ndt_pose`; `base_frame` is the target the
-    // harness's static `base_link -> sensor_frame` transform has to name for a scan to transform at
-    // all.
-    rclcpp::Parameter("frame.ndt_base_frame", ndt_base_frame),
+    // All three frames, because assertions read all three. `ndt_base_link_frame` and `map_frame`
+    // are the child and parent `has_ndt_base_link_transform` matches on, and `map_frame` is also
+    // the `header.frame_id` the converged case pins on `/ndt_pose`; `base_link_frame` is the target
+    // the harness's static `base_link -> sensor_frame` transform has to name for a scan to
+    // transform at all.
+    rclcpp::Parameter("frame.ndt_base_frame", ndt_base_link_frame),
     rclcpp::Parameter("frame.map_frame", map_frame),
-    rclcpp::Parameter("frame.base_frame", base_frame),
+    rclcpp::Parameter("frame.base_frame", base_link_frame),
     rclcpp::Parameter("score_estimation.converged_param_type", 1),  // NVTL
     rclcpp::Parameter(
       "score_estimation.converged_param_nearest_voxel_transformation_likelihood", 2.3),

@@ -37,7 +37,7 @@ inline constexpr const char * base_link_frame = "base_link";
 inline constexpr const char * sensor_frame = "sensor_frame";
 /// The child frame the node broadcasts its result on. Matches `frame.ndt_base_frame`, which the
 /// converged cases pin explicitly.
-inline constexpr const char * ndt_base_frame = "ndt_base_link";
+inline constexpr const char * ndt_base_link_frame = "ndt_base_link";
 
 /// @brief Diagnostic status names published by the node under test.
 inline constexpr const char * scan_matching_status = "ndt_scan_matcher: scan_matching_status";
