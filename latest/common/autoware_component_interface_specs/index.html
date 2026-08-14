@@ -7838,6 +7838,34 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#interface-type-hash-lockfile" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interface type-hash lockfile
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Interface type-hash lockfile">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#when-the-freshness-gate-fails" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        When the freshness gate fails
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -7942,7 +7970,24 @@ target_compile_features(&lt;target&gt; PRIVATE cxx_std_20)</code></p>
 colcon build --symlink-install --packages-select autoware_component_interface_specs
 ./build/autoware_component_interface_specs/generate_interface_manifest \
   src/autoware_component_interface_specs/interface_manifest.json</code></p>
-<p>The generator emits the same layout Prettier produces, so the committed file is stable across regenerations. Adjust the output path to match where the package lives in your workspace. <code>test_manifest.cpp</code> diffs the generator's output against the committed file, so a stale manifest fails the build rather than reaching consumers.</p></div>
+<p>The generator emits the same layout Prettier produces, so the committed file is stable across regenerations. Adjust the output path to match where the package lives in your workspace. <code>test_manifest.cpp</code> diffs the generator's output against the committed file, so a stale manifest fails the build rather than reaching consumers.</p>
+<h2 id="interface-type-hash-lockfile">Interface type-hash lockfile<a class="headerlink" href="#interface-type-hash-lockfile" title="Permanent link">#</a></h2>
+<p><code>interface_type_hashes.jazzy.lock</code> records the <a href="https://github.com/ros-infrastructure/rep/pull/358">RIHS01 type hash</a> (the ROS Interface Hashing Standard, proposed in REP-2011) of every registered message and service type. A RIHS01 hash is a deterministic function of the full type description — transitively including every nested <code>.msg</code> include — so a change to a type's definition in <em>any</em> repository changes its hash. This is the drift tripwire that complements the same-PR version bump: it catches a forgotten bump, and it is the only mechanism for the types owned by other repositories.</p>
+<p>RIHS01 hashes exist only on ROS 2 Iron and newer, so the lockfile is Jazzy-specific and the generator's hash-emitting path is <code>#if __has_include(&lt;rosidl_runtime_c/type_hash.h&gt;)</code>-guarded — on Humble the tool is a no-op and the freshness test skips.</p>
+<p>Regenerate it (Jazzy only) once you have established that the type change behind the new hash is intentional and reviewed — see "When the freshness gate fails" below before running this:</p>
+<p><code>bash
+colcon build --symlink-install --packages-select autoware_component_interface_specs
+./build/autoware_component_interface_specs/generate_type_hashes \
+  src/autoware_component_interface_specs/interface_type_hashes.jazzy.lock</code></p>
+<p><code>test_type_hashes.cpp</code> diffs the generator's output against the committed file, but only when <code>AUTOWARE_CIS_CHECK_TYPE_HASHES</code> is set — this repo's own GitHub Actions sets it, while the ROS build farm's devel jobs do not, so a dependency-version skew on the build farm can never turn those jobs red. The always-on <code>covers_every_manifest_type</code> test still guarantees the lockfile and <code>interface_manifest.json</code> describe the same set of types.</p>
+<h3 id="when-the-freshness-gate-fails">When the freshness gate fails<a class="headerlink" href="#when-the-freshness-gate-fails" title="Permanent link">#</a></h3>
+<p>A red <code>committed_lockfile_is_up_to_date</code> means a registered type's definition changed relative to the last state a reviewer approved. <strong>Regenerating the lockfile is the last step, not the first</strong> — a bare refresh launders an unreviewed type change into the committed file and leaves the gate with nothing to catch. Decide which case you are in:</p>
+<ol>
+<li><strong>You intentionally changed a registered type definition.</strong> Bump the affected domain's version in its header, then regenerate the lockfile in the <em>same</em> pull request. The version bump is what tells consumers the interface moved; the lockfile only records that it did.</li>
+<li><strong>You did not touch any type definition.</strong> Then the change arrived through a message-repository dependency — most often <code>autoware_msgs</code>, or a type owned by <code>geometry_msgs</code> / <code>nav_msgs</code> / <code>autoware_adapi_v1_msgs</code>. Find the upstream commit that moved the hash, decide whether that change is acceptable for this interface surface, and reference it in the pull request. If it is not acceptable, the fix belongs upstream, not here.</li>
+</ol>
+<p><strong>For reviewers.</strong> A commit that only refreshes <code>interface_type_hashes.jazzy.lock</code>, with no accompanying domain version bump and no reference to the upstream change that moved the hash, should be rejected — it is indistinguishable from silencing the gate. The lockfile's value is entirely in the review it forces; a hash diff nobody explained has bought nothing.</p>
+<p><strong>Coverage limit.</strong> A RIHS01 hash does <strong>not</strong> cover message constants or field default values, so an enum-only <code>.msg</code> edit or a default-value change does not change the hash. The lockfile is therefore a <em>structural/wire</em> tripwire — the <strong>secondary</strong> check. The <strong>primary</strong> enforcement is a path-based gate that requires a domain version bump when a registered type's <code>.msg</code>/<code>.srv</code> changes in the same repository; it becomes fully effective once the message definitions and this package live together (tracked in autoware_msgs#169). Until then, the lockfile is the available mechanism for every row.</p></div>
 
 
 
