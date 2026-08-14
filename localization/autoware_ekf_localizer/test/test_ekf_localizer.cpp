@@ -313,13 +313,13 @@ protected:
   void SetUp() override
   {
     params_ = make_params();
-    reset_module();
+    reset_ekf_localizer();
   }
 
   // (Re)build the ekf_localizer from the current params_, initialize at the origin, fill the
   // delay-time table with realistic small values (one accumulation per predict cycle in the real
   // node), and run a prediction so the EKF state is well-defined.
-  void reset_module()
+  void reset_ekf_localizer()
   {
     module_ = make_ekf_localizer(params_);
     const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
@@ -417,7 +417,7 @@ TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
 {
   // Tighten the gate so a far-away measurement is rejected by the Mahalanobis distance check.
   params_.pose_gate_dist = 1e-6;
-  reset_module();
+  reset_ekf_localizer();
 
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(1000.0, 1000.0, 0.0, "map", t_curr);
@@ -440,10 +440,10 @@ protected:
   void SetUp() override
   {
     params_ = make_params();
-    reset_module();
+    reset_ekf_localizer();
   }
 
-  void reset_module()
+  void reset_ekf_localizer()
   {
     module_ = make_ekf_localizer(params_);
     const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
@@ -533,7 +533,7 @@ TEST_F(MeasurementUpdateTwist, RejectsOnInf)
 TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
 {
   params_.twist_gate_dist = 1e-6;
-  reset_module();
+  reset_ekf_localizer();
 
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
   auto twist = make_twist(1000.0, 1000.0, "base_link", t_curr);
