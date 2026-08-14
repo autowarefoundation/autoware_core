@@ -221,7 +221,15 @@ public:
   }
 
   // ===== Subscription =====
-  template <typename MessageT, typename Func>
+  // A 4th positional argument that is a SubscriptionOptions selects the callback-less overloads
+  // below, so it must not be deduced as a callback here.
+  template <typename Func>
+  static constexpr bool is_subscription_callback_v =
+    !std::is_same_v<std::decay_t<Func>, agnocast::SubscriptionOptions> &&
+    !std::is_same_v<std::decay_t<Func>, rclcpp::SubscriptionOptions>;
+
+  template <
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
@@ -238,7 +246,8 @@ public:
     });
   }
 
-  template <typename MessageT, typename Func>
+  template <
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, size_t qos_history_depth, Func && callback,
     const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
@@ -246,6 +255,49 @@ public:
     return create_subscription<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
       options);
+  }
+
+  /// rclcpp::SubscriptionOptions overload, so call sites written against rclcpp::Node compile
+  /// unchanged. The three fields Agnocast understands map one to one.
+  template <
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
+  typename Subscription<MessageT>::SharedPtr create_subscription(
+    const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
+    const rclcpp::SubscriptionOptions & options)
+  {
+    return create_subscription<MessageT>(
+      topic_name, qos, std::forward<Func>(callback), to_agnocast_subscription_options(options));
+  }
+
+  /// Create a subscription without a callback, for polling via take()/take_data().
+  ///
+  /// On the Agnocast path this registers no eventfd, so publishers skip it when signalling. On
+  /// the rclcpp path it is the familiar idiom of a no-op callback in a callback group that is
+  /// never added to an executor -- the wrapper builds that here so callers do not have to.
+  template <typename MessageT>
+  typename Subscription<MessageT>::SharedPtr create_subscription(
+    const std::string & topic_name, const rclcpp::QoS & qos,
+    const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
+  {
+    return visit_node([&](auto & n) -> typename Subscription<MessageT>::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastSubscription<MessageT>>(n.get(), topic_name, qos, options);
+      } else {
+        return std::make_shared<ROS2Subscription<MessageT>>(n.get(), topic_name, qos, options);
+      }
+    });
+  }
+
+  /// @copydoc create_subscription(const std::string&, const rclcpp::QoS&,
+  ///          const agnocast::SubscriptionOptions&)
+  template <typename MessageT>
+  typename Subscription<MessageT>::SharedPtr create_subscription(
+    const std::string & topic_name, const rclcpp::QoS & qos,
+    const rclcpp::SubscriptionOptions & options)
+  {
+    return create_subscription<MessageT>(
+      topic_name, qos, to_agnocast_subscription_options(options));
   }
 
   // ===== Client / Service =====
@@ -263,6 +315,21 @@ public:
         return std::make_shared<ROS2Client<ServiceT>>(n.get(), service_name, qos, group);
       }
     });
+  }
+
+  /// rmw_qos_profile_t overload, kept because rclcpp::Node only grew the rclcpp::QoS overloads of
+  /// create_client()/create_service() in Iron (rclcpp 21); callers written against Humble still
+  /// pass rmw_qos_profile_services_default. Converts and delegates, so the version handling stays
+  /// in one place.
+  template <typename ServiceT>
+  AUTOWARE_CLIENT_PTR(ServiceT)
+  create_client(
+    const std::string & service_name, const rmw_qos_profile_t & qos_profile,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_client<ServiceT>(
+      service_name, rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(qos_profile), qos_profile),
+      group);
   }
 
   // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr).
@@ -334,6 +401,19 @@ public:
       "Service callback must be invocable with "
       "(AUTOWARE_SERVER_REQUEST_PTR(ServiceT), AUTOWARE_SERVER_RESPONSE_PTR(ServiceT)) or with "
       "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
+  }
+
+  /// rmw_qos_profile_t overload; see the create_client() counterpart above. Forwards to the
+  /// rclcpp::QoS overload set, so callback-shape selection stays in one place.
+  template <typename ServiceT, typename Func>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback, const rmw_qos_profile_t & qos_profile,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_service<ServiceT>(
+      service_name, std::forward<Func>(callback),
+      rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(qos_profile), qos_profile), group);
   }
 
   // ===== Timer =====
@@ -663,7 +743,9 @@ public:
       topic_name, qos, std::forward<Func>(callback), options);
   }
 
-  template <typename MessageT, typename Func>
+  template <
+    typename MessageT, typename Func,
+    std::enable_if_t<!std::is_same_v<std::decay_t<Func>, rclcpp::SubscriptionOptions>, int> = 0>
   typename rclcpp::Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, size_t qos_history_depth, Func && callback,
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
@@ -671,6 +753,23 @@ public:
     return node_->create_subscription<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
       options);
+  }
+
+  /// Create a subscription without a callback, for polling via take(). Builds the familiar
+  /// rclcpp idiom -- a no-op callback in a callback group that is never added to an executor --
+  /// so the call site matches the Agnocast build, where no callback is registered at all.
+  template <typename MessageT>
+  typename rclcpp::Subscription<MessageT>::SharedPtr create_subscription(
+    const std::string & topic_name, const rclcpp::QoS & qos,
+    const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
+  {
+    rclcpp::SubscriptionOptions polling_options = options;
+    if (!polling_options.callback_group) {
+      polling_options.callback_group =
+        node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+    }
+    return node_->create_subscription<MessageT>(
+      topic_name, qos, [](std::unique_ptr<MessageT>) {}, polling_options);
   }
 
   // ===== Client =====
@@ -682,6 +781,21 @@ public:
   {
     return autoware::agnocast_wrapper::create_client<ServiceT>(
       node_.get(), service_name, qos, group);
+  }
+
+  /// rmw_qos_profile_t overload, kept because rclcpp::Node only grew the rclcpp::QoS overloads of
+  /// create_client()/create_service() in Iron (rclcpp 21); callers written against Humble still
+  /// pass rmw_qos_profile_services_default. Converts and delegates, so the version handling stays
+  /// in one place.
+  template <typename ServiceT>
+  AUTOWARE_CLIENT_PTR(ServiceT)
+  create_client(
+    const std::string & service_name, const rmw_qos_profile_t & qos_profile,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_client<ServiceT>(
+      service_name, rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(qos_profile), qos_profile),
+      group);
   }
 
   // ===== Service =====
@@ -746,6 +860,19 @@ public:
       "Service callback must be invocable with "
       "(AUTOWARE_SERVER_REQUEST_PTR(ServiceT), AUTOWARE_SERVER_RESPONSE_PTR(ServiceT)) or with "
       "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
+  }
+
+  /// rmw_qos_profile_t overload; see the create_client() counterpart above. Forwards to the
+  /// rclcpp::QoS overload set, so callback-shape selection stays in one place.
+  template <typename ServiceT, typename Func>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback, const rmw_qos_profile_t & qos_profile,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_service<ServiceT>(
+      service_name, std::forward<Func>(callback),
+      rclcpp::QoS(rclcpp::QoSInitialization::from_rmw(qos_profile), qos_profile), group);
   }
 
   // ===== Timer =====

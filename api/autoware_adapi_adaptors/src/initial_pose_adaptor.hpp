@@ -16,6 +16,8 @@
 #define INITIAL_POSE_ADAPTOR_HPP_
 
 #include <autoware/adapi_specs/localization.hpp>
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/component_interface_utils/rclcpp.hpp>
 #include <autoware/map_height_fitter/map_height_fitter.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -25,7 +27,7 @@
 namespace autoware::adapi_adaptors
 {
 
-class InitialPoseAdaptor : public rclcpp::Node
+class InitialPoseAdaptor : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit InitialPoseAdaptor(const rclcpp::NodeOptions & options);
@@ -33,9 +35,12 @@ public:
 private:
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
   using Initialize = autoware::adapi_specs::localization::Initialize;
-  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
-  rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_initial_pose_;
-  autoware::component_interface_utils::Client<Initialize>::SharedPtr cli_initialize_;
+  // NodeAdaptor deduces its constructor argument separately from NodeT, so the node type has
+  // to be named explicitly here and on the endpoint below.
+  using NodeT = autoware::agnocast_wrapper::Node;
+  autoware::component_interface_utils::NodeAdaptor<NodeT> adaptor_{this};
+  AUTOWARE_SUBSCRIPTION_PTR(PoseWithCovarianceStamped) sub_initial_pose_;
+  autoware::component_interface_utils::Client<Initialize, NodeT>::SharedPtr cli_initialize_;
   std::array<double, 36> rviz_particle_covariance_;
   autoware::map_height_fitter::MapHeightFitter fitter_;
 

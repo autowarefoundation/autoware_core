@@ -421,6 +421,19 @@ inline bool ok()
   return rclcpp::ok() || agnocast::ok();
 }
 
+/// Translate rclcpp subscription options into the Agnocast ones. Only the three fields Agnocast
+/// understands carry over; the rest (event callbacks, intra-process settings, allocators) have no
+/// Agnocast counterpart because Agnocast does not go through rmw.
+inline agnocast::SubscriptionOptions to_agnocast_subscription_options(
+  const rclcpp::SubscriptionOptions & options)
+{
+  agnocast::SubscriptionOptions result;
+  result.callback_group = options.callback_group;
+  result.ignore_local_publications = options.ignore_local_publications;
+  result.qos_overriding_options = options.qos_overriding_options;
+  return result;
+}
+
 template <typename MessageT>
 class Subscription
 {
@@ -428,6 +441,21 @@ public:
   using SharedPtr = std::shared_ptr<Subscription<MessageT>>;
 
   virtual ~Subscription() = default;
+
+  /// Polling retrieval, mirroring rclcpp::Subscription::take(). Available on every subscription,
+  /// including one that also has a callback -- in which case both consume from the same cursor
+  /// and steal messages from each other, exactly as in rclcpp. Copies the message out; prefer
+  /// take_data() on the Agnocast path, which does not copy.
+  /// @return true if a new message was written to @p out.
+  virtual bool take(MessageT & out, rclcpp::MessageInfo & info) = 0;
+
+  /// Effective QoS, mirroring rclcpp::SubscriptionBase::get_actual_qos().
+  virtual rclcpp::QoS get_actual_qos() const = 0;
+
+  /// Latest new message as a shared pointer, or nullptr when nothing new has arrived. On the
+  /// Agnocast path the returned pointer aliases the shared-memory message, so no payload is
+  /// copied; while any copy is alive it pins one shared-memory entry.
+  virtual std::shared_ptr<const MessageT> take_data() = 0;
 };
 
 template <typename MessageT>
@@ -448,14 +476,22 @@ public:
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>> ||
         std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
-      "const reference to the message type");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, with "
+      "MessageT::ConstSharedPtr, or with a const reference to the message type");
 
     constexpr bool is_message_ptr_callback =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
+    // MessageT::ConstSharedPtr, for interfaces whose callback signature cannot be templated on
+    // the pointer type -- notably autoware_component_interface_utils, which binds member
+    // functions taking Message::ConstSharedPtr. Aliases the shared-memory message rather than
+    // copying it, at the cost of one control-block allocation per message.
+    constexpr bool is_std_shared_ptr_callback =
+      !is_message_ptr_callback &&
+      std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>>;
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
@@ -464,7 +500,10 @@ public:
     subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
-        if constexpr (!is_message_ptr_callback) {
+        if constexpr (is_std_shared_ptr_callback) {
+          callback(
+            agnocast::to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
+        } else if constexpr (!is_message_ptr_callback) {
           // msg keeps the shared-memory entry alive only while the callback runs: the
           // reference is valid for the duration of the callback and no copy is made, but
           // it must not be stored or used after the callback returns. Callbacks that need
@@ -482,6 +521,39 @@ public:
       },
       options);
   }
+
+  /// Callback-less construction, for polling via take()/take_data().
+  template <typename NodeT>
+  explicit AgnocastSubscription(
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos,
+    const agnocast::SubscriptionOptions & options)
+  : subscription_(
+      std::make_shared<agnocast::Subscription<MessageT>>(node, topic_name, qos, options))
+  {
+  }
+
+  bool take(MessageT & out, rclcpp::MessageInfo & /*info*/) override
+  {
+    agnocast::ipc_shared_ptr<const MessageT> data = subscription_->take(false);
+    if (!data) {
+      return false;
+    }
+    out = *data;
+    return true;
+  }
+
+  rclcpp::QoS get_actual_qos() const override { return subscription_->get_actual_qos(); }
+
+  std::shared_ptr<const MessageT> take_data() override
+  {
+    agnocast::ipc_shared_ptr<const MessageT> data = subscription_->take(false);
+    if (!data) {
+      return nullptr;
+    }
+    // Zero-copy: the returned pointer aliases the shared-memory message and shares ownership
+    // with it, so no payload is copied.
+    return agnocast::to_std_shared_ptr(std::move(data));
+  }
 };
 
 template <typename MessageT>
@@ -498,14 +570,21 @@ public:
     static_assert(
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
         std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
+        std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>> ||
         std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, or with a "
-      "const reference to the message type");
+      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, with "
+      "MessageT::ConstSharedPtr, or with a const reference to the message type");
 
     constexpr bool is_message_ptr_callback =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
+    // See the AgnocastSubscription counterpart. In the non-Agnocast build
+    // AUTOWARE_MESSAGE_CONST_SHARED_PTR already is std::shared_ptr<const MessageT>, so the
+    // message_ptr branch above claims it and this one stays false.
+    constexpr bool is_std_shared_ptr_callback =
+      !is_message_ptr_callback &&
+      std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>>;
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
@@ -516,7 +595,9 @@ public:
     subscription_ = node->create_subscription<MessageT>(
       topic_name, qos,
       [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-        if constexpr (!is_message_ptr_callback) {
+        if constexpr (is_std_shared_ptr_callback) {
+          callback(std::shared_ptr<const MessageT>(std::move(msg)));
+        } else if constexpr (!is_message_ptr_callback) {
           // as_const keeps this fallback consistent with the Agnocast path: generic
           // callbacks must not observe a mutable reference on either path.
           callback(std::as_const(*msg));
@@ -529,6 +610,44 @@ public:
         }
       },
       ros2_options);
+  }
+
+  /// Callback-less construction, for polling via take()/take_data(). Mirrors the rclcpp idiom:
+  /// a no-op callback in a callback group that is never added to an executor.
+  explicit ROS2Subscription(
+    rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos,
+    const agnocast::SubscriptionOptions & options)
+  {
+    rclcpp::SubscriptionOptions ros2_options;
+    ros2_options.callback_group =
+      options.callback_group
+        ? options.callback_group
+        : node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+    subscription_ = node->create_subscription<MessageT>(
+      topic_name, qos, [](std::unique_ptr<MessageT>) {}, ros2_options);
+  }
+
+  bool take(MessageT & out, rclcpp::MessageInfo & info) override
+  {
+    return subscription_->take(out, info);
+  }
+
+  rclcpp::QoS get_actual_qos() const override { return subscription_->get_actual_qos(); }
+
+  std::shared_ptr<const MessageT> take_data() override
+  {
+    // Drain the queue and keep the newest, so the semantics match the Agnocast path's
+    // take(allow_same_message=false): the latest new message, or nullptr if nothing arrived.
+    auto data = std::make_shared<MessageT>();
+    rclcpp::MessageInfo info;
+    bool got_any = false;
+    for (size_t i = 0; i < subscription_->get_actual_qos().depth(); ++i) {
+      if (!subscription_->take(*data, info)) {
+        break;
+      }
+      got_any = true;
+    }
+    return got_any ? data : nullptr;
   }
 };
 
@@ -750,6 +869,11 @@ protected:
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
+  // Named to match rclcpp::Client, so generic code can spell the request/response pointer types
+  // off the client rather than assuming std::shared_ptr.
+  using SharedRequest = AUTOWARE_CLIENT_REQUEST_PTR(ServiceT);
+  using SharedResponse = AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT);
+
   using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
   using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
 
@@ -783,6 +907,35 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
+
+  /// rclcpp-shaped overloads taking an ordinary std::shared_ptr request by const reference, for
+  /// callers that build the request themselves and hold it as an lvalue -- notably
+  /// autoware_component_interface_utils, whose Client::call() does exactly that. The request is
+  /// copied into an owned (on the Agnocast path, shared-memory) request, so prefer
+  /// allocate_output_service_request() plus the rvalue overloads above on hot paths.
+  ///
+  /// Taking by const reference rather than by value keeps `async_send_request(std::move(req))`
+  /// unambiguous: an rvalue still binds better to the rvalue-reference overloads.
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    return async_send_request(copy_into_owned_request(request));
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    const std::shared_ptr<typename ServiceT::Request> & request,
+    std::function<void(SharedFuture)> callback)
+  {
+    return async_send_request(copy_into_owned_request(request), std::move(callback));
+  }
+
+private:
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+  copy_into_owned_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) owned = allocate_output_service_request();
+    *owned = *request;
+    return owned;
+  }
 };
 
 template <typename ServiceT>
@@ -1290,6 +1443,11 @@ protected:
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
+  // Named to match rclcpp::Client, so generic code can spell the request/response pointer types
+  // off the client rather than assuming std::shared_ptr.
+  using SharedRequest = AUTOWARE_CLIENT_REQUEST_PTR(ServiceT);
+  using SharedResponse = AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT);
+
   using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
   using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
 
@@ -1323,6 +1481,35 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
+
+  /// rclcpp-shaped overloads taking an ordinary std::shared_ptr request by const reference, for
+  /// callers that build the request themselves and hold it as an lvalue -- notably
+  /// autoware_component_interface_utils, whose Client::call() does exactly that. The request is
+  /// copied into an owned (on the Agnocast path, shared-memory) request, so prefer
+  /// allocate_output_service_request() plus the rvalue overloads above on hot paths.
+  ///
+  /// Taking by const reference rather than by value keeps `async_send_request(std::move(req))`
+  /// unambiguous: an rvalue still binds better to the rvalue-reference overloads.
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    return async_send_request(copy_into_owned_request(request));
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    const std::shared_ptr<typename ServiceT::Request> & request,
+    std::function<void(SharedFuture)> callback)
+  {
+    return async_send_request(copy_into_owned_request(request), std::move(callback));
+  }
+
+private:
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+  copy_into_owned_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) owned = allocate_output_service_request();
+    *owned = *request;
+    return owned;
+  }
 };
 
 template <typename ServiceT>

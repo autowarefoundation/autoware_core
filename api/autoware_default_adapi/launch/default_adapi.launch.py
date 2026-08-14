@@ -18,19 +18,24 @@ import launch
 from launch.actions import DeclareLaunchArgument
 from launch.substitutions import LaunchConfiguration
 from launch.substitutions import PathJoinSubstitution
-from launch_ros.actions import ComposableNodeContainer
-from launch_ros.descriptions import ComposableNode
+from launch_ros.actions import Node
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
 
 
-def create_api_node(node_name, class_name):
+def create_standalone_api_node(node_name, executable):
+    """Launch a node that derives from autoware::agnocast_wrapper::Node.
+
+    Those nodes need an AgnocastOnly executor when ENABLE_AGNOCAST=1, which a shared component
+    container cannot provide, so they run as their own process instead of being composed. All
+    three keep a multi-threaded executor, matching the component_container_mt they used to share.
+    """
     fullname = pathlib.Path("adapi/node") / node_name
-    return ComposableNode(
+    return Node(
         namespace=str(fullname.parent),
         name=str(fullname.name),
         package="autoware_default_adapi",
-        plugin="autoware::default_adapi::" + class_name,
+        executable=executable,
         parameters=[ParameterFile(LaunchConfiguration("config"))],
     )
 
@@ -42,18 +47,10 @@ def get_default_config():
 
 
 def generate_launch_description():
-    components = [
-        create_api_node("interface", "InterfaceNode"),
-        create_api_node("localization", "LocalizationNode"),
-        create_api_node("routing", "RoutingNode"),
+    nodes = [
+        create_standalone_api_node("interface", "interface_node"),
+        create_standalone_api_node("localization", "localization_node"),
+        create_standalone_api_node("routing", "routing_node"),
     ]
-    container = ComposableNodeContainer(
-        namespace="adapi",
-        name="container",
-        package="rclcpp_components",
-        executable="component_container_mt",
-        ros_arguments=["--log-level", "adapi.container:=WARN"],
-        composable_node_descriptions=components,
-    )
     argument = DeclareLaunchArgument("config", default_value=get_default_config())
-    return launch.LaunchDescription([argument, container])
+    return launch.LaunchDescription([argument, *nodes])
