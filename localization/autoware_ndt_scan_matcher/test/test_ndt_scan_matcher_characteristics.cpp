@@ -793,18 +793,14 @@ TEST(NdtScanMatcherCharacteristics, ScanMatchingStatusEmitsExactlyTheseNineteenK
 
 /// The node's whole output surface for one converged scan.
 ///
-/// The "absent" half carries most of the value, and its two halves are not equal.
-/// `score_estimation.no_ground_points.enable` withholds three topics and is the one conditional
-/// here nothing else reaches: forcing it true fails this case.
+/// The absent topics carry most of the value, unequally. `no_ground_points.enable` withholds three
+/// and is the one conditional here nothing else reaches: forcing it true fails this case. The two
+/// `multi_*` are weaker -- they pin "at FIXED_VALUE the arrays stay silent", not the gate ahead of
+/// `estimate_covariance`, which measured can go with every case still green, since only the
+/// MULTI_NDT types publish them.
 ///
-/// The two `multi_*` assertions are weaker. They pin "at FIXED_VALUE the multi-search arrays stay
-/// silent", not the `!= FIXED_VALUE` gate: measured, removing that gate keeps every case green,
-/// because `estimate_covariance` then falls to its final `else`, and only MULTI_NDT and
-/// MULTI_NDT_SCORE publish those arrays. Catching the gate needs a case that selects one of them.
-///
-/// `voxel_score_points` is deliberately not captured. The node only publishes it when its
-/// publisher already has a subscriber, so subscribing in order to assert absence would create the
-/// very condition being tested.
+/// `voxel_score_points` is deliberately not captured: the node publishes it only once its publisher
+/// has a subscriber, so subscribing to assert absence would create the condition under test.
 TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose)
 {
   // Arrange
@@ -856,15 +852,13 @@ TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose
   ASSERT_EQ(outcome->diag.level(), level_ok)
     << "scan did not converge: " << outcome->diag.message();
 
-  // Every expected publication, not a couple of early ones: the observer is a separate node on a
-  // separate executor, so publish order inside the callback says nothing about arrival order, and
-  // waiting on TF and `ndt_pose` alone would leave the counts below racing the publisher.
+  // Every expected publication: the observer is a separate node on a separate executor, so publish
+  // order inside the callback says nothing about arrival order here.
   //
-  // The absence assertions rest elsewhere -- on the discovery gate above, and on the diagnostics
-  // record `drive_one_scan` returned, which `scan_matching_status` publishes after
-  // `callback_sensor_points_main` returns, so every publish call for this scan has happened. That
-  // is not proof of delivery, since DDS orders nothing across writers; the guarantee is empirical,
-  // from forcing `no_ground_points.enable` true and watching this case fail.
+  // The absence assertions rest on the discovery gate above and on the diagnostics record,
+  // published after `callback_sensor_points_main` returned -- not proof of delivery, since DDS
+  // orders nothing across writers, which is why the `no_ground_points.enable` mutation carries that
+  // claim instead.
   ASSERT_TRUE(harness->wait_until(
     [&] {
       return ndt_pose->count() >= 1 && ndt_pose_with_cov->count() >= 1 &&
@@ -877,13 +871,11 @@ TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose
     5s))
     << "not every expected publication arrived";
 
-  // A retry inside `drive_one_scan` can drive alignment twice, which would make every count below
-  // read 2 as if the node had published twice. `attempt` is how a failure here says which happened.
-  //
-  // `attempts = 1` would rule it out and is deliberately not used: of the three retry paths only a
-  // lost `scan_matching_status` can follow a completed `align`, and that record travels a reliable
-  // `KeepAll` subscription while the scan itself goes into best-effort `SensorDataQoS`. Dropping
-  // the retry trades a rare double count for a common hard failure on a dropped scan.
+  // A retry drives alignment twice, making every count below read 2 as if the node had published
+  // twice; `attempt` tells the two apart. `attempts = 1` would rule it out, but the scan rides the
+  // node's best-effort `SensorDataQoS` and can be dropped, while only a lost `scan_matching_status`
+  // -- carried reliably -- can retry after a completed `align`. Retrying trades a rare double count
+  // for a common hard failure.
   EXPECT_EQ(ndt_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
   EXPECT_EQ(ndt_pose_with_cov->count(), 1U);
   EXPECT_EQ(initial_pose_with_cov->count(), 1U);
@@ -901,9 +893,8 @@ TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose
   const auto published_pose = ndt_pose->first();
   ASSERT_TRUE(published_pose.has_value());
   EXPECT_EQ(published_pose->header.frame_id, map_frame);
-  // The retry hazard bites hardest here: `first()` is the earliest attempt's pose while
-  // `outcome->stamp` is the last attempt's window, so a retry makes this read as the node stamping
-  // its output wrongly. `attempt` separates the two readings.
+  // `first()` is the earliest attempt's pose but `outcome->stamp` is the last attempt's window, so
+  // a retry reads here as the node stamping its output wrongly.
   EXPECT_EQ(published_pose->header.stamp, outcome->stamp)
     << "scan drive attempt was " << outcome->attempt;
 
@@ -949,11 +940,10 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
 
   ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
 
-  // Declared after the map is loaded on purpose: nothing above drives a scan, so the counter cannot
-  // have advanced yet, and a failure in `ensure_map_loaded` would otherwise bury its own cause
-  // under a pointless cleanup. This scan leaves the counter advanced, so the guard resets it
-  // through the
-  // `!is_activated_` branch -- which also pins that branch, since asserting `"0"` on a converged
+  // Declared after the map is loaded: nothing above drives a scan, so the counter cannot have
+  // advanced yet, and a failure in `ensure_map_loaded` would otherwise bury its cause under a
+  // pointless cleanup. This scan advances the counter, so the guard resets it through the
+  // `!is_activated_` branch -- which pins that branch too, since asserting `"0"` on a converged
   // scan would pin nothing.
   const ScopeExit reset_skip_counter([&] { reset_skip_counter_via_deactivation(*harness); });
 
@@ -1216,9 +1206,8 @@ TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseCarriesOldPoseCovariance
 
   ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
 
-  // Neither value is `make_pose_at`'s default, which `ensure_map_loaded` above has already put into
-  // the buffer. Reusing the default here would let the assertion pass on the wrong pose's
-  // covariance.
+  // Neither value is `make_pose_at`'s default, which `ensure_map_loaded` already put in the buffer;
+  // reusing it would let the covariance assertion pass on the wrong pose.
   constexpr double older_pose_variance = 0.09;
   constexpr double newer_pose_variance = 4.0;
   constexpr double newer_pose_delta_x = 2.0;
