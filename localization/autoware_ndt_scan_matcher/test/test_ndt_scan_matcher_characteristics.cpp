@@ -785,11 +785,9 @@ TEST(NdtScanMatcherCharacteristics, ScanMatchingStatusEmitsExactlyTheseNineteenK
   };
   EXPECT_EQ(sorted(diag.keys_in_order()), sorted(expected_keys));
 
-  // Neither the message nor the hardware id is asserted, because neither could fail here.
-  // `create_diagnostics_array` rewrites the message to "OK" whenever the level is OK, and
-  // `DiagnosticsInterface` builds `name` as `get_name() + ": " + diagnostic_name` alongside
-  // `hardware_id = get_name()` — so a record found under `scan_matching_status` can only carry
-  // "ndt_scan_matcher". Both would be testing `autoware_utils_diagnostics`, not this node.
+  // Neither the message nor the hardware id is asserted: `DiagnosticsInterface` derives both from
+  // the level and the node name, so a record found under `scan_matching_status` can only carry "OK"
+  // and "ndt_scan_matcher". Asserting them tests that package, not this node.
   EXPECT_EQ(diag.level(), level_ok) << "message was: " << diag.message();
 }
 
