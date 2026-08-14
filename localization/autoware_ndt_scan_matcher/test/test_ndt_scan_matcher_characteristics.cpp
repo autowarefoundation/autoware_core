@@ -679,28 +679,24 @@ std::vector<double> output_pose_covariance()
 
 /// @brief Overrides that make a converged scan deterministic.
 ///
-/// Every one of these is pinned even where it matches the shipped yaml, so that a config change
-/// cannot silently move a test into a different branch. The two large tolerances neutralize the
-/// timing- and geometry-dependent WARNs so that `level == OK` is stable under CI load; the huge
-/// `skipping_publish_num` keeps the process-global skip counter (a function-local `static`, shared
-/// across the nodes this binary builds) from ever tripping its WARN.
+/// Five differ from the shipped values. `ndt.num_threads` is one; the other four disable WARNs that
+/// are not this path's subject and would otherwise follow CI load -- `1e9` on
+/// `critical_upper_bound_exe_time_ms`, `initial_to_result_distance_tolerance_m` and
+/// `sensor_points.timeout_sec`, and a `skipping_publish_num` no run can reach, its counter being a
+/// function-local `static` shared by every node this binary builds.
 std::vector<rclcpp::Parameter> converged_hot_path_overrides()
 {
   return {
     rclcpp::Parameter("ndt.num_threads", 1),  // removes OpenMP reduction nondeterminism
     rclcpp::Parameter("ndt.max_iterations", 30),
-    // The three that decide whether this scene converges at all, and by how much. The measured NVTL
-    // is about 3.2 against the 2.3 threshold below, so the margin is under one point and
-    // `ndt.resolution` is what moves it most. Left unpinned, a resolution change would fail three
-    // cases at once with "scan did not converge", which points at the node rather than the config.
+    // These three decide whether this scene converges. The measured NVTL is about 3.2 against the
+    // 2.3 threshold below, so the margin is under one point, and `ndt.resolution` moves it most.
     rclcpp::Parameter("ndt.resolution", 2.0),
     rclcpp::Parameter("ndt.step_size", 0.1),
     rclcpp::Parameter("ndt.trans_epsilon", 0.01),
-    // All three frames, because assertions read all three. `ndt_base_link_frame` and `map_frame`
-    // are the child and parent `has_ndt_base_link_transform` matches on, and `map_frame` is also
-    // the `header.frame_id` the converged case pins on `/ndt_pose`; `base_link_frame` is the target
-    // the harness's static `base_link -> sensor_frame` transform has to name for a scan to
-    // transform at all.
+    // All three are read by assertions: the first two are the child and parent
+    // `has_ndt_base_link_transform` matches, `map_frame` is also the `/ndt_pose` `header.frame_id`,
+    // and `base_link_frame` is what the harness's static sensor transform targets.
     rclcpp::Parameter("frame.ndt_base_frame", ndt_base_link_frame),
     rclcpp::Parameter("frame.map_frame", map_frame),
     rclcpp::Parameter("frame.base_frame", base_link_frame),
@@ -713,16 +709,10 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides()
     rclcpp::Parameter("validation.critical_upper_bound_exe_time_ms", 1.0e9),
     rclcpp::Parameter("validation.initial_to_result_distance_tolerance_m", 1.0e9),
     rclcpp::Parameter("validation.skipping_publish_num", 1000000),
-    // The three groups below are pinned by the same argument as `ndt.resolution`: `level == OK`
-    // depends on them, and a config change would abort or warn somewhere far from the cause.
-    //
-    // Both sensor-points gates run ahead of everything else, and either rejects or warns before
-    // alignment. `required_distance` is geometry -- a 28.3 m cloud against 10 m -- so it is pinned
-    // at the shipped value. `timeout_sec` is wall clock, and the delay it measures includes the two
-    // blocking initial-pose round-trips `drive_one_scan` makes after taking the scan stamp, so CI
-    // load lands on it directly. It is relaxed rather than pinned, for the same reason
-    // `critical_upper_bound_exe_time_ms` is: the latency WARN is not this case's subject.
-    // `StaleScanWarnsButProcessingContinues` pins it with its own override.
+    // Both gates run ahead of everything else. `required_distance` is geometry -- a 28.3 m cloud
+    // against 10 m. `timeout_sec` is wall clock, and the delay it measures includes the two
+    // blocking initial-pose round-trips `drive_one_scan` makes after taking the scan stamp, so it
+    // is relaxed instead; `StaleScanWarnsButProcessingContinues` covers the latency WARN itself.
     rclcpp::Parameter("sensor_points.timeout_sec", 1.0e9),
     rclcpp::Parameter("sensor_points.required_distance", 10.0),
     // The bracketing poses `drive_one_scan` sends sit +/-100 ms around the scan stamp and up to
@@ -735,14 +725,10 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides()
     rclcpp::Parameter("dynamic_map_loading.map_radius", 150.0),
     rclcpp::Parameter("dynamic_map_loading.lidar_radius", 100.0),
     rclcpp::Parameter("dynamic_map_loading.update_distance", 20.0),
-    // Enabling regularization would put `add_regularization_pose` into the hot path, where it
-    // interpolates a second buffer that nothing here feeds -- one more branch between the stimulus
-    // and the publishes, taken for reasons this suite does not control.
-    //
-    // It also adds a sixth `/diagnostics` publisher. That does not break
-    // `wait_for_diagnostics_ready`, which tests `publisher_count() >= expected_publishers`; it just
-    // lets the gate return with five of the six matched, which is weaker than the exact count the
-    // rest of the suite relies on.
+    // Enabling regularization puts `add_regularization_pose` into the hot path, interpolating a
+    // second buffer nothing here feeds, and adds a sixth `/diagnostics` publisher -- which
+    // `wait_for_diagnostics_ready` survives, testing `>= expected_publishers`, but only by matching
+    // five of six.
     rclcpp::Parameter("ndt.regularization.enable", false),
   };
 }
