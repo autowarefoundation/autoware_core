@@ -19,8 +19,9 @@
 #include "hyper_parameters.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 
-#include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <builtin_interfaces/msg/time.hpp>
+
+#include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
