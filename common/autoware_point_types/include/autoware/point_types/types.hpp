@@ -19,9 +19,13 @@
 
 #include <pcl/point_types.h>
 
+#include <algorithm>
+#include <array>
+#include <cctype>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <tuple>
 
@@ -231,6 +235,41 @@ constexpr std::string_view to_string(PointCloudClassification classification)
     default:
       throw std::invalid_argument("Unknown point cloud classification");
   }
+}
+
+/**
+ * @brief Get the point cloud classification from its string representation.
+ * @details The name is normalized to uppercase first, so matching is case-insensitive for ASCII
+ * letters. Accepted names are exactly those produced by to_string(), including "INVALID".
+ * @param name Classification name, e.g. "CAR" or "flat_surface".
+ * @return Matching classification.
+ * @throws std::invalid_argument If the name does not correspond to any enumerator.
+ */
+inline PointCloudClassification to_pointcloud_classification(std::string_view name)
+{
+  std::string uppercase(name);
+  std::transform(uppercase.begin(), uppercase.end(), uppercase.begin(), [](unsigned char c) {
+    return static_cast<char>(std::toupper(c));
+  });
+
+  // Matching against to_string() keeps both directions in sync: a new enumerator only has to be
+  // added to to_string() and to this list.
+  constexpr std::array<PointCloudClassification, 13> classifications{
+    PointCloudClassification::CAR,          PointCloudClassification::TRUCK,
+    PointCloudClassification::BUS,          PointCloudClassification::MOTORCYCLE,
+    PointCloudClassification::BICYCLE,      PointCloudClassification::PEDESTRIAN,
+    PointCloudClassification::ANIMAL,       PointCloudClassification::HAZARD,
+    PointCloudClassification::FLAT_SURFACE, PointCloudClassification::STRUCTURE,
+    PointCloudClassification::VEGETATION,   PointCloudClassification::NOISE,
+    PointCloudClassification::INVALID};
+
+  for (const auto classification : classifications) {
+    if (uppercase == to_string(classification)) {
+      return classification;
+    }
+  }
+
+  throw std::invalid_argument("Unknown point cloud classification: '" + std::string(name) + "'");
 }
 
 struct PointXYZCPE

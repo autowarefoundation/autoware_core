@@ -28,6 +28,7 @@
 #include <tf2/utils.hpp>
 
 #include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <algorithm>
 #include <utility>
