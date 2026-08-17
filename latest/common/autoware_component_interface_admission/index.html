@@ -8,31 +8,31 @@
       
       
       
-        <link rel="canonical" href="https://autowarefoundation.github.io/autoware_core/latest/common/autoware_agnocast_wrapper/docs/review_guide/">
+        <link rel="canonical" href="https://autowarefoundation.github.io/autoware_core/latest/common/autoware_component_interface_admission/">
       
       
-        <link rel="prev" href="../../">
+        <link rel="prev" href="../autoware_agnocast_wrapper/docs/review_guide/">
       
       
-        <link rel="next" href="../../../autoware_component_interface_admission/">
+        <link rel="next" href="../autoware_component_interface_specs/">
       
       
         
       
       
-      <link rel="icon" href="../../../../docs/assets/images/autoware-foundation.png">
+      <link rel="icon" href="../../docs/assets/images/autoware-foundation.png">
       <meta name="generator" content="mkdocs-ProperDocs 1.6.7, mkdocs-material-9.7.7">
     
     
       
-        <title>Review guide - Autoware Core Documentation</title>
+        <title>autoware_component_interface_admission - Autoware Core Documentation</title>
       
     
     
-      <link rel="stylesheet" href="../../../../assets/stylesheets/main.ec1eaa64.min.css">
+      <link rel="stylesheet" href="../../assets/stylesheets/main.ec1eaa64.min.css">
       
         
-        <link rel="stylesheet" href="../../../../assets/stylesheets/palette.ab4e12ef.min.css">
+        <link rel="stylesheet" href="../../assets/stylesheets/palette.ab4e12ef.min.css">
       
       
 
@@ -51,11 +51,11 @@
       
     
     
-      <link rel="stylesheet" href="../../../../docs/assets/css/extra.css">
+      <link rel="stylesheet" href="../../docs/assets/css/extra.css">
     
       <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.15.4/css/all.css">
     
-    <script>__md_scope=new URL("../../../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
+    <script>__md_scope=new URL("../..",location),__md_hash=e=>[...e].reduce(((e,_)=>(e<<5)-e+_.charCodeAt(0)),0),__md_get=(e,_=localStorage,t=__md_scope)=>JSON.parse(_.getItem(t.pathname+"."+e)),__md_set=(e,_,t=localStorage,a=__md_scope)=>{try{t.setItem(a.pathname+"."+e,JSON.stringify(_))}catch(e){}}</script>
     
       
 
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#related-links" class="md-skip">
+        <a href="#autoware_component_interface_admission" class="md-skip">
           Skip to content
         </a>
       
@@ -100,7 +100,7 @@
 
 <header class="md-header md-header--shadow md-header--lifted" data-md-component="header">
   <nav class="md-header__inner md-grid" aria-label="Header">
-    <a href="../../../.." title="Autoware Core Documentation" class="md-header__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
+    <a href="../.." title="Autoware Core Documentation" class="md-header__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M135.2 117.4 109.1 192h293.8l-26.1-74.6c-4.5-12.8-16.6-21.4-30.2-21.4H165.4c-13.6 0-25.7 8.6-30.2 21.4m-95.6 79.4L74.8 96.3C88.3 57.8 124.6 32 165.4 32h181.2c40.8 0 77.1 25.8 90.6 64.3l35.2 100.5c23.2 9.6 39.6 32.5 39.6 59.2v192c0 17.7-14.3 32-32 32h-32c-17.7 0-32-14.3-32-32v-32H96v32c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V256c0-26.7 16.4-49.6 39.6-59.2M128 304a32 32 0 1 0-64 0 32 32 0 1 0 64 0m288 32a32 32 0 1 0 0-64 32 32 0 1 0 0 64"/></svg>
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Review guide
+              autoware_component_interface_admission
             
           </span>
         </div>
@@ -234,7 +234,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../api/autoware_adapi_adaptors/" class="md-tabs__link">
+        <a href="../../api/autoware_adapi_adaptors/" class="md-tabs__link">
           
   
   
@@ -259,7 +259,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../autoware_core/" class="md-tabs__link">
+        <a href="../../autoware_core/" class="md-tabs__link">
           
   
   
@@ -292,7 +292,7 @@
     
     
       <li class="md-tabs__item md-tabs__item--active">
-        <a href="../../" class="md-tabs__link">
+        <a href="../autoware_agnocast_wrapper/" class="md-tabs__link">
           
   
   
@@ -324,7 +324,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../control/autoware_command_gate/" class="md-tabs__link">
+        <a href="../../control/autoware_command_gate/" class="md-tabs__link">
           
   
   
@@ -356,7 +356,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../localization/autoware_core_localization/" class="md-tabs__link">
+        <a href="../../localization/autoware_core_localization/" class="md-tabs__link">
           
   
   
@@ -388,7 +388,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../map/autoware_core_map/" class="md-tabs__link">
+        <a href="../../map/autoware_core_map/" class="md-tabs__link">
           
   
   
@@ -420,7 +420,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../perception/autoware_core_perception/" class="md-tabs__link">
+        <a href="../../perception/autoware_core_perception/" class="md-tabs__link">
           
   
   
@@ -452,7 +452,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../planning/autoware_core_planning/" class="md-tabs__link">
+        <a href="../../planning/autoware_core_planning/" class="md-tabs__link">
           
   
   
@@ -484,7 +484,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../sensing/autoware_core_sensing/" class="md-tabs__link">
+        <a href="../../sensing/autoware_core_sensing/" class="md-tabs__link">
           
   
   
@@ -516,7 +516,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../testing/autoware_planning_test_manager/" class="md-tabs__link">
+        <a href="../../testing/autoware_planning_test_manager/" class="md-tabs__link">
           
   
   
@@ -548,7 +548,7 @@
     
     
       <li class="md-tabs__item">
-        <a href="../../../../vehicle/autoware_core_vehicle/" class="md-tabs__link">
+        <a href="../../vehicle/autoware_core_vehicle/" class="md-tabs__link">
           
   
   
@@ -593,7 +593,7 @@
 
 <nav class="md-nav md-nav--primary md-nav--lifted" aria-label="Navigation" data-md-level="0">
   <label class="md-nav__title" for="__drawer">
-    <a href="../../../.." title="Autoware Core Documentation" class="md-nav__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
+    <a href="../.." title="Autoware Core Documentation" class="md-nav__button md-logo" aria-label="Autoware Core Documentation" data-md-component="logo">
       
   
   <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><!--! Font Awesome Free 7.1.0 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free (Icons: CC BY 4.0, Fonts: SIL OFL 1.1, Code: MIT License) Copyright 2025 Fonticons, Inc.--><path d="M135.2 117.4 109.1 192h293.8l-26.1-74.6c-4.5-12.8-16.6-21.4-30.2-21.4H165.4c-13.6 0-25.7 8.6-30.2 21.4m-95.6 79.4L74.8 96.3C88.3 57.8 124.6 32 165.4 32h181.2c40.8 0 77.1 25.8 90.6 64.3l35.2 100.5c23.2 9.6 39.6 32.5 39.6 59.2v192c0 17.7-14.3 32-32 32h-32c-17.7 0-32-14.3-32-32v-32H96v32c0 17.7-14.3 32-32 32H32c-17.7 0-32-14.3-32-32V256c0-26.7 16.4-49.6 39.6-59.2M128 304a32 32 0 1 0-64 0 32 32 0 1 0 64 0m288 32a32 32 0 1 0 0-64 32 32 0 1 0 0 64"/></svg>
@@ -712,7 +712,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../api/autoware_adapi_adaptors/" class="md-nav__link ">
+            <a href="../../api/autoware_adapi_adaptors/" class="md-nav__link ">
               
   
   
@@ -784,7 +784,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../api/autoware_adapi_specs/" class="md-nav__link ">
+            <a href="../../api/autoware_adapi_specs/" class="md-nav__link ">
               
   
   
@@ -856,7 +856,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../api/autoware_core_api/" class="md-nav__link ">
+            <a href="../../api/autoware_core_api/" class="md-nav__link ">
               
   
   
@@ -930,7 +930,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../api/autoware_default_adapi/" class="md-nav__link ">
+            <a href="../../api/autoware_default_adapi/" class="md-nav__link ">
               
   
   
@@ -1036,7 +1036,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../api/autoware_default_adapi/document/interface/" class="md-nav__link">
+      <a href="../../api/autoware_default_adapi/document/interface/" class="md-nav__link">
         
   
   
@@ -1064,7 +1064,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../api/autoware_default_adapi/document/localization/" class="md-nav__link">
+      <a href="../../api/autoware_default_adapi/document/localization/" class="md-nav__link">
         
   
   
@@ -1092,7 +1092,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../api/autoware_default_adapi/document/routing/" class="md-nav__link">
+      <a href="../../api/autoware_default_adapi/document/routing/" class="md-nav__link">
         
   
   
@@ -1168,7 +1168,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../autoware_core/" class="md-nav__link ">
+            <a href="../../autoware_core/" class="md-nav__link ">
               
   
   
@@ -1310,8 +1310,6 @@
                 
   
   
-    
-  
   
   
     
@@ -1335,15 +1333,17 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1" >
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../" class="md-nav__link ">
+            <a href="../autoware_agnocast_wrapper/" class="md-nav__link ">
               
   
   
@@ -1367,7 +1367,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_1_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1384,10 +1384,8 @@
                 
   
   
-    
   
   
-  
     
     
       
@@ -1402,11 +1400,13 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_1_2" checked>
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_1_2" >
         
           
           <label class="md-nav__link" for="__nav_3_1_2" id="__nav_3_1_2_label" tabindex="0">
@@ -1427,7 +1427,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_2_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="3" aria-labelledby="__nav_3_1_2_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_3_1_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -1442,35 +1442,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Review guide
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../autoware_agnocast_wrapper/docs/review_guide/" class="md-nav__link">
         
   
   
@@ -1486,613 +1461,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#related-links" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related Links
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#table-of-contents" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Table of Contents
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Table of Contents">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#part-1-review-guide" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Part 1: Review Guide
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#part-2-background-knowledge-reference" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Part 2: Background Knowledge Reference
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#part-1-review-guide_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Part 1: Review Guide
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Part 1: Review Guide">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-prerequisites-for-review" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Prerequisites for Review
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="1. Prerequisites for Review">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#overview-of-autoware_agnocast_wrapper" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview of autoware_agnocast_wrapper
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#agnocast-bridge-why-other-nodes-are-not-affected" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Agnocast Bridge: Why Other Nodes Are Not Affected
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-review-procedure-guide" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Review Procedure Guide
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Review Procedure Guide">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#common-prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Prerequisites
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-1-macro-free-function-api-review-procedure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 1: Macro + Free Function API Review Procedure
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-2-agnocast_wrappernode-inheritance-review-procedure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 2: agnocast_wrapper::Node Inheritance Review Procedure
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#part-2-background-knowledge-reference_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Part 2: Background Knowledge Reference
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Part 2: Background Knowledge Reference">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-what-is-autoware_agnocast_wrapper" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. What is autoware_agnocast_wrapper?
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-behavior-changes-via-enable_agnocast-environment-variable" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Behavior Changes via ENABLE_AGNOCAST Environment Variable
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Behavior Changes via ENABLE_AGNOCAST Environment Variable">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#build-time" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build Time
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#runtime-when-built-with-enable_agnocast1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Runtime (when built with ENABLE_AGNOCAST=1)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#3-key-macros" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Key Macros
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Key Macros">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#message-pointer-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Message Pointer Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#publishersubscriber-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Publisher/Subscriber Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#client-service-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Client / Service Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#publishersubscriber-creation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Publisher/Subscriber Creation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#31-polling-subscribers-polling-free-functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.1 Polling Subscribers (polling:: free functions)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#message-allocation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Message Allocation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#options-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Options Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-two-integration-methods-free-functions-vs-agnocast_wrappernode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Two Integration Methods: Free Functions vs agnocast_wrapper::Node
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="4. Two Integration Methods: Free Functions vs agnocast_wrapper::Node">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#method-1-macro-free-function-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 1: Macro + Free Function API
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-2-agnocast_wrappernode-inheritance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 2: agnocast_wrapper::Node Inheritance
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#comparison-table" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison Table
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-2-behavior-with-enable_agnocast0" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 2 Behavior with ENABLE_AGNOCAST=0
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-component_container-and-autoware_agnocast_wrapper_register_node" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. component_container and autoware_agnocast_wrapper_register_node
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="5. component_container and autoware_agnocast_wrapper_register_node">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#autoware_agnocast_wrapper_register_node-macro" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        autoware_agnocast_wrapper_register_node Macro
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Parameters
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-executor-types-and-selection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Executor Types and Selection
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="6. Executor Types and Selection">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ros2_executor-when-enable_agnocast0-at-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ROS2_EXECUTOR (when ENABLE_AGNOCAST=0 at runtime)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#agnocast_executor-when-enable_agnocast1-at-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AGNOCAST_EXECUTOR (when ENABLE_AGNOCAST=1 at runtime)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#7-component_container-selection-agnocast_envlaunchxml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. component_container Selection (agnocast_env.launch.xml)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="7. component_container Selection (agnocast_env.launch.xml)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#provided-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provided Variables
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#container_executable-resolution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        container_executable Resolution
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#usage-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Usage Examples
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#parameters_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Parameters
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#8-build-and-execution-procedures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Build and Execution Procedures
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. Build and Execution Procedures">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#build-with-agnocast-disabled-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build with Agnocast Disabled (default)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#build-with-agnocast-enabled" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build with Agnocast Enabled
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#run-with-agnocast-enabled" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run with Agnocast Enabled
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#run-with-agnocast-disabled-after-building-with-enable_agnocast1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run with Agnocast Disabled (after building with ENABLE_AGNOCAST=1)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#9-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. References
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -2118,8 +1486,10 @@
                 
   
   
+    
   
   
+  
     
     
       
@@ -2139,17 +1509,15 @@
       
     
     
-    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
       
         
         
-          
-        
-        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_3_2" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_3_2" checked>
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_component_interface_admission/" class="md-nav__link ">
+            <a href="./" class="md-nav__link md-nav__link--active">
               
   
   
@@ -2168,7 +1536,7 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="false">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_3_2_label" aria-expanded="true">
           <label class="md-nav__title" for="__nav_3_2">
             <span class="md-nav__icon md-icon"></span>
             
@@ -2224,7 +1592,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_component_interface_specs/" class="md-nav__link ">
+            <a href="../autoware_component_interface_specs/" class="md-nav__link ">
               
   
   
@@ -2299,7 +1667,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_component_interface_utils/" class="md-nav__link ">
+            <a href="../autoware_component_interface_utils/" class="md-nav__link ">
               
   
   
@@ -2374,7 +1742,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_geography_utils/" class="md-nav__link ">
+            <a href="../autoware_geography_utils/" class="md-nav__link ">
               
   
   
@@ -2482,7 +1850,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../autoware_global_parameter_loader/Readme/" class="md-nav__link">
+      <a href="../autoware_global_parameter_loader/Readme/" class="md-nav__link">
         
   
   
@@ -2546,7 +1914,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_interface_spec_lint/" class="md-nav__link ">
+            <a href="../autoware_interface_spec_lint/" class="md-nav__link ">
               
   
   
@@ -2621,7 +1989,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_interpolation/" class="md-nav__link ">
+            <a href="../autoware_interpolation/" class="md-nav__link ">
               
   
   
@@ -2696,7 +2064,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_kalman_filter/" class="md-nav__link ">
+            <a href="../autoware_kalman_filter/" class="md-nav__link ">
               
   
   
@@ -2771,7 +2139,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_lanelet2_utils/" class="md-nav__link ">
+            <a href="../autoware_lanelet2_utils/" class="md-nav__link ">
               
   
   
@@ -2848,7 +2216,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_motion_utils/" class="md-nav__link ">
+            <a href="../autoware_motion_utils/" class="md-nav__link ">
               
   
   
@@ -3008,7 +2376,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../autoware_motion_utils/docs/vehicle/vehicle/" class="md-nav__link">
+      <a href="../autoware_motion_utils/docs/vehicle/vehicle/" class="md-nav__link">
         
   
   
@@ -3088,7 +2456,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_node/" class="md-nav__link ">
+            <a href="../autoware_node/" class="md-nav__link ">
               
   
   
@@ -3163,7 +2531,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_object_recognition_utils/" class="md-nav__link ">
+            <a href="../autoware_object_recognition_utils/" class="md-nav__link ">
               
   
   
@@ -3329,7 +2697,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../autoware_osqp_interface/design/osqp_interface-design/" class="md-nav__link">
+      <a href="../autoware_osqp_interface/design/osqp_interface-design/" class="md-nav__link">
         
   
   
@@ -3401,7 +2769,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_point_types/" class="md-nav__link ">
+            <a href="../autoware_point_types/" class="md-nav__link ">
               
   
   
@@ -3476,7 +2844,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_qos_utils/" class="md-nav__link ">
+            <a href="../autoware_qos_utils/" class="md-nav__link ">
               
   
   
@@ -3642,7 +3010,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../autoware_qp_interface/design/qp_interface-design/" class="md-nav__link">
+      <a href="../autoware_qp_interface/design/qp_interface-design/" class="md-nav__link">
         
   
   
@@ -3716,7 +3084,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_signal_processing/" class="md-nav__link ">
+            <a href="../autoware_signal_processing/" class="md-nav__link ">
               
   
   
@@ -3818,7 +3186,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../autoware_signal_processing/documentation/ButterworthFilter/" class="md-nav__link">
+      <a href="../autoware_signal_processing/documentation/ButterworthFilter/" class="md-nav__link">
         
   
   
@@ -3890,7 +3258,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_trajectory/" class="md-nav__link ">
+            <a href="../autoware_trajectory/" class="md-nav__link ">
               
   
   
@@ -3965,7 +3333,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../autoware_vehicle_info_utils/" class="md-nav__link ">
+            <a href="../autoware_vehicle_info_utils/" class="md-nav__link ">
               
   
   
@@ -4106,7 +3474,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../control/autoware_command_gate/" class="md-nav__link ">
+            <a href="../../control/autoware_command_gate/" class="md-nav__link ">
               
   
   
@@ -4178,7 +3546,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../control/autoware_core_control/" class="md-nav__link ">
+            <a href="../../control/autoware_core_control/" class="md-nav__link ">
               
   
   
@@ -4250,7 +3618,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../control/autoware_simple_pure_pursuit/" class="md-nav__link ">
+            <a href="../../control/autoware_simple_pure_pursuit/" class="md-nav__link ">
               
   
   
@@ -4401,7 +3769,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_core_localization/" class="md-nav__link ">
+            <a href="../../localization/autoware_core_localization/" class="md-nav__link ">
               
   
   
@@ -4473,7 +3841,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_ekf_localizer/" class="md-nav__link ">
+            <a href="../../localization/autoware_ekf_localizer/" class="md-nav__link ">
               
   
   
@@ -4545,7 +3913,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_gyro_odometer/" class="md-nav__link ">
+            <a href="../../localization/autoware_gyro_odometer/" class="md-nav__link ">
               
   
   
@@ -4617,7 +3985,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_localization_util/" class="md-nav__link ">
+            <a href="../../localization/autoware_localization_util/" class="md-nav__link ">
               
   
   
@@ -4691,7 +4059,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_ndt_scan_matcher/" class="md-nav__link ">
+            <a href="../../localization/autoware_ndt_scan_matcher/" class="md-nav__link ">
               
   
   
@@ -4934,7 +4302,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_ndt_scan_matcher/include/autoware/ndt_scan_matcher/ndt_omp/" class="md-nav__link ">
+            <a href="../../localization/autoware_ndt_scan_matcher/include/autoware/ndt_scan_matcher/ndt_omp/" class="md-nav__link ">
               
   
   
@@ -5038,7 +4406,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_pose_initializer/" class="md-nav__link ">
+            <a href="../../localization/autoware_pose_initializer/" class="md-nav__link ">
               
   
   
@@ -5110,7 +4478,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_stop_filter/" class="md-nav__link ">
+            <a href="../../localization/autoware_stop_filter/" class="md-nav__link ">
               
   
   
@@ -5182,7 +4550,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../localization/autoware_twist2accel/" class="md-nav__link ">
+            <a href="../../localization/autoware_twist2accel/" class="md-nav__link ">
               
   
   
@@ -5327,7 +4695,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../map/autoware_core_map/" class="md-nav__link ">
+            <a href="../../map/autoware_core_map/" class="md-nav__link ">
               
   
   
@@ -5399,7 +4767,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../map/autoware_lanelet2_map_visualizer/" class="md-nav__link ">
+            <a href="../../map/autoware_lanelet2_map_visualizer/" class="md-nav__link ">
               
   
   
@@ -5471,7 +4839,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../map/autoware_map_height_fitter/" class="md-nav__link ">
+            <a href="../../map/autoware_map_height_fitter/" class="md-nav__link ">
               
   
   
@@ -5543,7 +4911,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../map/autoware_map_loader/" class="md-nav__link ">
+            <a href="../../map/autoware_map_loader/" class="md-nav__link ">
               
   
   
@@ -5615,7 +4983,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../map/autoware_map_projection_loader/" class="md-nav__link ">
+            <a href="../../map/autoware_map_projection_loader/" class="md-nav__link ">
               
   
   
@@ -5758,7 +5126,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../perception/autoware_core_perception/" class="md-nav__link ">
+            <a href="../../perception/autoware_core_perception/" class="md-nav__link ">
               
   
   
@@ -5830,7 +5198,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../perception/autoware_euclidean_cluster_object_detector/" class="md-nav__link ">
+            <a href="../../perception/autoware_euclidean_cluster_object_detector/" class="md-nav__link ">
               
   
   
@@ -5904,7 +5272,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../perception/autoware_ground_filter/" class="md-nav__link ">
+            <a href="../../perception/autoware_ground_filter/" class="md-nav__link ">
               
   
   
@@ -6006,7 +5374,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../perception/autoware_ground_filter/docs/ground-filter/" class="md-nav__link">
+      <a href="../../perception/autoware_ground_filter/docs/ground-filter/" class="md-nav__link">
         
   
   
@@ -6075,7 +5443,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../perception/autoware_perception_objects_converter/" class="md-nav__link ">
+            <a href="../../perception/autoware_perception_objects_converter/" class="md-nav__link ">
               
   
   
@@ -6230,7 +5598,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/autoware_core_planning/" class="md-nav__link ">
+            <a href="../../planning/autoware_core_planning/" class="md-nav__link ">
               
   
   
@@ -6302,7 +5670,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/autoware_mission_planner/" class="md-nav__link ">
+            <a href="../../planning/autoware_mission_planner/" class="md-nav__link ">
               
   
   
@@ -6374,7 +5742,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/autoware_objects_of_interest_marker_interface/" class="md-nav__link ">
+            <a href="../../planning/autoware_objects_of_interest_marker_interface/" class="md-nav__link ">
               
   
   
@@ -6446,7 +5814,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/autoware_path_generator/" class="md-nav__link ">
+            <a href="../../planning/autoware_path_generator/" class="md-nav__link ">
               
   
   
@@ -6518,7 +5886,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/autoware_planning_factor_interface/" class="md-nav__link ">
+            <a href="../../planning/autoware_planning_factor_interface/" class="md-nav__link ">
               
   
   
@@ -6590,7 +5958,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/autoware_planning_topic_converter/" class="md-nav__link ">
+            <a href="../../planning/autoware_planning_topic_converter/" class="md-nav__link ">
               
   
   
@@ -6662,7 +6030,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/autoware_route_handler/" class="md-nav__link ">
+            <a href="../../planning/autoware_route_handler/" class="md-nav__link ">
               
   
   
@@ -6734,7 +6102,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/autoware_velocity_smoother/" class="md-nav__link ">
+            <a href="../../planning/autoware_velocity_smoother/" class="md-nav__link ">
               
   
   
@@ -6868,7 +6236,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/behavior_velocity_planner/autoware_behavior_velocity_planner/" class="md-nav__link ">
+            <a href="../../planning/behavior_velocity_planner/autoware_behavior_velocity_planner/" class="md-nav__link ">
               
   
   
@@ -6940,7 +6308,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/behavior_velocity_planner/autoware_behavior_velocity_planner_common/" class="md-nav__link ">
+            <a href="../../planning/behavior_velocity_planner/autoware_behavior_velocity_planner_common/" class="md-nav__link ">
               
   
   
@@ -7012,7 +6380,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/behavior_velocity_planner/autoware_behavior_velocity_stop_line_module/" class="md-nav__link ">
+            <a href="../../planning/behavior_velocity_planner/autoware_behavior_velocity_stop_line_module/" class="md-nav__link ">
               
   
   
@@ -7154,7 +6522,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/motion_velocity_planner/autoware_motion_velocity_obstacle_stop_module/" class="md-nav__link ">
+            <a href="../../planning/motion_velocity_planner/autoware_motion_velocity_obstacle_stop_module/" class="md-nav__link ">
               
   
   
@@ -7226,7 +6594,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/motion_velocity_planner/autoware_motion_velocity_planner/" class="md-nav__link ">
+            <a href="../../planning/motion_velocity_planner/autoware_motion_velocity_planner/" class="md-nav__link ">
               
   
   
@@ -7298,7 +6666,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../planning/motion_velocity_planner/autoware_motion_velocity_planner_common/" class="md-nav__link ">
+            <a href="../../planning/motion_velocity_planner/autoware_motion_velocity_planner_common/" class="md-nav__link ">
               
   
   
@@ -7451,7 +6819,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../sensing/autoware_core_sensing/" class="md-nav__link ">
+            <a href="../../sensing/autoware_core_sensing/" class="md-nav__link ">
               
   
   
@@ -7523,7 +6891,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../sensing/autoware_crop_box_filter/" class="md-nav__link ">
+            <a href="../../sensing/autoware_crop_box_filter/" class="md-nav__link ">
               
   
   
@@ -7595,7 +6963,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../sensing/autoware_downsample_filters/" class="md-nav__link ">
+            <a href="../../sensing/autoware_downsample_filters/" class="md-nav__link ">
               
   
   
@@ -7667,7 +7035,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../sensing/autoware_gnss_poser/" class="md-nav__link ">
+            <a href="../../sensing/autoware_gnss_poser/" class="md-nav__link ">
               
   
   
@@ -7739,7 +7107,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../sensing/autoware_vehicle_velocity_converter/" class="md-nav__link ">
+            <a href="../../sensing/autoware_vehicle_velocity_converter/" class="md-nav__link ">
               
   
   
@@ -7884,7 +7252,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../testing/autoware_planning_test_manager/" class="md-nav__link ">
+            <a href="../../testing/autoware_planning_test_manager/" class="md-nav__link ">
               
   
   
@@ -7956,7 +7324,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../testing/autoware_pyplot/" class="md-nav__link ">
+            <a href="../../testing/autoware_pyplot/" class="md-nav__link ">
               
   
   
@@ -8028,7 +7396,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../testing/autoware_test_node/" class="md-nav__link ">
+            <a href="../../testing/autoware_test_node/" class="md-nav__link ">
               
   
   
@@ -8100,7 +7468,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../testing/autoware_test_utils/" class="md-nav__link ">
+            <a href="../../testing/autoware_test_utils/" class="md-nav__link ">
               
   
   
@@ -8263,7 +7631,7 @@
   
   
     <li class="md-nav__item">
-      <a href="../../../../testing/autoware_testing/design/autoware_testing-design/" class="md-nav__link">
+      <a href="../../testing/autoware_testing/design/autoware_testing-design/" class="md-nav__link">
         
   
   
@@ -8397,7 +7765,7 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../../../../vehicle/autoware_core_vehicle/" class="md-nav__link ">
+            <a href="../../vehicle/autoware_core_vehicle/" class="md-nav__link ">
               
   
   
@@ -8461,6 +7829,8 @@
   
   
   
+    
+  
   
     <label class="md-nav__title" for="__toc">
       <span class="md-nav__icon md-icon"></span>
@@ -8469,10 +7839,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#related-links" class="md-nav__link">
+  <a href="#one-rule-two-triggers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Related Links
+        One rule, two triggers
       
     </span>
   </a>
@@ -8480,22 +7850,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#table-of-contents" class="md-nav__link">
+  <a href="#admission-rule" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Table of Contents
+        Admission rule
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Table of Contents">
+    <nav class="md-nav" aria-label="Admission rule">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#part-1-review-guide" class="md-nav__link">
+  <a href="#deploy-vs-runtime-no_provider-is-deploy-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Part 1: Review Guide
+        Deploy vs runtime: NO_PROVIDER is deploy-only
       
     </span>
   </a>
@@ -8503,119 +7873,13 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#part-2-background-knowledge-reference" class="md-nav__link">
+  <a href="#qos-verdicts-deploy-time-only" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Part 2: Background Knowledge Reference
+        QoS verdicts (deploy-time only)
       
     </span>
   </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#part-1-review-guide_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Part 1: Review Guide
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Part 1: Review Guide">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#1-prerequisites-for-review" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Prerequisites for Review
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="1. Prerequisites for Review">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#overview-of-autoware_agnocast_wrapper" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Overview of autoware_agnocast_wrapper
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#agnocast-bridge-why-other-nodes-are-not-affected" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Agnocast Bridge: Why Other Nodes Are Not Affected
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#2-review-procedure-guide" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Review Procedure Guide
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Review Procedure Guide">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#common-prerequisites" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Common Prerequisites
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-1-macro-free-function-api-review-procedure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 1: Macro + Free Function API Review Procedure
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-2-agnocast_wrappernode-inheritance-review-procedure" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 2: agnocast_wrapper::Node Inheritance Review Procedure
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
         
@@ -8625,22 +7889,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#part-2-background-knowledge-reference_1" class="md-nav__link">
+  <a href="#records-and-json-schema" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Part 2: Background Knowledge Reference
+        Records and JSON schema
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Part 2: Background Knowledge Reference">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#deploy-time-gate-oci-label-contract" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Deploy-time gate: OCI label contract
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Deploy-time gate: OCI label contract">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#1-what-is-autoware_agnocast_wrapper" class="md-nav__link">
+  <a href="#fragment-discovery" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. What is autoware_agnocast_wrapper?
+        Fragment discovery
       
     </span>
   </a>
@@ -8648,33 +7923,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#2-behavior-changes-via-enable_agnocast-environment-variable" class="md-nav__link">
+  <a href="#manifest_admit-exit-code-contract" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Behavior Changes via ENABLE_AGNOCAST Environment Variable
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. Behavior Changes via ENABLE_AGNOCAST Environment Variable">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#build-time" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build Time
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#runtime-when-built-with-enable_agnocast1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Runtime (when built with ENABLE_AGNOCAST=1)
+        manifest_admit exit-code contract
       
     </span>
   </a>
@@ -8685,375 +7937,37 @@
     </nav>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#3-key-macros" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#deferred-work-runtime-broadcast-and-admission-checker" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Key Macros
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Key Macros">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#message-pointer-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Message Pointer Types
+        Deferred work: runtime broadcast and admission checker
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#publishersubscriber-types" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#note-on-non-container-deployments" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Publisher/Subscriber Types
+        Note on non-container deployments
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#client-service-types" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Client / Service Types
+        License
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#publishersubscriber-creation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Publisher/Subscriber Creation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#31-polling-subscribers-polling-free-functions" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3.1 Polling Subscribers (polling:: free functions)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#message-allocation" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Message Allocation
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#options-types" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Options Types
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#4-two-integration-methods-free-functions-vs-agnocast_wrappernode" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Two Integration Methods: Free Functions vs agnocast_wrapper::Node
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="4. Two Integration Methods: Free Functions vs agnocast_wrapper::Node">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#method-1-macro-free-function-api" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 1: Macro + Free Function API
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-2-agnocast_wrappernode-inheritance" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 2: agnocast_wrapper::Node Inheritance
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#comparison-table" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Comparison Table
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#method-2-behavior-with-enable_agnocast0" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Method 2 Behavior with ENABLE_AGNOCAST=0
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#5-component_container-and-autoware_agnocast_wrapper_register_node" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. component_container and autoware_agnocast_wrapper_register_node
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="5. component_container and autoware_agnocast_wrapper_register_node">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#autoware_agnocast_wrapper_register_node-macro" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        autoware_agnocast_wrapper_register_node Macro
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Parameters
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#6-executor-types-and-selection" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Executor Types and Selection
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="6. Executor Types and Selection">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#ros2_executor-when-enable_agnocast0-at-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        ROS2_EXECUTOR (when ENABLE_AGNOCAST=0 at runtime)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#agnocast_executor-when-enable_agnocast1-at-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        AGNOCAST_EXECUTOR (when ENABLE_AGNOCAST=1 at runtime)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#7-component_container-selection-agnocast_envlaunchxml" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. component_container Selection (agnocast_env.launch.xml)
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="7. component_container Selection (agnocast_env.launch.xml)">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#provided-variables" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Provided Variables
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#container_executable-resolution" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        container_executable Resolution
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#usage-examples" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Usage Examples
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#parameters_1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Parameters
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#8-build-and-execution-procedures" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        8. Build and Execution Procedures
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="8. Build and Execution Procedures">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#build-with-agnocast-disabled-default" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build with Agnocast Disabled (default)
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#build-with-agnocast-enabled" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Build with Agnocast Enabled
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#run-with-agnocast-enabled" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run with Agnocast Enabled
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#run-with-agnocast-disabled-after-building-with-enable_agnocast1" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Run with Agnocast Disabled (after building with ENABLE_AGNOCAST=1)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#9-references" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        9. References
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -9077,1023 +7991,194 @@
   
 
 
-<div><p>This document serves as a guide for reviewing PRs that apply <a href="https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper">autoware_agnocast_wrapper</a>.</p>
-<p><strong>Part 1</strong> provides a step-by-step walkthrough of what to check during review.</p>
-<p><strong>Part 2</strong> compiles background knowledge referenced by each review step — refer to it as needed.</p>
-<p> </p>
-<h2 id="related-links">Related Links<a class="headerlink" href="#related-links" title="Permanent link">#</a></h2>
+<div><h1 id="autoware_component_interface_admission">autoware_component_interface_admission<a class="headerlink" href="#autoware_component_interface_admission" title="Permanent link">#</a></h1>
+<p>The shared <strong>component-interface admission rule</strong> and the <strong>deploy-time manifest gate</strong> for Autoware's component interface versioning. This is a standalone, ROS-message-free leaf package: it depends only on the ament build system and <code>nlohmann-json</code> (no <code>rclcpp</code>, no <code>autoware_component_interface_specs</code>), so it builds against today's released core.</p>
+<h2 id="one-rule-two-triggers">One rule, two triggers<a class="headerlink" href="#one-rule-two-triggers" title="Permanent link">#</a></h2>
+<p>Interface compatibility is enforced by a single admission rule — "the consumer's accepted MAJOR range contains the provider's MAJOR" plus a remap-safe two-layer name match — evaluated at two triggers:</p>
+<ul>
+<li><strong>Deploy-time (primary)</strong>: each component bakes its interface manifest into its container image, and a pre-boot gate cross-checks the whole composed image set, rejecting an incompatible combination before anything is built, pulled, or booted. This package provides that gate (<code>evaluate_deploy()</code> + the <code>manifest_admit</code> CLI).</li>
+<li><strong>Runtime (secondary, not yet implemented)</strong>: the same rule at component startup over a broadcast manifest. This package provides the rule (<code>evaluate()</code>); the runtime broadcast and checker are not implemented yet (see the deferred-work note below).</li>
+</ul>
+<p>Both triggers live in <code>admission_rule.hpp</code> and share the same version-compatibility rule: the deploy trigger applies <strong>stage 1</strong> (version + <code>interface_name</code>), and the runtime trigger adds <strong>stage 2</strong> (the remap-resolved <code>resolved_name</code> match). One rule, evaluated at the depth each trigger can see — not a parallel reimplementation.</p>
+<h2 id="admission-rule">Admission rule<a class="headerlink" href="#admission-rule" title="Permanent link">#</a></h2>
+<p>For each required interface, the rule finds providers of the same <code>interface_name</code> and applies a two-layer match (<code>evaluate()</code> in <code>include/autoware/component_interface_admission/admission_rule.hpp</code>):</p>
 <table>
 <thead>
 <tr>
-<th>Resource</th>
-<th>URL</th>
+<th>Situation</th>
+<th>Verdict</th>
+<th>Code</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>autoware_agnocast_wrapper (source code)</td>
-<td><a href="https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper">autowarefoundation/autoware_core/.../autoware_agnocast_wrapper</a></td>
+<td>version-ok <strong>and</strong> <code>resolved_name</code> coincide (the actually-wired provider)</td>
+<td><code>ACCEPTED</code></td>
+<td>0</td>
 </tr>
 <tr>
-<td>Agnocast repository</td>
-<td><a href="https://github.com/autowarefoundation/agnocast">autowarefoundation/agnocast</a></td>
+<td>MAJOR in range but <code>min_minor</code> unmet</td>
+<td><code>MINOR_MISMATCH</code></td>
+<td>2</td>
 </tr>
 <tr>
-<td>Agnocast documentation</td>
-<td><a href="https://autowarefoundation.github.io/agnocast_doc/main/">Agnocast Documentation</a></td>
+<td>MAJOR out of the accepted range</td>
+<td><code>MAJOR_MISMATCH</code></td>
+<td>1</td>
 </tr>
 <tr>
-<td>Autoware Discussion: Agnocast introduction proposal</td>
-<td><a href="https://github.com/orgs/autowarefoundation/discussions/5835">Discussion #5835 - Introduce True Zero-Copy Publish/Subscribe IPC to Autoware</a></td>
+<td>version-ok but a remap left <code>resolved_name</code> disjoint</td>
+<td><code>TOPIC_MISMATCH</code></td>
+<td>3</td>
 </tr>
 <tr>
-<td>Agnocast ROS 2 rosdistro support</td>
-<td><a href="https://github.com/autowarefoundation/autoware/issues/5968">Issue #5968 - Use ROS 2 packages in Agnocast released via rosdistro</a></td>
+<td>required interface has <strong>no provider</strong> in the set</td>
+<td><code>NO_PROVIDER</code></td>
+<td>4</td>
 </tr>
 </tbody>
 </table>
-<p> </p>
-<h2 id="table-of-contents">Table of Contents<a class="headerlink" href="#table-of-contents" title="Permanent link">#</a></h2>
-<h3 id="part-1-review-guide">Part 1: Review Guide<a class="headerlink" href="#part-1-review-guide" title="Permanent link">#</a></h3>
+<p>The MINOR bound is inclusive (<code>provider.minor &gt;= min_minor</code>), and <code>min_minor == 0</code> means unconstrained. Because MINOR resets to 0 on every MAJOR bump (semver), <code>min_minor</code> binds <strong>only at the MAJOR it was declared against</strong> (<code>accept_major_min</code>); at any higher accepted MAJOR the bound is already satisfied. So a consumer accepting <code>[2, 3]</code> with <code>min_minor = 5</code> admits provider <code>2.5</code> and <code>3.0</code>, but rejects <code>2.4</code> as a <code>MINOR_MISMATCH</code>. Among several version-compatible providers, the one whose <code>resolved_name</code> coincides is preferred (the wired provider); a version-compatible provider left on a disjoint wire topic by a remap is the false-accept that logical-name-only matching would miss, reported as <code>TOPIC_MISMATCH</code>.</p>
+<h3 id="deploy-vs-runtime-no_provider-is-deploy-only">Deploy vs runtime: <code>NO_PROVIDER</code> is deploy-only<a class="headerlink" href="#deploy-vs-runtime-no_provider-is-deploy-only" title="Permanent link">#</a></h3>
+<p>The one place the two triggers differ is a required interface with no provider:</p>
 <ul>
-<li>Prerequisites for Review</li>
-<li>Review Procedure Guide<ul>
-<li>Common Prerequisites</li>
-<li>Method 1: Macro + Free Function API Review Procedure</li>
-<li>Method 2: <code>agnocast_wrapper::Node</code> Inheritance Review Procedure</li>
+<li><strong>Runtime</strong> (<code>evaluate()</code>): such a required interface is <strong>skipped</strong> — under the runtime trigger a provider may simply not have started yet, so absence is not yet a failure.</li>
+<li><strong>Deploy-time</strong> (<code>evaluate_deploy()</code>): the image set is complete, so a required interface with no provider anywhere in the set is a hard <code>NO_PROVIDER</code> rejection.</li>
 </ul>
-</li>
-</ul>
-<h3 id="part-2-background-knowledge-reference">Part 2: Background Knowledge Reference<a class="headerlink" href="#part-2-background-knowledge-reference" title="Permanent link">#</a></h3>
+<p><code>NO_PROVIDER</code> is a <strong>completeness</strong> verdict, not a version verdict: it fires whenever a required entry — versioned or not — has no provider of its <code>interface_name</code> anywhere in the set at all, matching the pre-v2 behavior where every required entry got this check. For a required entry that DOES declare a version, it additionally fires when every provider that exists is itself unversioned (<code>has_version == false</code>), since none of them is then version-checkable; an unversioned required entry has no version bounds to check in the first place, so it is satisfied by any provider regardless of that provider's own <code>has_version</code> — two sides both declining a version claim is a coherent unversioned pairing, not a gap to reject.</p>
+<p>A required entry declared without a version at all (<code>has_version == false</code>) never produces <code>MAJOR_MISMATCH</code> / <code>MINOR_MISMATCH</code> at either trigger, since version bounds simply do not apply. But <code>TOPIC_MISMATCH</code> is a wiring verdict, not a version one, so <code>has_version</code> does not suppress it: at the runtime trigger, an unversioned required entry is still checked against stage 2 exactly like a versioned one — a remap that leaves it on a disjoint wire topic is still caught, rather than silently accepted because no version comparison was in play.</p>
+<p>The deploy-time gate matches on <strong>version + <code>interface_name</code> only</strong> (stage 1). The remap-resolved <code>resolved_name</code> match (stage 2 of the rule) is runtime-only, because remaps live in the launch / compose layer and are not visible in image metadata — so <code>evaluate_deploy()</code> never inspects <code>resolved_name</code> and never emits <code>TOPIC_MISMATCH</code>. That residual remap false-accept is exactly what the runtime trigger backstops.</p>
+<h3 id="qos-verdicts-deploy-time-only">QoS verdicts (deploy-time only)<a class="headerlink" href="#qos-verdicts-deploy-time-only" title="Permanent link">#</a></h3>
+<p>A v2 manifest entry may also carry a <code>qos</code> block (<code>reliability</code>, <code>durability</code>, <code>depth</code>; see the JSON schema below). The QoS an interface's specification declares (from <code>autoware_component_interface_specs</code>' <code>interface_manifest.json</code>, parsed by <code>spec_qos_from_json()</code>) is an <strong>exact requirement</strong> for both sides, not a bound either side may deviate from. A specification that says <code>RELIABLE</code> means the interface is carried without drops or reordering; a subscription that quietly requests <code>BEST_EFFORT</code> still connects under DDS's request-vs-offered rule but no longer gets that property, and preventing exactly that class of mistake is what declaring the QoS in the specification is for. Deviating in the "stronger" direction (<code>TRANSIENT_LOCAL</code> where the spec says <code>VOLATILE</code>) is rejected on the same grounds: it is still not what every consumer written against the specification was told to expect.</p>
+<p>How that is checked depends on whether the spec set declares a QoS for the interface at all:</p>
 <ul>
-<li>What is autoware_agnocast_wrapper?</li>
-<li>Behavior Changes via ENABLE_AGNOCAST Environment Variable</li>
-<li>Key Macros<ul>
-<li>Polling Subscribers (<code>polling::</code> free functions)</li>
+<li><strong>With a declared QoS</strong>: <code>evaluate_deploy()</code> requires every <code>provided</code> entry and every <code>required</code> entry that carries <code>qos</code> to use exactly that <code>reliability</code> and <code>durability</code>, <strong>independently of pairing</strong> — a publisher-only image with no consumer anywhere in the set, or a second provider of the same interface that a stage-1 match never picked, is exactly as checkable as a matched pair, because conformance is a property of the single endpoint and its spec. Such a verdict names only the one side it is about (see <code>AdmissionResult</code>, below).</li>
+<li><strong>Without a declared QoS</strong> (e.g. a vendor / out-of-tree interface): there is nothing to hold each endpoint to in isolation, so the gate falls back to a direct offered-vs-requested DDS compatibility check on the one stage-1-matched pairing, and only when <strong>both</strong> sides of that pairing carry <code>qos</code>. This catches a pairing that cannot connect at all; it does not, and cannot, enforce a specification that does not exist.</li>
 </ul>
-</li>
-<li>Two Integration Methods: Free Functions vs <code>agnocast_wrapper::Node</code></li>
-<li>component_container and <code>autoware_agnocast_wrapper_register_node</code></li>
-<li>Executor Types and Selection</li>
-<li>component_container Selection (<code>agnocast_env.launch.xml</code>)</li>
-<li>Build and Execution Procedures</li>
-<li>References</li>
-</ul>
-<p> </p>
-<hr>
-<p> </p>
-<h1 id="part-1-review-guide_1">Part 1: Review Guide<a class="headerlink" href="#part-1-review-guide_1" title="Permanent link">#</a></h1>
-<p> </p>
-<h2 id="1-prerequisites-for-review">1. Prerequisites for Review<a class="headerlink" href="#1-prerequisites-for-review" title="Permanent link">#</a></h2>
-<p> </p>
-<h3 id="overview-of-autoware_agnocast_wrapper">Overview of autoware_agnocast_wrapper<a class="headerlink" href="#overview-of-autoware_agnocast_wrapper" title="Permanent link">#</a></h3>
-<p><a href="https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper">autoware_agnocast_wrapper</a> is a wrapper package for applying the zero-copy middleware <a href="https://autowarefoundation.github.io/agnocast_doc/main/">Agnocast</a> to Autoware nodes.</p>
-<p>Build-time and runtime behavior is controlled by the <code>ENABLE_AGNOCAST</code> environment variable:</p>
-<ul>
-<li><strong>Built with <code>ENABLE_AGNOCAST=0</code> (or unset)</strong>: Standard ROS 2 build. Macros expand directly to rclcpp APIs, and no Agnocast-related code is included</li>
-</ul>
-<ul>
-<li><strong>Built with <code>ENABLE_AGNOCAST=1</code></strong>: Agnocast-enabled build. At runtime, communication switches between Agnocast and ROS 2 depending on the <code>ENABLE_AGNOCAST</code> value</li>
-</ul>
-<p>In other words, users who build with <code>ENABLE_AGNOCAST=0</code> are not affected at all, and backward compatibility is maintained (see Part 2 Section 2 for details).</p>
-<p> </p>
-<h3 id="agnocast-bridge-why-other-nodes-are-not-affected">Agnocast Bridge: Why Other Nodes Are Not Affected<a class="headerlink" href="#agnocast-bridge-why-other-nodes-are-not-affected" title="Permanent link">#</a></h3>
-<p>Another important prerequisite when reviewing Agnocast-related PRs is the existence of the <strong>Agnocast Bridge</strong>.</p>
-<p>The <a href="https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/bridge/">Agnocast Bridge</a> automatically forwards messages bidirectionally between Agnocast nodes and standard ROS 2 nodes:</p>
-<ul>
-<li><strong>R2A (ROS 2 → Agnocast)</strong>: Forwards messages from ROS 2 publishers to Agnocast subscribers</li>
-</ul>
-<ul>
-<li><strong>A2R (Agnocast → ROS 2)</strong>: Forwards messages from Agnocast publishers to ROS 2 subscribers</li>
-</ul>
-<p>Message circulation (echo-back) is automatically prevented by the Bridge's internal logic.</p>
-<p> </p>
-<p><strong>This means:</strong></p>
-<ul>
-<li>Even if Agnocast is applied to a node, communication with neighboring nodes that still use standard ROS 2 will not be disrupted, as the Bridge automatically mediates</li>
-</ul>
-<ul>
-<li><strong>During review, there is no need to check whether connected nodes have been adapted for Agnocast</strong></li>
-</ul>
-<ul>
-<li>Each node can be independently adapted for Agnocast</li>
-</ul>
-<p> </p>
-<hr>
-<p> </p>
-<h2 id="2-review-procedure-guide">2. Review Procedure Guide<a class="headerlink" href="#2-review-procedure-guide" title="Permanent link">#</a></h2>
-<p>This section provides a step-by-step review procedure for PRs that apply autoware_agnocast_wrapper.</p>
-<p>The checklist differs depending on the integration method (Method 1: Macro + Free Function API / Method 2: <code>agnocast_wrapper::Node</code> Inheritance), so each is documented separately.</p>
-<p>Background knowledge referenced by each step is compiled in Part 2: Background Knowledge Reference. When you need to check details such as macro expansion results or executor types during review, follow the links annotated on each step to the relevant Part 2 section.</p>
-<p> </p>
-<h3 id="common-prerequisites">Common Prerequisites<a class="headerlink" href="#common-prerequisites" title="Permanent link">#</a></h3>
-<h4 id="step-0-identify-the-integration-method-see-part-2-section-4">Step 0: Identify the Integration Method (see Part 2 Section 4)<a class="headerlink" href="#step-0-identify-the-integration-method-see-part-2-section-4" title="Permanent link">#</a></h4>
-<p>autoware_agnocast_wrapper has two integration patterns: applying Agnocast to specific topics while keeping the existing node as-is (Method 1), or replacing the node's base class entirely (Method 2).</p>
-<p>You can distinguish them by checking the node's base class.</p>
-<ul>
-<li>Base class remains <strong><code>rclcpp::Node</code></strong> → <strong>Method 1: Macro + Free Function API</strong></li>
-</ul>
-<ul>
-<li>Base class changed to <strong><code>autoware::agnocast_wrapper::Node</code></strong> → <strong>Method 2: agnocast_wrapper::Node Inheritance</strong></li>
-</ul>
-<div class="highlight"><pre><span></span><code><span class="c1">// Method 1</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">MyNode</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span>
-
-<span class="c1">// Method 2</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">MyNode</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">agnocast_wrapper</span><span class="o">::</span><span class="n">Node</span>
-</code></pre></div>
-<p>Once identified, proceed to the corresponding review procedure below.</p>
-<p> </p>
-<hr>
-<p> </p>
-<h3 id="method-1-macro-free-function-api-review-procedure">Method 1: Macro + Free Function API Review Procedure<a class="headerlink" href="#method-1-macro-free-function-api-review-procedure" title="Permanent link">#</a></h3>
-<p> </p>
-<h4 id="step-1-code-changes-see-part-2-section-3">Step 1: Code Changes (see Part 2 Section 3)<a class="headerlink" href="#step-1-code-changes-see-part-2-section-3" title="Permanent link">#</a></h4>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>#include &lt;autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp&gt;</code> has been added</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <strong>Base class remains <code>rclcpp::Node</code></strong></li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Member variable types: <code>rclcpp::Publisher&lt;M&gt;::SharedPtr</code> → <code>AUTOWARE_PUBLISHER_PTR(M)</code> etc.</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: <code>this-&gt;create_publisher</code> → <code>AUTOWARE_CREATE_PUBLISHER2</code> / <code>AUTOWARE_CREATE_PUBLISHER3</code> etc.</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code> (callbacks taking <code>const MessageT &amp;</code> can keep their signature unchanged)</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Message allocation (if publisher exists): <code>std::make_unique&lt;M&gt;()</code> → <code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)</code></li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Options type: <code>rclcpp::SubscriptionOptions</code> → <code>AUTOWARE_SUBSCRIPTION_OPTIONS</code> (and <code>rclcpp::PublisherOptions</code> → <code>AUTOWARE_PUBLISHER_OPTIONS</code>)</li>
-</ul>
-<p> </p>
-<h4 id="step-2-verification-see-part-2-section-2-part-2-section-8">Step 2: Verification (see Part 2 Section 2, Part 2 Section 8)<a class="headerlink" href="#step-2-verification-see-part-2-section-2-part-2-section-8" title="Permanent link">#</a></h4>
-<p>Items 1 and 2 are <strong>recommended</strong>, item 3 is <strong>if possible</strong> (requires Agnocast environment).</p>
-<p> </p>
-<p><strong>1. Build and run with <code>ENABLE_AGNOCAST=0</code> (or unset) (recommended)</strong></p>
-<p>The most important test: verify that the build does not break in environments without Agnocast.</p>
-<div class="highlight"><pre><span></span><code><span class="nb">unset</span><span class="w"> </span>ENABLE_AGNOCAST<span class="w">  </span><span class="c1"># or export ENABLE_AGNOCAST=0</span>
-colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<span class="w"> </span>--packages-select<span class="w"> </span>&lt;target_package&gt;
-<span class="c1"># Run and verify that standard ROS 2 behavior works correctly</span>
-</code></pre></div>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Build succeeds</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>ros2 topic echo</code> etc. confirms that topic pub/sub works as expected</li>
-</ul>
-<p> </p>
-<p><strong>2. Build with <code>ENABLE_AGNOCAST=1</code>, run with <code>ENABLE_AGNOCAST=0</code> (recommended)</strong></p>
-<p>Verify that the Agnocast-enabled build works correctly in ROS 2 fallback mode.</p>
-<blockquote>
-<p><strong>Note:</strong> When switching the <code>ENABLE_AGNOCAST</code> value and rebuilding, delete the <code>build/</code> and <code>install/</code> directories of both the target package and <code>autoware_agnocast_wrapper</code> before building. Since <code>ENABLE_AGNOCAST</code> is an environment variable (not a CMake variable), the previous setting may remain in the build cache, causing inconsistencies.</p>
-</blockquote>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">ENABLE_AGNOCAST</span><span class="o">=</span><span class="m">1</span>
-
-rm<span class="w"> </span>-rf<span class="w"> </span>build/autoware_agnocast_wrapper<span class="w"> </span>install/autoware_agnocast_wrapper
-rm<span class="w"> </span>-rf<span class="w"> </span>build/&lt;target_package&gt;<span class="w"> </span>install/&lt;target_package&gt;
-
-<span class="c1"># For Agnocast/ROS2 bridge setup</span>
-sudo<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.mqueue.msg_max<span class="o">=</span><span class="m">256</span>
-sudo<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.mqueue.queues_max<span class="o">=</span><span class="m">1024</span>
-
-colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<span class="w"> </span>--packages-select<span class="w"> </span>autoware_agnocast_wrapper<span class="w"> </span>&lt;target_package&gt;
-
-<span class="nb">export</span><span class="w"> </span><span class="nv">ENABLE_AGNOCAST</span><span class="o">=</span><span class="m">0</span><span class="w">  </span><span class="c1"># Fall back to ROS 2 at runtime</span>
-<span class="c1"># Run and verify behavior</span>
-</code></pre></div>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Build succeeds</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>ros2 topic echo</code> etc. confirms that topic pub/sub works as expected</li>
-</ul>
-<p> </p>
-<p><strong>3. Build and run with <code>ENABLE_AGNOCAST=1</code> (if possible)</strong></p>
-<p>Verify that Agnocast communication works correctly. Requires Agnocast environment setup (see below).</p>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">ENABLE_AGNOCAST</span><span class="o">=</span><span class="m">1</span>
-
-<span class="c1"># You can skip this if you have already done these above.</span>
-sudo<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.mqueue.msg_max<span class="o">=</span><span class="m">256</span>
-sudo<span class="w"> </span>sysctl<span class="w"> </span>-w<span class="w"> </span>fs.mqueue.queues_max<span class="o">=</span><span class="m">1024</span>
-
-colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<span class="w"> </span>--packages-select<span class="w"> </span>&lt;target_package&gt;
-<span class="c1"># Run with ENABLE_AGNOCAST=1</span>
-</code></pre></div>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>ros2 topic list_agnocast</code> shows <code>(Agnocast enabled)</code> for the target topic</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>ros2 topic info_agnocast /target_topic</code> shows expected Agnocast Publisher/Subscriber counts</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Subscriber-side callbacks are working correctly</li>
-</ul>
-<p> </p>
-<blockquote>
-<p><strong>Regarding <code>ros2 topic echo</code> / <code>ros2 topic hz</code>:</strong></p>
-<p>These commands are generally usable for Agnocast topics thanks to the Bridge feature.</p>
-<p>However, when all subscribers for a topic have been converted to Agnocast, the Bridge may not yet have been created when <code>ros2 topic echo</code> connects, causing it to time out before being recognized as a ROS 2 subscriber.</p>
-<p>In such cases, use the <code>ros2 topic list_agnocast</code> / <code>ros2 topic info_agnocast</code> commands, or directly verify subscriber-side callback behavior.</p>
-<p>Native commands such as <code>ros2 topic echo_agnocast</code> are planned for future release.</p>
-</blockquote>
-<p> </p>
-<h4 id="agnocast-environment-prerequisites">Agnocast Environment Prerequisites<a class="headerlink" href="#agnocast-environment-prerequisites" title="Permanent link">#</a></h4>
-<p>To perform verification item 3, the following Agnocast environment is required:</p>
-<p> </p>
-<p><strong>Agnocast kernel module check:</strong></p>
-<div class="highlight"><pre><span></span><code>$<span class="w"> </span>lsmod<span class="w"> </span><span class="p">|</span><span class="w"> </span>grep<span class="w"> </span>agnocast
-agnocast<span class="w">              </span><span class="m">835584</span><span class="w">  </span><span class="m">0</span>
-</code></pre></div>
-<p>If not shown:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>add-apt-repository<span class="w"> </span>ppa:t4-system-software/agnocast
-sudo<span class="w"> </span>apt<span class="w"> </span>update
-sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>agnocast-kmod-v2.3<span class="w">  </span><span class="c1"># Match the version in autoware.repos</span>
-sudo<span class="w"> </span>modprobe<span class="w"> </span>agnocast
-</code></pre></div>
-<p> </p>
-<p><strong>Agnocast heaphook check:</strong></p>
-<div class="highlight"><pre><span></span><code>ls<span class="w"> </span>/opt/ros/humble/lib/libagnocast_heaphook.so
-</code></pre></div>
-<p>If not found:</p>
-<div class="highlight"><pre><span></span><code>sudo<span class="w"> </span>apt<span class="w"> </span>install<span class="w"> </span>agnocast-heaphook-v2.3<span class="w">  </span><span class="c1"># Match the version in autoware.repos</span>
-</code></pre></div>
-<p> </p>
-<blockquote>
-<p>The version can be found in the <code>middleware/external/agnocast</code> section of <a href="https://github.com/autowarefoundation/autoware/blob/main/repositories/autoware.repos"><code>autoware.repos</code></a>. For instructions on building and installing from source, see the <a href="https://autowarefoundation.github.io/agnocast_doc/main/environment-setup/">Agnocast Environment Setup guide</a>.</p>
-</blockquote>
-<p> </p>
-<hr>
-<p> </p>
-<h3 id="method-2-agnocast_wrappernode-inheritance-review-procedure">Method 2: agnocast_wrapper::Node Inheritance Review Procedure<a class="headerlink" href="#method-2-agnocast_wrappernode-inheritance-review-procedure" title="Permanent link">#</a></h3>
-<p>Node-wide migration to <code>agnocast_wrapper::Node</code> (see Part 2 Section 4 Method 2).</p>
-<p> </p>
-<h4 id="step-1-code-changes-see-part-2-section-3-part-2-section-4-method-2">Step 1: Code Changes (see Part 2 Section 3, Part 2 Section 4 Method 2)<a class="headerlink" href="#step-1-code-changes-see-part-2-section-3-part-2-section-4-method-2" title="Permanent link">#</a></h4>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>#include &lt;autoware/agnocast_wrapper/node.hpp&gt;</code> has been added</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Base class has been changed to <code>autoware::agnocast_wrapper::Node</code></li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Member variable types: <code>AUTOWARE_*_PTR</code> macros (e.g. <code>AUTOWARE_PUBLISHER_PTR(M)</code>)</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: Use <code>agnocast_wrapper::Node</code> member functions <code>create_publisher</code> / <code>create_subscription</code> directly (<strong><code>AUTOWARE_CREATE_*</code> macros are not needed</strong>)</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code> (callbacks taking <code>const MessageT &amp;</code> can keep their signature unchanged)</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Message allocation (if publisher exists): <code>std::make_unique&lt;M&gt;()</code> → <code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)</code></li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Polling subscribers use the <code>polling::</code> free-function API (see Part 2 Section 3.1)</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> If the node also uses message_filters, timers, tf2, or diagnostic_updater, they have been migrated to the corresponding <code>autoware::agnocast_wrapper::*</code> wrappers (see the <a href="../../">README</a> for usage and current limitations)</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> If the original CMakeLists.txt used <code>rclcpp_components_register_node()</code>, it has been replaced with <code>autoware_agnocast_wrapper_register_node()</code> (see Part 2 Section 5)</li>
-</ul>
-<p> </p>
-<h4 id="step-2-verification-see-part-2-section-2-part-2-section-8_1">Step 2: Verification (see Part 2 Section 2, Part 2 Section 8)<a class="headerlink" href="#step-2-verification-see-part-2-section-2-part-2-section-8_1" title="Permanent link">#</a></h4>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <strong>Build and run with <code>ENABLE_AGNOCAST=0</code> (recommended)</strong>: Build succeeds and standard ROS 2 behavior works</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <strong>Build with <code>ENABLE_AGNOCAST=1</code>, run with <code>ENABLE_AGNOCAST=0</code> (recommended)</strong>: Build succeeds and ROS 2 fallback works</li>
-</ul>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <strong>Build and run with <code>ENABLE_AGNOCAST=1</code> (if possible)</strong>: Agnocast communication works via <code>ros2 topic list_agnocast</code> / <code>ros2 topic info_agnocast</code> (environment setup required)</li>
-</ul>
-<p> </p>
-<hr>
-<p> </p>
-<h1 id="part-2-background-knowledge-reference_1">Part 2: Background Knowledge Reference<a class="headerlink" href="#part-2-background-knowledge-reference_1" title="Permanent link">#</a></h1>
-<blockquote>
-<p>The following sections compile the background knowledge referenced by the review guide steps above.</p>
-</blockquote>
-<p> </p>
-<hr>
-<p> </p>
-<h2 id="1-what-is-autoware_agnocast_wrapper">1. What is autoware_agnocast_wrapper?<a class="headerlink" href="#1-what-is-autoware_agnocast_wrapper" title="Permanent link">#</a></h2>
-<p><a href="https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper">autoware_agnocast_wrapper</a> is a package for integrating <a href="https://autowarefoundation.github.io/agnocast_doc/main/">Agnocast</a>, a zero-copy middleware, into each Autoware topic with minimal impact.</p>
-<p>Agnocast is an rclcpp-compatible zero-copy IPC middleware that enables true zero-copy Publish/Subscribe communication for all ROS 2 message types, including variable-length message types already generated by rosidl (see: <a href="https://github.com/orgs/autowarefoundation/discussions/5835">Autoware Discussion #5835</a>).</p>
-<p><strong>Key features:</strong></p>
-<ul>
-<li>Agnocast can be enabled/disabled at both build time and runtime</li>
-</ul>
-<ul>
-<li>Can be applied to existing <code>rclcpp::Node</code>-based code with minimal changes</li>
-</ul>
-<ul>
-<li>Maintains backward compatibility for users unfamiliar with Agnocast</li>
-</ul>
-<p> </p>
-<h2 id="2-behavior-changes-via-enable_agnocast-environment-variable">2. Behavior Changes via ENABLE_AGNOCAST Environment Variable<a class="headerlink" href="#2-behavior-changes-via-enable_agnocast-environment-variable" title="Permanent link">#</a></h2>
-<p>autoware_agnocast_wrapper behaves differently depending on the <code>ENABLE_AGNOCAST</code> environment variable.</p>
-<p> </p>
-<h3 id="build-time">Build Time<a class="headerlink" href="#build-time" title="Permanent link">#</a></h3>
 <table>
 <thead>
 <tr>
-<th>ENABLE_AGNOCAST</th>
-<th>Behavior</th>
+<th>Situation</th>
+<th>Verdict</th>
+<th>Code</th>
+<th>Per-endpoint or per-pair</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Unset or <code>0</code></td>
-<td>Standard ROS 2 build. <code>USE_AGNOCAST_ENABLED</code> is not defined. Macros expand directly to rclcpp APIs.</td>
+<td>the spec set declares a QoS for this interface and an endpoint's <code>qos</code> differs from it</td>
+<td><code>QOS_SPEC_MISMATCH</code></td>
+<td>5</td>
+<td>per-endpoint</td>
+</tr>
+<tr>
+<td>the spec set declares no QoS and the one stage-1-matched pairing's offered/requested QoS is directly incompatible</td>
+<td><code>QOS_PAIR_INCOMPATIBLE</code></td>
+<td>6</td>
+<td>per-pair</td>
+</tr>
+</tbody>
+</table>
+<p>A provider-side and a consumer-side <code>QOS_SPEC_MISMATCH</code> for the same interface are reported as two separate rows (<code>AdmissionResult</code> leaves the other side's node field empty for that code), never merged into one.</p>
+<p><code>depth</code> is endpoint-local and <strong>presentational only</strong>: it never participates in a verdict, on either path above. A required entry declared without a version at all (<code>has_version == false</code> in a v2 document) never produces a version verdict, but a provider is still resolved for it by <code>interface_name</code> alone (if one exists) so the pairwise QoS fallback has a pairing to check; if none exists, it is <code>NO_PROVIDER</code> like any other required entry (see above). <code>reliability_rank()</code> / <code>durability_rank()</code> in <code>admission_rule.hpp</code> express DDS's own offered-vs-requested strength order on this package's JSON string encoding, and are used <strong>only</strong> by that fallback — they never relax the exact requirement above. An out-of-vocabulary policy string ranks as incomparable and matches nothing (fail closed): every comparison against it fails.</p>
+<h2 id="records-and-json-schema">Records and JSON schema<a class="headerlink" href="#records-and-json-schema" title="Permanent link">#</a></h2>
+<p><code>records.hpp</code> defines plain C++ structs that mirror the (future) handshake message set field-for-field, so the eventual rosidl binding is mechanical:</p>
+<ul>
+<li><code>ProvidedInterface { ns, interface_name, resolved_name, type_name, major, minor, patch, has_version, has_qos, qos }</code></li>
+<li><code>RequiredInterface { ns, interface_name, resolved_name, type_name, accept_major_min, accept_major_max, min_minor, has_version, has_qos, qos }</code></li>
+<li><code>InterfaceManifest { owner, node_name, provided[], required[] }</code></li>
+<li><code>QosRecord { reliability, durability, depth }</code> — <code>reliability</code> is <code>"reliable"</code> or <code>"best_effort"</code>; <code>durability</code> is <code>"volatile"</code> or <code>"transient_local"</code>.</li>
+</ul>
+<p><code>interface_name</code> is the spec-declared name (<code>Spec::name</code>), remap-invariant and the matching key; <code>resolved_name</code> is the remap-resolved fully-qualified name, equal to <code>interface_name</code> when not remapped.</p>
+<p><code>manifest_json.hpp</code> serializes a manifest to / parses it from this JSON payload (the OCI-label payload schema below; this is the <strong>v1</strong> shape, where the version fields are always present and <code>qos</code> is absent):</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"owner"</span><span class="p">:</span><span class="w"> </span><span class="s2">"autowarefoundation"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"node_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/perception/detection"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"provided"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"ns"</span><span class="p">:</span><span class="w"> </span><span class="s2">"perception"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"interface_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/perception/object_recognition/objects"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"resolved_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/perception/object_recognition/objects"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"type_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"autoware_perception_msgs/msg/PredictedObjects"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"major"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"minor"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"patch"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">],</span>
+<span class="w">  </span><span class="nt">"required"</span><span class="p">:</span><span class="w"> </span><span class="p">[</span>
+<span class="w">    </span><span class="p">{</span>
+<span class="w">      </span><span class="nt">"ns"</span><span class="p">:</span><span class="w"> </span><span class="s2">"map"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"interface_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/map/vector_map"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"resolved_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/map/vector_map"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"type_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"autoware_map_msgs/msg/LaneletMapBin"</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"accept_major_min"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"accept_major_max"</span><span class="p">:</span><span class="w"> </span><span class="mi">2</span><span class="p">,</span>
+<span class="w">      </span><span class="nt">"min_minor"</span><span class="p">:</span><span class="w"> </span><span class="mi">0</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">  </span><span class="p">]</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>from_json()</code> is <strong>defensive</strong>: any malformed input — a JSON syntax error, a non-object root, a missing required key, or a value of the wrong type — is reported by throwing <code>std::runtime_error</code>, never undefined behaviour or a crash. Required per entry: <code>interface_name</code>. The version fields (<code>major</code>/<code>minor</code>/<code>patch</code> for a provided entry, <code>accept_major_min</code>/<code>accept_major_max</code>/<code>min_minor</code> for a required one) are a <strong>group</strong>: all three present parses as versioned; all three absent parses as unversioned (<code>has_version = false</code>); any other combination is a malformed partial declaration and throws. <code>qos</code> is optional; when present it populates <code>has_qos = true</code> and the parsed <code>QosRecord</code>, and an out-of-vocabulary <code>reliability</code> / <code>durability</code> string throws. Optional-with-default: <code>ns</code> / <code>type_name</code> / <code>owner</code> / <code>node_name</code> default to <code>""</code>, <code>resolved_name</code> defaults to <code>interface_name</code>, and the <code>provided</code> / <code>required</code> arrays default to empty when absent.</p>
+<p>A <strong>v2</strong> entry may look like this instead — no version fields, a <code>qos</code> block:</p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"interface_name"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/some/topic"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"qos"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="nt">"reliability"</span><span class="p">:</span><span class="w"> </span><span class="s2">"reliable"</span><span class="p">,</span><span class="w"> </span><span class="nt">"durability"</span><span class="p">:</span><span class="w"> </span><span class="s2">"volatile"</span><span class="p">,</span><span class="w"> </span><span class="nt">"depth"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="w"> </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Two more entry points in <code>manifest_json.hpp</code> round out parsing:</p>
+<ul>
+<li><code>manifests_from_json(doc)</code> parses a <strong>document set</strong>: an object root yields one manifest (equivalent to <code>from_json()</code>); an array root yields one manifest per element. <code>manifest_admit</code> parses every positional file with this function (see the fragment-discovery note below), so a fragment file may hold either shape.</li>
+<li><code>spec_qos_from_json(doc)</code> parses <code>autoware_component_interface_specs</code>' <code>interface_manifest.json</code> into the <code>interface_name -&gt; QosRecord</code> map <code>evaluate_deploy()</code> takes as its spec QoS table. It <strong>requires</strong> a top-level <code>interfaces</code> array whose every entry is an object carrying both <code>interface</code> and <code>qos</code>, and throws otherwise — accepting an unrelated document would hand back an empty table that silently disables the spec-conformance verdict for every endpoint.</li>
+</ul>
+<h2 id="deploy-time-gate-oci-label-contract">Deploy-time gate: OCI label contract<a class="headerlink" href="#deploy-time-gate-oci-label-contract" title="Permanent link">#</a></h2>
+<p>Each component image carries its interface manifest as <strong>pure image metadata</strong>, so the gate reads it without creating or starting a container and without any source present in the image (a binary-only third-party image works):</p>
+<ul>
+<li><strong>Primary</strong>: the OCI image label <code>org.autoware.interface_manifest</code>, whose value is the JSON payload above. Read with <code>docker inspect</code> (or <code>skopeo inspect</code> / <code>crane config</code> against a registry, without pulling).</li>
+<li><strong>Fallback</strong>: for an image with no such label, the <code>interface_manifest_fragment.json</code> file(s) installed under <code>/opt/autoware/share/&lt;pkg&gt;/</code> by every package that registers interfaces through <code>autoware_component_interface_utils</code> (see Fragment discovery, below). Reading this fallback still never boots the image: a container is created from it only so its filesystem can be read with <code>docker cp</code>, and it is removed again without ever being started.</li>
+</ul>
+<p>The operator / CI entry point (a <code>deploy_check.sh</code> shipped by the meta-repo, out of scope for this package) resolves the image set from the deploy config, extracts each image's manifest(s) (label primary, installed fragments as fallback), writes each to a file, and invokes this package's CLI. <code>--spec-manifest</code> is optional; pass it to also load the declared QoS described above, so every <code>provided</code> / <code>required</code> entry that carries <code>qos</code> is checked against its specification (repeatable: the last occurrence wins):</p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_component_interface_admission<span class="w"> </span>manifest_admit<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--spec-manifest<span class="w"> </span>interface_manifest.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>manifest_0.json<span class="w"> </span>manifest_1.json<span class="w"> </span>...
+</code></pre></div>
+<h3 id="fragment-discovery">Fragment discovery<a class="headerlink" href="#fragment-discovery" title="Permanent link">#</a></h3>
+<p>Each component package that registers interfaces through <code>autoware_component_interface_utils</code> installs its own manifest fragment at the fixed relative path <code>share/&lt;package_name&gt;/interface_manifest_fragment.json</code>. That fragment file holds either one manifest document (a single-node package) or a JSON array of them (a multi-node package) — see <code>autoware_component_interface_utils</code>' README for the source-side convention. <code>manifest_admit</code> takes one fragment file per package (matching this one-fragment-per-package layout) as its positional arguments and parses each with <code>manifests_from_json()</code>, so both shapes are accepted uniformly: an operator or CI script assembles the deploy-time file list by discovering these installed fragments directly (e.g. globbing every package's <code>share</code> directory for that filename) rather than by pre-combining them into a single document.</p>
+<h3 id="manifest_admit-exit-code-contract"><code>manifest_admit</code> exit-code contract<a class="headerlink" href="#manifest_admit-exit-code-contract" title="Permanent link">#</a></h3>
+<p><code>manifest_admit [--spec-manifest &lt;interface_manifest.json&gt;] &lt;manifest.json&gt; [...]</code> reads N per-component manifests, runs <code>evaluate_deploy()</code>, and prints one verdict line per pairing:</p>
+<div class="highlight"><pre><span></span><code>/consumer &lt;- /provider [/perception/object_recognition/objects]: MAJOR mismatch (code=1)
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Exit code</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>0</code></td>
+<td>every row <code>ACCEPTED</code> — including a pairing missing <code>qos</code> on one or both sides, which counts as <code>ACCEPTED</code> with a warning (see below), and including the absence of any per-endpoint spec mismatch</td>
 </tr>
 <tr>
 <td><code>1</code></td>
-<td>Agnocast-enabled build. <code>USE_AGNOCAST_ENABLED</code> is defined. Macros expand to wrapper classes, and runtime-switchable templates are generated.</td>
+<td>at least one rejection (<code>MAJOR</code> / <code>MINOR</code> mismatch, <code>NO_PROVIDER</code>, or a <code>QOS_*</code> verdict)</td>
+</tr>
+<tr>
+<td><code>2</code></td>
+<td>operational / parse error (bad usage, unreadable file, malformed manifest or spec manifest)</td>
 </tr>
 </tbody>
 </table>
-<p> </p>
-<h3 id="runtime-when-built-with-enable_agnocast1">Runtime (when built with ENABLE_AGNOCAST=1)<a class="headerlink" href="#runtime-when-built-with-enable_agnocast1" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>ENABLE_AGNOCAST</th>
-<th>Behavior</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Unset or <code>0</code></td>
-<td>Communicates via ROS 2 (rclcpp)</td>
-</tr>
-<tr>
-<td><code>1</code></td>
-<td>Communicates via Agnocast</td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<p><strong>Notes:</strong></p>
-<ul>
-<li>If built with <code>ENABLE_AGNOCAST=0</code>, setting <code>ENABLE_AGNOCAST=1</code> at runtime will NOT enable Agnocast (switching code is not generated at build time)</li>
-</ul>
-<ul>
-<li>After building with <code>ENABLE_AGNOCAST=1</code>, you can fall back to ROS 2 by running with <code>ENABLE_AGNOCAST=0</code></li>
-</ul>
-<p> </p>
-<h2 id="3-key-macros">3. Key Macros<a class="headerlink" href="#3-key-macros" title="Permanent link">#</a></h2>
-<p>All macros below are defined in <a href="https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp"><code>autoware_agnocast_wrapper.hpp</code></a>.</p>
-<p> </p>
-<h3 id="message-pointer-types">Message Pointer Types<a class="headerlink" href="#message-pointer-types" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Macro</th>
-<th>ENABLE_AGNOCAST=1 (Agnocast)</th>
-<th>ENABLE_AGNOCAST=0 (ROS 2)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AUTOWARE_MESSAGE_UNIQUE_PTR(MsgT)</code></td>
-<td><code>message_ptr&lt;MsgT, Unique&gt;</code></td>
-<td><code>std::unique_ptr&lt;MsgT&gt;</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_MESSAGE_SHARED_PTR(MsgT)</code></td>
-<td><code>message_ptr&lt;MsgT, Shared&gt;</code></td>
-<td><code>std::shared_ptr&lt;MsgT&gt;</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_MESSAGE_CONST_SHARED_PTR(MsgT)</code></td>
-<td><code>message_ptr&lt;const MsgT, Shared&gt;</code></td>
-<td><code>std::shared_ptr&lt;const MsgT&gt;</code></td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p><code>AUTOWARE_MESSAGE_SHARED_PTR</code> is for publishers (mutable messages), while <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> is for subscriptions (read-only messages).</p>
-</blockquote>
-<p> </p>
-<h3 id="publishersubscriber-types">Publisher/Subscriber Types<a class="headerlink" href="#publishersubscriber-types" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Macro</th>
-<th>ENABLE_AGNOCAST=1 (Agnocast)</th>
-<th>ENABLE_AGNOCAST=0 (ROS 2)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AUTOWARE_PUBLISHER_PTR(MsgT)</code></td>
-<td><code>Publisher&lt;MsgT&gt;::SharedPtr</code></td>
-<td><code>rclcpp::Publisher&lt;MsgT&gt;::SharedPtr</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_SUBSCRIPTION_PTR(MsgT)</code></td>
-<td><code>Subscription&lt;MsgT&gt;::SharedPtr</code></td>
-<td><code>rclcpp::Subscription&lt;MsgT&gt;::SharedPtr</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_TIMER_PTR</code></td>
-<td><code>Timer::SharedPtr</code></td>
-<td><code>rclcpp::TimerBase::SharedPtr</code></td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h3 id="client-service-types">Client / Service Types<a class="headerlink" href="#client-service-types" title="Permanent link">#</a></h3>
-<p>These resolve to the wrapper's <strong>own</strong> types in both builds (the wrapper unifies the Client/Service
-surface), so client and service code needs no per-build spelling:</p>
-<table>
-<thead>
-<tr>
-<th>Macro</th>
-<th>Both builds</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AUTOWARE_CLIENT_PTR(SrvT)</code></td>
-<td><code>Client&lt;SrvT&gt;::SharedPtr</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_SERVICE_PTR(SrvT)</code></td>
-<td><code>Service&lt;SrvT&gt;::SharedPtr</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CLIENT_FUTURE(SrvT)</code></td>
-<td><code>Client&lt;SrvT&gt;::Future</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CLIENT_SHARED_FUTURE(SrvT)</code></td>
-<td><code>Client&lt;SrvT&gt;::SharedFuture</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(SrvT)</code></td>
-<td><code>Client&lt;SrvT&gt;::FutureAndRequestId</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(SrvT)</code></td>
-<td><code>Client&lt;SrvT&gt;::SharedFutureAndRequestId</code></td>
-</tr>
-</tbody>
-</table>
-<p>Request/response pointer types <strong>do</strong> differ per build:</p>
-<table>
-<thead>
-<tr>
-<th>Macro</th>
-<th>ENABLE_AGNOCAST=1</th>
-<th>ENABLE_AGNOCAST=0</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AUTOWARE_SERVER_REQUEST_PTR(SrvT)</code></td>
-<td><code>message_ptr&lt;const Request, …&gt;</code></td>
-<td><code>std::shared_ptr&lt;const SrvT::Request&gt;</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_SERVER_RESPONSE_PTR(SrvT)</code></td>
-<td><code>message_ptr&lt;Response, …&gt;</code></td>
-<td><code>std::shared_ptr&lt;SrvT::Response&gt;</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CLIENT_REQUEST_PTR(SrvT)</code></td>
-<td><code>message_ptr&lt;Request, …&gt;</code></td>
-<td><code>std::shared_ptr&lt;SrvT::Request&gt;</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)</code></td>
-<td><code>message_ptr&lt;const Response, …&gt;</code></td>
-<td><code>std::shared_ptr&lt;const SrvT::Response&gt;</code></td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h3 id="publishersubscriber-creation">Publisher/Subscriber Creation<a class="headerlink" href="#publishersubscriber-creation" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Macro</th>
-<th>ENABLE_AGNOCAST=1 (Agnocast)</th>
-<th>ENABLE_AGNOCAST=0 (ROS 2)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AUTOWARE_CREATE_SUBSCRIPTION(msg_type, topic, qos, callback, options)</code></td>
-<td><code>agnocast_wrapper::create_subscription&lt;msg_type&gt;(...)</code></td>
-<td><code>this-&gt;create_subscription&lt;msg_type&gt;(...)</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CREATE_PUBLISHER2(msg_type, topic, qos)</code></td>
-<td><code>agnocast_wrapper::create_publisher&lt;msg_type&gt;(...)</code></td>
-<td><code>this-&gt;create_publisher&lt;msg_type&gt;(...)</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_CREATE_PUBLISHER3(msg_type, topic, qos, options)</code></td>
-<td><code>agnocast_wrapper::create_publisher&lt;msg_type&gt;(...)</code></td>
-<td><code>this-&gt;create_publisher&lt;msg_type&gt;(...)</code></td>
-</tr>
-</tbody>
-</table>
-<p>The macros above implicitly use <code>this</code> as the node. Each has an <code>_ON_NODE</code> variant that takes the node
-explicitly as the first argument after the message type — use these when the publisher/subscriber is
-created outside the node class (helper classes, free functions, member objects that only hold a node
-pointer):</p>
-<ul>
-<li><code>AUTOWARE_CREATE_SUBSCRIPTION_ON_NODE(msg_type, node, topic, qos, callback, options)</code></li>
-<li><code>AUTOWARE_CREATE_PUBLISHER2_ON_NODE(msg_type, node, topic, qos)</code> / <code>AUTOWARE_CREATE_PUBLISHER3_ON_NODE(msg_type, node, topic, qos, options)</code></li>
-</ul>
-<p>Clients and services follow the same pattern, with the numeric suffix selecting the arity:</p>
-<ul>
-<li><code>AUTOWARE_CREATE_CLIENT1/2/3(service_type, service_name[, qos[, group]])</code> (+ <code>_ON_NODE</code> variants)</li>
-<li><code>AUTOWARE_CREATE_SERVICE2/3/4(service_type, service_name, callback[, qos[, group]])</code> (+ <code>_ON_NODE</code> variants)</li>
-</ul>
-<p> </p>
-<h3 id="31-polling-subscribers-polling-free-functions">3.1 Polling Subscribers (<code>polling::</code> free functions)<a class="headerlink" href="#31-polling-subscribers-polling-free-functions" title="Permanent link">#</a></h3>
-<p>Polling subscribers are <strong>not</strong> created via a macro or a <code>Node</code> member. Use the free function:</p>
-<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/agnocast_wrapper/polling_subscriber.hpp&gt;</span>
-
-<span class="k">namespace</span><span class="w"> </span><span class="nn">polling</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nn">autoware</span><span class="o">::</span><span class="nn">agnocast_wrapper</span><span class="o">::</span><span class="nn">polling</span><span class="p">;</span>
-
-<span class="n">polling</span><span class="o">::</span><span class="n">PollingSubscriber</span><span class="o">&lt;</span><span class="n">nav_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Odometry</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">sub_</span><span class="w"> </span><span class="o">=</span>
-<span class="w">  </span><span class="n">polling</span><span class="o">::</span><span class="n">create_polling_subscriber</span><span class="o">&lt;</span><span class="n">nav_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Odometry</span><span class="o">&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="s">"~/input/odometry"</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
-
-<span class="c1">// take_data() returns a plain std::shared_ptr&lt;const MessageT&gt; in BOTH builds.</span>
-<span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">nav_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Odometry</span><span class="o">&gt;</span><span class="w"> </span><span class="n">msg</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sub_</span><span class="o">-&gt;</span><span class="n">take_data</span><span class="p">();</span>
-</code></pre></div>
-<p>Review points:</p>
-<ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> The receiving variable is <code>std::shared_ptr&lt;const MessageT&gt;</code>, not a <code>message_ptr</code> or <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code>.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> The <strong>policy tag</strong> is preserved from the original code. <code>polling_policy::Latest</code> (the default) re-delivers the cached message every call; <code>polling_policy::Newest</code> returns <code>nullptr</code> until a new message arrives.</li>
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>polling_policy::All</code> is rejected at compile time — <code>take_data()</code> returns a single message, not a vector.</li>
-</ul>
-<p> </p>
-<h3 id="message-allocation">Message Allocation<a class="headerlink" href="#message-allocation" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Macro</th>
-<th>ENABLE_AGNOCAST=1 (Agnocast)</th>
-<th>ENABLE_AGNOCAST=0 (ROS 2)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>ALLOCATE_OUTPUT_MESSAGE_UNIQUE(publisher)</code></td>
-<td><code>publisher-&gt;allocate_output_message_unique()</code> (allocates in shared memory)</td>
-<td><code>std::make_unique&lt;ROSMessageType&gt;()</code></td>
-</tr>
-<tr>
-<td><code>ALLOCATE_OUTPUT_MESSAGE_SHARED(publisher)</code></td>
-<td><code>publisher-&gt;allocate_output_message_shared()</code> (allocates in shared memory)</td>
-<td><code>std::make_shared&lt;ROSMessageType&gt;()</code></td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h3 id="options-types">Options Types<a class="headerlink" href="#options-types" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Macro</th>
-<th>ENABLE_AGNOCAST=1 (Agnocast)</th>
-<th>ENABLE_AGNOCAST=0 (ROS 2)</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>AUTOWARE_SUBSCRIPTION_OPTIONS</code></td>
-<td><code>agnocast::SubscriptionOptions</code></td>
-<td><code>rclcpp::SubscriptionOptions</code></td>
-</tr>
-<tr>
-<td><code>AUTOWARE_PUBLISHER_OPTIONS</code></td>
-<td><code>agnocast::PublisherOptions</code></td>
-<td><code>rclcpp::PublisherOptions</code></td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h2 id="4-two-integration-methods-free-functions-vs-agnocast_wrappernode">4. Two Integration Methods: Free Functions vs agnocast_wrapper::Node<a class="headerlink" href="#4-two-integration-methods-free-functions-vs-agnocast_wrappernode" title="Permanent link">#</a></h2>
-<p>autoware_agnocast_wrapper provides two integration approaches.</p>
-<p> </p>
-<h3 id="method-1-macro-free-function-api">Method 1: Macro + Free Function API<a class="headerlink" href="#method-1-macro-free-function-api" title="Permanent link">#</a></h3>
-<p>Used to apply Agnocast to specific topics only on an existing <code>rclcpp::Node</code>. Wraps individual Publishers/Subscribers without changing the entire node.</p>
-<p><strong>Usage example:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp&gt;</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">MyNode</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span><span class="w">  </span><span class="c1">// Remains rclcpp::Node</span>
-<span class="p">{</span>
-<span class="w">  </span><span class="n">AUTOWARE_PUBLISHER_PTR</span><span class="p">(</span><span class="n">PointCloud2</span><span class="p">)</span><span class="w"> </span><span class="n">pub_</span><span class="p">;</span>
-
-<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="nf">setup</span><span class="p">()</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="n">pub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AUTOWARE_CREATE_PUBLISHER3</span><span class="p">(</span><span class="n">PointCloud2</span><span class="p">,</span><span class="w"> </span><span class="s">"output"</span><span class="p">,</span><span class="w"> </span><span class="n">qos</span><span class="p">,</span><span class="w"> </span><span class="n">options</span><span class="p">);</span>
-<span class="w">  </span><span class="p">}</span>
-
-<span class="w">  </span><span class="kt">void</span><span class="w"> </span><span class="nf">callback</span><span class="p">(</span><span class="n">AUTOWARE_MESSAGE_UNIQUE_PTR</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">PointCloud2</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">msg</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<span class="w">    </span><span class="k">auto</span><span class="w"> </span><span class="n">output</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">ALLOCATE_OUTPUT_MESSAGE_UNIQUE</span><span class="p">(</span><span class="n">pub_</span><span class="p">);</span>
-<span class="w">    </span><span class="c1">// ... processing ...</span>
-<span class="w">    </span><span class="n">pub_</span><span class="o">-&gt;</span><span class="n">publish</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">output</span><span class="p">));</span>
-<span class="w">  </span><span class="p">}</span>
-<span class="p">};</span>
-</code></pre></div>
-<p><strong>CMakeLists.txt:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_agnocast_wrapper</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
-<span class="nb">ament_target_dependencies</span><span class="p">(</span><span class="s">target</span><span class="w"> </span><span class="s">autoware_agnocast_wrapper</span><span class="p">)</span>
-<span class="nb">autoware_agnocast_wrapper_setup</span><span class="p">(</span><span class="s">target</span><span class="p">)</span>
-</code></pre></div>
-<p> </p>
-<h3 id="method-2-agnocast_wrappernode-inheritance">Method 2: agnocast_wrapper::Node Inheritance<a class="headerlink" href="#method-2-agnocast_wrappernode-inheritance" title="Permanent link">#</a></h3>
-<p>Used to transparently switch the entire node between <code>rclcpp::Node</code> and <a href="https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_node_interface_comparison.md"><code>agnocast::Node</code></a>. The node wrapper automatically selects the appropriate implementation based on the <code>ENABLE_AGNOCAST</code> environment variable at runtime.</p>
-<p><strong>Usage example:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/agnocast_wrapper/node.hpp&gt;</span>
-
-<span class="k">class</span><span class="w"> </span><span class="nc">MyNode</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">agnocast_wrapper</span><span class="o">::</span><span class="n">Node</span><span class="w">  </span><span class="c1">// Inherits Node wrapper</span>
-<span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-<span class="w">  </span><span class="k">explicit</span><span class="w"> </span><span class="n">MyNode</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">NodeOptions</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">options</span><span class="p">)</span>
-<span class="w">  </span><span class="o">:</span><span class="w"> </span><span class="n">Node</span><span class="p">(</span><span class="s">"my_node"</span><span class="p">,</span><span class="w"> </span><span class="n">options</span><span class="p">)</span>
-<span class="w">  </span><span class="p">{</span>
-<span class="w">    </span><span class="n">pub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">create_publisher</span><span class="o">&lt;</span><span class="n">std_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">String</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"output"</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">);</span>
-<span class="w">    </span><span class="n">sub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">create_subscription</span><span class="o">&lt;</span><span class="n">std_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">String</span><span class="o">&gt;</span><span class="p">(</span>
-<span class="w">      </span><span class="s">"input"</span><span class="p">,</span><span class="w"> </span><span class="mi">10</span><span class="p">,</span>
-<span class="w">      </span><span class="p">[</span><span class="k">this</span><span class="p">](</span><span class="n">AUTOWARE_MESSAGE_CONST_SHARED_PTR</span><span class="p">(</span><span class="n">std_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">String</span><span class="p">)</span><span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">msg</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* ... */</span><span class="w"> </span><span class="p">});</span>
-<span class="w">  </span><span class="p">}</span>
-
-<span class="k">private</span><span class="o">:</span>
-<span class="w">  </span><span class="n">AUTOWARE_PUBLISHER_PTR</span><span class="p">(</span><span class="n">std_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">String</span><span class="p">)</span><span class="w"> </span><span class="n">pub_</span><span class="p">;</span>
-<span class="w">  </span><span class="n">AUTOWARE_SUBSCRIPTION_PTR</span><span class="p">(</span><span class="n">std_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">String</span><span class="p">)</span><span class="w"> </span><span class="n">sub_</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre></div>
-<p> </p>
-<h3 id="comparison-table">Comparison Table<a class="headerlink" href="#comparison-table" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>Macro + Free Function</th>
-<th>agnocast_wrapper::Node</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Base class</td>
-<td><code>rclcpp::Node</code></td>
-<td><code>agnocast_wrapper::Node</code></td>
-</tr>
-<tr>
-<td>Scope of changes</td>
-<td>Specific topics only</td>
-<td>Entire node</td>
-</tr>
-<tr>
-<td>Amount of code changes</td>
-<td>Small</td>
-<td>Medium</td>
-</tr>
-<tr>
-<td>AgnocastOnly Executor</td>
-<td>Not available</td>
-<td>Available</td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h3 id="method-2-behavior-with-enable_agnocast0">Method 2 Behavior with ENABLE_AGNOCAST=0<a class="headerlink" href="#method-2-behavior-with-enable_agnocast0" title="Permanent link">#</a></h3>
-<p>When built with <code>ENABLE_AGNOCAST=0</code> (or unset), <a href="https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/node.hpp"><code>node.hpp</code></a> defines <code>autoware::agnocast_wrapper::Node</code> as a <strong>real class that owns an internal <code>rclcpp::Node</code> and forwards a curated set of members to it</strong>. It is <em>not</em> a typedef for <code>rclcpp::Node</code>, and it does not derive from <code>rclcpp::Node</code> in either build:</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// node.hpp when ENABLE_AGNOCAST=0 (simplified)</span>
-<span class="k">class</span><span class="w"> </span><span class="nc">Node</span>
-<span class="p">{</span>
-<span class="k">public</span><span class="o">:</span>
-<span class="w">  </span><span class="k">explicit</span><span class="w"> </span><span class="n">Node</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">node_name</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">NodeOptions</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">options</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="p">{});</span>
-<span class="w">  </span><span class="c1">// ... the same curated member set as the ENABLE_AGNOCAST=1 Node ...</span>
-<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span><span class="o">&gt;</span><span class="w"> </span><span class="n">get_rclcpp_node</span><span class="p">()</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">node_</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
-
-<span class="k">private</span><span class="o">:</span>
-<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span><span class="o">&gt;</span><span class="w"> </span><span class="n">node_</span><span class="p">;</span>
-<span class="p">};</span>
-</code></pre></div>
-<p>This is deliberate: if the <code>=0</code> build aliased or derived from <code>rclcpp::Node</code>, the full <code>rclcpp::Node</code> API would leak into it, and a node could compile under <code>=0</code> while using members that do not exist under <code>=1</code>.</p>
-<p>Two consequences to keep in mind while reviewing:</p>
-<ul>
-<li>The node <strong>cannot be passed where an <code>rclcpp::Node *</code> / <code>rclcpp::Node &amp;</code> is expected.</strong> Hand it to executors and utilities via <code>get_node_base_interface()</code>.</li>
-<li>Any <code>rclcpp::Node</code> member not in the curated surface (see the <a href="../../#supported-api-surface">README</a>) will not compile.</li>
-</ul>
-<p>Code using Method 2 still compiles and runs as a plain ROS 2 node when built with <code>ENABLE_AGNOCAST=0</code>, so backward compatibility for users without Agnocast is maintained.</p>
-<p> </p>
-<h2 id="5-component_container-and-autoware_agnocast_wrapper_register_node">5. component_container and autoware_agnocast_wrapper_register_node<a class="headerlink" href="#5-component_container-and-autoware_agnocast_wrapper_register_node" title="Permanent link">#</a></h2>
-<p> </p>
-<h3 id="autoware_agnocast_wrapper_register_node-macro">autoware_agnocast_wrapper_register_node Macro<a class="headerlink" href="#autoware_agnocast_wrapper_register_node-macro" title="Permanent link">#</a></h3>
-<p>A CMake macro used in place of <code>rclcpp_components_register_node</code>. It generates different targets depending on the <code>ENABLE_AGNOCAST</code> setting at build time.</p>
-<p> </p>
-<p><strong>ENABLE_AGNOCAST=0 (or unset):</strong></p>
-<ul>
-<li>Delegates to <code>rclcpp_components_register_node</code> (standard behavior)</li>
-<li>Generated target: <code>&lt;EXECUTABLE&gt;</code> only</li>
-</ul>
-<p> </p>
-<p><strong>ENABLE_AGNOCAST=1:</strong></p>
-<ul>
-<li><code>&lt;EXECUTABLE&gt;</code>: a runtime-switchable standalone executable, generated from the package's
-  <code>node_main_switchable.cpp.in</code> template</li>
-<li>Component registration: <code>rclcpp_components_register_nodes</code> (plural) is called, which populates the
-  ament resource index <strong>only</strong> — so the component can still be loaded into a container, but no extra
-  standalone executable is generated for it</li>
-</ul>
-<blockquote>
-<p>There is no <code>&lt;EXECUTABLE&gt;_component</code> target. Launch files should always reference <code>&lt;EXECUTABLE&gt;</code>, which
-is the same name in both modes.</p>
-</blockquote>
-<p>Note that the macro applies <code>autoware_agnocast_wrapper_setup()</code> to <strong>both</strong> the component library and the
-generated executable. Both need <code>USE_AGNOCAST_ENABLED</code> defined for ABI consistency, and
-<code>ament_target_dependencies()</code> does not propagate the wrapper's <code>PUBLIC</code> compile definitions.</p>
-<p> </p>
-<p><strong>Usage example:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nb">autoware_agnocast_wrapper_register_node</span><span class="p">(</span><span class="s">my_node_component</span>
-<span class="w">  </span><span class="s">PLUGIN</span><span class="w"> </span><span class="s2">"my_package::MyNode"</span>
-<span class="w">  </span><span class="s">EXECUTABLE</span><span class="w"> </span><span class="s">my_node</span>
-<span class="w">  </span><span class="s">ROS2_EXECUTOR</span><span class="w"> </span><span class="s">SingleThreadedExecutor</span>
-<span class="w">  </span><span class="s">AGNOCAST_EXECUTOR</span><span class="w"> </span><span class="s">SingleThreadedAgnocastExecutor</span>
-<span class="p">)</span>
-</code></pre></div>
-<p> </p>
-<h3 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Required</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>PLUGIN</code></td>
-<td>Yes</td>
-<td>Fully qualified class name of the component</td>
-</tr>
-<tr>
-<td><code>EXECUTABLE</code></td>
-<td>Yes</td>
-<td>Executable name for the node</td>
-</tr>
-<tr>
-<td><code>ROS2_EXECUTOR</code></td>
-<td>No</td>
-<td>Executor when <code>ENABLE_AGNOCAST=0</code> at runtime (default: <code>SingleThreadedExecutor</code>)</td>
-</tr>
-<tr>
-<td><code>AGNOCAST_EXECUTOR</code></td>
-<td>No</td>
-<td>Executor when <code>ENABLE_AGNOCAST=1</code> at runtime (default: <code>SingleThreadedAgnocastExecutor</code>)</td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h2 id="6-executor-types-and-selection">6. Executor Types and Selection<a class="headerlink" href="#6-executor-types-and-selection" title="Permanent link">#</a></h2>
-<p> </p>
-<h3 id="ros2_executor-when-enable_agnocast0-at-runtime">ROS2_EXECUTOR (when ENABLE_AGNOCAST=0 at runtime)<a class="headerlink" href="#ros2_executor-when-enable_agnocast0-at-runtime" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Executor</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>SingleThreadedExecutor</code></td>
-<td>Single-threaded, executes callbacks sequentially</td>
-</tr>
-<tr>
-<td><code>MultiThreadedExecutor</code></td>
-<td>Multi-threaded, executes callbacks in parallel</td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h3 id="agnocast_executor-when-enable_agnocast1-at-runtime">AGNOCAST_EXECUTOR (when ENABLE_AGNOCAST=1 at runtime)<a class="headerlink" href="#agnocast_executor-when-enable_agnocast1-at-runtime" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Executor</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>SingleThreadedAgnocastExecutor</code></td>
-<td>Single-threaded. Processes both ROS 2 and Agnocast callbacks</td>
-</tr>
-<tr>
-<td><code>MultiThreadedAgnocastExecutor</code></td>
-<td>Multi-threaded. Processes both ROS 2 and Agnocast callbacks</td>
-</tr>
-<tr>
-<td><code>CallbackIsolatedAgnocastExecutor</code></td>
-<td>Multi-threaded (callback isolated). Processes both ROS 2 and Agnocast callbacks</td>
-</tr>
-<tr>
-<td><code>AgnocastOnlySingleThreadedExecutor</code></td>
-<td>Single-threaded. Processes Agnocast callbacks only. <strong>Requires agnocast_wrapper::Node</strong></td>
-</tr>
-<tr>
-<td><code>AgnocastOnlyMultiThreadedExecutor</code></td>
-<td>Multi-threaded. Processes Agnocast callbacks only. <strong>Requires agnocast_wrapper::Node</strong></td>
-</tr>
-<tr>
-<td><code>AgnocastOnlyCallbackIsolatedExecutor</code></td>
-<td>Multi-threaded (callback isolated). Processes Agnocast callbacks only. <strong>Requires agnocast_wrapper::Node</strong></td>
-</tr>
-</tbody>
-</table>
-<blockquote>
-<p><strong>About AgnocastOnly executors:</strong> The PLUGIN must inherit from <code>autoware::agnocast_wrapper::Node</code>. The <code>get_agnocast_node()</code> method is used to add the node to the executor.</p>
-</blockquote>
-<p> </p>
-<h2 id="7-component_container-selection-agnocast_envlaunchxml">7. component_container Selection (agnocast_env.launch.xml)<a class="headerlink" href="#7-component_container-selection-agnocast_envlaunchxml" title="Permanent link">#</a></h2>
-<p>By including <code>agnocast_env.launch.xml</code>, the appropriate component container is automatically selected based on the <code>ENABLE_AGNOCAST</code> environment variable.</p>
-<p> </p>
-<h3 id="provided-variables">Provided Variables<a class="headerlink" href="#provided-variables" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Variable</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>ld_preload_value</code></td>
-<td><code>LD_PRELOAD</code> value with heaphook prepended</td>
-</tr>
-<tr>
-<td><code>container_package</code></td>
-<td><code>rclcpp_components</code> or <code>agnocast_components</code></td>
-</tr>
-<tr>
-<td><code>container_executable</code></td>
-<td>Container executable name to use</td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h3 id="container_executable-resolution">container_executable Resolution<a class="headerlink" href="#container_executable-resolution" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>use_multithread</th>
-<th>ENABLE_AGNOCAST=0</th>
-<th>ENABLE_AGNOCAST=1</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>false</code></td>
-<td><code>component_container</code></td>
-<td><code>agnocast_component_container</code></td>
-</tr>
-<tr>
-<td><code>true</code></td>
-<td><code>component_container_mt</code></td>
-<td><code>agnocast_component_container_cie</code></td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h3 id="usage-examples">Usage Examples<a class="headerlink" href="#usage-examples" title="Permanent link">#</a></h3>
-<p>Both an XML launch file (<code>agnocast_env.launch.xml</code>) and a Python launch file (<code>agnocast_env.launch.py</code>) are provided. Choose whichever matches the format of your existing launch files. Both provide the same variables (<code>ld_preload_value</code> / <code>container_package</code> / <code>container_executable</code>).</p>
-<p> </p>
-<p><strong>XML launch file:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="nt">&lt;include</span><span class="w"> </span><span class="na">file=</span><span class="s">"$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"</span><span class="nt">&gt;</span>
-<span class="w">  </span><span class="nt">&lt;arg</span><span class="w"> </span><span class="na">name=</span><span class="s">"use_multithread"</span><span class="w"> </span><span class="na">value=</span><span class="s">"true"</span><span class="nt">/&gt;</span>
-<span class="nt">&lt;/include&gt;</span>
-
-<span class="nt">&lt;node_container</span><span class="w"> </span><span class="na">pkg=</span><span class="s">"$(var container_package)"</span><span class="w"> </span><span class="na">exec=</span><span class="s">"$(var container_executable)"</span><span class="w"> </span><span class="na">name=</span><span class="s">"my_container"</span><span class="nt">&gt;</span>
-<span class="w">  </span><span class="nt">&lt;env</span><span class="w"> </span><span class="na">name=</span><span class="s">"LD_PRELOAD"</span><span class="w"> </span><span class="na">value=</span><span class="s">"$(var ld_preload_value)"</span><span class="nt">/&gt;</span>
-<span class="nt">&lt;/node_container&gt;</span>
-</code></pre></div>
-<p> </p>
-<p><strong>Python launch file:</strong></p>
-<div class="highlight"><pre><span></span><code><span class="kn">from</span><span class="w"> </span><span class="nn">launch.actions</span><span class="w"> </span><span class="kn">import</span> <span class="n">IncludeLaunchDescription</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">launch.launch_description_sources</span><span class="w"> </span><span class="kn">import</span> <span class="n">PythonLaunchDescriptionSource</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">launch.substitutions</span><span class="w"> </span><span class="kn">import</span> <span class="n">LaunchConfiguration</span>
-<span class="kn">from</span><span class="w"> </span><span class="nn">ament_index_python.packages</span><span class="w"> </span><span class="kn">import</span> <span class="n">get_package_share_directory</span>
-
-<span class="c1"># Include agnocast_env.launch.py</span>
-<span class="n">agnocast_env</span> <span class="o">=</span> <span class="n">IncludeLaunchDescription</span><span class="p">(</span>
-    <span class="n">PythonLaunchDescriptionSource</span><span class="p">(</span>
-        <span class="n">os</span><span class="o">.</span><span class="n">path</span><span class="o">.</span><span class="n">join</span><span class="p">(</span>
-            <span class="n">get_package_share_directory</span><span class="p">(</span><span class="s1">'autoware_agnocast_wrapper'</span><span class="p">),</span>
-            <span class="s1">'launch'</span><span class="p">,</span> <span class="s1">'agnocast_env.launch.py'</span>
-        <span class="p">)</span>
-    <span class="p">),</span>
-    <span class="n">launch_arguments</span><span class="o">=</span><span class="p">{</span><span class="s1">'use_multithread'</span><span class="p">:</span> <span class="s1">'true'</span><span class="p">}</span><span class="o">.</span><span class="n">items</span><span class="p">(),</span>
-<span class="p">)</span>
-
-<span class="c1"># Use the provided variables</span>
-<span class="n">container</span> <span class="o">=</span> <span class="n">ComposableNodeContainer</span><span class="p">(</span>
-    <span class="n">name</span><span class="o">=</span><span class="s1">'my_container'</span><span class="p">,</span>
-    <span class="n">package</span><span class="o">=</span><span class="n">LaunchConfiguration</span><span class="p">(</span><span class="s1">'container_package'</span><span class="p">),</span>
-    <span class="n">executable</span><span class="o">=</span><span class="n">LaunchConfiguration</span><span class="p">(</span><span class="s1">'container_executable'</span><span class="p">),</span>
-    <span class="n">additional_env</span><span class="o">=</span><span class="p">{</span><span class="s1">'LD_PRELOAD'</span><span class="p">:</span> <span class="n">LaunchConfiguration</span><span class="p">(</span><span class="s1">'ld_preload_value'</span><span class="p">)},</span>
-    <span class="c1"># ...</span>
-<span class="p">)</span>
-</code></pre></div>
-<p> </p>
-<h3 id="parameters_1">Parameters<a class="headerlink" href="#parameters_1" title="Permanent link">#</a></h3>
-<table>
-<thead>
-<tr>
-<th>Parameter</th>
-<th>Default</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>agnocast_heaphook_path</code></td>
-<td><code>/opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so</code></td>
-<td>Path to the heaphook library. <code>$ROS_DISTRO</code> is read from the environment and falls back to <code>humble</code></td>
-</tr>
-<tr>
-<td><code>use_multithread</code></td>
-<td><code>false</code></td>
-<td>Whether to use a multi-threaded container</td>
-</tr>
-<tr>
-<td><code>use_agnocast</code></td>
-<td><code>$(env ENABLE_AGNOCAST 0)</code></td>
-<td>Per-include override (<code>1</code>/<code>0</code>). Usually left unset; forces one node/container back to the plain rclcpp path</td>
-</tr>
-</tbody>
-</table>
-<p> </p>
-<h2 id="8-build-and-execution-procedures">8. Build and Execution Procedures<a class="headerlink" href="#8-build-and-execution-procedures" title="Permanent link">#</a></h2>
-<p> </p>
-<h3 id="build-with-agnocast-disabled-default">Build with Agnocast Disabled (default)<a class="headerlink" href="#build-with-agnocast-disabled-default" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nb">unset</span><span class="w"> </span>ENABLE_AGNOCAST<span class="w">  </span><span class="c1"># or export ENABLE_AGNOCAST=0</span>
-colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<span class="w"> </span>--cmake-args<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
-</code></pre></div>
-<p> </p>
-<h3 id="build-with-agnocast-enabled">Build with Agnocast Enabled<a class="headerlink" href="#build-with-agnocast-enabled" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">ENABLE_AGNOCAST</span><span class="o">=</span><span class="m">1</span>
-colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<span class="w"> </span>--cmake-args<span class="w"> </span>-DCMAKE_BUILD_TYPE<span class="o">=</span>Release
-</code></pre></div>
-<p> </p>
-<h3 id="run-with-agnocast-enabled">Run with Agnocast Enabled<a class="headerlink" href="#run-with-agnocast-enabled" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">ENABLE_AGNOCAST</span><span class="o">=</span><span class="m">1</span>
-<span class="nb">source</span><span class="w"> </span>~/autoware/install/setup.bash
-ros2<span class="w"> </span>launch<span class="w"> </span>autoware_launch<span class="w"> </span>...
-</code></pre></div>
-<p> </p>
-<h3 id="run-with-agnocast-disabled-after-building-with-enable_agnocast1">Run with Agnocast Disabled (after building with ENABLE_AGNOCAST=1)<a class="headerlink" href="#run-with-agnocast-disabled-after-building-with-enable_agnocast1" title="Permanent link">#</a></h3>
-<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">ENABLE_AGNOCAST</span><span class="o">=</span><span class="m">0</span><span class="w">  </span><span class="c1"># or unset ENABLE_AGNOCAST</span>
-<span class="nb">source</span><span class="w"> </span>~/autoware/install/setup.bash
-ros2<span class="w"> </span>launch<span class="w"> </span>autoware_launch<span class="w"> </span>...
-</code></pre></div>
-<p> </p>
-<h2 id="9-references">9. References<a class="headerlink" href="#9-references" title="Permanent link">#</a></h2>
-<ul>
-<li><a href="https://github.com/autowarefoundation/autoware_core/tree/main/common/autoware_agnocast_wrapper">autoware_agnocast_wrapper Source Code &amp; README</a> - The package itself. The official README contains detailed build/execution procedures and executor configuration</li>
-</ul>
-<ul>
-<li><a href="https://github.com/autowarefoundation/agnocast">Agnocast Repository</a> - Agnocast source code including kernel module, heaphook, bridge, etc.</li>
-</ul>
-<ul>
-<li><a href="https://autowarefoundation.github.io/agnocast_doc/main/">Agnocast Documentation</a> - Agnocast architecture, supported environments, installation procedures</li>
-</ul>
-<ul>
-<li><a href="https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_node_interface_comparison.md">agnocast::Node and rclcpp::Node Interface Comparison</a> - API differences between <code>agnocast::Node</code> and <code>rclcpp::Node</code></li>
-</ul>
-<ul>
-<li><a href="https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/">Agnocast Migration Guide</a> - Step-by-step guide for migrating ROS 2 nodes to Agnocast</li>
-</ul>
-<ul>
-<li><a href="https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/message-filters/">Agnocast message_filters Migration Guide</a> - How to use Agnocast's message_filters</li>
-</ul>
-<ul>
-<li><a href="https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/bridge/">Agnocast ROS 2 Bridge</a> - Bridge communication between Agnocast nodes and standard ROS 2 nodes</li>
-</ul>
-<ul>
-<li><a href="https://autowarefoundation.github.io/agnocast_doc/main/callback-isolated-executor/">CallbackIsolatedExecutor</a> - Design and setup of CallbackIsolatedAgnocastExecutor</li>
-</ul>
-<ul>
-<li><a href="https://github.com/orgs/autowarefoundation/discussions/5835">Autoware Discussion #5835: Introduce True Zero-Copy Publish/Subscribe IPC to Autoware</a> - Agnocast introduction proposal for Autoware. Design philosophy, performance comparison, Agnocast Bridge mechanics, etc.</li>
-</ul>
-<ul>
-<li><a href="https://github.com/autowarefoundation/autoware/issues/5968">Issue #5968: Use ROS 2 packages in Agnocast released via rosdistro</a> - Tracking issue for Agnocast package rosdistro release support</li>
-</ul></div>
+<p>The deploy trigger is stage 1 only, so <code>TOPIC_MISMATCH</code> is never an exit-<code>1</code> cause here — it is a runtime-only verdict (see below).</p>
+<p>For every <code>ACCEPTED</code> pairing where the pairwise QoS fallback could not run because the matched provider or required entry (or both) has no <code>qos</code>, <code>manifest_admit</code> writes a non-fatal <code>warning: ...; QoS compatibility was not evaluated for this pairing</code> line to stderr. That row is still <code>ACCEPTED</code>, but this does not by itself guarantee an overall exit <code>0</code>: an endpoint elsewhere in the same deploy set can still independently reject with <code>QOS_SPEC_MISMATCH</code>.</p>
+<p>When <code>--spec-manifest</code> is omitted entirely, <code>manifest_admit</code> writes a <code>warning: ...; the spec QoS conformance verdict (QOS_SPEC_MISMATCH) is disabled for this run</code> line to stderr, since without a spec QoS table the per-endpoint check cannot run for any interface — a deploy whose endpoints deviate from their specs' declared QoS can then exit <code>0</code>. That must never be a silent no-op for a safety-adjacent gate, which is also why <code>docker/tools/test/admit-tool-entrypoint.sh</code> echoes its own warning when it finds no spec manifest to pass.</p>
+<p>A non-zero exit blocks the deploy / OTA assembly before <code>docker compose up</code>. The gate assumes <strong>cooperative (honest) manifests</strong>; tamper resistance (signing / attestation) is out of scope.</p>
+<h2 id="deferred-work-runtime-broadcast-and-admission-checker">Deferred work: runtime broadcast and admission checker<a class="headerlink" href="#deferred-work-runtime-broadcast-and-admission-checker" title="Permanent link">#</a></h2>
+<p>The runtime broadcast of the manifest over <code>transient_local</code> and the runtime admission checker are <strong>not implemented by this package</strong>; they are left for a follow-up change, since the deploy-time gate is being shipped first. The runtime home of the handshake message — whether it becomes a rosidl message type — is still undecided, which is why the records here are plain C++ structs rather than rosidl messages: the field sets mirror the intended message set 1:1 so the later binding is mechanical. The shared <code>evaluate()</code> in this package is what a future runtime checker will reuse.</p>
+<h2 id="note-on-non-container-deployments">Note on non-container deployments<a class="headerlink" href="#note-on-non-container-deployments" title="Permanent link">#</a></h2>
+<p>The OCI-label deploy-time gate presupposes <strong>multi-container images</strong>; native / monolithic deployments are not covered by the image-label mechanism and must instead rely on the runtime trigger once it exists. That also makes packaging a component as its own container image worth doing on its own merits, independent of any other containerization motivation: it is what makes the pre-boot compatibility check available at all, a benefit a monolithic deployment only gets once the runtime trigger exists.</p>
+<h2 id="license">License<a class="headerlink" href="#license" title="Permanent link">#</a></h2>
+<p>Apache License 2.0.</p></div>
 
 
 
@@ -10129,7 +8214,7 @@ ros2<span class="w"> </span>launch<span class="w"> </span>autoware_launch<span c
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../../" class="md-footer__link md-footer__link--prev" aria-label="Previous: autoware_agnocast_wrapper">
+          <a href="../autoware_agnocast_wrapper/docs/review_guide/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Review guide">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -10139,20 +8224,20 @@ ros2<span class="w"> </span>launch<span class="w"> </span>autoware_launch<span c
                 Previous
               </span>
               <div class="md-ellipsis">
-                autoware_agnocast_wrapper
+                Review guide
               </div>
             </div>
           </a>
         
         
           
-          <a href="../../../autoware_component_interface_admission/" class="md-footer__link md-footer__link--next" aria-label="Next: autoware_component_interface_admission">
+          <a href="../autoware_component_interface_specs/" class="md-footer__link md-footer__link--next" aria-label="Next: autoware_component_interface_specs">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                autoware_component_interface_admission
+                autoware_component_interface_specs
               </div>
             </div>
             <div class="md-footer__button md-icon">
@@ -10193,12 +8278,12 @@ ros2<span class="w"> </span>launch<span class="w"> </span>autoware_launch<span c
     
       
       
-      <script id="__config" type="application/json">{"annotate": null, "base": "../../../..", "features": ["navigation.expand", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.footer"], "search": "../../../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
+      <script id="__config" type="application/json">{"annotate": null, "base": "../..", "features": ["navigation.expand", "navigation.indexes", "navigation.instant", "navigation.sections", "navigation.tabs", "navigation.tabs.sticky", "navigation.top", "navigation.footer"], "search": "../../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": {"provider": "mike"}}</script>
     
     
-      <script src="../../../../assets/javascripts/bundle.d7400e89.min.js"></script>
+      <script src="../../assets/javascripts/bundle.d7400e89.min.js"></script>
       
-        <script src="../../../../docs/assets/js/mathjax.js"></script>
+        <script src="../../docs/assets/js/mathjax.js"></script>
       
         <script src="https://cdnjs.cloudflare.com/polyfill/v3/polyfill.min.js?features=es6"></script>
       
