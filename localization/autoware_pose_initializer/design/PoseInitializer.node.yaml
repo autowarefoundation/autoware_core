@@ -57,6 +57,9 @@ param_values:
   - name: user_defined_initial_pose.enable
     type: bool
     default: false
+  - name: user_defined_initial_pose.pose
+    type: double_array
+    default: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
   - name: gnss_pose_timeout
     type: double
     default: 3.0

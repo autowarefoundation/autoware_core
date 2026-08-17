@@ -24,6 +24,7 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
   <buildtool_depend>eigen3_cmake_module</buildtool_depend>
 
+  <depend>ament_index_cpp</depend>
   <depend>autoware_behavior_velocity_planner_common</depend>
   <depend>autoware_internal_debug_msgs</depend>
   <depend>autoware_internal_planning_msgs</depend>
@@ -31,22 +32,32 @@
   <depend>autoware_motion_utils</depend>
   <depend>autoware_perception_msgs</depend>
   <depend>autoware_planning_msgs</depend>
+  <depend>autoware_planning_test_manager</depend>
   <depend>autoware_route_handler</depend>
+  <depend>autoware_test_utils</depend>
   <depend>autoware_trajectory</depend>
   <depend>autoware_utils_debug</depend>
   <depend>autoware_utils_logging</depend>
+  <depend>autoware_utils_math</depend>
   <depend>autoware_utils_pcl</depend>
   <depend>autoware_utils_rclcpp</depend>
+  <depend>autoware_utils_system</depend>
   <depend>autoware_velocity_smoother</depend>
   <depend>diagnostic_msgs</depend>
   <depend>eigen</depend>
   <depend>geometry_msgs</depend>
+  <depend>lanelet2_core</depend>
+  <depend>lanelet2_routing</depend>
+  <depend>lanelet2_traffic_rules</depend>
   <depend>libboost-dev</depend>
+  <depend>libpcl-all-dev</depend>
+  <depend>nav_msgs</depend>
   <depend>pcl_conversions</depend>
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>
+  <depend>std_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_eigen</depend>
   <depend>tf2_geometry_msgs</depend>
@@ -56,6 +67,7 @@
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>builtin_interfaces</test_depend>
   <!--<test_depend>autoware_behavior_velocity_template_module</test_depend>-->
 
   <export>
