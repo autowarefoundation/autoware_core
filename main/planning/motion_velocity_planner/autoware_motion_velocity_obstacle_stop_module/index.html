@@ -7972,23 +7972,21 @@ To avoid this cut-in, the feature to use the shorter stop margin than usual on a
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
 <p>This module is activated if the launch parameter <code>launch_obstacle_stop_module</code> is set to true.
 e.g. launcher/autoware_launch/autoware_launch/config/planning/preset/default_preset.yaml</p>
-<p>```yaml</p>
-<h1 id="motion-velocity-planner-modules">motion velocity planner modules<a class="headerlink" href="#motion-velocity-planner-modules" title="Permanent link">#</a></h1>
-<ul>
-<li>arg:
-    name: launch_obstacle_stop_module
-    default: "true"
-```</li>
-</ul>
+<div class="highlight"><pre><span></span><code><span class="c1"># motion velocity planner modules</span>
+<span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">arg</span><span class="p">:</span>
+<span class="w">    </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">launch_obstacle_stop_module</span>
+<span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="s">"true"</span>
+</code></pre></div>
 <p>That will trigger autoware_universe/launch/tier4_planning_launch/launch/scenario_planning/lane_driving/motion_planning/motion_planning.launch.xml to assemble launch config for motion_velocity_planner.</p>
 <p>Finally motion_velocity_planner will load <code>obstacle_stop_module</code> as plugin.</p>
-<p>```xml</p>
-<!-- assemble launch config for motion velocity planner -->
-<p><arg name="motion_velocity_planner_launch_modules" default="["></arg>
-  <let name="motion_velocity_planner_launch_modules" value="&lt;span class=" arithmatex">\((eval "'\)(var motion_velocity_planner_launch_modules)' + 'autoware::motion_velocity_planner::ObstacleStopModule, '")"
-    if="$(var launch_obstacle_stop_module)"
-  /&gt;
-```</let></p></div>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- assemble launch config for motion velocity planner --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;arg</span><span class="w"> </span><span class="na">name=</span><span class="s">"motion_velocity_planner_launch_modules"</span><span class="w"> </span><span class="na">default=</span><span class="s">"["</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;let</span>
+<span class="w">    </span><span class="na">name=</span><span class="s">"motion_velocity_planner_launch_modules"</span>
+<span class="w">    </span><span class="na">value=</span><span class="s">"$(eval &amp;quot;'$(var motion_velocity_planner_launch_modules)' + 'autoware::motion_velocity_planner::ObstacleStopModule, '&amp;quot;)"</span>
+<span class="w">    </span><span class="na">if=</span><span class="s">"$(var launch_obstacle_stop_module)"</span>
+<span class="w">  </span><span class="nt">/&gt;</span>
+</code></pre></div></div>
 
 
 

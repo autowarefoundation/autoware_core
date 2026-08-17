@@ -7860,12 +7860,12 @@ Therefore, we prepare two different utility functions to calculate a nearest ind
 <p>We have the same functions for the nearest index search and nearest segment index search.
 Taking for the example the nearest index search, we have two types of functions.</p>
 <p>The first function finds the nearest index with distance and yaw thresholds.</p>
-<p><code>cpp
-template &lt;class T&gt;
-size_t findFirstNearestIndexWithSoftConstraints(
-  const T &amp; points, const geometry_msgs::msg::Pose &amp; pose,
-  const double dist_threshold = std::numeric_limits&lt;double&gt;::max(),
-  const double yaw_threshold = std::numeric_limits&lt;double&gt;::max());</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">class</span><span class="w"> </span><span class="nc">T</span><span class="o">&gt;</span>
+<span class="kt">size_t</span><span class="w"> </span><span class="n">findFirstNearestIndexWithSoftConstraints</span><span class="p">(</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">T</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">points</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Pose</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">pose</span><span class="p">,</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">dist_threshold</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">(),</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">yaw_threshold</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span class="n">max</span><span class="p">());</span>
+</code></pre></div>
 <p>This function finds the first local solution within thresholds.
 The reason to find the first local one is to deal with some edge cases explained in the next subsection.</p>
 <p>There are default parameters for thresholds arguments so that you can decide which thresholds to pass to the function.</p>
@@ -7887,10 +7887,10 @@ The reason to find the first local one is to deal with some edge cases explained
 </li>
 </ol>
 <p>The second function finds the nearest index in the lane whose id is <code>lane_id</code>.</p>
-<p><code>cpp
-size_t findNearestIndexFromLaneId(
-  const autoware_internal_planning_msgs::msg::PathWithLaneId &amp; path,
-  const geometry_msgs::msg::Point &amp; pos, const int64_t lane_id);</code></p>
+<div class="highlight"><pre><span></span><code><span class="kt">size_t</span><span class="w"> </span><span class="nf">findNearestIndexFromLaneId</span><span class="p">(</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">autoware_internal_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathWithLaneId</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">path</span><span class="p">,</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="n">geometry_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">Point</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">pos</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="kt">int64_t</span><span class="w"> </span><span class="n">lane_id</span><span class="p">);</span>
+</code></pre></div>
 <h3 id="application-to-various-object">Application to various object<a class="headerlink" href="#application-to-various-object" title="Permanent link">#</a></h3>
 <p>Many node packages often calculate the nearest index of objects.
 We will explain the recommended method to calculate it.</p>
@@ -7900,25 +7900,25 @@ Blue circles describes the distance threshold from the base link position and tw
 Among points in these cases, the correct nearest point which is red can be found.</p>
 <p><img alt="ego_nearest_search" src="media/ego_nearest_search.svg"></p>
 <p>Therefore, the implementation is as follows.</p>
-<p><code>cpp
-const size_t ego_nearest_idx = findFirstNearestIndexWithSoftConstraints(points, ego_pose, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);
-const size_t ego_nearest_seg_idx = findFirstNearestIndexWithSoftConstraints(points, ego_pose, ego_nearest_dist_threshold, ego_nearest_yaw_threshold);</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">ego_nearest_idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">findFirstNearestIndexWithSoftConstraints</span><span class="p">(</span><span class="n">points</span><span class="p">,</span><span class="w"> </span><span class="n">ego_pose</span><span class="p">,</span><span class="w"> </span><span class="n">ego_nearest_dist_threshold</span><span class="p">,</span><span class="w"> </span><span class="n">ego_nearest_yaw_threshold</span><span class="p">);</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">ego_nearest_seg_idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">findFirstNearestIndexWithSoftConstraints</span><span class="p">(</span><span class="n">points</span><span class="p">,</span><span class="w"> </span><span class="n">ego_pose</span><span class="p">,</span><span class="w"> </span><span class="n">ego_nearest_dist_threshold</span><span class="p">,</span><span class="w"> </span><span class="n">ego_nearest_yaw_threshold</span><span class="p">);</span>
+</code></pre></div>
 <h4 id="nearest-index-for-dynamic-objects">Nearest index for dynamic objects<a class="headerlink" href="#nearest-index-for-dynamic-objects" title="Permanent link">#</a></h4>
 <p>For the ego nearest index, the orientation is considered in addition to the position since the ego is supposed to follow the points.
 However, for the dynamic objects (e.g., predicted object), sometimes its orientation may be different from the points order, e.g. the dynamic object driving backward although the ego is driving forward.</p>
 <p>Therefore, the yaw threshold should not be considered for the dynamic object.
 The implementation is as follows.</p>
-<p><code>cpp
-const size_t dynamic_obj_nearest_idx = findFirstNearestIndexWithSoftConstraints(points, dynamic_obj_pose, dynamic_obj_nearest_dist_threshold);
-const size_t dynamic_obj_nearest_seg_idx = findFirstNearestIndexWithSoftConstraints(points, dynamic_obj_pose, dynamic_obj_nearest_dist_threshold);</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">dynamic_obj_nearest_idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">findFirstNearestIndexWithSoftConstraints</span><span class="p">(</span><span class="n">points</span><span class="p">,</span><span class="w"> </span><span class="n">dynamic_obj_pose</span><span class="p">,</span><span class="w"> </span><span class="n">dynamic_obj_nearest_dist_threshold</span><span class="p">);</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">dynamic_obj_nearest_seg_idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">findFirstNearestIndexWithSoftConstraints</span><span class="p">(</span><span class="n">points</span><span class="p">,</span><span class="w"> </span><span class="n">dynamic_obj_pose</span><span class="p">,</span><span class="w"> </span><span class="n">dynamic_obj_nearest_dist_threshold</span><span class="p">);</span>
+</code></pre></div>
 <h4 id="nearest-index-for-traffic-objects">Nearest index for traffic objects<a class="headerlink" href="#nearest-index-for-traffic-objects" title="Permanent link">#</a></h4>
 <p>In lanelet maps, traffic objects belong to the specific lane.
 With this specific lane's id, the correct nearest index can be found.</p>
 <p>The implementation is as follows.</p>
-<p><code>cpp
-// first extract `lane_id` which the traffic object belong to.
-const size_t traffic_obj_nearest_idx = findNearestIndexFromLaneId(path_with_lane_id, traffic_obj_pos, lane_id);
-const size_t traffic_obj_nearest_seg_idx = findNearestSegmentIndexFromLaneId(path_with_lane_id, traffic_obj_pos, lane_id);</code></p>
+<div class="highlight"><pre><span></span><code><span class="c1">// first extract `lane_id` which the traffic object belong to.</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">traffic_obj_nearest_idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">findNearestIndexFromLaneId</span><span class="p">(</span><span class="n">path_with_lane_id</span><span class="p">,</span><span class="w"> </span><span class="n">traffic_obj_pos</span><span class="p">,</span><span class="w"> </span><span class="n">lane_id</span><span class="p">);</span>
+<span class="k">const</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">traffic_obj_nearest_seg_idx</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">findNearestSegmentIndexFromLaneId</span><span class="p">(</span><span class="n">path_with_lane_id</span><span class="p">,</span><span class="w"> </span><span class="n">traffic_obj_pos</span><span class="p">,</span><span class="w"> </span><span class="n">lane_id</span><span class="p">);</span>
+</code></pre></div>
 <h2 id="for-developers">For developers<a class="headerlink" href="#for-developers" title="Permanent link">#</a></h2>
 <p>Some of the template functions in <code>trajectory.hpp</code> are mostly used for specific types (<code>autoware_planning_msgs::msg::PathPoint</code>, <code>autoware_planning_msgs::msg::PathPoint</code>, <code>autoware_planning_msgs::msg::TrajectoryPoint</code>), so they are exported as <code>extern template</code> functions to speed-up compilation time.</p>
 <p><code>autoware_motion_utils.hpp</code> header file was removed because the source files that directly/indirectly include this file took a long time for preprocessing.</p></div>

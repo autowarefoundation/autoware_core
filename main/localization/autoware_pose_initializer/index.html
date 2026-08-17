@@ -8142,68 +8142,68 @@ This node depends on the map height fitter library.
 <p><img src="https://github.com/autowarefoundation/autoware_universe/blob/main/system/autoware_default_adapi_universe/document/images/localization.drawio.svg" alt="drawing" width="800"></p>
 <h2 id="initialize-pose-via-cli">Initialize pose via CLI<a class="headerlink" href="#initialize-pose-via-cli" title="Permanent link">#</a></h2>
 <h3 id="using-the-gnss-estimated-position">Using the GNSS estimated position<a class="headerlink" href="#using-the-gnss-estimated-position" title="Permanent link">#</a></h3>
-<p><code>bash
-ros2 service call /localization/initialize autoware_localization_msgs/srv/InitializeLocalization</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>service<span class="w"> </span>call<span class="w"> </span>/localization/initialize<span class="w"> </span>autoware_localization_msgs/srv/InitializeLocalization
+</code></pre></div>
 <p>The GNSS estimated position is used as the initial guess, and the localization algorithm automatically estimates a more accurate position.</p>
 <h3 id="using-the-input-position">Using the input position<a class="headerlink" href="#using-the-input-position" title="Permanent link">#</a></h3>
-<p><code>bash
-ros2 service call /localization/initialize autoware_localization_msgs/srv/InitializeLocalization "
-pose_with_covariance:
-  - header:
-      frame_id: map
-    pose:
-      pose:
-        position:
-          x: 89571.1640625
-          y: 42301.1875
-          z: -3.1565165519714355
-        orientation:
-          x: 0.0
-          y: 0.0
-          z: 0.28072773940524687
-          w: 0.9597874433062874
-      covariance: [0.25, 0, 0, 0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.06853891909122467]
-method: 0
-"</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>service<span class="w"> </span>call<span class="w"> </span>/localization/initialize<span class="w"> </span>autoware_localization_msgs/srv/InitializeLocalization<span class="w"> </span><span class="s2">"</span>
+<span class="s2">pose_with_covariance:</span>
+<span class="s2">  - header:</span>
+<span class="s2">      frame_id: map</span>
+<span class="s2">    pose:</span>
+<span class="s2">      pose:</span>
+<span class="s2">        position:</span>
+<span class="s2">          x: 89571.1640625</span>
+<span class="s2">          y: 42301.1875</span>
+<span class="s2">          z: -3.1565165519714355</span>
+<span class="s2">        orientation:</span>
+<span class="s2">          x: 0.0</span>
+<span class="s2">          y: 0.0</span>
+<span class="s2">          z: 0.28072773940524687</span>
+<span class="s2">          w: 0.9597874433062874</span>
+<span class="s2">      covariance: [0.25, 0, 0, 0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.06853891909122467]</span>
+<span class="s2">method: 0</span>
+<span class="s2">"</span>
+</code></pre></div>
 <p>The input position is used as the initial guess, and the localization algorithm automatically estimates a more accurate position.</p>
 <h3 id="direct-initial-position-set">Direct initial position set<a class="headerlink" href="#direct-initial-position-set" title="Permanent link">#</a></h3>
-<p><code>bash
-ros2 service call /localization/initialize autoware_localization_msgs/srv/InitializeLocalization "
-pose_with_covariance:
-  - header:
-      frame_id: map
-    pose:
-      pose:
-        position:
-          x: 89571.1640625
-          y: 42301.1875
-          z: -3.1565165519714355
-        orientation:
-          x: 0.0
-          y: 0.0
-          z: 0.28072773940524687
-          w: 0.9597874433062874
-      covariance: [0.25, 0, 0, 0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.06853891909122467]
-method: 1
-"</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>service<span class="w"> </span>call<span class="w"> </span>/localization/initialize<span class="w"> </span>autoware_localization_msgs/srv/InitializeLocalization<span class="w"> </span><span class="s2">"</span>
+<span class="s2">pose_with_covariance:</span>
+<span class="s2">  - header:</span>
+<span class="s2">      frame_id: map</span>
+<span class="s2">    pose:</span>
+<span class="s2">      pose:</span>
+<span class="s2">        position:</span>
+<span class="s2">          x: 89571.1640625</span>
+<span class="s2">          y: 42301.1875</span>
+<span class="s2">          z: -3.1565165519714355</span>
+<span class="s2">        orientation:</span>
+<span class="s2">          x: 0.0</span>
+<span class="s2">          y: 0.0</span>
+<span class="s2">          z: 0.28072773940524687</span>
+<span class="s2">          w: 0.9597874433062874</span>
+<span class="s2">      covariance: [0.25, 0, 0, 0, 0, 0, 0, 0.25, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0.06853891909122467]</span>
+<span class="s2">method: 1</span>
+<span class="s2">"</span>
+</code></pre></div>
 <p>The initial position is set directly by the input position without going through localization algorithm.</p>
 <h3 id="via-ros2-topic-pub">Via ros2 topic pub<a class="headerlink" href="#via-ros2-topic-pub" title="Permanent link">#</a></h3>
-<p><code>bash
-ros2 topic pub --once /initialpose geometry_msgs/msg/PoseWithCovarianceStamped "
-header:
-  frame_id: map
-pose:
-  pose:
-    position:
-      x: 89571.1640625
-      y: 42301.1875
-      z: 0.0
-    orientation:
-      x: 0.0
-      y: 0.0
-      z: 0.28072773940524687
-      w: 0.9597874433062874
-"</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>topic<span class="w"> </span>pub<span class="w"> </span>--once<span class="w"> </span>/initialpose<span class="w"> </span>geometry_msgs/msg/PoseWithCovarianceStamped<span class="w"> </span><span class="s2">"</span>
+<span class="s2">header:</span>
+<span class="s2">  frame_id: map</span>
+<span class="s2">pose:</span>
+<span class="s2">  pose:</span>
+<span class="s2">    position:</span>
+<span class="s2">      x: 89571.1640625</span>
+<span class="s2">      y: 42301.1875</span>
+<span class="s2">      z: 0.0</span>
+<span class="s2">    orientation:</span>
+<span class="s2">      x: 0.0</span>
+<span class="s2">      y: 0.0</span>
+<span class="s2">      z: 0.28072773940524687</span>
+<span class="s2">      w: 0.9597874433062874</span>
+<span class="s2">"</span>
+</code></pre></div>
 <p>It behaves the same as "initialpose (from rviz)".
 The position.z and the covariance will be overwritten by <a href="../../api/autoware_adapi_adaptors/">autoware_adapi_adaptors</a>, so there is no need to input them.</p></div>
 

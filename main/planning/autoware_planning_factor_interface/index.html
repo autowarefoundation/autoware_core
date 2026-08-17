@@ -7779,6 +7779,39 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#creating-an-instance" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Creating an Instance
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#adding-planning-factors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding Planning Factors
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#publishing-factors" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Publishing Factors
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -7819,37 +7852,35 @@
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
 <h3 id="including-the-header">Including the Header<a class="headerlink" href="#including-the-header" title="Permanent link">#</a></h3>
 <p>To use the <code>PlanningFactorInterface</code>, include the header file in your code:</p>
-<p>```cpp</p>
-<h1 id="include">include <autoware planning_factor_interface planning_factor_interface.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware></h1>
-<p>```</p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/planning_factor_interface/planning_factor_interface.hpp&gt;</span>
+</code></pre></div>
 <h3 id="creating-an-instance">Creating an Instance<a class="headerlink" href="#creating-an-instance" title="Permanent link">#</a></h3>
 <p>Instantiate the <code>PlanningFactorInterface</code> by providing a node and a name for the factor module:</p>
-<p>```cpp</p>
-<p>class AvoidancePlanner
-{
-public:
-  AvoidancePlanner(rclcpp::Node &amp; node)
-  : planning_factor_interface_{std::make_unique&lt;
-      autoware::planning_factor_interface::PlanningFactorInterface&gt;(
-      &amp;node, "avoidance_planner")}
-```</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">AvoidancePlanner</span>
+<span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">  </span><span class="n">AvoidancePlanner</span><span class="p">(</span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">node</span><span class="p">)</span>
+<span class="w">  </span><span class="o">:</span><span class="w"> </span><span class="n">planning_factor_interface_</span><span class="p">{</span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span>
+<span class="w">      </span><span class="n">autoware</span><span class="o">::</span><span class="n">planning_factor_interface</span><span class="o">::</span><span class="n">PlanningFactorInterface</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">      </span><span class="o">&amp;</span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="s">"avoidance_planner"</span><span class="p">)}</span>
+</code></pre></div>
 <p>You can also enable console output for debugging by setting the appropriate parameters:</p>
-<p><code>cpp
-// Enable console output with a 1000ms throttle duration
-planning_factor_interface_ = std::make_unique&lt;
-  autoware::planning_factor_interface::PlanningFactorInterface&gt;(
-  &amp;node, "avoidance_planner", true, 1000);</code></p>
+<div class="highlight"><pre><span></span><code><span class="c1">// Enable console output with a 1000ms throttle duration</span>
+<span class="n">planning_factor_interface_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span>
+<span class="w">  </span><span class="n">autoware</span><span class="o">::</span><span class="n">planning_factor_interface</span><span class="o">::</span><span class="n">PlanningFactorInterface</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">  </span><span class="o">&amp;</span><span class="n">node</span><span class="p">,</span><span class="w"> </span><span class="s">"avoidance_planner"</span><span class="p">,</span><span class="w"> </span><span class="nb">true</span><span class="p">,</span><span class="w"> </span><span class="mi">1000</span><span class="p">);</span>
+</code></pre></div>
 <h3 id="adding-planning-factors">Adding Planning Factors<a class="headerlink" href="#adding-planning-factors" title="Permanent link">#</a></h3>
-<p><code>cpp
-planning_factor_interface_-&gt;add(
-        traj_points, ego_pose, stop_pose,
-        autoware_internal_planning_msgs::msg::PlanningFactor::NONE,
-        autoware_internal_planning_msgs::msg::SafetyFactorArray{});</code></p>
+<div class="highlight"><pre><span></span><code><span class="n">planning_factor_interface_</span><span class="o">-&gt;</span><span class="n">add</span><span class="p">(</span>
+<span class="w">        </span><span class="n">traj_points</span><span class="p">,</span><span class="w"> </span><span class="n">ego_pose</span><span class="p">,</span><span class="w"> </span><span class="n">stop_pose</span><span class="p">,</span>
+<span class="w">        </span><span class="n">autoware_internal_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PlanningFactor</span><span class="o">::</span><span class="n">NONE</span><span class="p">,</span>
+<span class="w">        </span><span class="n">autoware_internal_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">SafetyFactorArray</span><span class="p">{});</span>
+</code></pre></div>
 <h3 id="publishing-factors">Publishing Factors<a class="headerlink" href="#publishing-factors" title="Permanent link">#</a></h3>
 <p>After adding planning factors, you can publish them by calling the <code>publish</code> method:</p>
-<p><code>cpp
-// Publish the added factors
-planning_factor_interface_-&gt;publish();</code></p></div>
+<div class="highlight"><pre><span></span><code><span class="c1">// Publish the added factors</span>
+<span class="n">planning_factor_interface_</span><span class="o">-&gt;</span><span class="n">publish</span><span class="p">();</span>
+</code></pre></div></div>
 
 
 

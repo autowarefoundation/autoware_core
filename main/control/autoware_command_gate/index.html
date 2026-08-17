@@ -7797,24 +7797,24 @@
 <li>STOP -&gt; gear <code>PARK</code>; AUTONOMOUS -&gt; gear <code>DRIVE</code>.</li>
 </ul>
 <h2 id="build">Build<a class="headerlink" href="#build" title="Permanent link">#</a></h2>
-<p><code>bash
-colcon build --packages-select autoware_command_gate --symlink-install</code></p>
+<div class="highlight"><pre><span></span><code>colcon<span class="w"> </span>build<span class="w"> </span>--packages-select<span class="w"> </span>autoware_command_gate<span class="w"> </span>--symlink-install
+</code></pre></div>
 <h2 id="run">Run<a class="headerlink" href="#run" title="Permanent link">#</a></h2>
 <p>Launch as a node:</p>
-<p><code>bash
-ros2 launch autoware_command_gate autoware_command_gate.launch.py</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>launch<span class="w"> </span>autoware_command_gate<span class="w"> </span>autoware_command_gate.launch.py
+</code></pre></div>
 <p>Or run directly:</p>
-<p><code>bash
-ros2 run autoware_command_gate autoware_command_gate_exe</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_command_gate<span class="w"> </span>autoware_command_gate_exe
+</code></pre></div>
 <h2 id="interact">Interact<a class="headerlink" href="#interact" title="Permanent link">#</a></h2>
 <p>Call services (example from a sourced workspace):</p>
-<p><code>bash
-ros2 service call /api/operation_mode/change_to_stop autoware_adapi_v1_msgs/srv/ChangeOperationMode "{}"
-ros2 service call /api/operation_mode/change_to_autonomous autoware_adapi_v1_msgs/srv/ChangeOperationMode "{}"</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>service<span class="w"> </span>call<span class="w"> </span>/api/operation_mode/change_to_stop<span class="w"> </span>autoware_adapi_v1_msgs/srv/ChangeOperationMode<span class="w"> </span><span class="s2">"{}"</span>
+ros2<span class="w"> </span>service<span class="w"> </span>call<span class="w"> </span>/api/operation_mode/change_to_autonomous<span class="w"> </span>autoware_adapi_v1_msgs/srv/ChangeOperationMode<span class="w"> </span><span class="s2">"{}"</span>
+</code></pre></div>
 <p>Echo topics:</p>
-<p><code>bash
-ros2 topic echo /api/operation_mode/state
-ros2 topic echo /control/command/gear_cmd</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>topic<span class="w"> </span><span class="nb">echo</span><span class="w"> </span>/api/operation_mode/state
+ros2<span class="w"> </span>topic<span class="w"> </span><span class="nb">echo</span><span class="w"> </span>/control/command/gear_cmd
+</code></pre></div>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">#</a></h2>
 <p>Tests are grouped under the following directories:</p>
 <ul>
@@ -7822,8 +7822,8 @@ ros2 topic echo /control/command/gear_cmd</code></p>
 <li>Integration tests: test/integration</li>
 </ul>
 <p>Run all tests:</p>
-<p><code>bash
-colcon test --packages-select autoware_command_gate --event-handlers console_direct+</code></p></div>
+<div class="highlight"><pre><span></span><code>colcon<span class="w"> </span><span class="nb">test</span><span class="w"> </span>--packages-select<span class="w"> </span>autoware_command_gate<span class="w"> </span>--event-handlers<span class="w"> </span>console_direct+
+</code></pre></div></div>
 
 
 

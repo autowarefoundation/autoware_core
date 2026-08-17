@@ -7876,12 +7876,11 @@
 <p>This package is to set common ROS parameters to each node.</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
 <p>Add the following lines to the launch file of the node in which you want to get global parameters.</p>
-<p>```xml</p>
-<!-- Global parameters -->
-<p><include file="&lt;span class=" arithmatex">\((find-pkg-share autoware_global_parameter_loader)/launch/global_params.launch.py"&gt;
-    &lt;arg name="vehicle_model" value="\)(var vehicle_model)"/&gt;
-  </include>
-```</p>
+<div class="highlight"><pre><span></span><code><span class="cm">&lt;!-- Global parameters --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;include</span><span class="w"> </span><span class="na">file=</span><span class="s">"$(find-pkg-share autoware_global_parameter_loader)/launch/global_params.launch.py"</span><span class="nt">&gt;</span>
+<span class="w">    </span><span class="nt">&lt;arg</span><span class="w"> </span><span class="na">name=</span><span class="s">"vehicle_model"</span><span class="w"> </span><span class="na">value=</span><span class="s">"$(var vehicle_model)"</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/include&gt;</span>
+</code></pre></div>
 <p>The vehicle model parameter is read from <code>config/vehicle_info.param.yaml</code> in <code>vehicle_model</code>_description package.</p>
 <h2 id="assumptions-known-limits">Assumptions / Known limits<a class="headerlink" href="#assumptions-known-limits" title="Permanent link">#</a></h2>
 <p>Currently only vehicle_info is loaded by this launcher.</p></div>

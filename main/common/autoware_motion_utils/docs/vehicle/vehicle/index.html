@@ -2381,8 +2381,30 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#vehicle_arrival_checker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vehicle_arrival_checker
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assumptions-known-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assumptions / Known limits
+      
+    </span>
+  </a>
   
 </li>
       
@@ -7859,8 +7881,30 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#vehicle_arrival_checker" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        vehicle_arrival_checker
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assumptions-known-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assumptions / Known limits
+      
+    </span>
+  </a>
   
 </li>
       
@@ -7927,42 +7971,46 @@
 </tbody>
 </table>
 <h4 id="member-functions">Member functions<a class="headerlink" href="#member-functions" title="Permanent link">#</a></h4>
-<p><code>c++
-bool isVehicleStopped(const double stop_duration)</code></p>
+<div class="highlight"><pre><span></span><code><span class="kt">bool</span><span class="w"> </span><span class="n">isVehicleStopped</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">stop_duration</span><span class="p">)</span>
+</code></pre></div>
 <ul>
 <li>Check simply whether the vehicle is stopped based on the localization result.</li>
 <li>Returns <code>true</code> if the vehicle is stopped, even if system outputs a non-zero target velocity.</li>
 </ul>
 <h4 id="example-usage">Example Usage<a class="headerlink" href="#example-usage" title="Permanent link">#</a></h4>
 <p>Necessary includes:</p>
-<p>```c++</p>
-<h1 id="include">include <autoware_utils vehicle vehicle_state_checker.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware_utils></h1>
-<p>```</p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware_utils/vehicle/vehicle_state_checker.hpp&gt;</span>
+</code></pre></div>
 <p>1.Create a checker instance.</p>
-<p>```c++
-class SampleNode : public rclcpp::Node
-{
-public:
-  SampleNode() : Node("sample_node")
-  {
-    vehicle_stop_checker_ = std::make_unique<vehiclestopchecker>(this);
-  }</vehiclestopchecker></p>
-<p>std::unique_ptr<vehiclestopchecker> vehicle_stop_checker_;</vehiclestopchecker></p>
-<p>bool sampleFunc();</p>
-<p>...
-}
-```</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SampleNode</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span>
+<span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">  </span><span class="n">SampleNode</span><span class="p">()</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">Node</span><span class="p">(</span><span class="s">"sample_node"</span><span class="p">)</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="n">vehicle_stop_checker_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">VehicleStopChecker</span><span class="o">&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">VehicleStopChecker</span><span class="o">&gt;</span><span class="w"> </span><span class="n">vehicle_stop_checker_</span><span class="p">;</span>
+
+<span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="nf">sampleFunc</span><span class="p">();</span>
+
+<span class="w">  </span><span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div>
 <p>2.Check the vehicle state.</p>
-<p>```c++</p>
-<p>bool SampleNode::sampleFunc()
-{
-  ...</p>
-<p>const auto result_1 = vehicle_stop_checker_-&gt;isVehicleStopped();</p>
-<p>...</p>
-<p>const auto result_2 = vehicle_stop_checker_-&gt;isVehicleStopped(3.0);</p>
-<p>...
-}</p>
-<p>```</p>
+<div class="highlight"><pre><span></span><code><span class="kt">bool</span><span class="w"> </span><span class="nf">SampleNode::sampleFunc</span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="p">...</span>
+
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">result_1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vehicle_stop_checker_</span><span class="o">-&gt;</span><span class="n">isVehicleStopped</span><span class="p">();</span>
+
+<span class="w">  </span><span class="p">...</span>
+
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">result_2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vehicle_stop_checker_</span><span class="o">-&gt;</span><span class="n">isVehicleStopped</span><span class="p">(</span><span class="mf">3.0</span><span class="p">);</span>
+
+<span class="w">  </span><span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div>
 <h3 id="vehicle_arrival_checker">vehicle_arrival_checker<a class="headerlink" href="#vehicle_arrival_checker" title="Permanent link">#</a></h3>
 <p>This class check whether the vehicle arrive at stop point based on localization and planning result.</p>
 <h4 id="subscribed-topics_1">Subscribed Topics<a class="headerlink" href="#subscribed-topics_1" title="Permanent link">#</a></h4>
@@ -8013,52 +8061,60 @@ public:
 </tbody>
 </table>
 <h4 id="member-functions_1">Member functions<a class="headerlink" href="#member-functions_1" title="Permanent link">#</a></h4>
-<p><code>c++
-bool isVehicleStopped(const double stop_duration)</code></p>
+<div class="highlight"><pre><span></span><code><span class="kt">bool</span><span class="w"> </span><span class="n">isVehicleStopped</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">stop_duration</span><span class="p">)</span>
+</code></pre></div>
 <ul>
 <li>Check simply whether the vehicle is stopped based on the localization result.</li>
 <li>Returns <code>true</code> if the vehicle is stopped, even if system outputs a non-zero target velocity.</li>
 </ul>
-<p><code>c++
-bool isVehicleStoppedAtStopPoint(const double stop_duration)</code></p>
+<div class="highlight"><pre><span></span><code><span class="kt">bool</span><span class="w"> </span><span class="n">isVehicleStoppedAtStopPoint</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="kt">double</span><span class="w"> </span><span class="n">stop_duration</span><span class="p">)</span>
+</code></pre></div>
 <ul>
 <li>Check whether the vehicle is stopped at stop point based on the localization and planning result.</li>
 <li>Returns <code>true</code> if the vehicle is not only stopped but also arrived at stop point.</li>
 </ul>
 <h4 id="example-usage_1">Example Usage<a class="headerlink" href="#example-usage_1" title="Permanent link">#</a></h4>
 <p>Necessary includes:</p>
-<p>```c++</p>
-<h1 id="include_1">include <autoware_utils vehicle vehicle_state_checker.hpp><a class="headerlink" href="#include_1" title="Permanent link">#</a></autoware_utils></h1>
-<p>```</p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware_utils/vehicle/vehicle_state_checker.hpp&gt;</span>
+</code></pre></div>
 <p>1.Create a checker instance.</p>
-<p>```c++
-class SampleNode : public rclcpp::Node
-{
-public:
-  SampleNode() : Node("sample_node")
-  {
-    vehicle_arrival_checker_ = std::make_unique<vehiclearrivalchecker>(this);
-  }</vehiclearrivalchecker></p>
-<p>std::unique_ptr<vehiclearrivalchecker> vehicle_arrival_checker_;</vehiclearrivalchecker></p>
-<p>bool sampleFunc();</p>
-<p>...
-}
-```</p>
+<div class="highlight"><pre><span></span><code><span class="k">class</span><span class="w"> </span><span class="nc">SampleNode</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="k">public</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span>
+<span class="p">{</span>
+<span class="k">public</span><span class="o">:</span>
+<span class="w">  </span><span class="n">SampleNode</span><span class="p">()</span><span class="w"> </span><span class="o">:</span><span class="w"> </span><span class="n">Node</span><span class="p">(</span><span class="s">"sample_node"</span><span class="p">)</span>
+<span class="w">  </span><span class="p">{</span>
+<span class="w">    </span><span class="n">vehicle_arrival_checker_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_unique</span><span class="o">&lt;</span><span class="n">VehicleArrivalChecker</span><span class="o">&gt;</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="w">  </span><span class="p">}</span>
+
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">unique_ptr</span><span class="o">&lt;</span><span class="n">VehicleArrivalChecker</span><span class="o">&gt;</span><span class="w"> </span><span class="n">vehicle_arrival_checker_</span><span class="p">;</span>
+
+<span class="w">  </span><span class="kt">bool</span><span class="w"> </span><span class="nf">sampleFunc</span><span class="p">();</span>
+
+<span class="w">  </span><span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div>
 <p>2.Check the vehicle state.</p>
-<p>```c++</p>
-<p>bool SampleNode::sampleFunc()
-{
-  ...</p>
-<p>const auto result_1 = vehicle_arrival_checker_-&gt;isVehicleStopped();</p>
-<p>...</p>
-<p>const auto result_2 = vehicle_arrival_checker_-&gt;isVehicleStopped(3.0);</p>
-<p>...</p>
-<p>const auto result_3 = vehicle_arrival_checker_-&gt;isVehicleStoppedAtStopPoint();</p>
-<p>...</p>
-<p>const auto result_4 = vehicle_arrival_checker_-&gt;isVehicleStoppedAtStopPoint(3.0);</p>
-<p>...
-}
-```</p>
+<div class="highlight"><pre><span></span><code><span class="kt">bool</span><span class="w"> </span><span class="nf">SampleNode::sampleFunc</span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="p">...</span>
+
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">result_1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vehicle_arrival_checker_</span><span class="o">-&gt;</span><span class="n">isVehicleStopped</span><span class="p">();</span>
+
+<span class="w">  </span><span class="p">...</span>
+
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">result_2</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vehicle_arrival_checker_</span><span class="o">-&gt;</span><span class="n">isVehicleStopped</span><span class="p">(</span><span class="mf">3.0</span><span class="p">);</span>
+
+<span class="w">  </span><span class="p">...</span>
+
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">result_3</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vehicle_arrival_checker_</span><span class="o">-&gt;</span><span class="n">isVehicleStoppedAtStopPoint</span><span class="p">();</span>
+
+<span class="w">  </span><span class="p">...</span>
+
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">result_4</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">vehicle_arrival_checker_</span><span class="o">-&gt;</span><span class="n">isVehicleStoppedAtStopPoint</span><span class="p">(</span><span class="mf">3.0</span><span class="p">);</span>
+
+<span class="w">  </span><span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div>
 <h2 id="assumptions-known-limits">Assumptions / Known limits<a class="headerlink" href="#assumptions-known-limits" title="Permanent link">#</a></h2>
 <p><code>vehicle_stop_checker</code> and <code>vehicle_arrival_checker</code> cannot check whether the vehicle is stopped more than <code>velocity_buffer_time_sec</code> second.</p></div>
 

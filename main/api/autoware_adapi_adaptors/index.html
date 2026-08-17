@@ -7729,19 +7729,18 @@
 <div><h1 id="macro-rendering-error"><em>Macro Rendering Error</em><a class="headerlink" href="#macro-rendering-error" title="Permanent link">#</a></h1>
 <p><em>File</em>: <code>api/autoware_adapi_adaptors/README.md</code></p>
 <p><em>FileNotFoundError</em>: [Errno 2] No such file or directory: 'system/autoware_default_adapi_helpers/adapi_adaptors/schema/adapi_adaptors.schema.json'</p>
-<p>```
-Traceback (most recent call last):
+<div class="highlight"><pre><span></span><code>Traceback (most recent call last):
   File "/opt/hostedtoolcache/Python/3.10.20/x64/lib/python3.10/site-packages/mkdocs_macros/plugin.py", line 703, in render
     return md_template.render(**page_variables)
   File "/opt/hostedtoolcache/Python/3.10.20/x64/lib/python3.10/site-packages/jinja2/environment.py", line 1295, in render
     self.environment.handle_exception()
   File "/opt/hostedtoolcache/Python/3.10.20/x64/lib/python3.10/site-packages/jinja2/environment.py", line 942, in handle_exception
     raise rewrite_traceback_stack(source=source)
-  File "<template>", line 35, in top-level template code
+  File "&lt;template&gt;", line 35, in top-level template code
   File "/home/runner/work/autoware_core/autoware_core/mkdocs_macros.py", line 71, in json_to_markdown
     with open(json_schema_file_path) as f:
-FileNotFoundError: [Errno 2] No such file or directory: 'system/autoware_default_adapi_helpers/adapi_adaptors/schema/adapi_adaptors.schema.json'</template></p>
-<p>```</p></div>
+FileNotFoundError: [Errno 2] No such file or directory: 'system/autoware_default_adapi_helpers/adapi_adaptors/schema/adapi_adaptors.schema.json'
+</code></pre></div></div>
 
 
 

@@ -8124,13 +8124,13 @@
 <a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Fstairstep.drawio.svg">View in Drawio</a></p>
 <h4 id="example-of-custom-interpolator-usage"><span style="font-size: 1.2em;">Example of custom Interpolator usage</span><a class="headerlink" href="#example-of-custom-interpolator-usage" title="Permanent link">#</a></h4>
 <p>You can also specify interpolation method to <code>Builder{}</code> before calling <code>.build(points)</code></p>
-<p>```cpp
-using autoware::experimental::trajectory::interpolator::CubicSpline;</p>
-<p>std::optional<trajectory\<autoware_planning_msgs::msg::pathpoint>&gt; trajectory =
-  Trajectory<autoware_planning_msgs::msg::pathpoint>::Builder{}
-  .set_xy_interpolator<cubicspline>()  // Set interpolator for x-y plane
-  .build(points);
-```</cubicspline></autoware_planning_msgs::msg::pathpoint></trajectory\<autoware_planning_msgs::msg::pathpoint></p>
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">interpolator</span><span class="o">::</span><span class="n">CubicSpline</span><span class="p">;</span>
+
+<span class="n">std</span><span class="o">::</span><span class="n">optional</span><span class="o">&lt;</span><span class="n">Trajectory</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">trajectory</span><span class="w"> </span><span class="o">=</span>
+<span class="w">  </span><span class="n">Trajectory</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;::</span><span class="n">Builder</span><span class="p">{}</span>
+<span class="w">  </span><span class="p">.</span><span class="n">set_xy_interpolator</span><span class="o">&lt;</span><span class="n">CubicSpline</span><span class="o">&gt;</span><span class="p">()</span><span class="w">  </span><span class="c1">// Set interpolator for x-y plane</span>
+<span class="w">  </span><span class="p">.</span><span class="n">build</span><span class="p">(</span><span class="n">points</span><span class="p">);</span>
+</code></pre></div>
 <h3 id="trajectory-class_1">Trajectory class<a class="headerlink" href="#trajectory-class_1" title="Permanent link">#</a></h3>
 <p>Several <code>Trajectory&lt;T&gt;</code> are defined in the following inheritance hierarchy according to the sub object relationships.</p>
 <p><img alt="hierarchy" src="images/nomenclature/trajectory_hierarchy.drawio.svg">
@@ -8364,15 +8364,15 @@ using autoware::experimental::trajectory::interpolator::CubicSpline;</p>
 </table>
 <h4 id="trajectory-example-usage"><span style="font-size: 1.2em;">Trajectory Example Usage</span><a class="headerlink" href="#trajectory-example-usage" title="Permanent link">#</a></h4>
 <h5 id="cropshorten-trajectory"><span style="font-size: 1.2em;">crop/shorten Trajectory</span><a class="headerlink" href="#cropshorten-trajectory" title="Permanent link">#</a></h5>
-<p><code>cpp
-trajectory-&gt;crop(1.0, 2.0);</code></p>
+<div class="highlight"><pre><span></span><code><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">crop</span><span class="p">(</span><span class="mf">1.0</span><span class="p">,</span><span class="w"> </span><span class="mf">2.0</span><span class="p">);</span>
+</code></pre></div>
 <h5 id="insert-and-set-velocity-profile"><span style="font-size: 1.2em;">Insert and set velocity profile</span><a class="headerlink" href="#insert-and-set-velocity-profile" title="Permanent link">#</a></h5>
 <p>Set 3.0[m] ~ 5.0[m] part of velocity to 0.0</p>
-<p><code>cpp
-trajectory-&gt;longitudinal_velocity_mps(3.0, 5.0) = 0.0;</code></p>
+<div class="highlight"><pre><span></span><code><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">longitudinal_velocity_mps</span><span class="p">(</span><span class="mf">3.0</span><span class="p">,</span><span class="w"> </span><span class="mf">5.0</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+</code></pre></div>
 <h5 id="restore-points"><span style="font-size: 1.2em;">Restore points</span><a class="headerlink" href="#restore-points" title="Permanent link">#</a></h5>
-<p><code>cpp
-std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&gt;restore();</code></p>
+<div class="highlight"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">autoware_planning_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PathPoint</span><span class="o">&gt;</span><span class="w"> </span><span class="n">points</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">trajectory</span><span class="o">-&gt;</span><span class="n">restore</span><span class="p">();</span>
+</code></pre></div>
 <h3 id="temporaltrajectory-class">TemporalTrajectory class<a class="headerlink" href="#temporaltrajectory-class" title="Permanent link">#</a></h3>
 <p><code>TemporalTrajectory</code> wraps a spatial <code>Trajectory&lt;TrajectoryPoint&gt;</code> with an additional <strong>time-to-distance mapping</strong>, allowing the trajectory to be queried by either <strong>time</strong> (<code>t</code>) or <strong>arc length</strong> (<code>s</code>).</p>
 <table>
@@ -8725,8 +8725,8 @@ std::vector&lt;autoware_planning_msgs::msg::PathPoint&gt; points = trajectory-&g
 <span class="w">    </span><span class="n">plot_nearest_point</span><span class="p">(</span><span class="n">plt</span><span class="p">,</span><span class="w"> </span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">s_nearests</span><span class="p">);</span>
 </code></pre></div>
 <p>If the query point is <code>geometry_msgs::msg::Point</code> (not <code>geometry_msgs::msg::Pose</code>), <code>find_nearest_index</code> will be used instead.</p>
-<p><code>cpp
-auto s_nearest = find_nearest_index(traj, query);</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">auto</span><span class="w"> </span><span class="n">s_nearest</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">find_nearest_index</span><span class="p">(</span><span class="n">traj</span><span class="p">,</span><span class="w"> </span><span class="n">query</span><span class="p">);</span>
+</code></pre></div>
 <p><img alt="bow_trajectory" src="images/utils/find_precise_index_bow_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_bow_trajectory.drawio.svg">View in Drawio</a>
 <img alt="vertical_loop_trajectory" src="images/utils/find_precise_index_vertical_loop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_vertical_loop_trajectory.drawio.svg">View in Drawio</a>
 <img alt="lollipop_trajectory" src="images/utils/find_precise_index_lollipop_trajectory.drawio.svg"><a href="https://app.diagrams.net/?lightbox=1#Uhttps%3A%2F%2Fautowarefoundation.github.io%2Fautoware_core%2Fmain%2Fcommon%2Fautoware_trajectory%2Fimages%2Futils%2Ffind_precise_index_lollipop_trajectory.drawio.svg">View in Drawio</a></p>
@@ -8895,18 +8895,18 @@ s_{3} &amp;= L_{\mathrm{lon}}, &amp; l_{3} &amp;= L
 <p>This package handles duplicate or almost-duplicate input points at two stages: when the trajectory bases are built from the raw points, and when each interpolator is constructed.</p>
 <h5 id="1-base-sanitisation-in-trajectorypointbuild">1. Base sanitisation in <code>Trajectory&lt;Point&gt;::build</code><a class="headerlink" href="#1-base-sanitisation-in-trajectorypointbuild" title="Permanent link">#</a></h5>
 <p><code>Trajectory&lt;Point&gt;::build</code> (and the derived builders that reuse it) converts the input point array into arc-length bases. Consecutive points whose 3D Euclidean distance is zero would produce identical bases, which breaks the strict monotonicity expected by later interpolation steps. To avoid this, the build step clamps every segment length to at least machine epsilon:</p>
-<p><code>cpp
-const auto dist = std::max&lt;double&gt;(
-  autoware_utils_geometry::calc_distance3d(points.at(i), points.at(i - 1)),
-  std::numeric_limits&lt;double&gt;::epsilon());
-bases_.emplace_back(bases_.back() + dist);</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">dist</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">max</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">  </span><span class="n">autoware_utils_geometry</span><span class="o">::</span><span class="n">calc_distance3d</span><span class="p">(</span><span class="n">points</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="n">i</span><span class="p">),</span><span class="w"> </span><span class="n">points</span><span class="p">.</span><span class="n">at</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="mi">1</span><span class="p">)),</span>
+<span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="n">numeric_limits</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;::</span><span class="n">epsilon</span><span class="p">());</span>
+<span class="n">bases_</span><span class="p">.</span><span class="n">emplace_back</span><span class="p">(</span><span class="n">bases_</span><span class="p">.</span><span class="n">back</span><span class="p">()</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="n">dist</span><span class="p">);</span>
+</code></pre></div>
 <p>This sanitisation preserves every input point; it only nudges the generated base coordinate enough to keep the base vector strictly increasing. The actual zero-division avoidance and stronger duplicate filtering are handled later by each interpolator's own <code>build_impl</code>.</p>
 <p><code>TimeDistanceMapping::build</code> applies the same idea to time bases as well. In the current implementation it also clamps each time increment to at least <code>std::numeric_limits&lt;double&gt;::epsilon()</code> before handing the bases to the interpolator.</p>
 <h5 id="2-duplicate-removal-inside-interpolator-build_impl">2. Duplicate removal inside interpolator <code>build_impl</code><a class="headerlink" href="#2-duplicate-removal-inside-interpolator-build_impl" title="Permanent link">#</a></h5>
 <p>Most scalar interpolators (<code>Linear</code>, <code>CubicSpline</code>, <code>AkimaSpline</code>, and <code>SphericalLinear</code>) additionally remove true duplicates before they interpolate, as such duplicates can lead to numerical instability (e.g., division by very small intervals or ill-conditioned systems). Their <code>build_impl</code> functions call:</p>
-<p><code>cpp
-auto [cleaned_bases, cleaned_values] =
-  ::autoware::experimental::trajectory::detail::remove_duplicate_points(bases, values, epsilon_);</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">auto</span><span class="w"> </span><span class="p">[</span><span class="n">cleaned_bases</span><span class="p">,</span><span class="w"> </span><span class="n">cleaned_values</span><span class="p">]</span><span class="w"> </span><span class="o">=</span>
+<span class="w">  </span><span class="o">::</span><span class="n">autoware</span><span class="o">::</span><span class="n">experimental</span><span class="o">::</span><span class="n">trajectory</span><span class="o">::</span><span class="n">detail</span><span class="o">::</span><span class="n">remove_duplicate_points</span><span class="p">(</span><span class="n">bases</span><span class="p">,</span><span class="w"> </span><span class="n">values</span><span class="p">,</span><span class="w"> </span><span class="n">epsilon_</span><span class="p">);</span>
+</code></pre></div>
 <p><code>remove_duplicate_points</code> scans the bases from front to back and drops any point whose base difference from the last kept point is not larger than the interpolator's configured epsilon. The first point of a duplicate run is retained, the rest are discarded.</p>
 <p>For the current default settings:</p>
 <ul>

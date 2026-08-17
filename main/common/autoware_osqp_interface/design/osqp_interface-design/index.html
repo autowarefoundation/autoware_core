@@ -7962,29 +7962,29 @@ C-style Compressed-Column-Sparse matrices and dynamic arrays, loads the data int
 <ol>
 <li>
 <p>Initialize the interface WITHOUT data. Load the problem formulation at the optimization call.</p>
-<p><code>cpp
-     osqp_interface = OSQPInterface();
-     osqp_interface.optimize(P, A, q, l, u);</code></p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="n">osqp_interface</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">OSQPInterface</span><span class="p">();</span>
+<span class="w">    </span><span class="n">osqp_interface</span><span class="p">.</span><span class="n">optimize</span><span class="p">(</span><span class="n">P</span><span class="p">,</span><span class="w"> </span><span class="n">A</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">,</span><span class="w"> </span><span class="n">l</span><span class="p">,</span><span class="w"> </span><span class="n">u</span><span class="p">);</span>
+</code></pre></div>
 </li>
 <li>
 <p>Initialize the interface WITH data.</p>
-<p><code>cpp
-     osqp_interface = OSQPInterface(P, A, q, l, u);
-     osqp_interface.optimize();</code></p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="n">osqp_interface</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">OSQPInterface</span><span class="p">(</span><span class="n">P</span><span class="p">,</span><span class="w"> </span><span class="n">A</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">,</span><span class="w"> </span><span class="n">l</span><span class="p">,</span><span class="w"> </span><span class="n">u</span><span class="p">);</span>
+<span class="w">    </span><span class="n">osqp_interface</span><span class="p">.</span><span class="n">optimize</span><span class="p">();</span>
+</code></pre></div>
 </li>
 <li>
 <p>WARM START OPTIMIZATION by modifying the problem formulation between optimization runs.</p>
-<p><code>cpp
-     osqp_interface = OSQPInterface(P, A, q, l, u);
-     osqp_interface.optimize();
-     osqp.initializeProblem(P_new, A_new, q_new, l_new, u_new);
-     osqp_interface.optimize();</code></p>
+<div class="highlight"><pre><span></span><code><span class="w">    </span><span class="n">osqp_interface</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">OSQPInterface</span><span class="p">(</span><span class="n">P</span><span class="p">,</span><span class="w"> </span><span class="n">A</span><span class="p">,</span><span class="w"> </span><span class="n">q</span><span class="p">,</span><span class="w"> </span><span class="n">l</span><span class="p">,</span><span class="w"> </span><span class="n">u</span><span class="p">);</span>
+<span class="w">    </span><span class="n">osqp_interface</span><span class="p">.</span><span class="n">optimize</span><span class="p">();</span>
+<span class="w">    </span><span class="n">osqp</span><span class="p">.</span><span class="n">initializeProblem</span><span class="p">(</span><span class="n">P_new</span><span class="p">,</span><span class="w"> </span><span class="n">A_new</span><span class="p">,</span><span class="w"> </span><span class="n">q_new</span><span class="p">,</span><span class="w"> </span><span class="n">l_new</span><span class="p">,</span><span class="w"> </span><span class="n">u_new</span><span class="p">);</span>
+<span class="w">    </span><span class="n">osqp_interface</span><span class="p">.</span><span class="n">optimize</span><span class="p">();</span>
+</code></pre></div>
 <p>The optimization results are returned as a vector by the optimization function.</p>
-<p><code>cpp
- std::tuple&lt;std::vector&lt;double&gt;, std::vector&lt;double&gt;&gt; result = osqp_interface.optimize();
- std::vector&lt;double&gt; param = result.primal_solution;
- double x_0 = param[0];
- double x_1 = param[1];</code></p>
+<div class="highlight"><pre><span></span><code><span class="n">std</span><span class="o">::</span><span class="n">tuple</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;&gt;</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">osqp_interface</span><span class="p">.</span><span class="n">optimize</span><span class="p">();</span>
+<span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="kt">double</span><span class="o">&gt;</span><span class="w"> </span><span class="n">param</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">primal_solution</span><span class="p">;</span>
+<span class="kt">double</span><span class="w"> </span><span class="n">x_0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">param</span><span class="p">[</span><span class="mi">0</span><span class="p">];</span>
+<span class="kt">double</span><span class="w"> </span><span class="n">x_1</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">param</span><span class="p">[</span><span class="mi">1</span><span class="p">];</span>
+</code></pre></div>
 </li>
 </ol>
 <h2 id="references-external-links">References / External links<a class="headerlink" href="#references-external-links" title="Permanent link">#</a></h2>

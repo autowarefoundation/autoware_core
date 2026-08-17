@@ -7902,8 +7902,8 @@
 </ul>
 <p><img alt="road_shoulder_test" src="images/road_shoulder_test_map.png"></p>
 <p>You can easily launch planning_simulator by</p>
-<p><code>bash
-ros2 launch autoware_test_utils psim_road_shoulder.launch.xml vehicle_model:=&lt;&gt; sensor_model:=&lt;&gt; use_sim_time:=true</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>launch<span class="w"> </span>autoware_test_utils<span class="w"> </span>psim_road_shoulder.launch.xml<span class="w"> </span>vehicle_model:<span class="o">=</span>&lt;&gt;<span class="w"> </span>sensor_model:<span class="o">=</span>&lt;&gt;<span class="w"> </span>use_sim_time:<span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
 <h3 id="intersection">intersection<a class="headerlink" href="#intersection" title="Permanent link">#</a></h3>
 <p>The intersections lanelet map consist of a variety of intersections including:</p>
 <ul>
@@ -7915,8 +7915,8 @@ ros2 launch autoware_test_utils psim_road_shoulder.launch.xml vehicle_model:=&lt
 </ul>
 <p><img alt="intersection_test" src="images/intersection_test_map.png"></p>
 <p>You can easily launch planning_simulator by</p>
-<p><code>bash
-ros2 launch autoware_test_utils psim_intersection.launch.xml vehicle_model:=&lt;&gt; sensor_model:=&lt;&gt; use_sim_time:=true</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>launch<span class="w"> </span>autoware_test_utils<span class="w"> </span>psim_intersection.launch.xml<span class="w"> </span>vehicle_model:<span class="o">=</span>&lt;&gt;<span class="w"> </span>sensor_model:<span class="o">=</span>&lt;&gt;<span class="w"> </span>use_sim_time:<span class="o">=</span><span class="nb">true</span>
+</code></pre></div>
 <h3 id="overlap">overlap<a class="headerlink" href="#overlap" title="Permanent link">#</a></h3>
 <p>The overlap lanelet map includes</p>
 <ul>
@@ -7931,24 +7931,24 @@ ros2 launch autoware_test_utils psim_intersection.launch.xml vehicle_model:=&lt;
 <p>The goal of the <a href="https://autowarefoundation.github.io/autoware_core/main/testing/autoware_planning_test_manager/">Autoware Planning Test Manager</a> is to test planning module nodes. The <code>PlanningInterfaceTestManager</code> class (<a href="https://github.com/autowarefoundation/autoware_core/blob/main/testing/autoware_planning_test_manager/src/autoware_planning_test_manager.cpp">source code</a>) creates wrapper functions based on the <code>test_utils</code> functions.</p>
 <h3 id="generate-test-data-for-unit-testing">Generate test data for unit testing<a class="headerlink" href="#generate-test-data-for-unit-testing" title="Permanent link">#</a></h3>
 <p>As presented in this <a href="https://github.com/autowarefoundation/autoware_universe/pull/9207">PR description</a>, the user can save a snapshot of the scene to a yaml file while running Planning Simulation on the test map.</p>
-<p><code>bash
-ros2 launch autoware_test_utils psim_road_shoulder.launch.xml
-ros2 launch autoware_test_utils psim_intersection.launch.xml</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>launch<span class="w"> </span>autoware_test_utils<span class="w"> </span>psim_road_shoulder.launch.xml
+ros2<span class="w"> </span>launch<span class="w"> </span>autoware_test_utils<span class="w"> </span>psim_intersection.launch.xml
+</code></pre></div>
 <p>It uses the autoware <code>autoware_sample_vehicle_description</code> and <code>autoware_sample_sensor_kit</code> by default, and <code>autoware_test_utils/config/test_vehicle_info.param.yaml</code> is exactly the same as that of <code>autoware_sample_vehicle_description</code>. If specified, <code>vehicle_model</code>/<code>sensor_model</code> argument is available.</p>
-<p><code>bash
-ros2 service call /autoware_test_utils/topic_snapshot_saver std_srvs/srv/Empty \{\}</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>service<span class="w"> </span>call<span class="w"> </span>/autoware_test_utils/topic_snapshot_saver<span class="w"> </span>std_srvs/srv/Empty<span class="w"> </span><span class="se">\{\}</span>
+</code></pre></div>
 <p>The list and field names of the topics to be saved are specified in <code>config/sample_topic_snapshot.yaml</code>.</p>
-<p>```yaml</p>
-<h1 id="setting">setting<a class="headerlink" href="#setting" title="Permanent link">#</a></h1>
-<p>fields:
-  - name: self_odometry # this is the field name for this topic
-    type: Odometry # the abbreviated type name of this topic
-    topic: /localization/kinematic_state # the name of this topic</p>
-<h1 id="output">output<a class="headerlink" href="#output" title="Permanent link">#</a></h1>
-<p>self_odometry:
-  - header: ...
-    ...
-```</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># setting</span>
+<span class="nt">fields</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">self_odometry</span><span class="w"> </span><span class="c1"># this is the field name for this topic</span>
+<span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">Odometry</span><span class="w"> </span><span class="c1"># the abbreviated type name of this topic</span>
+<span class="w">    </span><span class="nt">topic</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">/localization/kinematic_state</span><span class="w"> </span><span class="c1"># the name of this topic</span>
+
+<span class="c1"># output</span>
+<span class="nt">self_odometry</span><span class="p">:</span>
+<span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">header</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+<span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</code></pre></div>
 <p>Each field can be parsed to ROS message type using the functions defined in <code>autoware_test_utils/mock_data_parser.hpp</code></p></div>
 
 

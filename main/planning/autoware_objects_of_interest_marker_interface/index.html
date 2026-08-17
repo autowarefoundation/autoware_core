@@ -7779,6 +7779,28 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#insert" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        insert
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#publish" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        publish
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
   
@@ -7818,21 +7840,21 @@
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
 <h3 id="init">init<a class="headerlink" href="#init" title="Permanent link">#</a></h3>
 <p>include the header file to use then init the library</p>
-<p>```cpp</p>
-<h1 id="include">include <autoware objects_of_interest_marker_interface objects_of_interest_marker_interface.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware></h1>
-<p>autoware::objects_of_interest_marker_interface::ObjectsOfInterestMarkerInterface
-    objects_of_interest_marker_interface_{this, "obstacle_cruise_planner"};
-```</p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/objects_of_interest_marker_interface/objects_of_interest_marker_interface.hpp&gt;</span>
+
+<span class="n">autoware</span><span class="o">::</span><span class="n">objects_of_interest_marker_interface</span><span class="o">::</span><span class="n">ObjectsOfInterestMarkerInterface</span>
+<span class="w">    </span><span class="n">objects_of_interest_marker_interface_</span><span class="p">{</span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="s">"obstacle_cruise_planner"</span><span class="p">};</span>
+</code></pre></div>
 <h3 id="insert">insert<a class="headerlink" href="#insert" title="Permanent link">#</a></h3>
 <p>insert object information to the 'objects_of_interest_marker_interface' manager</p>
-<p><code>cpp
-using autoware::objects_of_interest_marker_interface::ColorName;
-objects_of_interest_marker_interface_.insertObjectData(
-    stopped_obstacle.pose, stopped_obstacle.shape, ColorName::RED);</code></p>
+<div class="highlight"><pre><span></span><code><span class="k">using</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">objects_of_interest_marker_interface</span><span class="o">::</span><span class="n">ColorName</span><span class="p">;</span>
+<span class="n">objects_of_interest_marker_interface_</span><span class="p">.</span><span class="n">insertObjectData</span><span class="p">(</span>
+<span class="w">    </span><span class="n">stopped_obstacle</span><span class="p">.</span><span class="n">pose</span><span class="p">,</span><span class="w"> </span><span class="n">stopped_obstacle</span><span class="p">.</span><span class="n">shape</span><span class="p">,</span><span class="w"> </span><span class="n">ColorName</span><span class="o">::</span><span class="n">RED</span><span class="p">);</span>
+</code></pre></div>
 <h3 id="publish">publish<a class="headerlink" href="#publish" title="Permanent link">#</a></h3>
 <p>publish object information to the rviz to visualize</p>
-<p><code>cpp
-objects_of_interest_marker_interface_.publishMarkerArray();</code></p></div>
+<div class="highlight"><pre><span></span><code><span class="n">objects_of_interest_marker_interface_</span><span class="p">.</span><span class="n">publishMarkerArray</span><span class="p">();</span>
+</code></pre></div></div>
 
 
 

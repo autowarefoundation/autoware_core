@@ -7856,40 +7856,49 @@
 <p>After confirming normal operation, ensure that the test target node does not crash when given exceptional input. To do this, provide exceptional input from the test_node and confirm that the node does not crash.</p>
 <p>(WIP)</p>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
-<p>```cpp</p>
-<p>TEST(PlanningModuleInterfaceTest, NodeTestWithExceptionTrajectory)
-{
-  rclcpp::init(0, nullptr);</p>
-<p>// instantiate test_manager with PlanningInterfaceTestManager type
-  auto test_manager = std::make_shared<autoware::planning_test_manager::planninginterfacetestmanager>();</autoware::planning_test_manager::planninginterfacetestmanager></p>
-<p>// get package directories for necessary configuration files
-  const auto autoware_test_utils_dir =
-    ament_index_cpp::get_package_share_directory("autoware_test_utils");
-  const auto target_node_dir =
-    ament_index_cpp::get_package_share_directory("target_node");</p>
-<p>// set arguments to get the config file
-  node_options.arguments(
-    {"--ros-args", "--params-file",
-     autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml", "--params-file",
-     autoware_planning_validator_dir + "/config/planning_validator.param.yaml"});</p>
-<p>// instantiate the TargetNode with node_options
-  auto test_target_node = std::make_shared<targetnode>(node_options);</targetnode></p>
-<p>// publish the necessary topics from test_manager second argument is topic name
-  test_manager-&gt;publishOdometry(test_target_node, "/localization/kinematic_state");
-  test_manager-&gt;publishMaxVelocity(
-    test_target_node, "velocity_smoother/input/external_velocity_limit_mps");</p>
-<p>// set scenario_selector's input topic name(this topic is changed to test node)
-  test_manager-&gt;setTrajectoryInputTopicName("input/parking/trajectory");</p>
-<p>// test with normal trajectory
-  ASSERT_NO_THROW(test_manager-&gt;testWithNominalTrajectory(test_target_node));</p>
-<p>// make sure target_node is running
-  EXPECT_GE(test_manager-&gt;getReceivedTopicNum(), 1);</p>
-<p>// test with trajectory input with empty/one point/overlapping point
-  ASSERT_NO_THROW(test_manager-&gt;testWithAbnormalTrajectory(test_target_node));</p>
-<p>// shutdown ROS context
-  rclcpp::shutdown();
-}
-```</p>
+<div class="highlight"><pre><span></span><code><span class="n">TEST</span><span class="p">(</span><span class="n">PlanningModuleInterfaceTest</span><span class="p">,</span><span class="w"> </span><span class="n">NodeTestWithExceptionTrajectory</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">init</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// instantiate test_manager with PlanningInterfaceTestManager type</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">test_manager</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">autoware</span><span class="o">::</span><span class="n">planning_test_manager</span><span class="o">::</span><span class="n">PlanningInterfaceTestManager</span><span class="o">&gt;</span><span class="p">();</span>
+
+<span class="w">  </span><span class="c1">// get package directories for necessary configuration files</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">autoware_test_utils_dir</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="n">ament_index_cpp</span><span class="o">::</span><span class="n">get_package_share_directory</span><span class="p">(</span><span class="s">"autoware_test_utils"</span><span class="p">);</span>
+<span class="w">  </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">target_node_dir</span><span class="w"> </span><span class="o">=</span>
+<span class="w">    </span><span class="n">ament_index_cpp</span><span class="o">::</span><span class="n">get_package_share_directory</span><span class="p">(</span><span class="s">"target_node"</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// set arguments to get the config file</span>
+<span class="w">  </span><span class="n">node_options</span><span class="p">.</span><span class="n">arguments</span><span class="p">(</span>
+<span class="w">    </span><span class="p">{</span><span class="s">"--ros-args"</span><span class="p">,</span><span class="w"> </span><span class="s">"--params-file"</span><span class="p">,</span>
+<span class="w">     </span><span class="n">autoware_test_utils_dir</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">"/config/test_vehicle_info.param.yaml"</span><span class="p">,</span><span class="w"> </span><span class="s">"--params-file"</span><span class="p">,</span>
+<span class="w">     </span><span class="n">autoware_planning_validator_dir</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="s">"/config/planning_validator.param.yaml"</span><span class="p">});</span>
+
+<span class="w">  </span><span class="c1">// instantiate the TargetNode with node_options</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">test_target_node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">TargetNode</span><span class="o">&gt;</span><span class="p">(</span><span class="n">node_options</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// publish the necessary topics from test_manager second argument is topic name</span>
+<span class="w">  </span><span class="n">test_manager</span><span class="o">-&gt;</span><span class="n">publishOdometry</span><span class="p">(</span><span class="n">test_target_node</span><span class="p">,</span><span class="w"> </span><span class="s">"/localization/kinematic_state"</span><span class="p">);</span>
+<span class="w">  </span><span class="n">test_manager</span><span class="o">-&gt;</span><span class="n">publishMaxVelocity</span><span class="p">(</span>
+<span class="w">    </span><span class="n">test_target_node</span><span class="p">,</span><span class="w"> </span><span class="s">"velocity_smoother/input/external_velocity_limit_mps"</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// set scenario_selector's input topic name(this topic is changed to test node)</span>
+<span class="w">  </span><span class="n">test_manager</span><span class="o">-&gt;</span><span class="n">setTrajectoryInputTopicName</span><span class="p">(</span><span class="s">"input/parking/trajectory"</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// test with normal trajectory</span>
+<span class="w">  </span><span class="n">ASSERT_NO_THROW</span><span class="p">(</span><span class="n">test_manager</span><span class="o">-&gt;</span><span class="n">testWithNominalTrajectory</span><span class="p">(</span><span class="n">test_target_node</span><span class="p">));</span>
+
+<span class="w">  </span><span class="c1">// make sure target_node is running</span>
+<span class="w">  </span><span class="n">EXPECT_GE</span><span class="p">(</span><span class="n">test_manager</span><span class="o">-&gt;</span><span class="n">getReceivedTopicNum</span><span class="p">(),</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+
+<span class="w">  </span><span class="c1">// test with trajectory input with empty/one point/overlapping point</span>
+<span class="w">  </span><span class="n">ASSERT_NO_THROW</span><span class="p">(</span><span class="n">test_manager</span><span class="o">-&gt;</span><span class="n">testWithAbnormalTrajectory</span><span class="p">(</span><span class="n">test_target_node</span><span class="p">));</span>
+
+<span class="w">  </span><span class="c1">// shutdown ROS context</span>
+<span class="w">  </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">shutdown</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
 <h2 id="implemented-tests">Implemented tests<a class="headerlink" href="#implemented-tests" title="Permanent link">#</a></h2>
 <table>
 <thead>

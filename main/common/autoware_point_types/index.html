@@ -7891,42 +7891,39 @@
 <ul>
 <li>Create a point cloud object of PointXYZIRC type</li>
 </ul>
-<p>```cpp</p>
-<h1 id="include-autowarepoint_typestypeshpp">include "autoware/point_types/types.hpp"<a class="headerlink" href="#include-autowarepoint_typestypeshpp" title="Permanent link">#</a></h1>
-<p>int main(){
-    pcl::PointCloud<autoware::point_types::pointxyzirc>::Ptr cloud(new pcl::PointCloud<autoware::point_types::pointxyzirc>());</autoware::point_types::pointxyzirc></autoware::point_types::pointxyzirc></p>
-<div class="codehilite"><pre><span></span><code>for (int i = 0; i &lt; 5; ++i) {
-    autoware::point_types::PointXYZIRC point;
-    point.x = static_cast&lt;float&gt;(i * 0.1);
-    point.y = static_cast&lt;float&gt;(i * 0.2);
-    point.z = static_cast&lt;float&gt;(i * 0.3);
-    point.intensity = static_cast&lt;std::uint8_t&gt;(i * 10);
-    point.return_type = autoware::point_types::ReturnType::SINGLE_STRONGEST;
-    point.channel = static_cast&lt;std::uint16_t&gt;(i);
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">"autoware/point_types/types.hpp"</span>
 
-    cloud-&gt;points.push_back(point);
-}
-cloud-&gt;width = cloud-&gt;points.size();
-cloud-&gt;height = 1;
+<span class="kt">int</span><span class="w"> </span><span class="nf">main</span><span class="p">(){</span>
+<span class="w">    </span><span class="n">pcl</span><span class="o">::</span><span class="n">PointCloud</span><span class="o">&lt;</span><span class="n">autoware</span><span class="o">::</span><span class="n">point_types</span><span class="o">::</span><span class="n">PointXYZIRC</span><span class="o">&gt;::</span><span class="n">Ptr</span><span class="w"> </span><span class="n">cloud</span><span class="p">(</span><span class="k">new</span><span class="w"> </span><span class="n">pcl</span><span class="o">::</span><span class="n">PointCloud</span><span class="o">&lt;</span><span class="n">autoware</span><span class="o">::</span><span class="n">point_types</span><span class="o">::</span><span class="n">PointXYZIRC</span><span class="o">&gt;</span><span class="p">());</span>
 
-return 0;
+<span class="w">    </span><span class="k">for</span><span class="w"> </span><span class="p">(</span><span class="kt">int</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="mi">5</span><span class="p">;</span><span class="w"> </span><span class="o">++</span><span class="n">i</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">        </span><span class="n">autoware</span><span class="o">::</span><span class="n">point_types</span><span class="o">::</span><span class="n">PointXYZIRC</span><span class="w"> </span><span class="n">point</span><span class="p">;</span>
+<span class="w">        </span><span class="n">point</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">0.1</span><span class="p">);</span>
+<span class="w">        </span><span class="n">point</span><span class="p">.</span><span class="n">y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">0.2</span><span class="p">);</span>
+<span class="w">        </span><span class="n">point</span><span class="p">.</span><span class="n">z</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="kt">float</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mf">0.3</span><span class="p">);</span>
+<span class="w">        </span><span class="n">point</span><span class="p">.</span><span class="n">intensity</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">uint8_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="mi">10</span><span class="p">);</span>
+<span class="w">        </span><span class="n">point</span><span class="p">.</span><span class="n">return_type</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">point_types</span><span class="o">::</span><span class="n">ReturnType</span><span class="o">::</span><span class="n">SINGLE_STRONGEST</span><span class="p">;</span>
+<span class="w">        </span><span class="n">point</span><span class="p">.</span><span class="n">channel</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="k">static_cast</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">uint16_t</span><span class="o">&gt;</span><span class="p">(</span><span class="n">i</span><span class="p">);</span>
+
+<span class="w">        </span><span class="n">cloud</span><span class="o">-&gt;</span><span class="n">points</span><span class="p">.</span><span class="n">push_back</span><span class="p">(</span><span class="n">point</span><span class="p">);</span>
+<span class="w">    </span><span class="p">}</span>
+<span class="w">    </span><span class="n">cloud</span><span class="o">-&gt;</span><span class="n">width</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">cloud</span><span class="o">-&gt;</span><span class="n">points</span><span class="p">.</span><span class="n">size</span><span class="p">();</span>
+<span class="w">    </span><span class="n">cloud</span><span class="o">-&gt;</span><span class="n">height</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+
+<span class="w">    </span><span class="k">return</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span>
+<span class="p">}</span>
 </code></pre></div>
-
-<p>}
-```</p>
 <ul>
 <li>Convert ROS message to point cloud of PointXYZIRC type</li>
 </ul>
-<p>```cpp
-ExampleNode::points_callback(const PointCloud2::ConstSharedPtr &amp; points_msg_ptr)
-{
-    pcl::PointCloud<autoware::point_types::pointxyzirc>::Ptr points_ptr(
-    new pcl::PointCloud<autoware::point_types::pointxyzirc>);</autoware::point_types::pointxyzirc></autoware::point_types::pointxyzirc></p>
-<div class="codehilite"><pre><span></span><code>pcl::fromROSMsg(*points_msg_ptr, *points_ptr);
-</code></pre></div>
+<div class="highlight"><pre><span></span><code><span class="n">ExampleNode</span><span class="o">::</span><span class="n">points_callback</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">PointCloud2</span><span class="o">::</span><span class="n">ConstSharedPtr</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">points_msg_ptr</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">    </span><span class="n">pcl</span><span class="o">::</span><span class="n">PointCloud</span><span class="o">&lt;</span><span class="n">autoware</span><span class="o">::</span><span class="n">point_types</span><span class="o">::</span><span class="n">PointXYZIRC</span><span class="o">&gt;::</span><span class="n">Ptr</span><span class="w"> </span><span class="n">points_ptr</span><span class="p">(</span>
+<span class="w">    </span><span class="k">new</span><span class="w"> </span><span class="n">pcl</span><span class="o">::</span><span class="n">PointCloud</span><span class="o">&lt;</span><span class="n">autoware</span><span class="o">::</span><span class="n">point_types</span><span class="o">::</span><span class="n">PointXYZIRC</span><span class="o">&gt;</span><span class="p">);</span>
 
-<p>}
-```</p></div>
+<span class="w">    </span><span class="n">pcl</span><span class="o">::</span><span class="n">fromROSMsg</span><span class="p">(</span><span class="o">*</span><span class="n">points_msg_ptr</span><span class="p">,</span><span class="w"> </span><span class="o">*</span><span class="n">points_ptr</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div></div>
 
 
 

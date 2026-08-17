@@ -7908,77 +7908,77 @@
 <ol>
 <li>
 <p>Add this package as a dependency in your package.xml:</p>
-<p><code>xml
- &lt;depend&gt;autoware_component_interface_specs&lt;/depend&gt;</code></p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;depend&gt;</span>autoware_component_interface_specs<span class="nt">&lt;/depend&gt;</span>
+</code></pre></div>
 </li>
 <li>
 <p>Use the provided interfaces in your component code.</p>
-<p><code>cpp
- #include &lt;autoware/component_interface_specs/localization.hpp&gt;
- // Example: Creating a publisher using the interface specs
- using KinematicState = autoware::component_interface_specs::localization::KinematicState;
- rclcpp::Publisher&lt;KinematicState::Message&gt;::SharedPtr publisher_ =
- create_publisher&lt;KinematicState::Message&gt;(
- KinematicState::name,
- autoware::component_interface_specs::get_qos&lt;KinematicState&gt;());
- // Example: Creating a subscription using the interface specs
- auto subscriber_ = create_subscription&lt;KinematicState::Message&gt;(
- KinematicState::name,
- autoware::component_interface_specs::get_qos&lt;KinematicState&gt;(),
- std::bind(&amp;YourClass::callback, this, std::placeholders::1));</code></p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/component_interface_specs/localization.hpp&gt;</span>
+<span class="c1">// Example: Creating a publisher using the interface specs</span>
+<span class="k">using</span><span class="w"> </span><span class="n">KinematicState</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_specs</span><span class="o">::</span><span class="n">localization</span><span class="o">::</span><span class="n">KinematicState</span><span class="p">;</span>
+<span class="n">rclcpp</span><span class="o">::</span><span class="n">Publisher</span><span class="o">&lt;</span><span class="n">KinematicState</span><span class="o">::</span><span class="n">Message</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">publisher_</span><span class="w"> </span><span class="o">=</span>
+<span class="n">create_publisher</span><span class="o">&lt;</span><span class="n">KinematicState</span><span class="o">::</span><span class="n">Message</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="n">KinematicState</span><span class="o">::</span><span class="n">name</span><span class="p">,</span>
+<span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_specs</span><span class="o">::</span><span class="n">get_qos</span><span class="o">&lt;</span><span class="n">KinematicState</span><span class="o">&gt;</span><span class="p">());</span>
+<span class="c1">// Example: Creating a subscription using the interface specs</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">subscriber_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">create_subscription</span><span class="o">&lt;</span><span class="n">KinematicState</span><span class="o">::</span><span class="n">Message</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="n">KinematicState</span><span class="o">::</span><span class="n">name</span><span class="p">,</span>
+<span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_specs</span><span class="o">::</span><span class="n">get_qos</span><span class="o">&lt;</span><span class="n">KinematicState</span><span class="o">&gt;</span><span class="p">(),</span>
+<span class="n">std</span><span class="o">::</span><span class="n">bind</span><span class="p">(</span><span class="o">&amp;</span><span class="n">YourClass</span><span class="o">::</span><span class="n">callback</span><span class="p">,</span><span class="w"> </span><span class="k">this</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">placeholders</span><span class="o">::</span><span class="mi">1</span><span class="p">));</span>
+</code></pre></div>
 </li>
 </ol>
 <h2 id="versioning">Versioning<a class="headerlink" href="#versioning" title="Permanent link">#</a></h2>
 <p>Each domain namespace declares a semantic <code>Version</code> (<code>version.hpp</code>) and a <code>Specs</code> tuple listing every interface it owns. <code>0.x</code> denotes an unstable interface while the standard is stabilizing. Compatibility is decided on the <code>MAJOR</code> field only; <code>is_compatible</code> is the reference encoding of that rule for consumers that compile against this package. The deploy-time admission gate in <code>autoware_component_interface_admission</code> is a no-dependency leaf package, so it restates the same relation rather than calling <code>is_compatible</code> — the two must be changed together.</p>
 <p>A domain declares its version, its <code>Specs</code> registry, and the ADL hook that <code>spec_version&lt;Spec&gt;()</code> resolves through in one macro, so the three cannot drift apart:</p>
-<p>```cpp
-namespace autoware::component_interface_specs::control
-{
-struct ControlCommand { /<em> ... </em>/ };</p>
-<p>AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(0, 1, 0, ControlCommand)
-}  // namespace autoware::component_interface_specs::control
-```</p>
+<div class="highlight"><pre><span></span><code><span class="k">namespace</span><span class="w"> </span><span class="nn">autoware</span><span class="o">::</span><span class="nn">component_interface_specs</span><span class="o">::</span><span class="nn">control</span>
+<span class="p">{</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">ControlCommand</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="cm">/* ... */</span><span class="w"> </span><span class="p">};</span>
+
+<span class="n">AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="n">ControlCommand</span><span class="p">)</span>
+<span class="p">}</span><span class="w">  </span><span class="c1">// namespace autoware::component_interface_specs::control</span>
+</code></pre></div>
 <h2 id="quality-of-service">Quality of service<a class="headerlink" href="#quality-of-service" title="Permanent link">#</a></h2>
 <p>Topic specs carry the QoS their endpoints are created with (<code>depth</code>, <code>reliability</code>, <code>durability</code>); <code>get_qos&lt;Spec&gt;()</code> turns that into an <code>rclcpp::QoS</code>.</p>
 <p>Services have a QoS profile too, but not a per-spec one. Every <code>create_service</code> and <code>create_client</code> call takes ROS 2's <code>rmw_qos_profile_services_default</code> — <code>KEEP_LAST(10)</code>, <code>RELIABLE</code>, <code>VOLATILE</code> — unmodified, so all services really do run under identical conditions. Rather than repeat that profile on every <code>ServiceSpec</code>, it is declared once as <code>service_qos</code> in <code>utils.hpp</code> and returned by <code>get_service_qos()</code>. <code>test_service_qos.cpp</code> asserts it still equals the RMW default it mirrors, so a change to that default surfaces as a test failure instead of as silent drift between the specs and the wire.</p>
 <h2 id="c-standard">C++ standard<a class="headerlink" href="#c-standard" title="Permanent link">#</a></h2>
 <p>The domain headers, <code>version.hpp</code> and <code>utils.hpp</code> are C++17, matching the <code>CMAKE_CXX_STANDARD 17</code> that <code>autoware_package()</code> gives every Autoware target.</p>
 <p><code>concepts.hpp</code> needs C++20, because the standard library only exposes <code>&lt;concepts&gt;</code> in C++20 mode. A target that wants it opts in:</p>
-<p><code>cmake
-target_compile_features(&lt;target&gt; PRIVATE cxx_std_20)</code></p>
+<div class="highlight"><pre><span></span><code><span class="nb">target_compile_features</span><span class="p">(</span><span class="s">&lt;target&gt;</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="s">cxx_std_20</span><span class="p">)</span>
+</code></pre></div>
 <p>CMake raises that one target to <code>-std=c++20</code> and leaves every other target — and every C++17 consumer of the domain headers — on <code>-std=c++17</code>. This is what the package's own <code>generate_interface_manifest</code> and gtest targets do, and it builds on Humble / gcc-11 (Ubuntu 22.04) as well as on Jazzy. Both targets are <code>BUILD_TESTING</code>-gated, so a C++20 compile failure in either could never break the header-only package for its C++17 consumers.</p>
 <p>Below C++20, <code>concepts.hpp</code> is an empty header rather than a hard error, so including it is always safe. Test <code>AUTOWARE_COMPONENT_INTERFACE_SPECS_HAS_CONCEPTS</code> before naming anything it declares.</p>
 <h2 id="interface-manifest">Interface manifest<a class="headerlink" href="#interface-manifest" title="Permanent link">#</a></h2>
 <p><code>interface_manifest.json</code> is a machine-readable list of every registered interface: its domain, interface name, message or service type, kind, version, and the QoS its endpoints are created with. It is generated from the <code>Specs</code> tuples by the <code>generate_interface_manifest</code> tool and committed to the repository as the source of truth.</p>
-<p><code>json
-{
-  "domain": "control",
-  "interface": "/control/command/control_cmd",
-  "type": "autoware_control_msgs/msg/Control",
-  "kind": "topic",
-  "version": "0.1.0",
-  "qos": {
-    "history": "keep_last",
-    "depth": 1,
-    "reliability": "reliable",
-    "durability": "volatile"
-  }
-}</code></p>
+<div class="highlight"><pre><span></span><code><span class="p">{</span>
+<span class="w">  </span><span class="nt">"domain"</span><span class="p">:</span><span class="w"> </span><span class="s2">"control"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"interface"</span><span class="p">:</span><span class="w"> </span><span class="s2">"/control/command/control_cmd"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"type"</span><span class="p">:</span><span class="w"> </span><span class="s2">"autoware_control_msgs/msg/Control"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"kind"</span><span class="p">:</span><span class="w"> </span><span class="s2">"topic"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"version"</span><span class="p">:</span><span class="w"> </span><span class="s2">"0.1.0"</span><span class="p">,</span>
+<span class="w">  </span><span class="nt">"qos"</span><span class="p">:</span><span class="w"> </span><span class="p">{</span>
+<span class="w">    </span><span class="nt">"history"</span><span class="p">:</span><span class="w"> </span><span class="s2">"keep_last"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"depth"</span><span class="p">:</span><span class="w"> </span><span class="mi">1</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"reliability"</span><span class="p">:</span><span class="w"> </span><span class="s2">"reliable"</span><span class="p">,</span>
+<span class="w">    </span><span class="nt">"durability"</span><span class="p">:</span><span class="w"> </span><span class="s2">"volatile"</span>
+<span class="w">  </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
 <p><code>reliability</code> and <code>durability</code> are the two axes ROS 2 checks when it decides whether a publisher and a subscription may talk at all, which is why a deploy-time gate needs them alongside the type and the version. Service entries carry the shared <code>service_qos</code> profile.</p>
 <p>Regenerate the manifest by hand after changing any domain's specs, QoS or versions:</p>
-<p><code>bash
-colcon build --symlink-install --packages-select autoware_component_interface_specs
-./build/autoware_component_interface_specs/generate_interface_manifest \
-  src/autoware_component_interface_specs/interface_manifest.json</code></p>
+<div class="highlight"><pre><span></span><code>colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<span class="w"> </span>--packages-select<span class="w"> </span>autoware_component_interface_specs
+./build/autoware_component_interface_specs/generate_interface_manifest<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>src/autoware_component_interface_specs/interface_manifest.json
+</code></pre></div>
 <p>The generator emits the same layout Prettier produces, so the committed file is stable across regenerations. Adjust the output path to match where the package lives in your workspace. <code>test_manifest.cpp</code> diffs the generator's output against the committed file, so a stale manifest fails the build rather than reaching consumers.</p>
 <h2 id="interface-type-hash-lockfile">Interface type-hash lockfile<a class="headerlink" href="#interface-type-hash-lockfile" title="Permanent link">#</a></h2>
 <p><code>interface_type_hashes.jazzy.lock</code> records the <a href="https://github.com/ros-infrastructure/rep/pull/358">RIHS01 type hash</a> (the ROS Interface Hashing Standard, proposed in REP-2011) of every registered message and service type. A RIHS01 hash is a deterministic function of the full type description — transitively including every nested <code>.msg</code> include — so a change to a type's definition in <em>any</em> repository changes its hash. This is the drift tripwire that complements the same-PR version bump: it catches a forgotten bump, and it is the only mechanism for the types owned by other repositories.</p>
 <p>RIHS01 hashes exist only on ROS 2 Iron and newer, so the lockfile is Jazzy-specific and the generator's hash-emitting path is <code>#if __has_include(&lt;rosidl_runtime_c/type_hash.h&gt;)</code>-guarded — on Humble the tool is a no-op and the freshness test skips.</p>
 <p>Regenerate it (Jazzy only) once you have established that the type change behind the new hash is intentional and reviewed — see "When the freshness gate fails" below before running this:</p>
-<p><code>bash
-colcon build --symlink-install --packages-select autoware_component_interface_specs
-./build/autoware_component_interface_specs/generate_type_hashes \
-  src/autoware_component_interface_specs/interface_type_hashes.jazzy.lock</code></p>
+<div class="highlight"><pre><span></span><code>colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<span class="w"> </span>--packages-select<span class="w"> </span>autoware_component_interface_specs
+./build/autoware_component_interface_specs/generate_type_hashes<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>src/autoware_component_interface_specs/interface_type_hashes.jazzy.lock
+</code></pre></div>
 <p><code>test_type_hashes.cpp</code> diffs the generator's output against the committed file, but only when <code>AUTOWARE_CIS_CHECK_TYPE_HASHES</code> is set — this repo's own GitHub Actions sets it, while the ROS build farm's devel jobs do not, so a dependency-version skew on the build farm can never turn those jobs red. The always-on <code>covers_every_manifest_type</code> test still guarantees the lockfile and <code>interface_manifest.json</code> describe the same set of types.</p>
 <h3 id="when-the-freshness-gate-fails">When the freshness gate fails<a class="headerlink" href="#when-the-freshness-gate-fails" title="Permanent link">#</a></h3>
 <p>A red <code>committed_lockfile_is_up_to_date</code> means a registered type's definition changed relative to the last state a reviewer approved. <strong>Regenerating the lockfile is the last step, not the first</strong> — a bare refresh launders an unreviewed type change into the committed file and leaves the gate with nothing to catch. Decide which case you are in:</p>

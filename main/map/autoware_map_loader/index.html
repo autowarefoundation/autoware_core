@@ -7920,13 +7920,13 @@ Currently, it supports the following two types:</p>
 </ol>
 <h4 id="metadata-structure">Metadata structure<a class="headerlink" href="#metadata-structure" title="Permanent link">#</a></h4>
 <p>The metadata should look like this:</p>
-<p><code>yaml
-x_resolution: 20.0
-y_resolution: 20.0
-A.pcd: [1200, 2500] # -&gt; 1200 &lt; x &lt; 1220, 2500 &lt; y &lt; 2520
-B.pcd: [1220, 2500] # -&gt; 1220 &lt; x &lt; 1240, 2500 &lt; y &lt; 2520
-C.pcd: [1200, 2520] # -&gt; 1200 &lt; x &lt; 1220, 2520 &lt; y &lt; 2540
-D.pcd: [1240, 2520] # -&gt; 1240 &lt; x &lt; 1260, 2520 &lt; y &lt; 2540</code></p>
+<div class="highlight"><pre><span></span><code><span class="nt">x_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20.0</span>
+<span class="nt">y_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">20.0</span>
+<span class="nt">A.pcd</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1200</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2500</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># -&gt; 1200 &lt; x &lt; 1220, 2500 &lt; y &lt; 2520</span>
+<span class="nt">B.pcd</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1220</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2500</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># -&gt; 1220 &lt; x &lt; 1240, 2500 &lt; y &lt; 2520</span>
+<span class="nt">C.pcd</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1200</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2520</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># -&gt; 1200 &lt; x &lt; 1220, 2520 &lt; y &lt; 2540</span>
+<span class="nt">D.pcd</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">1240</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">2520</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># -&gt; 1240 &lt; x &lt; 1260, 2520 &lt; y &lt; 2540</span>
+</code></pre></div>
 <p>where,</p>
 <ul>
 <li><code>x_resolution</code> and <code>y_resolution</code></li>
@@ -7936,21 +7936,21 @@ D.pcd: [1240, 2520] # -&gt; 1240 &lt; x &lt; 1260, 2520 &lt; y &lt; 2540</code><
 <p>You may use <a href="https://github.com/autowarefoundation/autoware_tools/tree/main/map/autoware_pointcloud_divider">pointcloud_divider</a> for dividing pointcloud map as well as generating the compatible metadata.yaml.</p>
 <h4 id="directory-structure-of-these-files">Directory structure of these files<a class="headerlink" href="#directory-structure-of-these-files" title="Permanent link">#</a></h4>
 <p>If you only have one pointcloud map, Autoware will assume the following directory structure by default.</p>
-<p><code>bash
-sample-map-rosbag
-├── lanelet2_map.osm
-├── pointcloud_map.pcd</code></p>
+<div class="highlight"><pre><span></span><code>sample-map-rosbag
+├──<span class="w"> </span>lanelet2_map.osm
+├──<span class="w"> </span>pointcloud_map.pcd
+</code></pre></div>
 <p>If you have multiple rosbags, an example directory structure would be as follows. Note that you need to have a metadata when you have multiple pointcloud map files.</p>
-<p><code>bash
-sample-map-rosbag
-├── lanelet2_map.osm
-├── pointcloud_map.pcd
-│ ├── A.pcd
-│ ├── B.pcd
-│ ├── C.pcd
-│ └── ...
-├── map_projector_info.yaml
-└── pointcloud_map_metadata.yaml</code></p>
+<div class="highlight"><pre><span></span><code>sample-map-rosbag
+├──<span class="w"> </span>lanelet2_map.osm
+├──<span class="w"> </span>pointcloud_map.pcd
+│<span class="w"> </span>├──<span class="w"> </span>A.pcd
+│<span class="w"> </span>├──<span class="w"> </span>B.pcd
+│<span class="w"> </span>├──<span class="w"> </span>C.pcd
+│<span class="w"> </span>└──<span class="w"> </span>...
+├──<span class="w"> </span>map_projector_info.yaml
+└──<span class="w"> </span>pointcloud_map_metadata.yaml
+</code></pre></div>
 <h3 id="specific-features">Specific features<a class="headerlink" href="#specific-features" title="Permanent link">#</a></h3>
 <h4 id="publish-raw-pointcloud-map-ros-2-topic">Publish raw pointcloud map (ROS 2 topic)<a class="headerlink" href="#publish-raw-pointcloud-map-ros-2-topic" title="Permanent link">#</a></h4>
 <p>The node publishes the raw pointcloud map loaded from the <code>.pcd</code> file(s).</p>
@@ -8064,11 +8064,11 @@ map loading) can share the same information.</p>
 <li>
 <p><strong>From a metadata YAML file</strong> — when <code>lanelet2_map_metadata_path</code> points to an
    existing file. The expected format is:</p>
-<p><code>yaml
- x_resolution: 100.0
- y_resolution: 100.0
- 1.osm: [58700.0, 42500.0] # [min_x, min_y] of this cell
- 2.osm: [58800.0, 42500.0]</code></p>
+<div class="highlight"><pre><span></span><code><span class="nt">x_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100.0</span>
+<span class="nt">y_resolution</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100.0</span>
+<span class="nt">1.osm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">58700.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">42500.0</span><span class="p p-Indicator">]</span><span class="w"> </span><span class="c1"># [min_x, min_y] of this cell</span>
+<span class="nt">2.osm</span><span class="p">:</span><span class="w"> </span><span class="p p-Indicator">[</span><span class="nv">58800.0</span><span class="p p-Indicator">,</span><span class="w"> </span><span class="nv">42500.0</span><span class="p p-Indicator">]</span>
+</code></pre></div>
 <p>Relative filenames are resolved against the directory that contains the
  YAML file. The bounding box of each cell is
  <code>[min_x, min_y, min_x + x_resolution, min_y + y_resolution]</code>.</p>

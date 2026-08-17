@@ -7875,16 +7875,16 @@
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
 <h3 id="including-the-package">Including the Package<a class="headerlink" href="#including-the-package" title="Permanent link">#</a></h3>
 <p>To use this package in your project, you need to include it in your CMakeLists.txt:</p>
-<p><code>cmake
-find_package(autoware_motion_velocity_planner_common REQUIRED)</code></p>
+<div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_motion_velocity_planner_common</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+</code></pre></div>
 <h3 id="example-usage">Example Usage<a class="headerlink" href="#example-usage" title="Permanent link">#</a></h3>
 <p>Here's a simple example demonstrating the use of the utility functions:</p>
-<p>```cpp</p>
-<h1 id="include-autowaremotion_velocity_planner_commonutilshpp">include "autoware/motion_velocity_planner_common/utils.hpp"<a class="headerlink" href="#include-autowaremotion_velocity_planner_commonutilshpp" title="Permanent link">#</a></h1>
-<p>const auto decimated_traj_points = autoware::motion_velocity_planner::utils::decimate_trajectory_points_from_ego(
-    traj_points, current_pose, ego_nearest_dist_threshold, ego_nearest_yaw_threshold,
-    p.decimate_trajectory_step_length, 0.0);
-```</p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">"autoware/motion_velocity_planner_common/utils.hpp"</span>
+
+<span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">decimated_traj_points</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">motion_velocity_planner</span><span class="o">::</span><span class="n">utils</span><span class="o">::</span><span class="n">decimate_trajectory_points_from_ego</span><span class="p">(</span>
+<span class="w">    </span><span class="n">traj_points</span><span class="p">,</span><span class="w"> </span><span class="n">current_pose</span><span class="p">,</span><span class="w"> </span><span class="n">ego_nearest_dist_threshold</span><span class="p">,</span><span class="w"> </span><span class="n">ego_nearest_yaw_threshold</span><span class="p">,</span>
+<span class="w">    </span><span class="n">p</span><span class="p">.</span><span class="n">decimate_trajectory_step_length</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">);</span>
+</code></pre></div>
 <p>this example is from autoware_universe/planning/motion_velocity_planner/autoware_motion_velocity_obstacle_cruise_module/src/obstacle_cruise_module.cpp</p></div>
 
 
