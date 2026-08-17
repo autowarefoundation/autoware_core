@@ -14,7 +14,8 @@
 
 #pragma once
 
-// Public AUTOWARE_* macro surface.
+// Public AUTOWARE_* / ALLOCATE_OUTPUT_* macro surface. The expansions reference types from the
+// sibling headers, so include autoware_agnocast_wrapper.hpp rather than this file alone.
 
 #include <memory>
 #include <type_traits>

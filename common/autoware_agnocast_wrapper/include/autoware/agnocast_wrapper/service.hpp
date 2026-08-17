@@ -145,6 +145,11 @@ create_service(
 namespace autoware::agnocast_wrapper
 {
 
+// ===== Service, non-Agnocast build =====
+//
+// Mirrors the Agnocast-build Service<ServiceT> abstraction so code written against
+// AUTOWARE_SERVICE_PTR compiles unchanged in both builds.
+
 template <typename ServiceT>
 class Service
 {

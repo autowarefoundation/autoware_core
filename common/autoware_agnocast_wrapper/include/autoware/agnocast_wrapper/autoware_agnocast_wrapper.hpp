@@ -14,6 +14,8 @@
 
 #pragma once
 
+// Aggregate header: the intended include entry point for the wrapper surface.
+
 #include "autoware/agnocast_wrapper/client.hpp"
 #include "autoware/agnocast_wrapper/macros.hpp"
 #include "autoware/agnocast_wrapper/message_ptr.hpp"

@@ -288,10 +288,10 @@ create_client(
 namespace autoware::agnocast_wrapper
 {
 
-// ===== Client/Service, non-Agnocast build =====
+// ===== Client, non-Agnocast build =====
 //
-// Mirrors the Agnocast-build Client<ServiceT>/Service<ServiceT> abstraction so code written
-// against AUTOWARE_CLIENT_PTR/AUTOWARE_SERVICE_PTR compiles unchanged in both builds.
+// Mirrors the Agnocast-build Client<ServiceT> abstraction so code written against
+// AUTOWARE_CLIENT_PTR compiles unchanged in both builds.
 // async_send_request() still bridges through a promise: AUTOWARE_CLIENT_FUTURE(ServiceT) and
 // rclcpp::Client<ServiceT>::Future are different std::future instantiations, and std::future has
 // no covariant conversion between them.
