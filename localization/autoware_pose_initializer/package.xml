@@ -16,13 +16,16 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_adapi_v1_msgs</depend>
+  <depend>autoware_common_msgs</depend>
   <depend>autoware_component_interface_specs</depend>
+  <depend>autoware_component_interface_utils</depend>
+  <depend>autoware_internal_localization_msgs</depend>
   <depend>autoware_map_height_fitter</depend>
   <depend>autoware_motion_utils</depend>
-  <depend>autoware_qos_utils</depend>
   <depend>autoware_utils_diagnostics</depend>
   <depend>autoware_utils_geometry</depend>
   <depend>autoware_utils_logging</depend>
+  <depend>diagnostic_msgs</depend>
   <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>

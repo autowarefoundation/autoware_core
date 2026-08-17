@@ -15,7 +15,16 @@ ament_auto_add_library(pointcloud_map_loader_node SHARED
   src/pointcloud_map_loader/utils.cpp
 )
 target_link_libraries(pointcloud_map_loader_node ${PCL_LIBRARIES})
-target_link_libraries(pointcloud_map_loader_node yaml-cpp)
+
+if(NOT TARGET yaml-cpp::yaml-cpp)
+  add_library(yaml-cpp::yaml-cpp INTERFACE IMPORTED)
+  set_property(
+    TARGET yaml-cpp::yaml-cpp
+    PROPERTY INTERFACE_LINK_LIBRARIES yaml-cpp
+  )
+endif()
+
+target_link_libraries(pointcloud_map_loader_node yaml-cpp::yaml-cpp fmt::fmt)
 
 target_include_directories(pointcloud_map_loader_node
   SYSTEM PUBLIC
@@ -48,6 +57,10 @@ if(BUILD_TESTING)
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
     add_launch_test(
       test/lanelet2_map_loader_launch.test.py
+      TIMEOUT "30"
+    )
+    add_launch_test(
+      test/pointcloud_map_loader_metadata_launch.test.py
       TIMEOUT "30"
     )
   endif()
