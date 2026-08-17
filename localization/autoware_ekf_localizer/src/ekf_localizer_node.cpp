@@ -25,6 +25,7 @@
 #include <rclcpp/logging.hpp>
 
 #include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <algorithm>
 #include <cmath>
