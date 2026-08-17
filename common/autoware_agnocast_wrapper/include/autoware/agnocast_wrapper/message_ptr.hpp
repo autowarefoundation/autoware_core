@@ -12,7 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
 #ifdef USE_AGNOCAST_ENABLED
+
+#include "autoware/agnocast_wrapper/macros.hpp"
+
+#include <agnocast/agnocast.hpp>
+
+#include <memory>
+#include <utility>
 
 namespace autoware::agnocast_wrapper
 {

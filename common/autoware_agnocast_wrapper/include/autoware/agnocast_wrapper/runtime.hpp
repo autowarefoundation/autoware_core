@@ -12,7 +12,15 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
+#include <rclcpp/rclcpp.hpp>
+
 #ifdef USE_AGNOCAST_ENABLED
+
+#include <agnocast/agnocast.hpp>
+
+#include <cstdlib>
 
 namespace autoware::agnocast_wrapper
 {

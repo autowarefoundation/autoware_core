@@ -12,6 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
+#include <memory>
+#include <type_traits>
+
 #ifdef USE_AGNOCAST_ENABLED
 
 #define AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) \

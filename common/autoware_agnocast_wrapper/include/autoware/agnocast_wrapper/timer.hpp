@@ -12,7 +12,23 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#pragma once
+
+#include <rclcpp/exceptions/exceptions.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <rcl/timer.h>
+
+#include <chrono>
+#include <memory>
+#include <stdexcept>
+#include <utility>
+
 #ifdef USE_AGNOCAST_ENABLED
+
+#include "autoware/agnocast_wrapper/runtime.hpp"
+
+#include <agnocast/agnocast.hpp>
 
 namespace autoware::agnocast_wrapper
 {
