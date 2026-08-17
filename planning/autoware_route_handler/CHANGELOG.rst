@@ -11,6 +11,60 @@ Changelog for package autoware_route_handler
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: Mert Çolak
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat: add setAllowArea method in route handler for downstream module route validation (`#1194 <https://github.com/autowarefoundation/autoware_core/issues/1194>`_)
+  * feat: add setAllowArea method in route handler and support for finding next_lanelets_sequence when route consists areas
+  * style(pre-commit): autofix
+  * test(autoware_route_handler): add unit tests for allow-area route support
+  * fix: address precommit-ci errors
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* perf(autoware_route_handler): drop duplicate routing graph build in setMap (`#1119 <https://github.com/autowarefoundation/autoware_core/issues/1119>`_)
+  * perf(autoware_route_handler): drop duplicate routing graph build in setMap
+  setMap() built the whole-map vehicle RoutingGraph twice and ran an unused
+  full-map lanelet query in both overloads. Building a RoutingGraph over an
+  entire HD map is one of the most expensive operations in the stack.
+  - In the LaneletMapConstPtr overload, instantiate_routing_graph_and_traffic_rules
+  already builds the vehicle graph with the Germany/Vehicle rules, which is
+  identical to the vehicle graph rebuilt for the overall-graph container. Reuse
+  the already-built routing_graph_ptr\_ as the container's vehicle slot instead of
+  rebuilding it, halving the routing-graph build cost of this overload.
+  - In the LaneletMapBin overload, routing_graph_ptr\_ is built with the Autoware
+  participant rules (lanelet::autoware::DefaultLocation), which permit routing
+  through areas, whereas the overall-graph container intentionally uses the plain
+  Germany/Vehicle vehicle graph. To preserve the observable getOverallGraphPtr()
+  behavior, the separate vehicle graph build is kept here; only the dead
+  all_lanelets query is removed.
+  - Remove the unused `all_lanelets` lanelet-layer query from both overloads.
+  Add characterization tests (test/test_set_map.cpp) pinning the observable graph
+  state exposed via getRoutingGraphPtr() / getOverallGraphPtr(): the overall-graph
+  container always exposes two non-null graphs, and for the LaneletMapConstPtr
+  overload the container's vehicle graph encodes the same per-lanelet following
+  relations as routing_graph_ptr\_ and is deterministic across reconstruction.
+  No public API change. Behavior preserved (verified by full package test suite).
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_route_handler): assert vehicle graph against independent reference (`#82 <https://github.com/autowarefoundation/autoware_core/issues/82>`_)
+  Build a separate Germany/Vehicle routing graph in the test and compare the reused production routing graph against it, instead of comparing the routing graph to the container's vehicle slot (the same shared_ptr), which made the assertion f(x)==f(x). Add a pointer-identity check to document the intended reuse.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_route_handler): drop weak setMap characterization tests
+  Remove test/test_set_map.cpp per review. On the area-free sample map, Germany/Vehicle and DefaultLocation rules produce identical following() relations, so the tests would pass even with the wrong rules and were hard to read. The production setMap() change has no observable behavior change and remains; a focused setMap test on an area-containing fixture can be added separately.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* feat: add support for area for route planning (`#993 <https://github.com/autowarefoundation/autoware_core/issues/993>`_)
+  * feat: add support for area for route planning
+  * style(pre-commit): autofix
+  * feat(route_handler): publish mixed lanelet/area routes in LaneletRoute segments
+  * style(pre-commit): autofix
+  * feat(map): visualize LaneletMap areaLayer in vector map RViz markers
+  * style(pre-commit): autofix
+  * revert: remove area visualization commit (ebbc254d80df34dded119e7a6ecb716ebe4d620c) to split into two PRs
+  ---------
+  Co-authored-by: Ryohsuke Mitsudome <ryohsuke.mitsudome@tier4.jp>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Yutaka Kondo, emmeyteja, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

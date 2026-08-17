@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_trajectory</name>
-  <version>1.8.0</version>
+  <version>1.9.0</version>
   <description>The autoware_trajectory package</description>
   <maintainer email="yukinari.hisaki.2@tier4.jp">Yukinari Hisaki</maintainer>
   <maintainer email="takayuki.murooka@tier4.jp">Takayuki Murooka</maintainer>
@@ -25,9 +25,15 @@
   <depend>autoware_lanelet2_utils</depend>
   <depend>autoware_planning_msgs</depend>
   <depend>autoware_utils_geometry</depend>
+  <depend>autoware_utils_math</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>eigen</depend>
   <depend>fmt</depend>
   <depend>geometry_msgs</depend>
   <depend>lanelet2_core</depend>
+  <depend>lanelet2_routing</depend>
+  <depend>lanelet2_traffic_rules</depend>
+  <depend>libboost-dev</depend>
   <depend>rclcpp</depend>
   <depend>tf2</depend>
   <depend>tf2_geometry_msgs</depend>
@@ -40,6 +46,7 @@
   <test_depend>autoware_pyplot</test_depend>
   <test_depend>autoware_test_utils</test_depend>
   <test_depend>autoware_utils_geometry</test_depend>
+  <test_depend>lanelet2_io</test_depend>
   <test_depend>pybind11_vendor</test_depend>
   <test_depend>python3-dev</test_depend>
   <test_depend>python3-matplotlib</test_depend>

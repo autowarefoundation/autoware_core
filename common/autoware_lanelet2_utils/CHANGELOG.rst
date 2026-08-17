@@ -18,6 +18,57 @@ Changelog for package autoware_lanelet2_utils
   ---------
 * Contributors: Mamoru Sobue, Yutaka Kondo
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(direction_change): add  support for reverse goal poses in direction_change lanes on overlapped lanes (`#1158 <https://github.com/autowarefoundation/autoware_core/issues/1158>`_)
+  * feat: resolve the goal lanelet for reverse goal poses with direction_change lane on overlapped lanes
+  * feat: add test cases
+  * style(pre-commit): autofix
+  * fix: build errors and pre-commit issues
+  * style(pre-commit): autofix
+  * fix(autoware_lanelet2_utils): repair nn_search test merge corruption; address build fail issue
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* refactor(autoware_lanelet2_utils): reuse geometry helpers, fix int-narrowing, dedup offset-bound builders (`#1128 <https://github.com/autowarefoundation/autoware_core/issues/1128>`_)
+  * refactor(autoware_lanelet2_utils): reuse geometry helpers, fix int-narrowing, dedup offset-bound builders
+  Internal-only cleanup of src/geometry.cpp plus a coverage test for nn_search:
+  - get_pose_from_2d_arc_length: replace the hand-rolled half-yaw quaternion
+  and field-by-field point assignment with
+  autoware_utils_geometry::create_quaternion_from_yaw / create_point.
+  - get_closest_center_pose: use create_quaternion(0,0,0,1) for the identity
+  orientation fallback instead of a hand-written literal.
+  - compute_num_segments: compute the segment count directly in size_t
+  (std::ceil + std::max<size_t>) to avoid the prior int narrowing.
+  - Factor the four near-identical offset-bound builders (get_fine_centerline,
+  get_centerline_with_offset, get_right_bound_with_offset,
+  get_left_bound_with_offset) into a single anonymous-namespace helper
+  build_offset_linestring that takes the per-point formula, the point-id
+  policy, and a diagnostic context string. The left-bound builder keeps its
+  unique-id behavior; the other three keep InvalId.
+  - Add TestNNSearchZRange covering find_nearest's previously untested z-range
+  filtering branch (above-range, below-range, in-range, filter-disabled) and
+  the early-return guards (count==0, r_range<0, z_range<0, no candidate).
+  All public signatures are unchanged. The only observable difference is the
+  text of one RCLCPP_ERROR diagnostic in get_centerline_with_offset, which now
+  matches the shared helper's message; the returned value (empty linestring) is
+  unchanged.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * style(autoware_lanelet2_utils): add <vector> include to satisfy cpplint
+  ---------
+* feat: add support for area for route planning (`#993 <https://github.com/autowarefoundation/autoware_core/issues/993>`_)
+  * feat: add support for area for route planning
+  * style(pre-commit): autofix
+  * feat(route_handler): publish mixed lanelet/area routes in LaneletRoute segments
+  * style(pre-commit): autofix
+  * feat(map): visualize LaneletMap areaLayer in vector map RViz markers
+  * style(pre-commit): autofix
+  * revert: remove area visualization commit (ebbc254d80df34dded119e7a6ecb716ebe4d620c) to split into two PRs
+  ---------
+  Co-authored-by: Ryohsuke Mitsudome <ryohsuke.mitsudome@tier4.jp>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Yutaka Kondo, emmeyteja, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

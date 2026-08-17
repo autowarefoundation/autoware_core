@@ -727,13 +727,15 @@ experimental::trajectory::Trajectory<PathPointWithLaneId> connect_path_to_goal(
     pre_goal_lanelet = *prev_lanelet;
   }
 
-  const auto s_pre_goal =
-    autoware::experimental::trajectory::closest_with_constraint(
-      path, pre_goal_pose,
-      [&](const PathPointWithLaneId & point) {
-        return exists(point.lane_ids, pre_goal_lanelet.id());
-      })
-      .value_or(autoware::experimental::trajectory::closest(path, pre_goal_pose));
+  // Evaluate the unconstrained closest-point search lazily: only fall back to it when the
+  // constrained search fails, instead of always running both via value_or.
+  const auto s_pre_goal_constrained = autoware::experimental::trajectory::closest_with_constraint(
+    path, pre_goal_pose, [&](const PathPointWithLaneId & point) {
+      return exists(point.lane_ids, pre_goal_lanelet.id());
+    });
+  const auto s_pre_goal = s_pre_goal_constrained
+                            ? *s_pre_goal_constrained
+                            : autoware::experimental::trajectory::closest(path, pre_goal_pose);
 
   PathPointWithLaneId pre_goal;
   pre_goal.lane_ids = {pre_goal_lanelet.id()};
@@ -788,7 +790,8 @@ bool is_path_inside_lanelets(
   const experimental::trajectory::Trajectory<PathPointWithLaneId> & path,
   const lanelet::ConstLanelets & lanelets)
 {
-  for (double s = 0.0; s < path.length(); s += 0.1) {
+  const auto path_length = path.length();
+  for (double s = 0.0; s < path_length; s += 0.1) {
     const auto point = path.compute(s);
     if (!is_pose_inside_lanelets(point.point.pose, lanelets)) {
       return false;

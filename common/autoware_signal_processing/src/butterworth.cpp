@@ -164,7 +164,7 @@ std::vector<std::complex<double>> ButterworthFilter::poly(
 }
 
 /**
- *  @brief Prints the order and cut-off angular frequency (rad/sec) of the filter
+ *  @brief Prints the roots of the continuous-time filter transfer function's denominator.
  * */
 
 void ButterworthFilter::printFilterContinuousTimeRoots() const
@@ -184,6 +184,17 @@ void ButterworthFilter::printFilterContinuousTimeRoots() const
 void ButterworthFilter::printContinuousTimeTF() const
 {
   const auto & n = filter_specs_.N;
+
+  // The denominator is sized to (N + 1) only after computeContinuousTimeTF() has run. Since this
+  // method is public it may be called beforehand, when the denominator still has its default size,
+  // so guard against indexing past the end.
+  if (ct_tf_.continuous_time_denominator_.size() < static_cast<size_t>(n) + 1) {
+    RCLCPP_INFO(
+      rclcpp::get_logger("rclcpp"),
+      "The continuous-time transfer function has not been computed yet. Call "
+      "computeContinuousTimeTF() first.");
+    return;
+  }
 
   RCLCPP_INFO(
     rclcpp::get_logger("rclcpp"), "\nThe Continuous Time Transfer Function of the Filter is ;\n");

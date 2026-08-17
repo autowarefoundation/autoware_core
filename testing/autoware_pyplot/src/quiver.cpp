@@ -14,6 +14,8 @@
 
 #include <autoware/pyplot/quiver.hpp>
 
+#include <utility>
+
 namespace autoware::pyplot
 {
 inline namespace quiver
@@ -21,7 +23,7 @@ inline namespace quiver
 Quiver::Quiver(const pybind11::object & object) : PyObjectWrapper(object)
 {
 }
-Quiver::Quiver(pybind11::object && object) : PyObjectWrapper(object)
+Quiver::Quiver(pybind11::object && object) : PyObjectWrapper(std::move(object))
 {
 }
 }  // namespace quiver

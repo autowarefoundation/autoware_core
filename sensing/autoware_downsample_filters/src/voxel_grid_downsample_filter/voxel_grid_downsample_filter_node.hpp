@@ -15,9 +15,9 @@
 #ifndef VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 #define VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
 
-#include "transform_info.hpp"
+#include "voxel_grid_downsample_filter.hpp"
 
-#include <boost/thread/mutex.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <memory>
 #include <string>
@@ -25,25 +25,21 @@
 // PCL includes
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
-#include <pcl/filters/voxel_grid.h>
-#include <pcl/search/pcl_search.h>
-
 // Include tier4 autoware utils
 #include <autoware_utils_debug/debug_publisher.hpp>
 #include <autoware_utils_debug/published_time_publisher.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <autoware_utils_tf/transform_listener.hpp>
 
 namespace autoware::downsample_filters
 {
-class VoxelGridDownsampleFilter : public rclcpp::Node
+class VoxelGridDownsampleFilterNode : public rclcpp::Node
 {
 public:
   using PointCloud2 = sensor_msgs::msg::PointCloud2;
   using PointCloud2ConstPtr = sensor_msgs::msg::PointCloud2::ConstSharedPtr;
 
   PCL_MAKE_ALIGNED_OPERATOR_NEW
-  explicit VoxelGridDownsampleFilter(const rclcpp::NodeOptions & options);
+  explicit VoxelGridDownsampleFilterNode(const rclcpp::NodeOptions & options);
 
 private:
   /** \brief The input PointCloud2 subscriber. */
@@ -51,9 +47,6 @@ private:
 
   /** \brief The output PointCloud2 publisher. */
   rclcpp::Publisher<PointCloud2>::SharedPtr pub_output_;
-
-  /** \brief transform listener */
-  std::unique_ptr<autoware_utils_tf::TransformListener> transform_listener_{nullptr};
 
   /** \brief processing time publisher. **/
   std::unique_ptr<autoware_utils_system::StopWatch<std::chrono::milliseconds>> stop_watch_ptr_;
@@ -63,48 +56,10 @@ private:
   /** \brief PointCloud2 data callback. */
   void input_callback(const PointCloud2ConstPtr cloud);
 
-  /** \brief Convert output to PointCloud2. */
-  bool convert_output_costly(std::unique_ptr<PointCloud2> & output);
+  VoxelGridDownsampleFilter filter_core_;
 
-  /** \brief apply voxel grid downsample filter and transform point cloud */
-  /** \param input input point cloud */
-  /** \param output output point cloud */
-  /** \param transform_info transform info */
-  void filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info);
-
-  /** \brief voxel size x */
-  float voxel_size_x_;
-  /** \brief voxel size y */
-  float voxel_size_y_;
-  /** \brief voxel size z */
-  float voxel_size_z_;
-  /** \brief The input TF frame the data should be transformed into,
-   * if input.header.frame_id is different. */
-  std::string tf_input_frame_;
-  /** \brief The original data input TF frame. */
-  std::string tf_input_orig_frame_;
-  /** \brief The output TF frame the data should be transformed into,
-   * if input.header.frame_id is different. */
-  std::string tf_output_frame_;
-  /** \brief Internal mutex. */
-  std::mutex mutex_;
   /** \brief The maximum queue size (default: 3). */
   size_t max_queue_size_ = 3;
-
-  /** \brief check if point cloud is valid */
-  /** \param cloud point cloud */
-  /** \return true if point cloud is valid, false otherwise */
-  bool is_valid(const PointCloud2ConstPtr & cloud);
-
-  /** \brief calculate transform matrix */
-  /** \param target_frame target frame */
-  /** \param from point cloud with original frame id and timestamp */
-  /** \param transform_info transform info */
-  /** \return true if transform matrix is calculated, false otherwise */
-  bool calculate_transform_matrix(
-    const std::string & target_frame, const sensor_msgs::msg::PointCloud2 & from,
-    TransformInfo & transform_info /*output*/);
 };
 }  // namespace autoware::downsample_filters
 

@@ -65,6 +65,12 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
     return output_points;
   }
 
+  // Guard against dereferencing back() on an empty trajectory: there is no goal point to extend
+  // from, so return the (empty) input unchanged.
+  if (input_points.empty()) {
+    return output_points;
+  }
+
   const auto goal_point = input_points.back();
   for (double extend_sum = step_length; extend_sum < extend_distance - step_length;
        extend_sum += step_length) {

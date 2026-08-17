@@ -12,106 +12,112 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "euclidean_cluster.hpp"
+#include "../src/euclidean_cluster_object_detector.hpp"
+#include "parameters.hpp"
 
 #include <autoware/point_types/types.hpp>
 
 #include <gtest/gtest.h>
+#include <pcl_conversions/pcl_conversions.h>
 
+#include <algorithm>
+#include <array>
 #include <iostream>
 #include <memory>
 #include <vector>
-
-using autoware::point_types::PointXYZI;
 
 class EuclideanClusterTest : public ::testing::Test
 {
 protected:
   void SetUp() override
   {
-    // Create a test point cloud with 10 points in 3D space
-    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
-    cloud->width = 10;
-    cloud->height = 1;
-    cloud->points.resize(cloud->width * cloud->height);
-
-    // Add points that form a single cluster (close to each other)
+    // Build the two ground-truth point sets that the test cloud is composed of.
+    // near_points_: a tight cluster around the origin (i*0.1 for i in [0,5)).
     for (size_t i = 0; i < 5; ++i) {
-      cloud->points[i].x = 0.1 * static_cast<float>(i);
-      cloud->points[i].y = 0.1 * static_cast<float>(i);
-      cloud->points[i].z = 0.1 * static_cast<float>(i);
+      const float v = 0.1f * static_cast<float>(i);
+      near_points_.push_back({v, v, v});
     }
 
-    // Add points that form another cluster (far from the first cluster)
+    // far_points_: a tight cluster around (10,10,10) (10 + i*0.1 for i in [5,10)).
     for (size_t i = 5; i < 10; ++i) {
-      cloud->points[i].x = 10.0 + 0.1 * static_cast<float>(i);
-      cloud->points[i].y = 10.0 + 0.1 * static_cast<float>(i);
-      cloud->points[i].z = 10.0 + 0.1 * static_cast<float>(i);
+      const float v = 10.0f + 0.1f * static_cast<float>(i);
+      far_points_.push_back({v, v, v});
     }
 
-    test_cloud_ = cloud;
+    // Build the test cloud from the two named point sets so the input is the single
+    // source of truth for the expected clustering output.
+    pcl::PointCloud<pcl::PointXYZ>::Ptr cloud(new pcl::PointCloud<pcl::PointXYZ>);
+    for (const auto & p : near_points_) {
+      cloud->points.emplace_back(p[0], p[1], p[2]);
+    }
+    for (const auto & p : far_points_) {
+      cloud->points.emplace_back(p[0], p[1], p[2]);
+    }
+    cloud->width = static_cast<uint32_t>(cloud->points.size());
+    cloud->height = 1;
+
+    // Convert to ROS PointCloud2 for new API
+    pcl::toROSMsg(*cloud, ros_test_cloud_);
+    ros_test_cloud_.header.frame_id = "base_link";
   }
 
-  pcl::PointCloud<pcl::PointXYZ>::Ptr test_cloud_;
+  // Lazy init of test params/clusters
+  static autoware::euclidean_cluster::EuclideanClusterParams get_default_params()
+  {
+    autoware::euclidean_cluster::EuclideanClusterParams param;
+    param.use_height = true;
+    param.min_cluster_size = 1;
+    param.max_cluster_size = 100;
+    param.tolerance = 0.5f;
+    return param;
+  }
+
+  sensor_msgs::msg::PointCloud2 ros_test_cloud_;
+  std::vector<std::array<float, 3>> near_points_;
+  std::vector<std::array<float, 3>> far_points_;
 };
 
 TEST_F(EuclideanClusterTest, TestClusteringWithDefaultParams)
 {
-  // Create cluster with default parameters
-  autoware::euclidean_cluster::EuclideanCluster cluster(true, 1, 100);
-  cluster.setTolerance(0.5);  // Set tolerance to 0.5 meters
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector detector(get_default_params());
 
-  // Perform clustering
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  bool result = cluster.cluster(test_cloud_, clusters);
+  auto result = detector.cluster(ros_test_cloud_);
 
   // Verify the result
-  EXPECT_TRUE(result);
-  EXPECT_EQ(clusters.size(), 2);  // Should detect two clusters
+  EXPECT_EQ(result.cluster_message.objects.size(), 2u);  // Should detect two clusters
 
-  // Check the size of each cluster
-  EXPECT_EQ(clusters[0].points.size(), 5);
-  EXPECT_EQ(clusters[1].points.size(), 5);
+  // Expect no points are dropped
+  EXPECT_EQ(result.debug_message.width, 10u);
 }
 
 TEST_F(EuclideanClusterTest, TestClusteringWithCustomParams)
 {
-  // Create cluster with custom parameters
-  autoware::euclidean_cluster::EuclideanCluster cluster(true, 3, 100, 0.5);
+  auto param = get_default_params();
+  param.min_cluster_size = 3;
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector detector(param);
 
-  // Perform clustering
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  bool result = cluster.cluster(test_cloud_, clusters);
-
-  // Verify the result
-  EXPECT_TRUE(result);
-  EXPECT_EQ(clusters.size(), 2);  // Should detect two clusters
+  auto result = detector.cluster(ros_test_cloud_);
+  EXPECT_EQ(result.cluster_message.objects.size(), 2u);  // Should detect two clusters
 }
 
 TEST_F(EuclideanClusterTest, TestClusteringWithoutHeight)
 {
-  // Create cluster with height disabled
-  autoware::euclidean_cluster::EuclideanCluster cluster(false, 1, 100, 0.5);
-
-  // Perform clustering
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  bool result = cluster.cluster(test_cloud_, clusters);
+  auto param = get_default_params();
+  param.use_height = false;
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector detector(param);
+  auto result = detector.cluster(ros_test_cloud_);
 
   // Verify the result
-  EXPECT_TRUE(result);
-  EXPECT_EQ(clusters.size(), 2);  // Should still detect two clusters
+  EXPECT_EQ(result.cluster_message.objects.size(), 2u);  // Should still detect two clusters
 
   // When use_height is false, we're flattening points for clustering, but original z-values
   // are preserved in the output. So we expect to still see the original z values.
   bool found_non_zero_z = false;
-  for (const auto & cluster_cloud : clusters) {
-    for (const auto & point : cluster_cloud.points) {
-      if (point.z != 0.0) {
-        found_non_zero_z = true;
-        break;
-      }
+  for (const auto & object : result.cluster_message.objects) {
+    if (object.kinematics.pose_with_covariance.pose.position.z != 0.0) {
+      found_non_zero_z = true;
+      break;
     }
-    if (found_non_zero_z) break;
   }
   EXPECT_TRUE(found_non_zero_z) << "Expected at least some points to have non-zero z values";
 }
@@ -119,33 +125,13 @@ TEST_F(EuclideanClusterTest, TestClusteringWithoutHeight)
 TEST_F(EuclideanClusterTest, TestClusteringWithMinSizeFilter)
 {
   // Create cluster with higher min_cluster_size to filter out small clusters
-  autoware::euclidean_cluster::EuclideanCluster cluster(true, 6, 100, 0.5);
-
-  // Perform clustering
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  bool result = cluster.cluster(test_cloud_, clusters);
+  auto param = get_default_params();
+  param.min_cluster_size = 6;  // Filter out clusters smaller than 6
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector detector(param);
+  auto result = detector.cluster(ros_test_cloud_);
 
   // Verify the result
-  EXPECT_TRUE(result);
-  EXPECT_EQ(clusters.size(), 0);  // No clusters should pass the size filter
-}
-
-TEST_F(EuclideanClusterTest, TestUnimplementedMethods)
-{
-  autoware::euclidean_cluster::EuclideanCluster cluster(true, 1, 100, 0.5);
-
-  // Test unimplemented method 1
-  sensor_msgs::msg::PointCloud2::ConstSharedPtr cloud_msg =
-    std::make_shared<sensor_msgs::msg::PointCloud2>();
-  autoware_perception_msgs::msg::DetectedObjects objects;
-
-  bool result1 = cluster.cluster(cloud_msg, objects);
-  EXPECT_FALSE(result1);  // Should return false as method is not implemented
-
-  // Test unimplemented method 2
-  std::vector<pcl::PointCloud<pcl::PointXYZ>> clusters;
-  bool result2 = cluster.cluster(cloud_msg, objects, clusters);
-  EXPECT_FALSE(result2);  // Should return false as method is not implemented
+  EXPECT_EQ(result.cluster_message.objects.size(), 0u);  // No clusters should pass the size filter
 }
 
 int main(int argc, char ** argv)

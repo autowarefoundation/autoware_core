@@ -16,11 +16,13 @@
 #define POINTCLOUD_MAP_LOADER__UTILS_HPP_
 
 #include <autoware_map_msgs/msg/area_info.hpp>
+#include <autoware_map_msgs/msg/point_cloud_map_cell_with_id.hpp>
 #include <geometry_msgs/msg/point.hpp>
 
 #include <pcl/common/common.h>
 #include <yaml-cpp/yaml.h>
 
+#include <functional>
 #include <map>
 #include <set>
 #include <string>
@@ -49,6 +51,14 @@ bool cylinder_and_box_overlap_exists(
   const pcl::PointXYZ box_min_point, const pcl::PointXYZ box_max_point);
 bool is_grid_within_queried_area(
   const autoware_map_msgs::msg::AreaInfo area, const PCDFileMetadata metadata);
+
+using PointcloudLoaderLogFunction = std::function<void(const std::string &)>;
+
+// Load a single PCD file into a fully-populated PointCloudMapCellWithID, copying the cell id and
+// the metadata bounds. Shared by the partial / differential / selected loaders.
+autoware_map_msgs::msg::PointCloudMapCellWithID load_point_cloud_map_cell_with_id(
+  const std::string & path, const std::string & map_id, const PCDFileMetadata & metadata,
+  const PointcloudLoaderLogFunction & on_error = PointcloudLoaderLogFunction{});
 
 }  // namespace autoware::map_loader
 

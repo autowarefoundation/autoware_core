@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_object_recognition_utils</name>
-  <version>1.8.0</version>
+  <version>1.9.0</version>
   <description>The autoware_object_recognition_utils package</description>
   <maintainer email="takayuki.murooka@tier4.jp">Takayuki Murooka</maintainer>
   <maintainer email="yoshi.ri@tier4.jp">Yoshi Ri</maintainer>
@@ -13,8 +13,10 @@
 
   <depend>autoware_interpolation</depend>
   <depend>autoware_perception_msgs</depend>
+  <depend>autoware_point_types</depend>
   <depend>autoware_utils_geometry</depend>
   <depend>autoware_utils_math</depend>
+  <depend>eigen</depend>
   <depend>geometry_msgs</depend>
   <depend>libboost-dev</depend>
   <depend>pcl_conversions</depend>
@@ -24,10 +26,13 @@
   <depend>std_msgs</depend>
   <depend>tf2</depend>
   <depend>tf2_eigen</depend>
+  <depend>tf2_geometry_msgs</depend>
+  <depend>tf2_ros</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>libpcl-all-dev</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

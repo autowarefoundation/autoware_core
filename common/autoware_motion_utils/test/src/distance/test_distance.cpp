@@ -214,4 +214,84 @@ TEST(CalculateStopDistanceTest, HandlesAlreadyExceedingDecelerationLimit)
   EXPECT_NEAR(result.value(), 8.3333, epsilon);
 }
 
+TEST(CalculateStopDistanceTest, PositiveVelocityPositiveAcceleration_StandardStop)
+{
+  // v0 = 10.0, a0 = 2.0, delay = 0.0. Limits: a = -2.0, j = -2.0.
+  // Phase 2 (Jerk): t = 2.0s to reach a=-2.0. x2 = 21.3333m, v2 = 10.0m/s.
+  // Phase 3 (Decel): from v2=10.0 down to 0 at a=-2.0. x3 = 25.0m.
+  // Total Expected: 21.3333 + 25.0 = 46.3333 m.
+  auto result = calculate_stop_distance(10.0, 2.0, -2.0, -2.0, 0.0);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NEAR(result.value(), 46.3333, epsilon);
+}
+
+TEST(CalculateStopDistanceTest, PositiveVelocityPositiveAcceleration_StopDuringJerkPhase)
+{
+  // v0 = 2.0, a0 = 2.0, delay = 0.0. Limits: a = -5.0, j = -2.0.
+  // Stays in Phase 2 because it reaches v=0 before reaching a=-5.0.
+  // Solve: 2.0 + 2.0*t - t^2 = 0 -> t = 1 + sqrt(3) ~ 2.732s.
+  // x = 2*t + t^2 - 1/3*t^3 ~ 6.1308m.
+  auto result = calculate_stop_distance(2.0, 2.0, -5.0, -2.0, 0.0);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NEAR(result.value(), 6.1308, epsilon);
+}
+
+TEST(CalculateStopDistanceTest, PositiveVelocityNegativeAcceleration_StandardStop)
+{
+  // v0 = 10.0, a0 = -1.0, delay = 0.0. Limits: a = -2.0, j = -2.0.
+  // Phase 2 (Jerk): t = 0.5s to reach a=-2.0. x2 = 4.8333m, v2 = 9.25m/s.
+  // Phase 3 (Decel): from v2=9.25 down to 0 at a=-2.0. x3 = 21.3906m.
+  // Total Expected: 4.8333 + 21.3906 = 26.2239 m.
+  auto result = calculate_stop_distance(10.0, -1.0, -2.0, -2.0, 0.0);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NEAR(result.value(), 26.2239, epsilon);
+}
+
+TEST(CalculateStopDistanceTest, ZeroVelocityPositiveAcceleration)
+{
+  // Vehicle is already stopped, should return 0 regardless of acceleration.
+  auto result = calculate_stop_distance(0.0, 2.0, -4.0, -10.0, 0.0);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_DOUBLE_EQ(result.value(), 0.0);
+}
+
+TEST(CalculateStopDistanceTest, NegativeVelocityPositiveAcceleration)
+{
+  // Vehicle is reversing, should return 0.
+  auto result = calculate_stop_distance(-2.0, 2.0, -4.0, -10.0, 0.0);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_DOUBLE_EQ(result.value(), 0.0);
+}
+
+TEST(CalculateStopDistanceTest, NegativeVelocityNegativeAcceleration)
+{
+  // Vehicle is reversing, should return 0.
+  auto result = calculate_stop_distance(-2.0, -2.0, -4.0, -10.0, 0.0);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_DOUBLE_EQ(result.value(), 0.0);
+}
+
+TEST(CalculateStopDistanceTest, PositiveVelocityNegativeAcceleration_NaturalStopDuringDelay)
+{
+  // v0 = 5.0, a0 = -2.0, delay = 5.0s.
+  // t_stop = 2.5s < delay. Natural stop.
+  // x = 5.0*2.5 + 0.5*(-2.0)*2.5^2 = 6.25m.
+  auto result = calculate_stop_distance(5.0, -2.0, -4.0, -10.0, 5.0);
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NEAR(result.value(), 6.25, epsilon);
+}
+
+TEST(CalculateStopDistanceTest, Robustness_HandlesPositiveLimitInputs)
+{
+  // Limits passed as positive magnitudes should be handled by internal std::abs.
+  // Same as Phase3Stop_StandardThreePhaseStop test.
+  auto result = calculate_stop_distance(10.0, 0.0, 2.0, 2.0, 1.0);
+
+  ASSERT_TRUE(result.has_value());
+  EXPECT_NEAR(result.value(), 39.9166, epsilon);
+}
+
 }  // namespace

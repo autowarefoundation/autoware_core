@@ -21,8 +21,6 @@
 #include <yaml-cpp/yaml.h>
 
 #include <filesystem>
-#include <fstream>
-#include <iostream>
 #include <string>
 
 namespace autoware::map_projection_loader
@@ -49,20 +47,11 @@ autoware_map_msgs::msg::MapProjectorInfo load_info_from_yaml(const std::string &
   } else if (msg.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL) {
     ;  // do nothing
 
-  } else if (msg.projector_type == "local") {
-    RCLCPP_WARN_STREAM(
-      rclcpp::get_logger("MapProjectionLoader"),
-      "Load " << filename << "\n"
-              << "DEPRECATED WARNING: projector type \"local\" is deprecated."
-                 "Please use \"Local\" instead. For more info, visit "
-                 "https://github.com/autowarefoundation/autoware.universe/blob/main/map/"
-                 "map_projection_loader README.md");
-    msg.projector_type = autoware_map_msgs::msg::MapProjectorInfo::LOCAL;
   } else {
     throw std::runtime_error(
       "Invalid map projector type. Currently supported types: MGRS, LocalCartesian, "
       "LocalCartesianUTM, "
-      "TransverseMercator, and local");
+      "TransverseMercator, and Local");
   }
 
   // set scale factor
@@ -97,17 +86,11 @@ autoware_map_msgs::msg::MapProjectorInfo load_map_projector_info(
   autoware_map_msgs::msg::MapProjectorInfo msg;
 
   if (std::filesystem::exists(yaml_filename)) {
-    std::cout << "Load " << yaml_filename << std::endl;
     msg = load_info_from_yaml(yaml_filename);
   } else if (std::filesystem::exists(lanelet2_map_filename)) {
-    std::cout << "Load " << lanelet2_map_filename << std::endl;
-    std::cout
-      << "DEPRECATED WARNING: Loading map projection info from lanelet2 map may soon be deleted. "
-         "Please use map_projector_info.yaml instead. For more info, visit "
-         "https://github.com/autowarefoundation/autoware.universe/blob/main/map/"
-         "map_projection_loader/"
-         "README.md"
-      << std::endl;
+    // TODO(sasakisasaki, added on 29th July 2026):
+    //   Remove this deprecated way, which is used for backward compatibility.
+    //   Ref. https://github.com/autowarefoundation/autoware_universe/pull/3986
     msg = load_info_from_lanelet2_map(lanelet2_map_filename);
   } else {
     throw std::runtime_error(
@@ -116,23 +99,4 @@ autoware_map_msgs::msg::MapProjectorInfo load_map_projector_info(
   }
   return msg;
 }
-
-MapProjectionLoader::MapProjectionLoader(const rclcpp::NodeOptions & options)
-: rclcpp::Node("map_projection_loader", options)
-{
-  const std::string yaml_filename = this->declare_parameter<std::string>("map_projector_info_path");
-  const std::string lanelet2_map_filename =
-    this->declare_parameter<std::string>("lanelet2_map_path");
-
-  const autoware_map_msgs::msg::MapProjectorInfo msg =
-    load_map_projector_info(yaml_filename, lanelet2_map_filename);
-
-  // Publish the message
-  publisher_ = this->create_publisher<MapProjectorInfo::Message>(
-    MapProjectorInfo::name, autoware::component_interface_specs::get_qos<MapProjectorInfo>());
-  publisher_->publish(msg);
-}
 }  // namespace autoware::map_projection_loader
-
-#include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::map_projection_loader::MapProjectionLoader)

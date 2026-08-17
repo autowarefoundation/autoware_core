@@ -15,34 +15,34 @@
 #ifndef STOP_FILTER_HPP_
 #define STOP_FILTER_HPP_
 
+#include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+
 namespace autoware::stop_filter
 {
 
-struct Vector3D
-{
-  double x;
-  double y;
-  double z;
-};
-
-struct FilterResult
-{
-  Vector3D linear_velocity;
-  Vector3D angular_velocity;
-  bool was_stopped;
-};
-
+/// @brief Judges whether a vehicle is stopped from its odometry twist and, when it is, zeroes the
+/// twist. The judgement compares the linear-x and angular-z velocities against fixed thresholds.
 class StopFilter
 {
 public:
+  /// @brief Construct the filter.
+  /// @param linear_x_threshold Linear-x velocity below which the vehicle is considered stopped.
+  /// @param angular_z_threshold Angular-z velocity below which the vehicle is considered stopped.
   StopFilter(double linear_x_threshold, double angular_z_threshold);
-  FilterResult apply_stop_filter(
-    const Vector3D & linear_velocity, const Vector3D & angular_velocity) const;
+
+  /// @brief Build a stop-flag message indicating whether the input odometry represents a stop.
+  /// @return BoolStamped carrying the input timestamp and the stop judgement.
+  autoware_internal_debug_msgs::msg::BoolStamped create_stop_flag_msg(
+    const nav_msgs::msg::Odometry & input) const;
+
+  /// @brief Build a filtered odometry whose twist is zeroed when the vehicle is judged stopped.
+  /// @return Copy of the input odometry with a zeroed twist on a stop, otherwise unchanged.
+  nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry & input) const;
 
 private:
   double linear_x_threshold_;
   double angular_z_threshold_;
-  bool is_stopped(const Vector3D & linear_velocity, const Vector3D & angular_velocity) const;
 };
 }  // namespace autoware::stop_filter
 #endif  // STOP_FILTER_HPP_

@@ -74,6 +74,7 @@ if(BUILD_TESTING)
     test/test_shift.cpp
     test/test_helpers.cpp
     test/test_interpolator.cpp
+    test/test_pchip.cpp
     test/test_pretty_build.cpp
     test/test_reference_path.cpp
     test/test_reference_path_vm_10_spec.cpp

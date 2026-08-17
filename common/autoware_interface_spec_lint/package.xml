@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>autoware_interface_spec_lint</name>
+  <version>1.9.0</version>
+  <description>WARN-only lint for the Autoware component interface specs</description>
+  <maintainer email="yutaka.kondo@tier4.jp">Yutaka Kondo</maintainer>
+  <license>Apache License 2.0</license>
+
+  <!-- autoware_component_interface_specs is a test dependency because its
+       BUILD_TESTING-gated generator binary backs the manifest_fresh test; the
+       pytest setup under test/ locates that binary via the ament index. -->
+  <test_depend>ament_copyright</test_depend>
+  <test_depend>autoware_component_interface_specs</test_depend>
+  <test_depend>python3-pytest</test_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+  </export>
+</package>

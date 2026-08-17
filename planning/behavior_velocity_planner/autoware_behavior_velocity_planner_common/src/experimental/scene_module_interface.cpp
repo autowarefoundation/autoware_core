@@ -14,6 +14,8 @@
 
 #include "autoware/behavior_velocity_planner_common/experimental/scene_module_interface.hpp"
 
+#include "utilization/util_internal.hpp"
+
 #include <cstdio>
 #include <memory>
 #include <string>
@@ -21,31 +23,6 @@
 
 namespace autoware::behavior_velocity_planner::experimental
 {
-
-namespace
-{
-std::string formatIds(
-  const std::vector<int64_t> & regulatory_element_ids, const std::vector<int64_t> & lanelet_ids,
-  const std::vector<int64_t> & line_ids)
-{
-  const auto formatIdGroup =
-    [](const std::vector<int64_t> & ids, const char * prefix) -> std::string {
-    if (ids.empty()) {
-      return "";
-    }
-    std::string result = "[";
-    result += prefix;
-    for (size_t i = 0; i < ids.size(); ++i) {
-      result += (i == 0 ? ": " : ", ") + std::to_string(ids[i]);
-    }
-    result += "]";
-    return result;
-  };
-
-  return formatIdGroup(regulatory_element_ids, "Reg") + formatIdGroup(lanelet_ids, "Lane") +
-         formatIdGroup(line_ids, "Line");
-}
-}  // namespace
 
 SceneModuleInterface::SceneModuleInterface(
   const int64_t module_id, const rclcpp::Logger & logger, rclcpp::Clock::SharedPtr clock,
@@ -64,7 +41,8 @@ std::string SceneModuleInterface::formatLogMessage(const char * format, va_list 
 {
   char buffer[1024];
   vsnprintf(buffer, sizeof(buffer), format, args);
-  std::string id_info = formatIds(getRegulatoryElementIds(), getLaneletIds(), getLineIds());
+  std::string id_info =
+    planning_utils::formatIds(getRegulatoryElementIds(), getLaneletIds(), getLineIds());
   return "[Module ID: " + std::to_string(module_id_) + "]" + id_info + " " + buffer;
 }
 

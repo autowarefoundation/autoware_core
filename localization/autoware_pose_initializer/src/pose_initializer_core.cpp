@@ -15,14 +15,11 @@
 #include "pose_initializer_core.hpp"
 
 #include "copy_vector_to_array.hpp"
-#include "ekf_localization_trigger_module.hpp"
 #include "gnss_module.hpp"
 #include "localization_module.hpp"
-#include "ndt_localization_trigger_module.hpp"
+#include "localization_trigger_module.hpp"
 #include "pose_error_check_module.hpp"
 #include "stop_check_module.hpp"
-
-#include <autoware/qos_utils/qos_compatibility.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 
@@ -34,18 +31,12 @@ namespace autoware::pose_initializer
 {
 PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
 : rclcpp::Node("pose_initializer", options),
-  group_srv_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive))
+  group_srv_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
+  pub_reset_(create_publisher<PoseWithCovarianceStamped>("pose_reset", 1))
 {
-  rclcpp::QoS qos_state(1);
-  qos_state.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-  qos_state.durability(RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
-  pub_state_ = create_publisher<State::Message>(
-    State::name, autoware::component_interface_specs::get_qos<State>());
-  srv_initialize_ = create_service<Initialize::Service>(
-    Initialize::name,
-    std::bind(&PoseInitializer::on_initialize, this, std::placeholders::_1, std::placeholders::_2),
-    AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE(), group_srv_);
-  pub_reset_ = create_publisher<PoseWithCovarianceStamped>("pose_reset", 1);
+  pub_state_ = adaptor_.create_publisher<State>();
+  srv_initialize_ =
+    adaptor_.create_service<Initialize>(this, &PoseInitializer::on_initialize, group_srv_);
 
   output_pose_covariance_ = get_covariance_parameter(this, "output_pose_covariance");
   gnss_particle_covariance_ = get_covariance_parameter(this, "gnss_particle_covariance");
@@ -53,7 +44,8 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
     this, "pose_initializer_status");
 
   if (declare_parameter<bool>("ekf_enabled")) {
-    ekf_localization_trigger_ = std::make_unique<EkfLocalizationTriggerModule>(this);
+    ekf_localization_trigger_ =
+      std::make_unique<LocalizationTriggerModule>(this, "ekf_trigger_node", "EKF");
   }
   if (declare_parameter<bool>("gnss_enabled")) {
     gnss_ = std::make_unique<GnssModule>(this);
@@ -63,7 +55,8 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
   }
   if (declare_parameter<bool>("ndt_enabled")) {
     ndt_ = std::make_unique<LocalizationModule>(this, "ndt_align");
-    ndt_localization_trigger_ = std::make_unique<NdtLocalizationTriggerModule>(this);
+    ndt_localization_trigger_ =
+      std::make_unique<LocalizationTriggerModule>(this, "ndt_trigger_node", "NDT");
   }
   if (declare_parameter<bool>("stop_check_enabled")) {
     // Add 1.0 sec margin for twist buffer.

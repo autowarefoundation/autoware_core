@@ -7,6 +7,50 @@ Changelog for package autoware_vehicle_info_utils
 * refactor(autoware_vehicle_info_utils): rewrite using modern C++ without API breakage (`#343 <https://github.com/autowarefoundation/autoware_core/issues/343>`_)
 * Contributors: Yutaka Kondo
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_vehicle_info_utils): cover pure paths and reuse get_or_declare_parameter (`#1105 <https://github.com/autowarefoundation/autoware_core/issues/1105>`_)
+  * test(autoware_vehicle_info_utils): cover pure paths and reuse get_or_declare_parameter
+  Add no-ROS unit tests for the pure VehicleInfo helpers that were previously
+  untested: createVehicleInfo's wheel_base/max_steer clamping and
+  has_non_positive_values branches, calcMaxMinDimension's two branches,
+  extendVehicleInfo's margin distribution, the full 5-margin createFootprint
+  overload (asymmetric margins plus center_at_base_link, asserting all seven
+  ring points), and calcCurvatureFromSteerAngle's NaN guard. These run directly
+  against the free functions / VehicleInfo methods without rclcpp.
+  Replace the file-local getParameter<T> helper in VehicleInfoUtils with
+  autoware_utils_rclcpp::get_or_declare_parameter<T>, which has identical
+  has_parameter/get/declare semantics, and add the autoware_utils_rclcpp
+  dependency. The throwing behavior on a parameter type mismatch is preserved
+  (declare_parameter still throws); only the redundant local RCLCPP_ERROR log
+  line on that path is dropped. No public API change.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_vehicle_info_utils): de-tautologize vehicle_info test oracles (`#79 <https://github.com/autowarefoundation/autoware_core/issues/79>`_)
+  Replace expected values that mirrored the implementation's formula or were read back from the output fields under test with independently hand-computed concrete literals (or stdlib-only computations in the std::hypot style). This makes the assertions verify the calculation instead of re-deriving the same potentially-wrong value.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_vehicle_info_utils): use independent oracles for derived-value asserts (`#86 <https://github.com/autowarefoundation/autoware_core/issues/86>`_)
+  Replace test expected values that mirrored the implementation's own
+  formulas with concrete, independently hand-computed literals so the
+  assertions can no longer pass on a wrong production calculation.
+  - extendVehicleInfo: assert hardcoded 4.4 / 2.4 / 1.2 instead of
+  reconstructing 'length + margin' / 'base2back + margin / 2'.
+  - calcMaxMinDimension branch guards: drop the ASSERTs that recomputed
+  base2front from the output fields; the branch is fixed by the
+  test-chosen inputs and documented in comments.
+  std::hypot-style expected values (inputs picked by the test, stdlib as
+  the only shared dependency) and the existing hardcoded literals are
+  kept. No production code changed.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* feat(vehicle_info_utils): adjust `VehicleInfo` to cover `VehicleShape`  (`#1083 <https://github.com/autowarefoundation/autoware_core/issues/1083>`_)
+  * add function to help replacing VehicleShape
+  * remove defaulted function
+  ---------
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* feat(autoware_vehicle_info_utils): add base_pose to createFootprint (`#1072 <https://github.com/autowarefoundation/autoware_core/issues/1072>`_)
+* Contributors: Sarun MUKDAPITAK, Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

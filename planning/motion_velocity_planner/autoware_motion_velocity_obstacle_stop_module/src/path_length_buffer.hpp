@@ -15,7 +15,13 @@
 #pragma once
 
 #include "autoware_utils_geometry/geometry.hpp"
+#include "types.hpp"
 
+#include <rclcpp/time.hpp>
+
+#include <geometry_msgs/msg/point.hpp>
+
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <functional>

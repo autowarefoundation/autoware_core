@@ -5,6 +5,27 @@ Changelog for package autoware_gnss_poser
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_gnss_poser): drop dead helpers, per-instance prev_position, unit-test pure statics (`#1154 <https://github.com/autowarefoundation/autoware_core/issues/1154>`_)
+  Internal-only cleanup of the GNSS poser node:
+  - Delete the dead get_quaternion_by_heading and get_transform helpers
+  (declared and defined but never called anywhere in autoware_core).
+  - Replace the function-local 'static prev_position' in callback_nav_sat_fix
+  with a per-instance prev_position\_ member guarded by has_prev_position\_,
+  removing the process-global mutable state shared across all instances. The
+  first-sample behavior is preserved (initial difference is zero, yielding an
+  identity orientation).
+  - Add direct unit tests for the pure static helpers (get_median_position
+  odd/even-sized buffers, get_average_position values, and
+  get_quaternion_by_position_difference across all cardinal headings plus the
+  identical-points edge case) via a friend test fixture, so they no longer
+  rely solely on a full node + executor round-trip.
+  No public API change; behavior-preserving.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

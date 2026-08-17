@@ -11,6 +11,18 @@ Changelog for package autoware_ground_filter
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Amadeusz Szymko
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix: [ground_filter] Remove dead code (`#1210 <https://github.com/autowarefoundation/autoware_core/issues/1210>`_)
+* feat: [codecov/refactoring] [ground_filter] implement characterization test (`#1196 <https://github.com/autowarefoundation/autoware_core/issues/1196>`_)
+* fix(autoware_ground_filter): reuse fixture node in parameter update test (`#1142 <https://github.com/autowarefoundation/autoware_core/issues/1142>`_)
+  * fix(autoware_ground_filter): reuse fixture node in parameter update test
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Tran Huu Nhat Huy, Vishal Chauhan, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

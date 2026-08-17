@@ -18,12 +18,21 @@
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
 #include <range/v3/all.hpp>
+#include <tf2/utils.hpp>
+
+#include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <gtest/gtest.h>
 #include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/geometry/Lanelet.h>
+#include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/primitives/LineString.h>
+#include <lanelet2_core/primitives/Point.h>
 
+#include <cmath>
 #include <filesystem>
 #include <string>
+#include <vector>
 namespace fs = std::filesystem;
 
 namespace autoware::experimental
@@ -585,6 +594,226 @@ TEST_F(TestNNSearch003, get_road_lanelets_at)
     ASSERT_TRUE(road_lanelets.empty());
     ASSERT_TRUE(shoulder_lanelets.empty());
   }
+}
+
+namespace
+{
+geometry_msgs::msg::Pose make_pose(const double x, const double y, const double yaw)
+{
+  geometry_msgs::msg::Pose pose;
+  pose.position.x = x;
+  pose.position.y = y;
+  tf2::Quaternion quaternion;
+  quaternion.setRPY(0.0, 0.0, yaw);
+  pose.orientation = tf2::toMsg(quaternion);
+  return pose;
+}
+
+lanelet::ConstLanelet make_lanelet(
+  const lanelet::Id id, const std::vector<lanelet::BasicPoint3d> & left,
+  const std::vector<lanelet::BasicPoint3d> & right, const bool direction_change)
+{
+  lanelet::Points3d left_points;
+  lanelet::Points3d right_points;
+  for (const auto & point : left) {
+    left_points.emplace_back(lanelet::InvalId, point.x(), point.y(), point.z());
+  }
+  for (const auto & point : right) {
+    right_points.emplace_back(lanelet::InvalId, point.x(), point.y(), point.z());
+  }
+  lanelet::Lanelet lanelet_obj(
+    id, lanelet::LineString3d(lanelet::InvalId, left_points),
+    lanelet::LineString3d(lanelet::InvalId, right_points));
+  if (direction_change) {
+    lanelet_obj.setAttribute("direction_change", "yes");
+  }
+  return lanelet_obj;
+}
+}  // namespace
+
+class TestDirectionChangeOverlap : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    const std::vector<lanelet::BasicPoint3d> left = {
+      {0.0, 1.0, 0.0},
+      {10.0, 1.0, 0.0},
+    };
+    const std::vector<lanelet::BasicPoint3d> right = {
+      {0.0, -1.0, 0.0},
+      {10.0, -1.0, 0.0},
+    };
+    forward_lanelet_ = make_lanelet(forward_lanelet_id_, left, right, false);
+    direction_change_lanelet_ = make_lanelet(direction_change_lanelet_id_, left, right, true);
+    overlapping_lanelets_ = {forward_lanelet_, direction_change_lanelet_};
+    rtree_.emplace(lanelet2_utils::LaneletRTree(overlapping_lanelets_));
+    overlap_pose_ = make_pose(5.0, 0.0, 0.0);
+    forward_goal_pose_ = make_pose(5.0, 0.0, 0.0);
+    reverse_goal_pose_ = make_pose(5.0, 0.0, M_PI);
+  }
+
+  static constexpr lanelet::Id forward_lanelet_id_{1001};
+  static constexpr lanelet::Id direction_change_lanelet_id_{1002};
+
+  lanelet::ConstLanelet forward_lanelet_;
+  lanelet::ConstLanelet direction_change_lanelet_;
+  lanelet::ConstLanelets overlapping_lanelets_;
+  std::optional<lanelet2_utils::LaneletRTree> rtree_;
+  geometry_msgs::msg::Pose overlap_pose_;
+  geometry_msgs::msg::Pose forward_goal_pose_;
+  geometry_msgs::msg::Pose reverse_goal_pose_;
+};
+
+TEST_F(TestDirectionChangeOverlap, overlapping_lanelets_contain_pose)
+{
+  const lanelet::BasicPoint2d point{overlap_pose_.position.x, overlap_pose_.position.y};
+  EXPECT_TRUE(lanelet::geometry::inside(forward_lanelet_, point));
+  EXPECT_TRUE(lanelet::geometry::inside(direction_change_lanelet_, point));
+}
+
+TEST_F(TestDirectionChangeOverlap, forward_goal_prefers_forward_lanelet)
+{
+  const auto closest =
+    lanelet2_utils::get_closest_lanelet(overlapping_lanelets_, forward_goal_pose_);
+  ASSERT_TRUE(closest.has_value());
+  EXPECT_EQ(closest->id(), forward_lanelet_id_);
+
+  const auto closest_from_rtree = rtree_->get_closest_lanelet(forward_goal_pose_);
+  ASSERT_TRUE(closest_from_rtree.has_value());
+  EXPECT_EQ(closest_from_rtree->id(), forward_lanelet_id_);
+}
+
+TEST_F(TestDirectionChangeOverlap, reverse_goal_prefers_direction_change_lanelet)
+{
+  const auto closest =
+    lanelet2_utils::get_closest_lanelet(overlapping_lanelets_, reverse_goal_pose_);
+  ASSERT_TRUE(closest.has_value());
+  EXPECT_EQ(closest->id(), direction_change_lanelet_id_);
+
+  const auto closest_from_rtree = rtree_->get_closest_lanelet(reverse_goal_pose_);
+  ASSERT_TRUE(closest_from_rtree.has_value());
+  EXPECT_EQ(closest_from_rtree->id(), direction_change_lanelet_id_);
+}
+
+// Programmatically build a map with two lanelets at different heights so that find_nearest's
+// z-range filtering branch (and the find_z_range / delta_z_from_range helpers) can be exercised
+// directly. The existing yaml-based maps are not z-differentiated, so this path was untested.
+class TestNNSearchZRange : public ::testing::Test
+{
+protected:
+  // Build a lanelet with explicit valid ids so that lanelet::utils::createMap keeps both lanelets
+  // (createMap deduplicates by id, and create_safe_lanelet would assign InvalId to all of them).
+  static lanelet::Lanelet make_lanelet(
+    const std::vector<lanelet::BasicPoint3d> & left_pts,
+    const std::vector<lanelet::BasicPoint3d> & right_pts)
+  {
+    auto to_points = [](const std::vector<lanelet::BasicPoint3d> & pts) {
+      std::vector<lanelet::Point3d> out;
+      out.reserve(pts.size());
+      for (const auto & p : pts) {
+        out.emplace_back(lanelet::utils::getId(), p);
+      }
+      return out;
+    };
+    const lanelet::LineString3d left(lanelet::utils::getId(), to_points(left_pts));
+    const lanelet::LineString3d right(lanelet::utils::getId(), to_points(right_pts));
+    return lanelet::Lanelet(lanelet::utils::getId(), left, right);
+  }
+
+  void SetUp() override
+  {
+    // Lanelet A: footprint y in [-1, 1] at z = 0; covers the origin (2D distance 0 from query).
+    auto ll_low =
+      make_lanelet({{-1.0, 1.0, 0.0}, {1.0, 1.0, 0.0}}, {{-1.0, -1.0, 0.0}, {1.0, -1.0, 0.0}});
+    // Lanelet B: footprint y in [3, 5] at z = 10; in range in 2D but 10 m above query.
+    auto ll_high =
+      make_lanelet({{-1.0, 5.0, 10.0}, {1.0, 5.0, 10.0}}, {{-1.0, 3.0, 10.0}, {1.0, 3.0, 10.0}});
+
+    low_id_ = ll_low.id();
+    high_id_ = ll_high.id();
+
+    lanelet::Lanelets lanelets{ll_low, ll_high};
+    map_ = lanelet::utils::createMap(lanelets);
+  }
+
+  lanelet::LaneletMapPtr map_;
+  lanelet::Id low_id_{lanelet::InvalId};
+  lanelet::Id high_id_{lanelet::InvalId};
+
+  static geometry_msgs::msg::Pose make_pose(double x, double y, double z)
+  {
+    geometry_msgs::msg::Pose pose;
+    pose.position.x = x;
+    pose.position.y = y;
+    pose.position.z = z;
+    pose.orientation.w = 1.0;
+    return pose;
+  }
+};
+
+TEST_F(TestNNSearchZRange, large_z_range_keeps_both_lanelets)
+{
+  // z_range large enough to cover the 10 m height gap: both lanelets pass the filter.
+  const auto query = make_pose(0.0, 0.0, 0.0);
+  const auto nearests =
+    lanelet2_utils::find_nearest(map_->laneletLayer, query, 5, /*r_range=*/20.0, /*z_range=*/20.0);
+  ASSERT_EQ(nearests.size(), 2u);
+  // The low lanelet contains the query, so its 2D distance is 0 and it sorts first.
+  EXPECT_EQ(nearests.front().second.id(), low_id_);
+  EXPECT_DOUBLE_EQ(nearests.front().first, 0.0);
+}
+
+TEST_F(TestNNSearchZRange, small_z_range_filters_out_high_lanelet)
+{
+  // z_range smaller than the 10 m gap: the high lanelet is filtered out (above-range branch of
+  // delta_z_from_range), only the low lanelet remains.
+  const auto query = make_pose(0.0, 0.0, 0.0);
+  const auto nearests =
+    lanelet2_utils::find_nearest(map_->laneletLayer, query, 5, /*r_range=*/20.0, /*z_range=*/0.5);
+  ASSERT_EQ(nearests.size(), 1u);
+  EXPECT_EQ(nearests.front().second.id(), low_id_);
+}
+
+TEST_F(TestNNSearchZRange, small_z_range_filters_out_low_lanelet_from_above)
+{
+  // Query at z = 10 with a small z_range: now the low lanelet is below range and is filtered out,
+  // exercising the below-range branch of delta_z_from_range.
+  const auto query = make_pose(0.0, 0.0, 10.0);
+  const auto nearests =
+    lanelet2_utils::find_nearest(map_->laneletLayer, query, 5, /*r_range=*/20.0, /*z_range=*/0.5);
+  ASSERT_EQ(nearests.size(), 1u);
+  EXPECT_EQ(nearests.front().second.id(), high_id_);
+}
+
+TEST_F(TestNNSearchZRange, zero_z_range_disables_height_filtering)
+{
+  // z_range == 0 takes the "no height filtering" branch, so both lanelets are returned even though
+  // they are 10 m apart in z.
+  const auto query = make_pose(0.0, 0.0, 0.0);
+  const auto nearests =
+    lanelet2_utils::find_nearest(map_->laneletLayer, query, 5, /*r_range=*/20.0, /*z_range=*/0.0);
+  ASSERT_EQ(nearests.size(), 2u);
+}
+
+TEST_F(TestNNSearchZRange, invalid_arguments_return_empty)
+{
+  const auto query = make_pose(0.0, 0.0, 0.0);
+  // count == 0
+  EXPECT_TRUE(lanelet2_utils::find_nearest(map_->laneletLayer, query, 0, 20.0, 2.0).empty());
+  // r_range < 0
+  EXPECT_TRUE(lanelet2_utils::find_nearest(map_->laneletLayer, query, 5, -1.0, 2.0).empty());
+  // z_range < 0
+  EXPECT_TRUE(lanelet2_utils::find_nearest(map_->laneletLayer, query, 5, 20.0, -1.0).empty());
+}
+
+TEST_F(TestNNSearchZRange, no_candidate_in_radius_returns_empty)
+{
+  // Query far away with a tiny r_range: the 2D bounding-box search finds nothing.
+  const auto query = make_pose(1000.0, 1000.0, 0.0);
+  const auto nearests =
+    lanelet2_utils::find_nearest(map_->laneletLayer, query, 5, /*r_range=*/1.0, /*z_range=*/2.0);
+  EXPECT_TRUE(nearests.empty());
 }
 
 }  // namespace autoware::experimental
