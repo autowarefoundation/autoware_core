@@ -270,7 +270,8 @@ void NDTScanMatcher::callback_timer()
   // check is_set_last_update_position
   const auto latest_ekf_position = latest_ekf_position_.with([](const auto & pos) { return pos; });
   const bool is_set_last_update_position = (latest_ekf_position != std::nullopt);
-  diagnostics_map_update_->add_key_value("is_set_last_update_position", is_set_last_update_position);
+  diagnostics_map_update_->add_key_value(
+    "is_set_last_update_position", is_set_last_update_position);
   if (!is_set_last_update_position) {
     diagnostics_map_update_->update_level_and_message(
       diagnostic_msgs::msg::DiagnosticStatus::WARN,
