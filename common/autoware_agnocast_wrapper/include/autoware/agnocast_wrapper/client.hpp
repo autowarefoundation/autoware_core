@@ -14,6 +14,8 @@
 
 #pragma once
 
+// Client<ServiceT> abstraction.
+
 #include "autoware/agnocast_wrapper/macros.hpp"
 #include "autoware/agnocast_wrapper/runtime.hpp"
 

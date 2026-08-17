@@ -14,6 +14,8 @@
 
 #pragma once
 
+// Timer handle and the free set_period().
+
 #include <rclcpp/exceptions/exceptions.hpp>
 #include <rclcpp/rclcpp.hpp>
 

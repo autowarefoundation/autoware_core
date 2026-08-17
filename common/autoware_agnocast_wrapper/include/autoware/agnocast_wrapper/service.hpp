@@ -14,6 +14,8 @@
 
 #pragma once
 
+// Service<ServiceT> abstraction and the callback-shape traits.
+
 #include "autoware/agnocast_wrapper/macros.hpp"
 #include "autoware/agnocast_wrapper/runtime.hpp"
 

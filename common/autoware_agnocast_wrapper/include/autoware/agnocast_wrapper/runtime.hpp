@@ -14,6 +14,8 @@
 
 #pragma once
 
+// Runtime mode query and ok().
+
 #include <rclcpp/rclcpp.hpp>
 
 #ifdef USE_AGNOCAST_ENABLED

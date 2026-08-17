@@ -14,6 +14,8 @@
 
 #pragma once
 
+// Subscription abstraction for the Agnocast build.
+
 #ifdef USE_AGNOCAST_ENABLED
 
 #include "autoware/agnocast_wrapper/macros.hpp"

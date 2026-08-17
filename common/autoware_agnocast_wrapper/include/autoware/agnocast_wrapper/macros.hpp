@@ -14,6 +14,8 @@
 
 #pragma once
 
+// Public AUTOWARE_* macro surface.
+
 #include <memory>
 #include <type_traits>
 
