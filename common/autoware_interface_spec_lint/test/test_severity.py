@@ -12,4 +12,21 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Config-driven CI lint for the Autoware component interface specs."""
+from autoware_interface_spec_lint.severity import Severity
+from autoware_interface_spec_lint.severity import exit_code_for
+
+
+def test_warn_never_fails_even_with_findings():
+    assert exit_code_for(["divergent: /planning/trajectory"], Severity.WARN) == 0
+
+
+def test_error_fails_when_findings_present():
+    assert exit_code_for(["divergent: /planning/trajectory"], Severity.ERROR) == 1
+
+
+def test_error_passes_when_clean():
+    assert exit_code_for([], Severity.ERROR) == 0
+
+
+def test_off_never_fails():
+    assert exit_code_for(["anything"], Severity.OFF) == 0
