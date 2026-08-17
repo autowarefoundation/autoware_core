@@ -22,13 +22,12 @@
 #include <rcl/timer.h>
 
 #include <chrono>
+#include <cstdint>
 #include <memory>
 #include <stdexcept>
 #include <utility>
 
 #ifdef USE_AGNOCAST_ENABLED
-
-#include "autoware/agnocast_wrapper/runtime.hpp"
 
 #include <agnocast/agnocast.hpp>
 

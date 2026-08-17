@@ -18,8 +18,6 @@
 
 #ifdef USE_AGNOCAST_ENABLED
 
-#include "autoware/agnocast_wrapper/macros.hpp"
-
 #include <agnocast/agnocast.hpp>
 
 #include <memory>

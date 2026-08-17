@@ -25,6 +25,8 @@
 #include <agnocast/agnocast.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <cstddef>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>

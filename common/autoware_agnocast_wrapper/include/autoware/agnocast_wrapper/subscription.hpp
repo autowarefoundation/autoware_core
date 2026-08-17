@@ -25,6 +25,7 @@
 #include <agnocast/agnocast.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <type_traits>
