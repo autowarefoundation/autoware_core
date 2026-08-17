@@ -20,7 +20,9 @@
 #include "ndt_omp/multigrid_ndt_omp.h"
 
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
+#include <builtin_interfaces/msg/time.hpp>
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/point_stamped.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <pcl/point_types.h>
@@ -112,7 +114,7 @@ public:
 private:
   friend class NDTScanMatcher;
 
-  UpdateResult callback_timer(const geometry_msgs::msg::Point & position);
+  UpdateResult callback_timer(const geometry_msgs::msg::PointStamped & position);
 
   // Distance from the last successful map-update position, or std::nullopt if there is none yet.
   std::optional<double> distance_from_last_update(const geometry_msgs::msg::Point & position);
@@ -123,13 +125,15 @@ private:
     DiagnosticsReport & diagnostics);
 
   // Do not call this function while holding the lock for ndt_ptr_.
-  UpdateResult update_map(const geometry_msgs::msg::Point & position);
+  UpdateResult update_map(const geometry_msgs::msg::PointStamped & position);
   // Update the specified NDT
   bool update_ndt(
     const geometry_msgs::msg::Point & position, NdtType & ndt, DiagnosticsReport & diagnostics);
 
-  // Concatenates the cells kept in loaded_pcd_map_ into a single cloud for the debug publish.
-  [[nodiscard]] sensor_msgs::msg::PointCloud2 merge_loaded_pcd_map() const;
+  // Concatenates the cells kept in loaded_pcd_map_ into a single cloud (stamped) for the debug
+  // publish.
+  [[nodiscard]] sensor_msgs::msg::PointCloud2 merge_loaded_pcd_map(
+    const builtin_interfaces::msg::Time & stamp) const;
 
   PcdLoaderFunction pcd_loader_;
 

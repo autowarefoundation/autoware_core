@@ -285,7 +285,6 @@ void NDTScanMatcher::callback_timer()
   apply_diagnostics_update(*diagnostics_map_update_, result.diagnostics);
 
   if (result.loaded_pcd_map) {
-    result.loaded_pcd_map->header.stamp = ros_time_now;
     loaded_pcd_pub_->publish(*result.loaded_pcd_map);
   }
 
@@ -335,7 +334,12 @@ void NDTScanMatcher::callback_initial_pose_main(
 
   initial_pose_buffer_->push_back(initial_pose_msg_ptr);
 
-  latest_ekf_position_.with([&](auto & pos) { pos = initial_pose_msg_ptr->pose.pose.position; });
+  latest_ekf_position_.with([&](auto & pos) {
+    geometry_msgs::msg::PointStamped point_stamped;
+    point_stamped.header = initial_pose_msg_ptr->header;
+    point_stamped.point = initial_pose_msg_ptr->pose.pose.position;
+    pos = point_stamped;
+  });
 }
 
 void NDTScanMatcher::callback_regularization_pose(
@@ -1073,11 +1077,14 @@ void NDTScanMatcher::service_ndt_align_main(
   auto initial_pose_msg_in_map_frame =
     autoware::localization_util::transform(req->pose_with_covariance, transform_s2t);
   initial_pose_msg_in_map_frame.header.stamp = req->pose_with_covariance.header.stamp;
-  auto result = map_update_module_->update_map(initial_pose_msg_in_map_frame.pose.pose.position);
+
+  geometry_msgs::msg::PointStamped position;
+  position.header = initial_pose_msg_in_map_frame.header;
+  position.point = initial_pose_msg_in_map_frame.pose.pose.position;
+  auto result = map_update_module_->update_map(position);
   apply_diagnostics_update(*diagnostics_ndt_align_, result.diagnostics);
 
   if (result.loaded_pcd_map) {
-    result.loaded_pcd_map->header.stamp = this->now();
     loaded_pcd_pub_->publish(*result.loaded_pcd_map);
   }
 
