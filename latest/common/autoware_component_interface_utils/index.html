@@ -7862,45 +7862,45 @@ The wrappers limit the usage of the original class to enforce the processing rec
 Do not inherit the class of rclcpp, and forward or wrap the member function that is allowed to be used.</p>
 <h2 id="instantiation-of-the-wrapper-class">Instantiation of the wrapper class<a class="headerlink" href="#instantiation-of-the-wrapper-class" title="Permanent link">#</a></h2>
 <p>The wrapper class requires interface information in this format.</p>
-<p>```cpp
-struct SampleService
-{
-  using Service = sample_msgs::srv::ServiceType;
-  static constexpr char name[] = "/sample/service";
-};</p>
-<p>struct SampleMessage
-{
-  using Message = sample_msgs::msg::MessageType;
-  static constexpr char name[] = "/sample/message";
-  static constexpr size_t depth = 1;
-  static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
-  static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL;
-};
-```</p>
+<div class="highlight"><pre><span></span><code><span class="k">struct</span><span class="w"> </span><span class="nc">SampleService</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">Service</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sample_msgs</span><span class="o">::</span><span class="n">srv</span><span class="o">::</span><span class="n">ServiceType</span><span class="p">;</span>
+<span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">name</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"/sample/service"</span><span class="p">;</span>
+<span class="p">};</span>
+
+<span class="k">struct</span><span class="w"> </span><span class="nc">SampleMessage</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">Message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sample_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">MessageType</span><span class="p">;</span>
+<span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">name</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"/sample/message"</span><span class="p">;</span>
+<span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">size_t</span><span class="w"> </span><span class="n">depth</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span>
+<span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">reliability</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RMW_QOS_POLICY_RELIABILITY_RELIABLE</span><span class="p">;</span>
+<span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">durability</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL</span><span class="p">;</span>
+<span class="p">};</span>
+</code></pre></div>
 <p>Create the wrapper using the above definition as follows.</p>
-<p>```cpp
-// header file
-autoware::component_interface_utils::Service<sampleservice>::SharedPtr srv_;
-autoware::component_interface_utils::Client<sampleservice>::SharedPtr cli_;
-autoware::component_interface_utils::Publisher<samplemessage>::SharedPtr pub_;
-autoware::component_interface_utils::Subscription<samplemessage>::SharedPtr sub_;</samplemessage></samplemessage></sampleservice></sampleservice></p>
-<p>// source file
-const auto node = autoware::component_interface_utils::NodeAdaptor(this);
-node.init_srv(srv_, callback);
-node.init_cli(cli_);
-node.init_pub(pub_);
-node.init_sub(sub_, callback);
-```</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// header file</span>
+<span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">Service</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">srv_</span><span class="p">;</span>
+<span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">Client</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">cli_</span><span class="p">;</span>
+<span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">Publisher</span><span class="o">&lt;</span><span class="n">SampleMessage</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">pub_</span><span class="p">;</span>
+<span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">Subscription</span><span class="o">&lt;</span><span class="n">SampleMessage</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">sub_</span><span class="p">;</span>
+
+<span class="c1">// source file</span>
+<span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">NodeAdaptor</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="n">node</span><span class="p">.</span><span class="n">init_srv</span><span class="p">(</span><span class="n">srv_</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span>
+<span class="n">node</span><span class="p">.</span><span class="n">init_cli</span><span class="p">(</span><span class="n">cli_</span><span class="p">);</span>
+<span class="n">node</span><span class="p">.</span><span class="n">init_pub</span><span class="p">(</span><span class="n">pub_</span><span class="p">);</span>
+<span class="n">node</span><span class="p">.</span><span class="n">init_sub</span><span class="p">(</span><span class="n">sub_</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span>
+</code></pre></div>
 <p>The adaptor also provides returning forms that take the specification as an explicit template argument instead of deducing it from the output variable.
 They create the same wrappers as the <code>init_*</code> methods, so the two styles can be mixed.
 These are non-const member functions, so the adaptor must not be declared <code>const</code> when they are used.</p>
-<p><code>cpp
-// source file
-auto node = autoware::component_interface_utils::NodeAdaptor(this);
-srv_ = node.create_service&lt;SampleService&gt;(callback);
-cli_ = node.create_client&lt;SampleService&gt;();
-pub_ = node.create_publisher&lt;SampleMessage&gt;();
-sub_ = node.create_subscription&lt;SampleMessage&gt;(callback);</code></p>
+<div class="highlight"><pre><span></span><code><span class="c1">// source file</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">NodeAdaptor</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="n">srv_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_service</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;</span><span class="p">(</span><span class="n">callback</span><span class="p">);</span>
+<span class="n">cli_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_client</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">pub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_publisher</span><span class="o">&lt;</span><span class="n">SampleMessage</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">sub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_subscription</span><span class="o">&lt;</span><span class="n">SampleMessage</span><span class="o">&gt;</span><span class="p">(</span><span class="n">callback</span><span class="p">);</span>
+</code></pre></div>
 <h2 id="opt-in-service-introspection-for-service-and-client">Opt-in service introspection for service and client<a class="headerlink" href="#opt-in-service-introspection-for-service-and-client" title="Permanent link">#</a></h2>
 <p>This package does not trace service calls by itself.
 What it provides is a single node-scoped switch that turns on the standard <a href="https://docs.ros.org/en/jazzy/Tutorials/Demos/Service-Introspection.html">ROS 2 service introspection</a> for every wrapper of that node, so the wrappers do not have to be configured one by one.
@@ -7934,35 +7934,35 @@ An unready service and a service timeout are still reported by <code>Client::cal
 <h2 id="service-exception-for-response">Service exception for response<a class="headerlink" href="#service-exception-for-response" title="Permanent link">#</a></h2>
 <p>If the wrapper class is used and the service response has status, throwing <code>ServiceException</code> will automatically catch and set it to status.
 This is useful when returning an error from a function called from the service callback.</p>
-<p>```cpp
-void service_callback(Request req, Response res)
-{
-   function();
-   res-&gt;status.success = true;
-}</p>
-<p>void function()
-{
-   throw ServiceException(ERROR_CODE, "message");
-}
-```</p>
+<div class="highlight"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">service_callback</span><span class="p">(</span><span class="n">Request</span><span class="w"> </span><span class="n">req</span><span class="p">,</span><span class="w"> </span><span class="n">Response</span><span class="w"> </span><span class="n">res</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">   </span><span class="n">function</span><span class="p">();</span>
+<span class="w">   </span><span class="n">res</span><span class="o">-&gt;</span><span class="n">status</span><span class="p">.</span><span class="n">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<span class="p">}</span>
+
+<span class="kt">void</span><span class="w"> </span><span class="nf">function</span><span class="p">()</span>
+<span class="p">{</span>
+<span class="w">   </span><span class="k">throw</span><span class="w"> </span><span class="n">ServiceException</span><span class="p">(</span><span class="n">ERROR_CODE</span><span class="p">,</span><span class="w"> </span><span class="s">"message"</span><span class="p">);</span>
+<span class="p">}</span>
+</code></pre></div>
 <p>If the wrapper class is not used or the service response has no status, manually catch the <code>ServiceException</code> as follows.</p>
-<p><code>cpp
-void service_callback(Request req, Response res)
-{
-   try {
-      function();
-      res-&gt;status.success = true;
-   } catch (const ServiceException &amp; error) {
-      res-&gt;status = error.status();
-   }
-}</code></p>
+<div class="highlight"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">service_callback</span><span class="p">(</span><span class="n">Request</span><span class="w"> </span><span class="n">req</span><span class="p">,</span><span class="w"> </span><span class="n">Response</span><span class="w"> </span><span class="n">res</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">   </span><span class="k">try</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">function</span><span class="p">();</span>
+<span class="w">      </span><span class="n">res</span><span class="o">-&gt;</span><span class="n">status</span><span class="p">.</span><span class="n">success</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">true</span><span class="p">;</span>
+<span class="w">   </span><span class="p">}</span><span class="w"> </span><span class="k">catch</span><span class="w"> </span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">ServiceException</span><span class="w"> </span><span class="o">&amp;</span><span class="w"> </span><span class="n">error</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">      </span><span class="n">res</span><span class="o">-&gt;</span><span class="n">status</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">error</span><span class="p">.</span><span class="n">status</span><span class="p">();</span>
+<span class="w">   </span><span class="p">}</span>
+<span class="p">}</span>
+</code></pre></div>
 <h2 id="relays-for-topic-and-service">Relays for topic and service<a class="headerlink" href="#relays-for-topic-and-service" title="Permanent link">#</a></h2>
 <p>There are utilities for relaying services and messages of the same type.</p>
-<p><code>cpp
-const auto node = autoware::component_interface_utils::NodeAdaptor(this);
-service_callback_group_ = create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
-node.relay_message(pub_, sub_);
-node.relay_service(cli_, srv_, service_callback_group_);  // group is for avoiding deadlocks</code></p></div>
+<div class="highlight"><pre><span></span><code><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">NodeAdaptor</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="n">service_callback_group_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">create_callback_group</span><span class="p">(</span><span class="n">rclcpp</span><span class="o">::</span><span class="n">CallbackGroupType</span><span class="o">::</span><span class="n">MutuallyExclusive</span><span class="p">);</span>
+<span class="n">node</span><span class="p">.</span><span class="n">relay_message</span><span class="p">(</span><span class="n">pub_</span><span class="p">,</span><span class="w"> </span><span class="n">sub_</span><span class="p">);</span>
+<span class="n">node</span><span class="p">.</span><span class="n">relay_service</span><span class="p">(</span><span class="n">cli_</span><span class="p">,</span><span class="w"> </span><span class="n">srv_</span><span class="p">,</span><span class="w"> </span><span class="n">service_callback_group_</span><span class="p">);</span><span class="w">  </span><span class="c1">// group is for avoiding deadlocks</span>
+</code></pre></div></div>
 
 
 

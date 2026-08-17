@@ -7832,17 +7832,16 @@
 <h2 id="inner-workings-algorithms">Inner-workings / Algorithms<a class="headerlink" href="#inner-workings-algorithms" title="Permanent link">#</a></h2>
 <h3 id="usage-example">Usage example<a class="headerlink" href="#usage-example" title="Permanent link">#</a></h3>
 <p>The tools in this package are provided as composable ROS 2 component nodes, so that they can be spawned into an existing process, launched from launch files, or invoked from the command line.</p>
-<p>```xml
-<load_composable_node target="container_name">
-  <composable_node pkg="planning_topic_converter" plugin="autoware::planning_topic_converter::PathToTrajectoryNode" name="path_to_trajectory_converter" namespace="">
-  <!-- params --></composable_node></load_composable_node></p>
-<p><param name="input_topic" value="foo">
-  <param name="output_topic" value="bar">
-  <!-- composable node config --></p>
-<p><extra_arg name="use_intra_process_comms" value="false"></extra_arg>
-  
-
-```</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;load_composable_node</span><span class="w"> </span><span class="na">target=</span><span class="s">"container_name"</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;composable_node</span><span class="w"> </span><span class="na">pkg=</span><span class="s">"planning_topic_converter"</span><span class="w"> </span><span class="na">plugin=</span><span class="s">"autoware::planning_topic_converter::PathToTrajectoryNode"</span><span class="w"> </span><span class="na">name=</span><span class="s">"path_to_trajectory_converter"</span><span class="w"> </span><span class="na">namespace=</span><span class="s">""</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- params --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;param</span><span class="w"> </span><span class="na">name=</span><span class="s">"input_topic"</span><span class="w"> </span><span class="na">value=</span><span class="s">"foo"</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;param</span><span class="w"> </span><span class="na">name=</span><span class="s">"output_topic"</span><span class="w"> </span><span class="na">value=</span><span class="s">"bar"</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="cm">&lt;!-- composable node config --&gt;</span>
+<span class="w">  </span><span class="nt">&lt;extra_arg</span><span class="w"> </span><span class="na">name=</span><span class="s">"use_intra_process_comms"</span><span class="w"> </span><span class="na">value=</span><span class="s">"false"</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;/composable_node&gt;</span>
+<span class="nt">&lt;/load_composable_node&gt;</span>
+</code></pre></div>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">#</a></h2>
 <table>
 <thead>

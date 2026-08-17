@@ -7970,33 +7970,40 @@ e = y_k - C x_{ds}
 <ul>
 <li>Initialization</li>
 </ul>
-<p>```cpp</p>
-<h1 id="include-autowarekalman_filterkalman_filterhpp">include "autoware/kalman_filter/kalman_filter.hpp"<a class="headerlink" href="#include-autowarekalman_filterkalman_filterhpp" title="Permanent link">#</a></h1>
-<p>// Define system parameters
-int dim_x = 2; // state vector dimensions
-int dim_y = 1; // measure vector dimensions</p>
-<p>// Initial state
-Eigen::MatrixXd x0 = Eigen::MatrixXd::Zero(dim_x, 1);
-x0 &lt;&lt; 0.0, 0.0;</p>
-<p>// Initial covariance matrix
-Eigen::MatrixXd P0 = Eigen::MatrixXd::Identity(dim_x, dim_x);
-P0 *= 100.0;</p>
-<p>// Define state transition matrix
-Eigen::MatrixXd A = Eigen::MatrixXd::Identity(dim_x, dim_x);
-A(0, 1) = 1.0;</p>
-<p>// Define measurement matrix
-Eigen::MatrixXd C = Eigen::MatrixXd::Zero(dim_y, dim_x);
-C(0, 0) = 1.0;</p>
-<p>// Define process noise covariance matrix
-Eigen::MatrixXd Q = Eigen::MatrixXd::Identity(dim_x, dim_x);
-Q *= 0.01;</p>
-<p>// Define measurement noise covariance matrix
-Eigen::MatrixXd R = Eigen::MatrixXd::Identity(dim_y, dim_y);
-R *= 1.0;</p>
-<p>// Initialize Kalman filter
-autoware::kalman_filter::KalmanFilter kf;
-kf.init(x0, P0);
-```</p></div>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">"autoware/kalman_filter/kalman_filter.hpp"</span>
+
+<span class="c1">// Define system parameters</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">dim_x</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">2</span><span class="p">;</span><span class="w"> </span><span class="c1">// state vector dimensions</span>
+<span class="kt">int</span><span class="w"> </span><span class="n">dim_y</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="c1">// measure vector dimensions</span>
+
+<span class="c1">// Initial state</span>
+<span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="w"> </span><span class="n">x0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="o">::</span><span class="n">Zero</span><span class="p">(</span><span class="n">dim_x</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">);</span>
+<span class="n">x0</span><span class="w"> </span><span class="o">&lt;&lt;</span><span class="w"> </span><span class="mf">0.0</span><span class="p">,</span><span class="w"> </span><span class="mf">0.0</span><span class="p">;</span>
+
+<span class="c1">// Initial covariance matrix</span>
+<span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="w"> </span><span class="n">P0</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="o">::</span><span class="n">Identity</span><span class="p">(</span><span class="n">dim_x</span><span class="p">,</span><span class="w"> </span><span class="n">dim_x</span><span class="p">);</span>
+<span class="n">P0</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mf">100.0</span><span class="p">;</span>
+
+<span class="c1">// Define state transition matrix</span>
+<span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="w"> </span><span class="n">A</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="o">::</span><span class="n">Identity</span><span class="p">(</span><span class="n">dim_x</span><span class="p">,</span><span class="w"> </span><span class="n">dim_x</span><span class="p">);</span>
+<span class="n">A</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">1</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
+
+<span class="c1">// Define measurement matrix</span>
+<span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="w"> </span><span class="n">C</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="o">::</span><span class="n">Zero</span><span class="p">(</span><span class="n">dim_y</span><span class="p">,</span><span class="w"> </span><span class="n">dim_x</span><span class="p">);</span>
+<span class="n">C</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="mi">0</span><span class="p">)</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
+
+<span class="c1">// Define process noise covariance matrix</span>
+<span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="w"> </span><span class="n">Q</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="o">::</span><span class="n">Identity</span><span class="p">(</span><span class="n">dim_x</span><span class="p">,</span><span class="w"> </span><span class="n">dim_x</span><span class="p">);</span>
+<span class="n">Q</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mf">0.01</span><span class="p">;</span>
+
+<span class="c1">// Define measurement noise covariance matrix</span>
+<span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="w"> </span><span class="n">R</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Eigen</span><span class="o">::</span><span class="n">MatrixXd</span><span class="o">::</span><span class="n">Identity</span><span class="p">(</span><span class="n">dim_y</span><span class="p">,</span><span class="w"> </span><span class="n">dim_y</span><span class="p">);</span>
+<span class="n">R</span><span class="w"> </span><span class="o">*=</span><span class="w"> </span><span class="mf">1.0</span><span class="p">;</span>
+
+<span class="c1">// Initialize Kalman filter</span>
+<span class="n">autoware</span><span class="o">::</span><span class="n">kalman_filter</span><span class="o">::</span><span class="n">KalmanFilter</span><span class="w"> </span><span class="n">kf</span><span class="p">;</span>
+<span class="n">kf</span><span class="p">.</span><span class="n">init</span><span class="p">(</span><span class="n">x0</span><span class="p">,</span><span class="w"> </span><span class="n">P0</span><span class="p">);</span>
+</code></pre></div></div>
 
 
 

@@ -7954,12 +7954,12 @@
 Parameters file for the package is expected to be in <code>param</code> directory inside package.</p>
 <h2 id="inputs-outputs-api">Inputs / Outputs / API<a class="headerlink" href="#inputs-outputs-api" title="Permanent link">#</a></h2>
 <p>To add a smoke test to your package tests, add test dependency on <code>autoware_testing</code> to <code>package.xml</code></p>
-<p><code>xml
-&lt;test_depend&gt;autoware_testing&lt;/test_depend&gt;</code></p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;test_depend&gt;</span>autoware_testing<span class="nt">&lt;/test_depend&gt;</span>
+</code></pre></div>
 <p>and add the following two lines to <code>CMakeLists.txt</code> in the <code>IF (BUILD_TESTING)</code> section:</p>
-<p><code>cmake
-find_package(autoware_testing REQUIRED)
-add_smoke_test(&lt;package_name&gt; &lt;executable_name&gt; [PARAM_FILENAME &lt;param_filename&gt;] [EXECUTABLE_ARGUMENTS &lt;arguments&gt;])</code></p>
+<div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_testing</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+<span class="nb">add_smoke_test</span><span class="p">(</span><span class="s">&lt;package_name&gt;</span><span class="w"> </span><span class="s">&lt;executable_name&gt;</span><span class="w"> </span><span class="s">[PARAM_FILENAME</span><span class="w"> </span><span class="s">&lt;param_filename&gt;]</span><span class="w"> </span><span class="s">[EXECUTABLE_ARGUMENTS</span><span class="w"> </span><span class="s">&lt;arguments&gt;]</span><span class="p">)</span>
+</code></pre></div>
 <p>Where</p>
 <p><code>&lt;package_name&gt;</code> - [required] tested node package name.</p>
 <p><code>&lt;executable_name&gt;</code> - [required] tested node executable name.</p>
@@ -7967,8 +7967,8 @@ add_smoke_test(&lt;package_name&gt; &lt;executable_name&gt; [PARAM_FILENAME &lt;
 <p><code>&lt;arguments&gt;</code> - [optional] arguments passed to executable. By default no arguments are passed.</p>
 <p>which adds <code>&lt;executable_name&gt;_smoke_test</code> test to suite.</p>
 <p>Example test result:</p>
-<p><code>text
-build/&lt;package_name&gt;/test_results/&lt;package_name&gt;/&lt;executable_name&gt;_smoke_test.xunit.xml: 1 test, 0 errors, 0 failures, 0 skipped</code></p>
+<div class="highlight"><pre><span></span><code>build/&lt;package_name&gt;/test_results/&lt;package_name&gt;/&lt;executable_name&gt;_smoke_test.xunit.xml: 1 test, 0 errors, 0 failures, 0 skipped
+</code></pre></div>
 <h2 id="references-external-links">References / External links<a class="headerlink" href="#references-external-links" title="Permanent link">#</a></h2>
 <ul>
 <li><a href="https://en.wikipedia.org/wiki/Smoke_testing_(software)">https://en.wikipedia.org/wiki/Smoke_testing_(software)</a></li>

@@ -7762,22 +7762,22 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#checks" class="md-nav__link">
+  <a href="#gates" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Checks
+        Gates
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Checks">
+    <nav class="md-nav" aria-label="Gates">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#qos_consistency-vs-manifest_fresh" class="md-nav__link">
+  <a href="#binding-manifest-freshness-gate" class="md-nav__link">
     <span class="md-ellipsis">
       
-        qos_consistency vs manifest_fresh
+        Binding manifest-freshness gate
       
     </span>
   </a>
@@ -7786,6 +7786,17 @@
         
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#honest-deferrals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest deferrals
+      
+    </span>
+  </a>
   
 </li>
       
@@ -7805,6 +7816,34 @@
     <span class="md-ellipsis">
       
         Usage
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Usage">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#manifest_fresh" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        manifest_fresh
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#gate-config" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Gate config
       
     </span>
   </a>
@@ -7832,78 +7871,126 @@
 
 
 <div><h1 id="autoware_interface_spec_lint">autoware_interface_spec_lint<a class="headerlink" href="#autoware_interface_spec_lint" title="Permanent link">#</a></h1>
-<p>WARN-only static and manifest checks for the Autoware component interface specifications defined in <code>autoware_component_interface_specs</code>. This package gives fast, pre-build, human-readable warnings that complement the compile-time <code>all_specs_valid&lt;&gt;</code> static assertions: it catches "defined-but-unregistered" specs and manifest drift that the compiler alone does not.</p>
-<p>In this initial version every check is advisory: the tool prints findings but always exits 0 with <code>--warn-only</code>, and the pre-commit hook never fails the commit. Flipping the warnings into hard errors (the warn-to-error ratchet) is left to a follow-up change.</p>
-<h2 id="checks">Checks<a class="headerlink" href="#checks" title="Permanent link">#</a></h2>
+<p>Config-driven static and manifest checks for the Autoware component interface specifications defined in <code>autoware_component_interface_specs</code>. This package gives fast, pre-build, human-readable diagnostics that complement the compile-time <code>all_specs_valid&lt;&gt;</code> static assertions: it catches "defined-but-unregistered" specs, version inconsistencies, cross-owner shadowing, heavy-raw topics that must not be versioned, and manifest drift that the compiler alone does not.</p>
+<p>Each gate's severity comes from the committed gate config (<code>config/interface_gates.yaml</code>): <code>off</code> (not run), <code>warn</code> (advisory, prints findings but never fails), or <code>error</code> (fails the build when it reports at least one finding). Every implemented gate is set to <code>error</code>, so a finding now fails CI and the pre-commit hook; only the gates listed under "Honest deferrals" below are <code>off</code>. <code>--warn-only</code> overrides every gate to exit 0 for local advisory runs.</p>
+<h2 id="gates">Gates<a class="headerlink" href="#gates" title="Permanent link">#</a></h2>
 <table>
 <thead>
 <tr>
-<th>Check</th>
+<th>Gate</th>
 <th>Input</th>
-<th>Flags (WARN)</th>
+<th>Severity</th>
+<th>Flags</th>
 </tr>
 </thead>
 <tbody>
 <tr>
 <td><code>interface_spec_concept</code></td>
 <td>domain headers</td>
+<td>error</td>
 <td>a struct with a <code>name[]</code> that is neither a valid topic (<code>Message</code> + <code>depth</code> + <code>reliability</code> + <code>durability</code>) nor a valid service (<code>Service</code>)</td>
 </tr>
 <tr>
 <td><code>spec_registered</code></td>
 <td>domain headers</td>
-<td>a spec struct not listed in its namespace's <code>using Specs = std::tuple&lt;...&gt;</code></td>
+<td>error</td>
+<td>a spec struct not listed in its namespace's <code>using Specs = std::tuple&lt;...&gt;</code> (unless it carries the suppression marker)</td>
 </tr>
 <tr>
 <td><code>version_consistency</code></td>
 <td>headers + manifest</td>
-<td>a domain not declaring exactly one <code>version{...}</code>, a MAJOR that is not <code>0</code> (the standard is unstable while at <code>0.x</code>), or a manifest version that disagrees with the header version</td>
+<td>error</td>
+<td>a domain not declaring exactly one <code>version{...}</code>, or a manifest version that disagrees with the header version</td>
 </tr>
 <tr>
 <td><code>qos_consistency</code></td>
 <td>headers + manifest</td>
+<td>error</td>
 <td>a registered spec whose <code>history</code> / <code>depth</code> / <code>reliability</code> / <code>durability</code> disagrees with its manifest <code>qos</code> block, is missing from the manifest, or names a QoS policy the manifest cannot express</td>
 </tr>
 <tr>
 <td><code>manifest_fresh</code></td>
 <td>generator + committed JSON</td>
-<td>the rebuilt generator output differs from the committed <code>interface_manifest.json</code></td>
+<td>error</td>
+<td>the rebuilt generator output differs from the committed <code>interface_manifest.json</code> (see the binding-gate note below)</td>
+</tr>
+<tr>
+<td><code>owner_isolation</code></td>
+<td>manifest(s)</td>
+<td>error</td>
+<td>a non-base-owner manifest entry whose interface name shadows a base-owner (<code>autowarefoundation</code>) entry</td>
+</tr>
+<tr>
+<td><code>no_raw_spec_topic</code></td>
+<td>manifest(s)</td>
+<td>error</td>
+<td>a versioned <strong>topic</strong> whose interface name contains a heavy-raw deny substring; services are out of scope</td>
 </tr>
 </tbody>
 </table>
-<p><code>interface_spec_concept</code>, <code>spec_registered</code>, <code>version_consistency</code> and <code>qos_consistency</code> are pure-Python static analyses over the domain headers and are wired into pre-commit. <code>manifest_fresh</code> is a colcon test because it needs the built manifest generator binary.</p>
-<p>A domain declares its <code>version</code> and its <code>Specs</code> tuple either literally or through <code>AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(MAJOR, MINOR, PATCH, ...)</code>, which expands to both. The header parser understands each form, including the multi-line invocation clang-format produces.</p>
-<h3 id="qos_consistency-vs-manifest_fresh"><code>qos_consistency</code> vs <code>manifest_fresh</code><a class="headerlink" href="#qos_consistency-vs-manifest_fresh" title="Permanent link">#</a></h3>
-<p>Both catch QoS drift between the domain headers and the committed manifest, but <code>manifest_fresh</code> needs the built generator binary and skips without it — which is the ordinary pre-commit path. <code>qos_consistency</code> reads only the headers and the committed JSON, so <code>reliability</code> and <code>durability</code> stay verified there too. Those are the two axes ROS 2 evaluates before it will let a publisher and a subscription talk at all: a <code>RELIABLE</code> subscription never hears a <code>BEST_EFFORT</code> publisher, and a <code>TRANSIENT_LOCAL</code> one never receives the latched message a <code>VOLATILE</code> publisher dropped.</p>
-<p>Topic specs carry their own QoS. Service specs carry none, so <code>qos_consistency</code> derives theirs from the single <code>service_qos</code> profile in <code>utils.hpp</code> rather than restating the values — a second copy would be one more place for the specs and the wire to drift apart.</p>
+<p>The manifest audits (<code>owner_isolation</code>, <code>no_raw_spec_topic</code>) take a <em>list</em> of manifest dicts so a future vendor-partition manifest can be cross-checked against the base manifest; with the single committed core manifest <code>owner_isolation</code> is vacuously clean.</p>
+<h3 id="binding-manifest-freshness-gate">Binding manifest-freshness gate<a class="headerlink" href="#binding-manifest-freshness-gate" title="Permanent link">#</a></h3>
+<p>The lint's <code>manifest_fresh</code> can only bind where the manifest generator binary is available; on a plain checkout / pre-commit run it skips gracefully. The <strong>binding</strong> freshness gate is the specs-package gtest (<code>autoware_component_interface_specs/test/test_manifest.cpp</code>), which regenerates the manifest with the built generator and asserts byte-equality against the committed <code>interface_manifest.json</code> on every build-and-test CI run. Manifest drift is therefore a hard failure regardless of the advisory lint.</p>
+<h2 id="honest-deferrals">Honest deferrals<a class="headerlink" href="#honest-deferrals" title="Permanent link">#</a></h2>
+<p>The following design gate-table entries are declared <code>off</code> in the committed config and are intentionally deferred; enabling one is rejected by the config loader because there is no implementation to run yet.</p>
+<table>
+<thead>
+<tr>
+<th>Gate</th>
+<th>Why deferred</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>no_foreign_if_dependency</code></td>
+<td>needs per-component provided/required role manifests, which do not exist yet (they arrive with the deploy-time OCI-label manifest track)</td>
+</tr>
+<tr>
+<td><code>profile_compat</code></td>
+<td>needs a vendor-specific interface profile that does not exist in this package yet; out of scope for this change</td>
+</tr>
+<tr>
+<td><code>if_usage_coverage</code></td>
+<td>runtime gate; needs runtime introspection data this static-analysis package does not have, deferred to future work</td>
+</tr>
+<tr>
+<td><code>admission_smoke</code></td>
+<td>runtime gate; needs runtime introspection data this static-analysis package does not have, deferred to future work</td>
+</tr>
+</tbody>
+</table>
+<p><code>owner_isolation</code> is wired and at <code>error</code> but binds only once a second (vendor-partition) manifest exists to cross-check against. Today the universe versioned surface is exactly the core re-exports (single version authority in core) and universe-owned specs are unversioned, so there is no separate universe-side gate wiring yet.</p>
 <h2 id="suppression-contract">Suppression contract<a class="headerlink" href="#suppression-contract" title="Permanent link">#</a></h2>
 <p>A spec struct is exempt from <code>spec_registered</code> when the marker <code>// interface-spec-lint: not-versioned</code> appears on the struct's own declaration line or on the line directly above it. Use it for a topic that is deliberately not part of the versioned interface set. The marker string is a fixed contract that other packages depend on, so do not change its text.</p>
-<p><code>cpp
-// interface-spec-lint: not-versioned
-struct PlanningDebugMarkers {
-  using Message = visualization_msgs::msg::MarkerArray;
-  static constexpr char name[] = "/planning/debug/markers";
-  // ...
-};</code></p>
-<p>The struct above is illustrative: a debug/visualization topic is the kind of interface that is deliberately outside the versioned set. It is not a real spec in this package -- the committed domain headers do not use the marker, since every struct they declare is registered.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// interface-spec-lint: not-versioned</span>
+<span class="k">struct</span><span class="w"> </span><span class="nc">PointCloudMap</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">Message</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">sensor_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">PointCloud2</span><span class="p">;</span>
+<span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="kt">char</span><span class="w"> </span><span class="n">name</span><span class="p">[]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s">"/map/point_cloud_map"</span><span class="p">;</span>
+<span class="w">  </span><span class="c1">// ...</span>
+<span class="p">};</span>
+</code></pre></div>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
-<p>```bash</p>
-<h1 id="lint-the-core-specs-include-dir-defaults-resolve-relative-to-the-repo-root">Lint the core specs include dir (defaults resolve relative to the repo root).<a class="headerlink" href="#lint-the-core-specs-include-dir-defaults-resolve-relative-to-the-repo-root" title="Permanent link">#</a></h1>
-<p>ament_autoware_interface_spec_lint --warn-only</p>
-<h1 id="lint-an-explicit-directory-and-diff-against-a-manifest">Lint an explicit directory and diff against a manifest.<a class="headerlink" href="#lint-an-explicit-directory-and-diff-against-a-manifest" title="Permanent link">#</a></h1>
-<p>ament_autoware_interface_spec_lint --warn-only \
-  --spec-dir common/autoware_component_interface_specs/include/autoware/component_interface_specs \
-  --manifest common/autoware_component_interface_specs/interface_manifest.json
-```</p>
+<div class="highlight"><pre><span></span><code><span class="c1"># Lint the core specs with the committed gate config (severities from the config).</span>
+ament_autoware_interface_spec_lint
+
+<span class="c1"># Advisory local run: print findings but always exit 0.</span>
+ament_autoware_interface_spec_lint<span class="w"> </span>--warn-only
+
+<span class="c1"># Explicit paths and an alternate gate config.</span>
+ament_autoware_interface_spec_lint<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--config<span class="w"> </span>common/autoware_interface_spec_lint/config/interface_gates.yaml<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--spec-dir<span class="w"> </span>common/autoware_component_interface_specs/include/autoware/component_interface_specs<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--manifest<span class="w"> </span>common/autoware_component_interface_specs/interface_manifest.json
+</code></pre></div>
 <h3 id="manifest_fresh"><code>manifest_fresh</code><a class="headerlink" href="#manifest_fresh" title="Permanent link">#</a></h3>
-<p><code>manifest_fresh</code> needs the manifest generator binary. Point at it with <code>--generator &lt;path&gt;</code> or the <code>INTERFACE_MANIFEST_GENERATOR</code> environment variable. When neither is available the check skips gracefully with a warning and records nothing, so it never blocks a build.</p>
-<p><code>bash
-export INTERFACE_MANIFEST_GENERATOR=$PWD/build/autoware_component_interface_specs/generate_interface_manifest
-ament_autoware_interface_spec_lint --warn-only \
-  --manifest common/autoware_component_interface_specs/interface_manifest.json \
-  --generator "$INTERFACE_MANIFEST_GENERATOR"</code></p>
-<h2 id="status">Status<a class="headerlink" href="#status" title="Permanent link">#</a></h2>
-<p>The checks are advisory only. <code>manifest_fresh</code> records drift but returns success; the pre-commit hook prints warnings and exits 0. A follow-up change flips both the static checks and <code>manifest_fresh</code> to hard failures.</p></div>
+<p><code>manifest_fresh</code> needs the manifest generator binary. Point at it with <code>--generator &lt;path&gt;</code> or the <code>INTERFACE_MANIFEST_GENERATOR</code> environment variable. When neither is available the check skips gracefully (the binding gate is the specs-package gtest).</p>
+<div class="highlight"><pre><span></span><code><span class="nb">export</span><span class="w"> </span><span class="nv">INTERFACE_MANIFEST_GENERATOR</span><span class="o">=</span><span class="nv">$PWD</span>/build/autoware_component_interface_specs/generate_interface_manifest
+ament_autoware_interface_spec_lint<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--manifest<span class="w"> </span>common/autoware_component_interface_specs/interface_manifest.json<span class="w"> </span><span class="se">\</span>
+<span class="w">  </span>--generator<span class="w"> </span><span class="s2">"</span><span class="nv">$INTERFACE_MANIFEST_GENERATOR</span><span class="s2">"</span>
+</code></pre></div>
+<h2 id="gate-config">Gate config<a class="headerlink" href="#gate-config" title="Permanent link">#</a></h2>
+<p><code>config/interface_gates.yaml</code> maps each gate to a severity and carries the <code>no_raw_spec_topic</code> deny/allow lists and the <code>owner_isolation</code> base owner. The loader rejects an unknown gate name and rejects enabling a deferred gate (it may only be declared <code>off</code>).</p></div>
 
 
 

@@ -7806,8 +7806,97 @@
   
 </li>
         
+          <li class="md-nav__item">
+  <a href="#topic-qos" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topic QoS
+      
+    </span>
+  </a>
+  
+</li>
+        
       </ul>
     </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#api-reference" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        API Reference
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="API Reference">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#macros" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Macros
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#ros-2-distribution-compatibility" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        ROS 2 Distribution Compatibility
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="ROS 2 Distribution Compatibility">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#implementation-details" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Implementation Details
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#dependencies" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Dependencies
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#license" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        License
+      
+    </span>
+  </a>
   
 </li>
       
@@ -7844,36 +7933,38 @@
 </ul>
 <h2 id="usage">Usage<a class="headerlink" href="#usage" title="Permanent link">#</a></h2>
 <h3 id="service-qos">Service QoS<a class="headerlink" href="#service-qos" title="Permanent link">#</a></h3>
-<p>```cpp</p>
-<h1 id="include">include <autoware qos_utils qos_compatibility.hpp><a class="headerlink" href="#include" title="Permanent link">#</a></autoware></h1>
-<p>// Create a service client with compatible QoS
-auto client = node-&gt;create_client<myservice>(
-  "my_service",
-  AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE()
-);</myservice></p>
-<p>// Create a service with compatible QoS
-auto service = node-&gt;create_service<myservice>(
-  "my_service",
-  callback,
-  AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE()
-);
-```</myservice></p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/qos_utils/qos_compatibility.hpp&gt;</span>
+
+<span class="c1">// Create a service client with compatible QoS</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">client</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">create_client</span><span class="o">&lt;</span><span class="n">MyService</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">  </span><span class="s">"my_service"</span><span class="p">,</span>
+<span class="w">  </span><span class="n">AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE</span><span class="p">()</span>
+<span class="p">);</span>
+
+<span class="c1">// Create a service with compatible QoS</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">service</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">create_service</span><span class="o">&lt;</span><span class="n">MyService</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">  </span><span class="s">"my_service"</span><span class="p">,</span>
+<span class="w">  </span><span class="n">callback</span><span class="p">,</span>
+<span class="w">  </span><span class="n">AUTOWARE_DEFAULT_SERVICES_QOS_PROFILE</span><span class="p">()</span>
+<span class="p">);</span>
+</code></pre></div>
 <h3 id="topic-qos">Topic QoS<a class="headerlink" href="#topic-qos" title="Permanent link">#</a></h3>
-<p>```cpp</p>
-<h1 id="include_1">include <autoware qos_utils qos_compatibility.hpp><a class="headerlink" href="#include_1" title="Permanent link">#</a></autoware></h1>
-<p>// Create a publisher with compatible QoS
-auto publisher = node-&gt;create_publisher<mymessage>(
-  "my_topic",
-  AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE()
-);</mymessage></p>
-<p>// Create a subscription with compatible QoS
-auto subscription = node-&gt;create_subscription<mymessage>(
-  "my_topic",
-  10,
-  callback,
-  AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE()
-);
-```</mymessage></p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/qos_utils/qos_compatibility.hpp&gt;</span>
+
+<span class="c1">// Create a publisher with compatible QoS</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">publisher</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">create_publisher</span><span class="o">&lt;</span><span class="n">MyMessage</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">  </span><span class="s">"my_topic"</span><span class="p">,</span>
+<span class="w">  </span><span class="n">AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE</span><span class="p">()</span>
+<span class="p">);</span>
+
+<span class="c1">// Create a subscription with compatible QoS</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">subscription</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">create_subscription</span><span class="o">&lt;</span><span class="n">MyMessage</span><span class="o">&gt;</span><span class="p">(</span>
+<span class="w">  </span><span class="s">"my_topic"</span><span class="p">,</span>
+<span class="w">  </span><span class="mi">10</span><span class="p">,</span>
+<span class="w">  </span><span class="n">callback</span><span class="p">,</span>
+<span class="w">  </span><span class="n">AUTOWARE_DEFAULT_TOPIC_QOS_PROFILE</span><span class="p">()</span>
+<span class="p">);</span>
+</code></pre></div>
 <h2 id="api-reference">API Reference<a class="headerlink" href="#api-reference" title="Permanent link">#</a></h2>
 <h3 id="macros">Macros<a class="headerlink" href="#macros" title="Permanent link">#</a></h3>
 <ul>

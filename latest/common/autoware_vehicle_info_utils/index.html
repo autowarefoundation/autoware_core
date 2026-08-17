@@ -7864,12 +7864,12 @@ The current format supports only the Ackermann model. This file defines the mode
 </ul>
 </li>
 </ul>
-<p><code>yaml
-/**:
-  ros__parameters:
-    # version: 0.1.0 # Uncomment and update this line for future format changes.
-    wheel_radius: 0.383
-    ...</code></p>
+<div class="highlight"><pre><span></span><code><span class="nt">/**</span><span class="p">:</span>
+<span class="w">  </span><span class="nt">ros__parameters</span><span class="p">:</span>
+<span class="w">    </span><span class="c1"># version: 0.1.0 # Uncomment and update this line for future format changes.</span>
+<span class="w">    </span><span class="nt">wheel_radius</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.383</span>
+<span class="w">    </span><span class="l l-Scalar l-Scalar-Plain">...</span>
+</code></pre></div>
 <h4 id="why-versioning">Why Versioning?<a class="headerlink" href="#why-versioning" title="Permanent link">#</a></h4>
 <ul>
 <li>Consistency Across Updates: Implementing version control will allow accurate tracking of changes over time and changes in vehicle information parameters.</li>
@@ -7878,13 +7878,13 @@ The current format supports only the Ackermann model. This file defines the mode
 </ul>
 <h3 id="scripts">Scripts<a class="headerlink" href="#scripts" title="Permanent link">#</a></h3>
 <h4 id="minimum-turning-radius">Minimum turning radius<a class="headerlink" href="#minimum-turning-radius" title="Permanent link">#</a></h4>
-<p><code>sh
-$ ros2 run autoware_vehicle_info_utils min_turning_radius_calculator.py
-yaml path is /home/autoware/pilot-auto/install/autoware_vehicle_info_utils/share/autoware_vehicle_info_utils/config/vehicle_info.param.yaml
-Minimum turning radius is 3.253042620027102 [m] for rear, 4.253220695862465 [m] for front.</code></p>
+<div class="highlight"><pre><span></span><code>$<span class="w"> </span>ros2<span class="w"> </span>run<span class="w"> </span>autoware_vehicle_info_utils<span class="w"> </span>min_turning_radius_calculator.py
+yaml<span class="w"> </span>path<span class="w"> </span>is<span class="w"> </span>/home/autoware/pilot-auto/install/autoware_vehicle_info_utils/share/autoware_vehicle_info_utils/config/vehicle_info.param.yaml
+Minimum<span class="w"> </span>turning<span class="w"> </span>radius<span class="w"> </span>is<span class="w"> </span><span class="m">3</span>.253042620027102<span class="w"> </span><span class="o">[</span>m<span class="o">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>rear,<span class="w"> </span><span class="m">4</span>.253220695862465<span class="w"> </span><span class="o">[</span>m<span class="o">]</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>front.
+</code></pre></div>
 <p>You can designate yaml file with <code>-y</code> option as follows.</p>
-<p><code>sh
-ros2 run autoware_vehicle_info_utils min_turning_radius_calculator.py -y &lt;path-to-yaml&gt;</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_vehicle_info_utils<span class="w"> </span>min_turning_radius_calculator.py<span class="w"> </span>-y<span class="w"> </span>&lt;path-to-yaml&gt;
+</code></pre></div>
 <h2 id="assumptions-known-limits">Assumptions / Known limits<a class="headerlink" href="#assumptions-known-limits" title="Permanent link">#</a></h2>
 <p>TBD.</p></div>
 

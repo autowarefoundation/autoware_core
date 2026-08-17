@@ -9890,17 +9890,17 @@
 </table>
 <h3 id="how-to-craft-test-map">How to craft test map<a class="headerlink" href="#how-to-craft-test-map" title="Permanent link">#</a></h3>
 <p>On the VMB, create the map in MGRS system and save the file as <code>&lt;input_map.osm&gt;</code>. Next, select the point to set as origin, get its <code>&lt;ID&gt;</code> and run</p>
-<p><code>bash
-ros2 run autoware_lanelet2_utils lanelet_anonymizer.py &lt;input_map.osm&gt; &lt;output_map.osm&gt; &lt;ID&gt;</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>lanelet_anonymizer.py<span class="w"> </span>&lt;input_map.osm&gt;<span class="w"> </span>&lt;output_map.osm&gt;<span class="w"> </span>&lt;ID&gt;
+</code></pre></div>
 <p>Then the coordinate of the specified point is (100, 100) on the loaded map(NOTE: not exactly (0, 0) because MGRS does not any point to have negative coordinate value).</p>
 <p>By applying <code>lanelet_id_aligner.py</code>, the primitive ids are aligned to start from 1 and increase one-by-one.</p>
-<p><code>bash
-ros2 run autoware_lanelet2_utils lanelet_id_aligner.py &lt;input_map.osm&gt;</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>lanelet_id_aligner.py<span class="w"> </span>&lt;input_map.osm&gt;
+</code></pre></div>
 <p>Finally, to fix lat/lon value of the map, upload the map on VMB, then export it again.</p>
 <h2 id="tested-case">Tested case<a class="headerlink" href="#tested-case" title="Permanent link">#</a></h2>
 <p><code>test_data</code> contains test scene yaml files describing the context of unit tests. They can be visualized</p>
-<p><code>bash
-ros2 run autoware_lanelet2_utils test_case_generator.py --view &lt;file name&gt;</code></p>
+<div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>run<span class="w"> </span>autoware_lanelet2_utils<span class="w"> </span>test_case_generator.py<span class="w"> </span>--view<span class="w"> </span>&lt;file<span class="w"> </span>name&gt;
+</code></pre></div>
 <table>
 <thead>
 <tr>
