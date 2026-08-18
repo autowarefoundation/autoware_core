@@ -53,10 +53,10 @@
 namespace autoware::ekf_localizer
 {
 
-class EKFLocalizer : public autoware::agnocast_wrapper::Node
+class EKFLocalizerNode : public autoware::agnocast_wrapper::Node
 {
 public:
-  explicit EKFLocalizer(const rclcpp::NodeOptions & node_options);
+  explicit EKFLocalizerNode(const rclcpp::NodeOptions & node_options);
 
   // This function is only used in static tools to know when timer callbacks are triggered.
   std::chrono::nanoseconds time_until_trigger() const
@@ -116,7 +116,7 @@ private:
     logger_configure_;
 
   //!< @brief  extended kalman filter instance.
-  std::unique_ptr<EKFModule> ekf_module_;
+  std::unique_ptr<EKFLocalizer> ekf_localizer_;
 
   const HyperParameters params_;
 
@@ -220,7 +220,7 @@ private:
     const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
     const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
 
-  friend class EKFLocalizerDiagnosticsTest;  // for test code
+  friend class EKFLocalizerNodeDiagnosticsTest;  // for test code
 };
 
 }  // namespace autoware::ekf_localizer
