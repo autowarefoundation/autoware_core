@@ -30,7 +30,7 @@ class Warning
 public:
   explicit Warning(autoware::agnocast_wrapper::Node * node) : node_(node) {}
 
-  // Additive seam: an explicitly-requested no-op logger constructed without a node, so EKFModule
+  // Additive seam: an explicitly-requested no-op logger constructed without a node, so EKFLocalizer
   // can be unit-tested outside of a ROS runtime. When node_ is null, warn/warn_throttle silently
   // do nothing. The std::nullptr_t parameter forces callers to opt in deliberately
   // (e.g. Warning(nullptr)); production code cannot accidentally default-construct a Warning and

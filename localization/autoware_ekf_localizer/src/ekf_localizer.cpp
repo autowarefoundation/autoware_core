@@ -40,7 +40,7 @@ namespace autoware::ekf_localizer
 #define DEBUG_PRINT_MAT(X) {if (params_.show_debug_info) {std::cout << #X << ": " << X << std::endl;}} // NOLINT
 // clang-format on
 
-EKFModule::EKFModule(std::shared_ptr<Warning> warning, const HyperParameters & params)
+EKFLocalizer::EKFLocalizer(std::shared_ptr<Warning> warning, const HyperParameters & params)
 : warning_(std::move(warning)),
   dim_x_(6),  // x, y, yaw, yaw_bias, vx, wz
   accumulated_delay_times_(params.extend_state_step, 1.0E15),
@@ -63,7 +63,7 @@ EKFModule::EKFModule(std::shared_ptr<Warning> warning, const HyperParameters & p
   pitch_filter_.set_proc_var(params_.pitch_filter_proc_dev * params_.pitch_filter_proc_dev);
 }
 
-void EKFModule::initialize(
+void EKFLocalizer::initialize(
   const PoseWithCovariance & initial_pose, const geometry_msgs::msg::TransformStamped & transform)
 {
   Eigen::MatrixXd x(dim_x_, 1);
@@ -103,7 +103,7 @@ void EKFModule::initialize(
   pitch_filter_.init(rpy.y, pitch_var);
 }
 
-geometry_msgs::msg::PoseStamped EKFModule::get_current_pose(
+geometry_msgs::msg::PoseStamped EKFLocalizer::get_current_pose(
   const rclcpp::Time & current_time, bool get_biased_yaw) const
 {
   const double z = z_filter_.get_x();
@@ -135,7 +135,7 @@ geometry_msgs::msg::PoseStamped EKFModule::get_current_pose(
   return current_ekf_pose;
 }
 
-geometry_msgs::msg::TwistStamped EKFModule::get_current_twist(
+geometry_msgs::msg::TwistStamped EKFLocalizer::get_current_twist(
   const rclcpp::Time & current_time) const
 {
   const double vx = kalman_filter_.getXelement(IDX::VX);
@@ -149,7 +149,7 @@ geometry_msgs::msg::TwistStamped EKFModule::get_current_twist(
   return current_ekf_twist;
 }
 
-std::array<double, 36> EKFModule::get_current_pose_covariance() const
+std::array<double, 36> EKFLocalizer::get_current_pose_covariance() const
 {
   std::array<double, 36> cov =
     ekf_covariance_to_pose_message_covariance(kalman_filter_.getLatestP());
@@ -162,17 +162,17 @@ std::array<double, 36> EKFModule::get_current_pose_covariance() const
   return cov;
 }
 
-std::array<double, 36> EKFModule::get_current_twist_covariance() const
+std::array<double, 36> EKFLocalizer::get_current_twist_covariance() const
 {
   return ekf_covariance_to_twist_message_covariance(kalman_filter_.getLatestP());
 }
 
-double EKFModule::get_yaw_bias() const
+double EKFLocalizer::get_yaw_bias() const
 {
   return kalman_filter_.getLatestX()(IDX::YAWB);
 }
 
-size_t EKFModule::find_closest_delay_time_index(double target_value) const
+size_t EKFLocalizer::find_closest_delay_time_index(double target_value) const
 {
   // Additive safety guard: accumulated_delay_times_ is sized to params_.extend_state_step in the
   // constructor. A misconfigured extend_state_step == 0 leaves the table empty, and the
@@ -208,7 +208,7 @@ size_t EKFModule::find_closest_delay_time_index(double target_value) const
                            : std::distance(accumulated_delay_times_.begin(), lower);
 }
 
-void EKFModule::accumulate_delay_time(const double dt)
+void EKFLocalizer::accumulate_delay_time(const double dt)
 {
   // Shift the delay times to the right.
   std::copy_backward(
@@ -222,7 +222,7 @@ void EKFModule::accumulate_delay_time(const double dt)
   }
 }
 
-void EKFModule::predict_with_delay(const double dt)
+void EKFLocalizer::predict_with_delay(const double dt)
 {
   const Vector6d x_curr = kalman_filter_.getLatestX();
 
@@ -237,7 +237,7 @@ void EKFModule::predict_with_delay(const double dt)
   ekf_dt_ = dt;
 }
 
-bool EKFModule::measurement_update_pose(
+bool EKFLocalizer::measurement_update_pose(
   const PoseWithCovariance & pose, const rclcpp::Time & t_curr, EKFDiagnosticInfo & pose_diag_info)
 {
   if (pose.header.frame_id != params_.pose_frame_id) {
@@ -335,7 +335,7 @@ bool EKFModule::measurement_update_pose(
   return true;
 }
 
-geometry_msgs::msg::PoseWithCovarianceStamped EKFModule::compensate_rph_with_delay(
+geometry_msgs::msg::PoseWithCovarianceStamped EKFLocalizer::compensate_rph_with_delay(
   const PoseWithCovariance & pose, tf2::Vector3 last_angular_velocity, const double delay_time)
 {
   tf2::Quaternion delta_orientation;
@@ -370,7 +370,7 @@ geometry_msgs::msg::PoseWithCovarianceStamped EKFModule::compensate_rph_with_del
   return pose_with_delay;
 }
 
-bool EKFModule::measurement_update_twist(
+bool EKFLocalizer::measurement_update_twist(
   const TwistWithCovariance & twist, const rclcpp::Time & t_curr,
   EKFDiagnosticInfo & twist_diag_info)
 {
@@ -455,7 +455,7 @@ bool EKFModule::measurement_update_twist(
   return true;
 }
 
-void EKFModule::update_simple_1d_filters(
+void EKFLocalizer::update_simple_1d_filters(
   const geometry_msgs::msg::PoseWithCovarianceStamped & pose, const size_t smoothing_step)
 {
   double z = pose.pose.pose.position.z;

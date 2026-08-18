@@ -88,7 +88,7 @@ protected:
       {"misc.threshold_observable_velocity_mps", 0.0},
     });
 
-    node_ = std::make_shared<EKFLocalizer>(options);
+    node_ = std::make_shared<EKFLocalizerNode>(options);
     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     executor_->add_node(node_->get_node_base_interface());
 
@@ -238,7 +238,7 @@ protected:
     step_time(0.02);  // Tick once (50 Hz)
   }
 
-  std::shared_ptr<EKFLocalizer> node_;
+  std::shared_ptr<EKFLocalizerNode> node_;
   std::shared_ptr<rclcpp::Node> test_node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
   std::shared_ptr<tf2_ros::StaticTransformBroadcaster> tf_broadcaster_;
