@@ -110,7 +110,7 @@ private:
   //!< @brief tf listener
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
 
-  //!< @brief logger configure EKFLocalizer
+  //!< @brief logger configure module
   std::unique_ptr<
     autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
     logger_configure_;
