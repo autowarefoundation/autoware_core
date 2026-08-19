@@ -128,6 +128,10 @@ class PolicySynchronizer
 
 public:
   using Callback = std::function<void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...)>;
+  /// Plain ROS 2 callback form. Preferred: it needs no Agnocast types at the call site and
+  /// costs one allocation per message instead of two, because the payload is aliased straight
+  /// out of the ipc_shared_ptr rather than through an intermediate message_ptr.
+  using ConstSharedPtrCallback = std::function<void(const typename Ms::ConstSharedPtr &...)>;
 
   PolicySynchronizer(uint32_t queue_size, Subscriber<Ms> &... subs)
   : sync_(
@@ -165,13 +169,13 @@ public:
   template <class C>
   ::message_filters::Connection registerCallback(C & callback)
   {
-    return registerCallbackInternal(Callback(callback));
+    return registerCallbackInternal(makeCallback(callback));
   }
 
   template <class C>
   ::message_filters::Connection registerCallback(const C & callback)
   {
-    return registerCallbackInternal(Callback(callback));
+    return registerCallbackInternal(makeCallback(callback));
   }
 
   template <class C, typename T>
@@ -192,18 +196,30 @@ private:
   // pointer (adapter.get()), so it is held in `adapters_` to keep it alive.
   struct CallbackAdapter
   {
-    Callback fn;
+    std::variant<Callback, ConstSharedPtrCallback> fn;
 
     void agnocastInvoke(const agnocast::message_filters::MessageEvent<const Ms> &... es)
     {
+      if (auto * shared_fn = std::get_if<ConstSharedPtrCallback>(&fn)) {
+        // Alias the payload straight out of the shared-memory message: no copy, and no
+        // intermediate message_ptr to allocate.
+        (*shared_fn)(autoware::agnocast_wrapper::detail::alias_as_const_shared_ptr<const Ms>(
+          agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
+        return;
+      }
       // Wrap ipc_shared_ptr in message_ptr (copies ipc_shared_ptr refcount, not data)
-      fn(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(
+      std::get<Callback>(fn)(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(
         agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
     }
 
     void rclcppInvoke(const typename Ms::ConstSharedPtr &... ms)
     {
-      fn(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(std::shared_ptr<const Ms>(ms))...);
+      if (auto * shared_fn = std::get_if<ConstSharedPtrCallback>(&fn)) {
+        (*shared_fn)(ms...);
+        return;
+      }
+      std::get<Callback>(fn)(
+        AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(std::shared_ptr<const Ms>(ms))...);
     }
   };
 
@@ -211,15 +227,46 @@ private:
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
 
-  template <class C, typename T>
-  static Callback bindMemberCallback(C && callback, T * t)
+  using AnyCallback = std::variant<Callback, ConstSharedPtrCallback>;
+
+  // The message_ptr form is probed first so an existing generic callback keeps resolving to it.
+  template <class C>
+  static AnyCallback makeCallback(const C & callback)
   {
-    return Callback{
-      [callback = std::forward<C>(callback),
-       t](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ... ms) { (t->*callback)(ms...); }};
+    if constexpr (std::is_invocable_v<
+                    const C &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...>) {
+      return AnyCallback{std::in_place_type<Callback>, callback};
+    } else {
+      static_assert(
+        std::is_invocable_v<const C &, const typename Ms::ConstSharedPtr &...>,
+        "synchronizer callback should be invocable with either "
+        "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ...");
+      return AnyCallback{std::in_place_type<ConstSharedPtrCallback>, callback};
+    }
   }
 
-  ::message_filters::Connection registerCallbackInternal(Callback && callback)
+  template <class C, typename T>
+  static AnyCallback bindMemberCallback(C && callback, T * t)
+  {
+    if constexpr (std::is_invocable_v<C, T *, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...>) {
+      return AnyCallback{
+        std::in_place_type<Callback>,
+        [callback = std::forward<C>(callback),
+         t](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ... ms) { (t->*callback)(ms...); }};
+    } else {
+      static_assert(
+        std::is_invocable_v<C, T *, const typename Ms::ConstSharedPtr &...>,
+        "synchronizer member callback should be invocable with either "
+        "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ...");
+      return AnyCallback{
+        std::in_place_type<ConstSharedPtrCallback>,
+        [callback = std::forward<C>(callback), t](const typename Ms::ConstSharedPtr &... ms) {
+          (t->*callback)(ms...);
+        }};
+    }
+  }
+
+  ::message_filters::Connection registerCallbackInternal(AnyCallback && callback)
   {
     auto adapter = std::make_unique<CallbackAdapter>();
     adapter->fn = std::move(callback);
