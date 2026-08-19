@@ -65,7 +65,8 @@ GyroOdometerNode::GyroOdometerNode(const rclcpp::NodeOptions & node_options)
   message_timeout_sec_(declare_parameter<double>("message_timeout_sec")),
   transform_gyro_queue_func_([this](std::deque<sensor_msgs::msg::Imu> & gyro_queue) {
     return transform_gyro_queue(gyro_queue, *transform_listener_, output_frame_);
-  })
+  }),
+  gyro_odometer_(message_timeout_sec_)
 {
   logger_configure_ = std::make_unique<
     autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
@@ -100,7 +101,7 @@ void GyroOdometerNode::callback_vehicle_twist(
     vehicle_twist_msg_ptr)
 {
   const auto output = gyro_odometer_.input_vehicle_twist(
-    *vehicle_twist_msg_ptr, this->now(), message_timeout_sec_, transform_gyro_queue_func_);
+    *vehicle_twist_msg_ptr, this->now(), transform_gyro_queue_func_);
 
   if (output) {
     publish_data(*output);
@@ -110,8 +111,8 @@ void GyroOdometerNode::callback_vehicle_twist(
 void GyroOdometerNode::callback_imu(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::Imu) imu_msg_ptr)
 {
-  const auto output = gyro_odometer_.input_imu(
-    *imu_msg_ptr, this->now(), message_timeout_sec_, transform_gyro_queue_func_);
+  const auto output =
+    gyro_odometer_.input_imu(*imu_msg_ptr, this->now(), transform_gyro_queue_func_);
 
   if (output) {
     publish_data(*output);

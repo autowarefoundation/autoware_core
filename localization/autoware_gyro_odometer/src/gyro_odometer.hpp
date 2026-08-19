@@ -49,6 +49,12 @@ using GyroQueueTransformFunc = std::function<bool(std::deque<sensor_msgs::msg::I
 class GyroOdometer
 {
 public:
+  /// \brief Construct with the age beyond which a queued message is considered stale.
+  ///
+  /// \param message_timeout_sec a fusion attempt discards both queues once either side is older
+  /// than this, measured against the current time passed to input_vehicle_twist() / input_imu().
+  explicit GyroOdometer(double message_timeout_sec);
+
   /// \brief The four twist messages a successful fusion produces: raw fused twist, raw fused twist
   /// with covariance, stop-compensated twist, and stop-compensated twist with covariance,
   /// respectively.
@@ -78,13 +84,12 @@ public:
   /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
   std::optional<OutputData> input_vehicle_twist(
     const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
-    rclcpp::Time current_time, double message_timeout_sec,
-    const GyroQueueTransformFunc & transform_gyro_queue_func);
+    rclcpp::Time current_time, const GyroQueueTransformFunc & transform_gyro_queue_func);
 
   /// \brief Queue \p imu_msg and attempt a fusion.
   /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
   std::optional<OutputData> input_imu(
-    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
+    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time,
     const GyroQueueTransformFunc & transform_gyro_queue_func);
 
   /// \brief Read the current state for diagnostics reporting.
@@ -92,12 +97,12 @@ public:
 
 private:
   std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
-    rclcpp::Time current_time, double message_timeout_sec,
-    const GyroQueueTransformFunc & transform_gyro_queue_func);
+    rclcpp::Time current_time, const GyroQueueTransformFunc & transform_gyro_queue_func);
 
   static OutputData make_output(
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
 
+  double message_timeout_sec_;
   bool vehicle_twist_arrived_{false};
   bool imu_arrived_{false};
   bool is_succeed_transform_imu_{false};

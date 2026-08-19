@@ -24,17 +24,19 @@
 namespace autoware::gyro_odometer
 {
 
+GyroOdometer::GyroOdometer(double message_timeout_sec) : message_timeout_sec_(message_timeout_sec)
+{
+}
+
 std::optional<GyroOdometer::OutputData> GyroOdometer::input_vehicle_twist(
   const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
-  rclcpp::Time current_time, double message_timeout_sec,
-  const GyroQueueTransformFunc & transform_gyro_queue_func)
+  rclcpp::Time current_time, const GyroQueueTransformFunc & transform_gyro_queue_func)
 {
   vehicle_twist_arrived_ = true;
   latest_vehicle_twist_ros_time_ = vehicle_twist_msg.header.stamp;
   vehicle_twist_queue_.push_back(vehicle_twist_msg);
 
-  const auto twist_with_cov =
-    concat_gyro_and_odometer(current_time, message_timeout_sec, transform_gyro_queue_func);
+  const auto twist_with_cov = concat_gyro_and_odometer(current_time, transform_gyro_queue_func);
   if (!twist_with_cov) {
     return std::nullopt;
   }
@@ -42,15 +44,14 @@ std::optional<GyroOdometer::OutputData> GyroOdometer::input_vehicle_twist(
 }
 
 std::optional<GyroOdometer::OutputData> GyroOdometer::input_imu(
-  const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time, double message_timeout_sec,
+  const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time,
   const GyroQueueTransformFunc & transform_gyro_queue_func)
 {
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg.header.stamp;
   gyro_queue_.push_back(imu_msg);
 
-  const auto twist_with_cov =
-    concat_gyro_and_odometer(current_time, message_timeout_sec, transform_gyro_queue_func);
+  const auto twist_with_cov = concat_gyro_and_odometer(current_time, transform_gyro_queue_func);
   if (!twist_with_cov) {
     return std::nullopt;
   }
@@ -74,8 +75,7 @@ GyroOdometer::Status GyroOdometer::take_status() const
 
 std::optional<geometry_msgs::msg::TwistWithCovarianceStamped>
 GyroOdometer::concat_gyro_and_odometer(
-  rclcpp::Time current_time, double message_timeout_sec,
-  const GyroQueueTransformFunc & transform_gyro_queue_func)
+  rclcpp::Time current_time, const GyroQueueTransformFunc & transform_gyro_queue_func)
 {
   // check arrive first topic
   if (!vehicle_twist_arrived_) {
@@ -92,12 +92,12 @@ GyroOdometer::concat_gyro_and_odometer(
   // check timeout
   latest_vehicle_twist_dt_ = std::abs((current_time - latest_vehicle_twist_ros_time_).seconds());
   latest_imu_dt_ = std::abs((current_time - latest_imu_ros_time_).seconds());
-  if (latest_vehicle_twist_dt_ > message_timeout_sec) {
+  if (latest_vehicle_twist_dt_ > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return std::nullopt;
   }
-  if (latest_imu_dt_ > message_timeout_sec) {
+  if (latest_imu_dt_ > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return std::nullopt;
