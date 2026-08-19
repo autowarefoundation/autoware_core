@@ -41,6 +41,10 @@
 namespace autoware::ndt_scan_matcher
 {
 
+// Declared a friend of MapUpdateModule so unit tests can drive its otherwise-private map-update
+// entry points (see test/test_map_update_module.cpp).
+class MapUpdateModuleTest;
+
 class MapUpdateModule
 {
 public:
@@ -114,6 +118,7 @@ public:
 
 private:
   friend class NDTScanMatcher;
+  friend class MapUpdateModuleTest;
 
   UpdateResult callback_timer(const geometry_msgs::msg::PointStamped & position);
 
