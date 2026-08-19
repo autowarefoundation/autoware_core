@@ -21,9 +21,8 @@
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
 
-#include <pcl_conversions/pcl_conversions.h>
-
 #include <gtest/gtest.h>
+#include <pcl_conversions/pcl_conversions.h>
 
 #include <cstdint>
 #include <memory>
@@ -146,7 +145,7 @@ TEST_F(MapUpdateModuleTest, OutOfMapRangeTracksLastUpdate)  // NOLINT
 
   ASSERT_TRUE(update_map(module, make_point_stamped(0.0, 0.0)).map_updated);
 
-  EXPECT_FALSE(module.out_of_map_range(make_point(0.0, 0.0)));  // at the last update position
+  EXPECT_FALSE(module.out_of_map_range(make_point(0.0, 0.0)));   // at the last update position
   EXPECT_TRUE(module.out_of_map_range(make_point(100.0, 0.0)));  // 100 + 5 > 30
 }
 
