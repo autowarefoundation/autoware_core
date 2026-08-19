@@ -7872,6 +7872,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#migrating-from-init_" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Migrating from init_*
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#opt-in-service-introspection-for-service-and-client" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -7904,6 +7915,28 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#registration-and-the-node-manifest" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Registration and the node manifest
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#interface-manifest-fragments" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Interface manifest fragments
+      
+    </span>
+  </a>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -7929,9 +7962,12 @@
 <p>This is a utility package that provides the following features:</p>
 <ul>
 <li>Instantiation of the wrapper class</li>
+<li>Registration of every interface a node creates into a queryable manifest</li>
+<li>Serialization of that manifest to the admission manifest document schema</li>
 <li>Opt-in service introspection for service and client</li>
 <li>Service exception for response</li>
 <li>Relays for topic and service</li>
+<li>A test helper for pinning a package's committed manifest fragment against what a node actually registers</li>
 </ul>
 <h2 id="design">Design<a class="headerlink" href="#design" title="Permanent link">#</a></h2>
 <p>This package provides the wrappers for the interface classes of rclcpp.
@@ -7954,7 +7990,17 @@ Do not inherit the class of rclcpp, and forward or wrap the member function that
 <span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">durability</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL</span><span class="p">;</span>
 <span class="p">};</span>
 </code></pre></div>
-<p>Create the wrapper using the above definition as follows.</p>
+<p>Create the wrapper by asking the adaptor for it directly, giving the specification as an explicit template argument.
+This is the current style: these are non-const member functions, so the adaptor must not be declared <code>const</code> when they are used.</p>
+<div class="highlight"><pre><span></span><code><span class="c1">// source file</span>
+<span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">NodeAdaptor</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
+<span class="n">srv_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_service</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;</span><span class="p">(</span><span class="n">callback</span><span class="p">);</span>
+<span class="n">cli_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_client</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">pub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_publisher</span><span class="o">&lt;</span><span class="n">SampleMessage</span><span class="o">&gt;</span><span class="p">();</span>
+<span class="n">sub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_subscription</span><span class="o">&lt;</span><span class="n">SampleMessage</span><span class="o">&gt;</span><span class="p">(</span><span class="n">callback</span><span class="p">);</span>
+</code></pre></div>
+<p>The adaptor also provides deducing forms that take the output variable instead of an explicit template argument (<code>init_srv</code>, <code>init_cli</code>, <code>init_pub</code>, <code>init_sub</code>).
+They create the same wrappers as the <code>create_*</code> methods above, but they are the legacy form; see <a href="#migrating-from-init_">Migrating from init_*</a> for the <code>create_*</code> replacement of each overload.</p>
 <div class="highlight"><pre><span></span><code><span class="c1">// header file</span>
 <span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">Service</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">srv_</span><span class="p">;</span>
 <span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">Client</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;::</span><span class="n">SharedPtr</span><span class="w"> </span><span class="n">cli_</span><span class="p">;</span>
@@ -7963,21 +8009,53 @@ Do not inherit the class of rclcpp, and forward or wrap the member function that
 
 <span class="c1">// source file</span>
 <span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">NodeAdaptor</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
-<span class="n">node</span><span class="p">.</span><span class="n">init_srv</span><span class="p">(</span><span class="n">srv_</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span>
-<span class="n">node</span><span class="p">.</span><span class="n">init_cli</span><span class="p">(</span><span class="n">cli_</span><span class="p">);</span>
-<span class="n">node</span><span class="p">.</span><span class="n">init_pub</span><span class="p">(</span><span class="n">pub_</span><span class="p">);</span>
-<span class="n">node</span><span class="p">.</span><span class="n">init_sub</span><span class="p">(</span><span class="n">sub_</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span>
+<span class="n">node</span><span class="p">.</span><span class="n">init_srv</span><span class="p">(</span><span class="n">srv_</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span><span class="w">  </span><span class="c1">// legacy form, prefer create_service&lt;SampleService&gt;(callback)</span>
+<span class="n">node</span><span class="p">.</span><span class="n">init_cli</span><span class="p">(</span><span class="n">cli_</span><span class="p">);</span><span class="w">            </span><span class="c1">// legacy form, prefer create_client&lt;SampleService&gt;()</span>
+<span class="n">node</span><span class="p">.</span><span class="n">init_pub</span><span class="p">(</span><span class="n">pub_</span><span class="p">);</span><span class="w">            </span><span class="c1">// legacy form, prefer create_publisher&lt;SampleMessage&gt;()</span>
+<span class="n">node</span><span class="p">.</span><span class="n">init_sub</span><span class="p">(</span><span class="n">sub_</span><span class="p">,</span><span class="w"> </span><span class="n">callback</span><span class="p">);</span><span class="w">  </span><span class="c1">// legacy form, prefer create_subscription&lt;SampleMessage&gt;(callback)</span>
 </code></pre></div>
-<p>The adaptor also provides returning forms that take the specification as an explicit template argument instead of deducing it from the output variable.
-They create the same wrappers as the <code>init_*</code> methods, so the two styles can be mixed.
-These are non-const member functions, so the adaptor must not be declared <code>const</code> when they are used.</p>
-<div class="highlight"><pre><span></span><code><span class="c1">// source file</span>
-<span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">NodeAdaptor</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
-<span class="n">srv_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_service</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;</span><span class="p">(</span><span class="n">callback</span><span class="p">);</span>
-<span class="n">cli_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_client</span><span class="o">&lt;</span><span class="n">SampleService</span><span class="o">&gt;</span><span class="p">();</span>
-<span class="n">pub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_publisher</span><span class="o">&lt;</span><span class="n">SampleMessage</span><span class="o">&gt;</span><span class="p">();</span>
-<span class="n">sub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="p">.</span><span class="n">create_subscription</span><span class="o">&lt;</span><span class="n">SampleMessage</span><span class="o">&gt;</span><span class="p">(</span><span class="n">callback</span><span class="p">);</span>
-</code></pre></div>
+<h2 id="migrating-from-init_">Migrating from init_*<a class="headerlink" href="#migrating-from-init_" title="Permanent link">#</a></h2>
+<p>Every <code>init_*</code> overload is the legacy form and has a <code>create_*</code> replacement that returns the wrapper instead of writing it into an output parameter.
+Both styles register the interface identically, so migrating a call site is a mechanical rewrite with no behavior change.</p>
+<table>
+<thead>
+<tr>
+<th>Legacy overload</th>
+<th>Replacement</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>init_pub(pub)</code></td>
+<td><code>pub = create_publisher&lt;Spec&gt;()</code></td>
+</tr>
+<tr>
+<td><code>init_sub(sub, callback)</code></td>
+<td><code>sub = create_subscription&lt;Spec&gt;(callback)</code></td>
+</tr>
+<tr>
+<td><code>init_sub(sub, instance, &amp;Instance::pointer_callback)</code></td>
+<td><code>sub = create_subscription&lt;Spec&gt;(std::bind(&amp;Instance::pointer_callback, instance, _1))</code></td>
+</tr>
+<tr>
+<td><code>init_sub(sub, instance, &amp;Instance::reference_callback)</code></td>
+<td><code>sub = create_subscription&lt;Spec&gt;(std::bind(&amp;Instance::reference_callback, instance, _1))</code></td>
+</tr>
+<tr>
+<td><code>init_cli(cli, group)</code></td>
+<td><code>cli = create_client&lt;Spec&gt;(group)</code></td>
+</tr>
+<tr>
+<td><code>init_srv(srv, callback, group)</code></td>
+<td><code>srv = create_service&lt;Spec&gt;(callback, group)</code></td>
+</tr>
+<tr>
+<td><code>init_srv(srv, instance, &amp;Instance::service_callback, group)</code></td>
+<td><code>srv = create_service&lt;Spec&gt;(std::bind(&amp;Instance::service_callback, instance, _1, _2), group)</code></td>
+</tr>
+</tbody>
+</table>
+<p>The <code>init_*</code> overloads are not removed, so existing call sites keep compiling as-is; <code>create_*</code> is preferred for new code, and existing call sites are expected to migrate over time.</p>
 <h2 id="opt-in-service-introspection-for-service-and-client">Opt-in service introspection for service and client<a class="headerlink" href="#opt-in-service-introspection-for-service-and-client" title="Permanent link">#</a></h2>
 <p>This package does not trace service calls by itself.
 What it provides is a single node-scoped switch that turns on the standard <a href="https://docs.ros.org/en/jazzy/Tutorials/Demos/Service-Introspection.html">ROS 2 service introspection</a> for every wrapper of that node, so the wrappers do not have to be configured one by one.
@@ -8038,8 +8116,50 @@ This is useful when returning an error from a function called from the service c
 <div class="highlight"><pre><span></span><code><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">NodeAdaptor</span><span class="p">(</span><span class="k">this</span><span class="p">);</span>
 <span class="n">service_callback_group_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">create_callback_group</span><span class="p">(</span><span class="n">rclcpp</span><span class="o">::</span><span class="n">CallbackGroupType</span><span class="o">::</span><span class="n">MutuallyExclusive</span><span class="p">);</span>
 <span class="n">node</span><span class="p">.</span><span class="n">relay_message</span><span class="p">(</span><span class="n">pub_</span><span class="p">,</span><span class="w"> </span><span class="n">sub_</span><span class="p">);</span>
-<span class="n">node</span><span class="p">.</span><span class="n">relay_service</span><span class="p">(</span><span class="n">cli_</span><span class="p">,</span><span class="w"> </span><span class="n">srv_</span><span class="p">,</span><span class="w"> </span><span class="n">service_callback_group_</span><span class="p">);</span><span class="w">  </span><span class="c1">// group is for avoiding deadlocks</span>
-</code></pre></div></div>
+<span class="n">node</span><span class="p">.</span><span class="n">relay_service</span><span class="p">(</span><span class="n">cli_</span><span class="p">,</span><span class="w"> </span><span class="n">srv_</span><span class="p">,</span><span class="w"> </span><span class="n">service_callback_group_</span><span class="p">);</span>
+</code></pre></div>
+<p><code>relay_service</code>'s <code>group</code> argument is applied only to the relayed service server, never to the relayed client, and that split is intentional rather than an oversight.
+A relayed service callback blocks in <code>Client::call</code> until the downstream response arrives.
+If the client were placed in the same <code>MutuallyExclusive</code> group as that blocked server callback, a <code>MultiThreadedExecutor</code> could never run the client's response callback while the group's one thread is still stuck inside the server callback that is waiting for it, so the relay would deadlock for as long as the downstream call takes.
+Keeping the client out of <code>group</code> is what avoids that deadlock.</p>
+<h2 id="registration-and-the-node-manifest">Registration and the node manifest<a class="headerlink" href="#registration-and-the-node-manifest" title="Permanent link">#</a></h2>
+<p>Every <code>create_*</code> (and, for now, every <code>init_*</code>) call registers an <code>InterfaceRecord</code> for the endpoint it creates: which spec, in which role (<code>Provide</code> for a publisher or service server, <code>Require</code> for a subscription or service client), the remap-resolved name, the rosidl type name, whether the spec declares a domain version (and if so, its major/minor/patch), and the actual QoS the middleware ended up using.
+<code>autoware/component_interface_utils/rclcpp/registration.hpp</code> defines <code>InterfaceRecord</code> and <code>make_record&lt;Spec&gt;()</code>; the create/init implementation layer builds one record per endpoint and appends it under a mutex, so composed nodes that construct interfaces from multiple callback groups are safe.</p>
+<p><code>NodeAdaptor::manifest()</code> returns a snapshot vector of every record registered so far.
+It is complete by the time the node's constructor returns, since every entry point registers unconditionally.
+Every endpoint is created with the QoS its spec declares -- there is no per-call override -- so a record's QoS is the spec's QoS as the middleware resolved it.</p>
+<p><code>autoware/component_interface_utils/manifest_json.hpp</code> turns that vector into the admission manifest document schema: <code>to_manifest_json(node_name, records)</code> builds it from a raw vector, and <code>to_manifest_json(adaptor, node_name)</code> is the convenience form for a live adaptor.
+The document has an <code>owner</code>, a <code>node_name</code>, and <code>provided</code>/<code>required</code> arrays; each entry carries <code>interface_name</code>/<code>resolved_name</code>/<code>type_name</code> and a <code>qos</code> object (<code>reliability</code> is <code>"reliable"</code> or <code>"best_effort"</code>, <code>durability</code> is <code>"volatile"</code> or <code>"transient_local"</code>, plus <code>depth</code>).
+An unnameable QoS policy (for example the record's own <code>SYSTEM_DEFAULT</code> default, meaning nothing was ever actually applied) makes serialization throw <code>std::invalid_argument</code> rather than emit a placeholder.
+Version fields are conditional on <code>has_version</code>: a versioned <code>provided[]</code> entry carries <code>major</code>/<code>minor</code>/<code>patch</code>, a versioned <code>required[]</code> entry carries the accepted range (<code>accept_major_min</code>, <code>accept_major_max</code>, <code>min_minor</code>), and an unversioned record omits all of them rather than emitting zeros.</p>
+<h2 id="interface-manifest-fragments">Interface manifest fragments<a class="headerlink" href="#interface-manifest-fragments" title="Permanent link">#</a></h2>
+<p>A package that wants its nodes' manifests checked by a deploy-time admission gate commits an interface manifest fragment: <code>config/interface_manifest_fragment.json</code>, containing either one manifest document (matching the schema above) for a single-node package, or a JSON array of them for a package with multiple nodes.
+The fragment is installed to <code>share/&lt;pkg&gt;/</code> like any other data file, so the gate can discover it alongside every other installed package's fragment without the package needing to register itself anywhere else.</p>
+<p>The gate-discoverable location is the fixed relative path <code>share/&lt;package_name&gt;/interface_manifest_fragment.json</code> -- install the file directly there with a <code>FILES</code> rule, not through a subdirectory-copying rule such as <code>install(DIRECTORY config DESTINATION share/${PROJECT_NAME})</code>, which would nest it one level deeper (<code>share/&lt;package_name&gt;/config/interface_manifest_fragment.json</code>) instead, where the gate does not look:</p>
+<div class="highlight"><pre><span></span><code><span class="nb">install</span><span class="p">(</span>
+<span class="w">  </span><span class="s">FILES</span><span class="w"> </span><span class="s">config/interface_manifest_fragment.json</span>
+<span class="w">  </span><span class="s">DESTINATION</span><span class="w"> </span><span class="s">share/</span><span class="o">${</span><span class="nv">PROJECT_NAME</span><span class="o">}</span>
+<span class="p">)</span>
+</code></pre></div>
+<p>Pin the fragment against reality in a unit test, using <code>expect_manifest_matches</code> from <code>autoware/component_interface_utils/testing/manifest_drift.hpp</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">"autoware/component_interface_utils/testing/manifest_drift.hpp"</span>
+
+<span class="n">TEST</span><span class="p">(</span><span class="n">my_node</span><span class="p">,</span><span class="w"> </span><span class="n">manifest_matches_the_committed_fragment</span><span class="p">)</span>
+<span class="p">{</span>
+<span class="w">  </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">init</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span><span class="w"> </span><span class="nb">nullptr</span><span class="p">);</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">node</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">make_shared</span><span class="o">&lt;</span><span class="n">rclcpp</span><span class="o">::</span><span class="n">Node</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"my_node"</span><span class="p">);</span>
+<span class="w">  </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">NodeAdaptor</span><span class="w"> </span><span class="nf">adaptor</span><span class="p">(</span><span class="n">node</span><span class="p">.</span><span class="n">get</span><span class="p">());</span>
+<span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">pub</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">adaptor</span><span class="p">.</span><span class="n">create_publisher</span><span class="o">&lt;</span><span class="n">MySpec</span><span class="o">&gt;</span><span class="p">();</span><span class="w">  </span><span class="c1">// the same registrations MyNode's constructor makes</span>
+<span class="w">  </span><span class="n">autoware</span><span class="o">::</span><span class="n">component_interface_utils</span><span class="o">::</span><span class="n">testing</span><span class="o">::</span><span class="n">expect_manifest_matches</span><span class="p">(</span>
+<span class="w">    </span><span class="n">adaptor</span><span class="p">,</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">get_fully_qualified_name</span><span class="p">(),</span><span class="w"> </span><span class="n">MY_FRAGMENT_PATH</span><span class="p">);</span>
+<span class="w">  </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">shutdown</span><span class="p">();</span>
+<span class="p">}</span>
+</code></pre></div>
+<p><code>expect_manifest_matches</code> parses the fragment with nlohmann and compares it to the node's actual manifest as JSON values, so formatting and key order in the fragment do not matter; on a mismatch it fails with <code>EXPECT_EQ</code> and dumps the actual document.
+The header pulls in gtest, so any target that includes it must link gtest itself; this package adds no new dependency of its own for it.</p>
+<p>The test above builds its own node and its own <code>NodeAdaptor</code>, rather than reaching into an already-constructed instance of a package's real node class, and that is not a stylistic choice.
+<code>NodeAdaptor::manifest()</code> only reflects what has been registered through that same adaptor instance, and every in-tree node builds its <code>NodeAdaptor</code> as a local inside the node's own constructor, where it goes out of scope the moment construction returns; there is no accessor that reaches it afterward.
+The fragment-pinning convention works only because the unit test constructs the node and the adaptor itself and keeps both alive across the call to <code>expect_manifest_matches</code> -- it is not a way to query the manifest of an already-running node.</p></div>
 
 
 
