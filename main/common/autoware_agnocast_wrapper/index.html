@@ -8622,7 +8622,7 @@ both contexts.</p>
 </code></pre></div>
 <h3 id="2-macro-free-function-api">2. Macro + Free Function API<a class="headerlink" href="#2-macro-free-function-api" title="Permanent link">#</a></h3>
 <p>Use this when only <strong>specific topics</strong> need Agnocast on an existing <code>rclcpp::Node</code>, without converting the entire node to <code>agnocast_wrapper::Node</code>.</p>
-<p>You can immediately understand how to use the macros just by looking at <code>autoware_agnocast_wrapper.hpp</code>. A typical callback and publisher setup looks like this:</p>
+<p>You can immediately understand how to use the macros just by looking at <code>macros.hpp</code>. A typical callback and publisher setup looks like this:</p>
 <div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp&gt;</span>
 
 <span class="n">pub_output_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AUTOWARE_CREATE_PUBLISHER3</span><span class="p">(</span>
