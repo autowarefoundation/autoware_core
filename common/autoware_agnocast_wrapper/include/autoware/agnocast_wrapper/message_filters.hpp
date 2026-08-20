@@ -398,42 +398,247 @@ namespace autoware::agnocast_wrapper
 namespace message_filters
 {
 
-/// @brief message_filters Subscriber (non-Agnocast build); forwards the wrapper Node to the
-///        underlying rclcpp::Node. Inherited upstream members (connectInput, registerCallback, ...)
-///        are non-portable — they do not exist on the Agnocast-build Subscriber.
+/// @brief Curated message_filters Subscriber for the non-Agnocast build.
+///
+/// Holds a ::message_filters::Subscriber<M, rclcpp::Node> by value and forwards only the curated
+/// member set (subscribe / unsubscribe), instead of deriving from it. This keeps the public surface
+/// identical to the Agnocast build (which takes the wrapper Node), so code that compiles under
+/// ENABLE_AGNOCAST=0 also compiles under =1. Deriving from the upstream Subscriber would instead
+/// leak its full filter API (e.g. registerCallback, the raw node-pointer subscribe overloads) into
+/// the =0 build, allowing =0-only code that breaks under =1.
 template <class M>
-class Subscriber : public ::message_filters::Subscriber<M, rclcpp::Node>
+class Subscriber
 {
 public:
-  using Base = ::message_filters::Subscriber<M, rclcpp::Node>;
+  using RclcppSubscriber = ::message_filters::Subscriber<M, rclcpp::Node>;
 
   Subscriber() = default;
 
   Subscriber(
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
-  : Base(node->get_rclcpp_node().get(), topic, qos)
   {
+    subscribe(node, topic, qos);
   }
 
   void subscribe(
     autoware::agnocast_wrapper::Node * node, const std::string & topic,
     const rmw_qos_profile_t qos = rmw_qos_profile_default)
   {
-    Base::subscribe(node->get_rclcpp_node().get(), topic, qos);
+    sub_.subscribe(node->get_rclcpp_node().get(), topic, qos);
   }
+
+  void unsubscribe() { sub_.unsubscribe(); }
+
+  // Internal API: used by PolicySynchronizer.
+  // Not intended for downstream use.
+  RclcppSubscriber & rclcpp_subscriber() { return sub_; }
+
+private:
+  RclcppSubscriber sub_;
 };
 
+/// @brief Policy tags mirroring the Agnocast build. Carry only the queue size; the underlying
+///        rclcpp policy is selected inside Synchronizer<...>. Distinct from
+///        ::message_filters::sync_policies::ApproximateTime / ExactTime so the wrapper owns its
+///        Synchronizer surface rather than aliasing upstream.
 namespace sync_policies
 {
 template <typename... Ms>
-using ApproximateTime = ::message_filters::sync_policies::ApproximateTime<Ms...>;
+struct ApproximateTime
+{
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
+  explicit ApproximateTime(uint32_t qs) noexcept : queue_size(qs) {}
+};
+
 template <typename... Ms>
-using ExactTime = ::message_filters::sync_policies::ExactTime<Ms...>;
+struct ExactTime
+{
+  uint32_t queue_size;  ///< Queue size forwarded to the underlying sync policy.
+  explicit ExactTime(uint32_t qs) noexcept : queue_size(qs) {}
+};
 }  // namespace sync_policies
 
+/// @brief Primary Synchronizer template — supports ApproximateTime and ExactTime specializations.
 template <typename Policy>
-using Synchronizer = ::message_filters::Synchronizer<Policy>;
+class Synchronizer
+{
+  static_assert(
+    sizeof(Policy) == 0,
+    "Only sync_policies::ApproximateTime<Ms...> and sync_policies::ExactTime<Ms...> "
+    "are supported (2..8 message types).");
+};
+
+/// @brief Common synchronizer wrapper parameterized by the underlying upstream policy
+///        (non-Agnocast build). Use through Synchronizer<sync_policies::ApproximateTime<Ms...>> /
+///        Synchronizer<sync_policies::ExactTime<Ms...>>.
+///
+/// Exposes only the constructor (policy + Subscriber refs) and registerCallback, instead of
+/// aliasing ::message_filters::Synchronizer directly. This keeps the surface identical to the
+/// Agnocast build (e.g. connectInput stays unsupported in both), so code compiles under both
+/// ENABLE_AGNOCAST=0 and =1.
+///
+/// Registration mirrors the Agnocast build: the user callable is first coerced into `Callback`
+/// and then registered through a per-registration adapter. Forwarding the callable to upstream
+/// directly would be narrower than the Agnocast build, because upstream's
+/// `Signal9::addCallback` always binds nine placeholders and therefore rejects a plain
+/// N-argument lambda or std::function.
+///
+/// @tparam UpstreamPolicy ::message_filters sync policy type (e.g.
+///                        ::message_filters::sync_policies::ApproximateTime<Ms...>).
+/// @tparam Ms             Message types to synchronize (2..8).
+template <typename UpstreamPolicy, typename... Ms>
+class PolicySynchronizer
+{
+  static_assert(
+    sizeof...(Ms) >= 2 && sizeof...(Ms) <= 8,
+    "PolicySynchronizer supports 2 to 8 message types (upstream Signal9 has no "
+    "9-arg MFP overload, which the wrapper relies on for registration).");
+
+public:
+  using Callback = std::function<void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...)>;
+
+  PolicySynchronizer(uint32_t queue_size, Subscriber<Ms> &... subs)
+  : sync_(UpstreamPolicy(queue_size), subs.rclcpp_subscriber()...)
+  {
+  }
+
+  // Non-copyable and non-movable: upstream holds raw pointers into this object
+  // (see CallbackAdapter), so its address must stay stable for the registrations' lifetime.
+  ~PolicySynchronizer() = default;
+  PolicySynchronizer(const PolicySynchronizer &) = delete;
+  PolicySynchronizer & operator=(const PolicySynchronizer &) = delete;
+  PolicySynchronizer(PolicySynchronizer &&) = delete;
+  PolicySynchronizer & operator=(PolicySynchronizer &&) = delete;
+
+  /// @brief Register a callable for each matching tuple. Mirrors the four upstream
+  ///        `::message_filters::Synchronizer::registerCallback` overloads (free callable
+  ///        or member-fn-ptr + instance; const and non-const).
+  ///
+  /// Signature: `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) &...)`.
+  /// Returns `::message_filters::Connection` whose `.disconnect()` removes THIS callable
+  /// only (not RAII — scope exit does NOT unregister).
+  template <class C>
+  ::message_filters::Connection registerCallback(C & callback)
+  {
+    return registerCallbackInternal(Callback(callback));
+  }
+
+  template <class C>
+  ::message_filters::Connection registerCallback(const C & callback)
+  {
+    return registerCallbackInternal(Callback(callback));
+  }
+
+  template <class C, typename T>
+  ::message_filters::Connection registerCallback(C & callback, T * t)
+  {
+    return registerCallbackInternal(bindMemberCallback(callback, t));
+  }
+
+  template <class C, typename T>
+  ::message_filters::Connection registerCallback(const C & callback, T * t)
+  {
+    return registerCallbackInternal(bindMemberCallback(callback, t));
+  }
+
+private:
+  // Per-registration adapter: owns the user callable and gives upstream a member-fn-ptr with
+  // exactly sizeof...(Ms) parameters, which is the only shape upstream can register without
+  // requiring the callable itself to swallow nine arguments. Upstream keeps only a raw pointer
+  // (adapter.get()), so it is held in `adapters_` to keep it alive.
+  struct CallbackAdapter
+  {
+    Callback fn;
+
+    // In this build AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) is std::shared_ptr<const M>, i.e.
+    // exactly what upstream delivers, so no conversion is needed here.
+    void rclcppInvoke(const typename Ms::ConstSharedPtr &... ms) { fn(ms...); }
+  };
+
+  using AdapterPtr = std::unique_ptr<CallbackAdapter>;
+
+  template <class C, typename T>
+  static Callback bindMemberCallback(C && callback, T * t)
+  {
+    return Callback{
+      [callback = std::forward<C>(callback),
+       t](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ... ms) { (t->*callback)(ms...); }};
+  }
+
+  ::message_filters::Connection registerCallbackInternal(Callback && callback)
+  {
+    auto adapter = std::make_unique<CallbackAdapter>();
+    adapter->fn = std::move(callback);
+    auto * const adapter_raw = adapter.get();
+
+    auto upstream_conn = sync_.registerCallback(&CallbackAdapter::rclcppInvoke, adapter_raw);
+
+    // Upstream now holds `adapter_raw`; any throw before return would leave it
+    // dangling (Connection's dtor does not auto-disconnect). `upstream_conn` is
+    // copy-captured (not moved) so the catch handler still has a live local if
+    // the closure / Connection construction throws.
+    try {
+      {
+        std::lock_guard<std::mutex> lock(adapters_mutex_);
+        adapters_.push_back(std::move(adapter));
+      }
+
+      return ::message_filters::Connection(
+        ::message_filters::Connection::VoidDisconnectFunction(
+          [this, adapter_raw, upstream_conn]() mutable {
+            upstream_conn.disconnect();
+            std::lock_guard<std::mutex> lock(adapters_mutex_);
+            adapters_.erase(
+              std::remove_if(
+                adapters_.begin(), adapters_.end(),
+                [adapter_raw](const AdapterPtr & p) { return p.get() == adapter_raw; }),
+              adapters_.end());
+          }));
+    } catch (...) {
+      upstream_conn.disconnect();
+      std::lock_guard<std::mutex> lock(adapters_mutex_);
+      adapters_.erase(
+        std::remove_if(
+          adapters_.begin(), adapters_.end(),
+          [adapter_raw](const AdapterPtr & p) { return p.get() == adapter_raw; }),
+        adapters_.end());
+      throw;
+    }
+  }
+
+  std::mutex adapters_mutex_;
+  std::vector<AdapterPtr> adapters_;
+  ::message_filters::Synchronizer<UpstreamPolicy> sync_;
+};
+
+template <typename... Ms>
+class Synchronizer<sync_policies::ApproximateTime<Ms...>>
+: public PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<Ms...>, Ms...>
+{
+  using Base = PolicySynchronizer<::message_filters::sync_policies::ApproximateTime<Ms...>, Ms...>;
+
+public:
+  Synchronizer(const sync_policies::ApproximateTime<Ms...> & policy, Subscriber<Ms> &... subs)
+  : Base(policy.queue_size, subs...)
+  {
+  }
+};
+
+/// @brief Synchronizer specialization for the wrapper-layer ExactTime policy (non-Agnocast build).
+/// @see Synchronizer<sync_policies::ApproximateTime<Ms...>> for the shared implementation.
+template <typename... Ms>
+class Synchronizer<sync_policies::ExactTime<Ms...>>
+: public PolicySynchronizer<::message_filters::sync_policies::ExactTime<Ms...>, Ms...>
+{
+  using Base = PolicySynchronizer<::message_filters::sync_policies::ExactTime<Ms...>, Ms...>;
+
+public:
+  Synchronizer(const sync_policies::ExactTime<Ms...> & policy, Subscriber<Ms> &... subs)
+  : Base(policy.queue_size, subs...)
+  {
+  }
+};
 
 }  // namespace message_filters
 }  // namespace autoware::agnocast_wrapper
