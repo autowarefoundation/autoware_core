@@ -35,7 +35,6 @@
 #include <autoware_internal_debug_msgs/msg/int32_stamped.hpp>
 #include <autoware_internal_localization_msgs/srv/pose_with_covariance_stamped.hpp>
 #include <diagnostic_msgs/msg/diagnostic_array.hpp>
-#include <geometry_msgs/msg/point_stamped.hpp>
 #include <geometry_msgs/msg/pose_array.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
@@ -221,8 +220,8 @@ private:
 
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
 
-  // Keep latest position (with its stamp) for dynamic map loading
-  Guarded<std::optional<geometry_msgs::msg::PointStamped>> latest_ekf_position_{std::nullopt};
+  // Keep latest position for dynamic map loading
+  Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};
 
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
 

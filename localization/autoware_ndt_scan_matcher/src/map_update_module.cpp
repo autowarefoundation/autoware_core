@@ -57,13 +57,13 @@ MapUpdateModule::MapUpdateModule(
 }
 
 MapUpdateModule::UpdateResult MapUpdateModule::callback_timer(
-  const geometry_msgs::msg::PointStamped & position)
+  const geometry_msgs::msg::Point & position)
 {
   UpdateResult result;
   DiagnosticsReport & diagnostics = result.diagnostics;
 
   result.map_updated = secondary_ndt_ptr_.with([&](auto & secondary_ndt_ptr) {
-    const auto moved_distance = distance_from_last_update(position.point);
+    const auto moved_distance = distance_from_last_update(position);
     if (moved_distance) {
       diagnostics.add_key_value(
         {"distance_last_update_position_to_current_position", *moved_distance});
@@ -78,9 +78,9 @@ MapUpdateModule::UpdateResult MapUpdateModule::callback_timer(
       return false;
     }
 
-    const bool updated = update_map_internal(secondary_ndt_ptr, position.point, diagnostics);
+    const bool updated = update_map_internal(secondary_ndt_ptr, position, diagnostics);
     if (updated && param_.publish_loaded_map) {
-      result.loaded_pcd_map = merge_loaded_pcd_map(position.header.stamp);
+      result.loaded_pcd_map = merge_loaded_pcd_map();
     }
     return updated;
   });
@@ -187,13 +187,13 @@ bool MapUpdateModule::update_map_internal(
 }
 
 MapUpdateModule::UpdateResult MapUpdateModule::update_map(
-  const geometry_msgs::msg::PointStamped & position)
+  const geometry_msgs::msg::Point & position)
 {
   UpdateResult result;
   result.map_updated = secondary_ndt_ptr_.with([&](auto & secondary_ndt_ptr) {
-    const bool updated = update_map_internal(secondary_ndt_ptr, position.point, result.diagnostics);
+    const bool updated = update_map_internal(secondary_ndt_ptr, position, result.diagnostics);
     if (updated && param_.publish_loaded_map) {
-      result.loaded_pcd_map = merge_loaded_pcd_map(position.header.stamp);
+      result.loaded_pcd_map = merge_loaded_pcd_map();
     }
     return updated;
   });
@@ -274,15 +274,13 @@ bool MapUpdateModule::update_ndt(
   return true;  // Updated
 }
 
-sensor_msgs::msg::PointCloud2 MapUpdateModule::merge_loaded_pcd_map(
-  const builtin_interfaces::msg::Time & stamp) const
+sensor_msgs::msg::PointCloud2 MapUpdateModule::merge_loaded_pcd_map() const
 {
   sensor_msgs::msg::PointCloud2 merged;
   for (const auto & [cell_id, pointcloud] : loaded_pcd_map_) {
     pcl::concatenatePointCloud(merged, pointcloud, merged);
   }
   merged.header.frame_id = "map";
-  merged.header.stamp = stamp;
   return merged;
 }
 
