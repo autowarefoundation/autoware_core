@@ -1,0 +1,18 @@
+{
+  "owner": "",
+  "node_name": "/test_drift",
+  "provided": [
+    {
+      "ns": "",
+      "interface_name": "/test/drift/pub",
+      "resolved_name": "/test/drift/pub",
+      "type_name": "autoware_adapi_v1_msgs/msg/ResponseStatus",
+      "qos": {
+        "reliability": "reliable",
+        "durability": "volatile",
+        "depth": 1
+      }
+    }
+  ],
+  "required": []
+}

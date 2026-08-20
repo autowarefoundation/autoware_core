@@ -269,7 +269,7 @@ autoware_agnocast_wrapper_register_node(my_node_component
 
 Use this when only **specific topics** need Agnocast on an existing `rclcpp::Node`, without converting the entire node to `agnocast_wrapper::Node`.
 
-You can immediately understand how to use the macros just by looking at `autoware_agnocast_wrapper.hpp`. A typical callback and publisher setup looks like this:
+You can immediately understand how to use the macros just by looking at `macros.hpp`. A typical callback and publisher setup looks like this:
 
 ```cpp
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>

@@ -390,7 +390,7 @@ autoware_agnocast_wrapper behaves differently depending on the `ENABLE_AGNOCAST`
 
 ## 3. Key Macros
 
-All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp).
+All macros below are defined in [`macros.hpp`](../include/autoware/agnocast_wrapper/macros.hpp).
 
 &nbsp;
 
