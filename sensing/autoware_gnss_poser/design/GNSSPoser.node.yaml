@@ -1,0 +1,63 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: GNSSPoser.node
+package:
+  name: autoware_gnss_poser
+  provider: autoware
+launch:
+  plugin: autoware::gnss_poser::GNSSPoser
+  executable: gnss_poser
+  node_output: screen
+# interfaces
+subscribers:
+  - name: map_projector_info
+    message_type: autoware_map_msgs/msg/MapProjectorInfo
+    global: /map/map_projector_info
+  - name: fix
+    message_type: sensor_msgs/msg/NavSatFix
+    remap_target: fix
+  - name: autoware_orientation
+    message_type: autoware_sensing_msgs/msg/GnssInsOrientationStamped
+    remap_target: autoware_orientation
+publishers:
+  - name: gnss_pose
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: gnss_pose
+  - name: gnss_pose_cov
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: gnss_pose_cov
+  - name: gnss_fixed
+    message_type: autoware_internal_debug_msgs/msg/BoolStamped
+    remap_target: gnss_fixed
+# parameters
+param_files:
+  - name: gnss_poser_param
+    default: $(find-pkg-share autoware_gnss_poser)/config/gnss_poser.param.yaml
+param_values:
+  - name: base_frame
+    type: string
+    default: base_link
+  - name: gnss_base_frame
+    type: string
+    default: gnss_base_link
+  - name: map_frame
+    type: string
+    default: map
+  - name: buff_epoch
+    type: int
+    default: 1
+  - name: use_gnss_ins_orientation
+    type: bool
+    default: true
+  - name: gnss_pose_pub_method
+    type: int
+    default: 0
+# processes
+processes:
+  - name: estimate_gnss_pose
+    trigger_conditions:
+      - on_input: fix
+    outcomes:
+      - to_output: gnss_pose
+      - to_output: gnss_pose_cov
+      - to_output: gnss_fixed
