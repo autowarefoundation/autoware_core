@@ -96,7 +96,7 @@ void GyroOdometerNode::callback_vehicle_twist(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped)
     vehicle_twist_msg_ptr)
 {
-  const auto output = gyro_odometer_.input_vehicle_twist(*vehicle_twist_msg_ptr, this->now());
+  const auto output = gyro_odometer_.input_vehicle_twist(*vehicle_twist_msg_ptr);
 
   if (output) {
     publish_data(*output);
@@ -112,11 +112,11 @@ void GyroOdometerNode::callback_imu(
 
   // A sample that cannot be brought into the output frame must never take part in a fusion.
   if (!transformed_imu_msg) {
-    gyro_odometer_.input_untransformable_imu(*imu_msg_ptr, this->now());
+    gyro_odometer_.input_untransformable_imu(*imu_msg_ptr);
     return;
   }
 
-  const auto output = gyro_odometer_.input_imu(*transformed_imu_msg, this->now());
+  const auto output = gyro_odometer_.input_imu(*transformed_imu_msg);
 
   if (output) {
     publish_data(*output);
