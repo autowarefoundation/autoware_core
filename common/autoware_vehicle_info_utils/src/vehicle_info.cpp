@@ -83,6 +83,56 @@ autoware_utils_geometry::LinearRing2d VehicleInfo::createFootprint(
   return footprint;
 }
 
+autoware_utils_geometry::Polygon2d VehicleInfo::createFootprintPolygon(
+  const double margin, const std::optional<geometry_msgs::msg::Pose> & base_pose) const
+{
+  return createFootprintPolygon(margin, margin, margin, margin, base_pose);
+}
+
+autoware_utils_geometry::Polygon2d VehicleInfo::createFootprintPolygon(
+  const double left_margin, const double right_margin, const double front_lon_margin,
+  const double rear_lon_margin, const std::optional<geometry_msgs::msg::Pose> & base_pose) const
+{
+  return createFootprintPolygon(
+    left_margin, right_margin, left_margin, right_margin, front_lon_margin, rear_lon_margin,
+    base_pose);
+}
+
+autoware_utils_geometry::Polygon2d VehicleInfo::createFootprintPolygon(
+  const double front_left_margin, const double front_right_margin, const double rear_left_margin,
+  const double rear_right_margin, const double front_lon_margin, const double rear_lon_margin,
+  const std::optional<geometry_msgs::msg::Pose> & base_pose) const
+{
+  using autoware_utils_geometry::Polygon2d;
+
+  // Longitudinal positions
+  const double x_front = front_overhang_m + wheel_base_m + front_lon_margin;
+  const double x_rear = -(rear_overhang_m + rear_lon_margin);
+
+  const double y_left_front = wheel_tread_m * 0.5 + left_overhang_m + front_left_margin;
+  const double y_right_front = -(wheel_tread_m * 0.5 + right_overhang_m + front_right_margin);
+
+  const double y_left_rear = wheel_tread_m * 0.5 + left_overhang_m + rear_left_margin;
+  const double y_right_rear = -(wheel_tread_m * 0.5 + right_overhang_m + rear_right_margin);
+
+  Polygon2d footprint;
+  footprint.outer().reserve(7);
+  footprint.outer().emplace_back(x_front, y_left_front);
+  footprint.outer().emplace_back(x_front, y_right_front);
+  footprint.outer().emplace_back(x_rear, y_right_rear);
+  footprint.outer().emplace_back(x_rear, y_left_rear);
+  footprint.outer().emplace_back(x_front, y_left_front);
+
+  // only transform if input pose exist, if not return simple base footprint
+  if (base_pose.has_value()) {
+    auto transformed_footprint = autoware_utils_geometry::transform_polygon(
+      footprint, autoware_utils_geometry::pose2transform(base_pose.value()));
+    return transformed_footprint;
+  }
+
+  return footprint;
+}
+
 VehicleInfo createVehicleInfo(
   const double wheel_radius_m, const double wheel_width_m, const double wheel_base_m_arg,
   const double wheel_tread_m, const double front_overhang_m, const double rear_overhang_m,
