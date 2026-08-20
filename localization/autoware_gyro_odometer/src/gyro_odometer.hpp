@@ -35,15 +35,15 @@ namespace autoware::gyro_odometer
 /// Messages are fed in through input_vehicle_twist() / input_imu(), each of which returns the fused
 /// output at the moment a fusion completes. IMU samples are expected to already be expressed in the
 /// output frame; bringing them there is the caller's business, and a sample the caller could not
-/// bring there is handed to input_untransformable_imu() instead. The current time is supplied by
-/// the caller as well, so this class holds no clock or frame state of its own.
+/// bring there is handed to input_untransformable_imu() instead. Staleness is judged between the
+/// two inputs' header stamps, so this class holds no clock or frame state of its own.
 class GyroOdometer
 {
 public:
   /// \brief Construct with the age beyond which a queued message is considered stale.
   ///
   /// \param message_timeout_sec a fusion attempt discards both queues once either side is older
-  /// than this, measured against the current time passed to input_vehicle_twist() / input_imu().
+  /// than this, measured against the newest header stamp seen on either input.
   explicit GyroOdometer(double message_timeout_sec);
 
   /// \brief The four twist messages a successful fusion produces: raw fused twist, raw fused twist
@@ -73,14 +73,12 @@ public:
   /// \brief Queue \p vehicle_twist_msg and attempt a fusion.
   /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
   std::optional<OutputData> input_vehicle_twist(
-    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
-    rclcpp::Time current_time);
+    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg);
 
   /// \brief Queue \p imu_msg, which must already be expressed in the output frame, and attempt a
   /// fusion.
   /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
-  std::optional<OutputData> input_imu(
-    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time);
+  std::optional<OutputData> input_imu(const sensor_msgs::msg::Imu & imu_msg);
 
   /// \brief Account for an IMU sample the caller could not bring into the output frame.
   ///
@@ -88,19 +86,22 @@ public:
   /// on either side is dropped with it, because it can no longer be paired with a sample of the
   /// same age. How old both sides are is still recorded, so that a sample which is unusable and
   /// stale at the same time is reported as both rather than only the former.
-  void input_untransformable_imu(const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time);
+  void input_untransformable_imu(const sensor_msgs::msg::Imu & imu_msg);
 
   /// \brief Read the current state for diagnostics reporting.
   Status take_status() const;
 
 private:
   std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
-    rclcpp::Time current_time);
+    rclcpp::Time reference_time);
 
   static OutputData make_output(
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
 
   double message_timeout_sec_;
+  /// \brief The newest header stamp seen on either input; the reference staleness is judged
+  /// against.
+  rclcpp::Time newest_input_stamp_{0, 0, RCL_ROS_TIME};
   bool vehicle_twist_arrived_{false};
   bool imu_arrived_{false};
   rclcpp::Time latest_vehicle_twist_ros_time_;

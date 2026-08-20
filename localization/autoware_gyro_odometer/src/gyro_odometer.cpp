@@ -29,14 +29,14 @@ GyroOdometer::GyroOdometer(double message_timeout_sec) : message_timeout_sec_(me
 }
 
 std::optional<GyroOdometer::OutputData> GyroOdometer::input_vehicle_twist(
-  const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
-  rclcpp::Time current_time)
+  const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg)
 {
   vehicle_twist_arrived_ = true;
   latest_vehicle_twist_ros_time_ = vehicle_twist_msg.header.stamp;
+  newest_input_stamp_ = std::max(newest_input_stamp_, latest_vehicle_twist_ros_time_);
   vehicle_twist_queue_.push_back(vehicle_twist_msg);
 
-  const auto twist_with_cov = concat_gyro_and_odometer(current_time);
+  const auto twist_with_cov = concat_gyro_and_odometer(newest_input_stamp_);
   if (!twist_with_cov) {
     return std::nullopt;
   }
@@ -44,30 +44,32 @@ std::optional<GyroOdometer::OutputData> GyroOdometer::input_vehicle_twist(
 }
 
 std::optional<GyroOdometer::OutputData> GyroOdometer::input_imu(
-  const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time)
+  const sensor_msgs::msg::Imu & imu_msg)
 {
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg.header.stamp;
+  newest_input_stamp_ = std::max(newest_input_stamp_, latest_imu_ros_time_);
   gyro_queue_.push_back(imu_msg);
 
-  const auto twist_with_cov = concat_gyro_and_odometer(current_time);
+  const auto twist_with_cov = concat_gyro_and_odometer(newest_input_stamp_);
   if (!twist_with_cov) {
     return std::nullopt;
   }
   return make_output(*twist_with_cov);
 }
 
-void GyroOdometer::input_untransformable_imu(
-  const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time)
+void GyroOdometer::input_untransformable_imu(const sensor_msgs::msg::Imu & imu_msg)
 {
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg.header.stamp;
+  newest_input_stamp_ = std::max(newest_input_stamp_, latest_imu_ros_time_);
 
   // Only a side that has already delivered a message has a stamp to measure an age against.
   if (vehicle_twist_arrived_) {
-    latest_vehicle_twist_dt_ = std::abs((current_time - latest_vehicle_twist_ros_time_).seconds());
+    latest_vehicle_twist_dt_ =
+      std::abs((newest_input_stamp_ - latest_vehicle_twist_ros_time_).seconds());
   }
-  latest_imu_dt_ = std::abs((current_time - latest_imu_ros_time_).seconds());
+  latest_imu_dt_ = std::abs((newest_input_stamp_ - latest_imu_ros_time_).seconds());
   latest_vehicle_twist_queue_size_ = static_cast<int32_t>(vehicle_twist_queue_.size());
   latest_imu_queue_size_ = static_cast<int32_t>(gyro_queue_.size());
 
@@ -90,7 +92,7 @@ GyroOdometer::Status GyroOdometer::take_status() const
 }
 
 std::optional<geometry_msgs::msg::TwistWithCovarianceStamped>
-GyroOdometer::concat_gyro_and_odometer(rclcpp::Time current_time)
+GyroOdometer::concat_gyro_and_odometer(rclcpp::Time reference_time)
 {
   // check arrive first topic
   if (!vehicle_twist_arrived_) {
@@ -105,8 +107,8 @@ GyroOdometer::concat_gyro_and_odometer(rclcpp::Time current_time)
   }
 
   // check timeout
-  latest_vehicle_twist_dt_ = std::abs((current_time - latest_vehicle_twist_ros_time_).seconds());
-  latest_imu_dt_ = std::abs((current_time - latest_imu_ros_time_).seconds());
+  latest_vehicle_twist_dt_ = std::abs((reference_time - latest_vehicle_twist_ros_time_).seconds());
+  latest_imu_dt_ = std::abs((reference_time - latest_imu_ros_time_).seconds());
   if (latest_vehicle_twist_dt_ > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
