@@ -1,0 +1,101 @@
+[package]
+name = "autoware_ndt_scan_matcher_rs"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+# staticlib: linked into the C++ ament library over FFI.
+# rlib: keeps `cargo test` (and Rust-side consumers) working.
+crate-type = ["staticlib", "rlib"]
+
+[features]
+# `std` is default-on so a plain `cargo build`/`test`/`clippy` has std (test harness + panic
+# handler). The no_std build opts out with `--no-default-features`.
+#
+# Engine interior-mutability matrix (see src/engine.rs):
+#   std (default)          -> arc-swap cells + thread_local scratch (stateful align/result API)
+#   no_std (no features)   -> RefCell cells + engine-owned scratch; single-core, engine is !Sync
+#   no_std + `mt`          -> awkernel_sync mutex cells; scratch is caller-owned (`MatchScratch`),
+#                             the stateful align/result API is compiled out; engine is Sync
+default = ["std", "parallel"]
+# `std` also pulls in `arc-swap` (the lock-free engine-state double-buffer). The no_std build
+# (`--no-default-features`, single-threaded) uses a `RefCell` cell instead, so arc-swap stays off.
+std = ["dep:arc-swap"]
+# `mt`: multi-thread-safe no_std build (multi-core kernel). Replaces the single-core `RefCell`
+# cells with `awkernel_sync` mutexes and removes the engine-owned align scratch (callers pass a
+# `&mut MatchScratch`). Ignored when `std` is also on (std keeps arc-swap + thread_local). The
+# FINAL binary must enable exactly one awkernel_sync backend feature (`x86`/`aarch64`/`rv64`/
+# `rv32` on bare metal; `awkernel_sync/std` on host) — awkernel_sync does not compile without one.
+mt = ["dep:awkernel_sync"]
+# `parallel`: the rayon-backed `compute_derivatives` reduction. std-only (rayon needs std), so the
+# no_std rlib (`--no-default-features`) excludes it and uses the serial backend. Bit-for-bit
+# identical to serial (per-point-local contributions reduced in point-index order), so it is a pure
+# performance option — the serial backend stays the predictable WCET baseline. Note `parallel`
+# implies `std`, so `mt` + `parallel` resolves to the std backend (mt is ignored).
+parallel = ["std", "dep:rayon"]
+# `ros`: build the ROS-message bindings (bindgen over the rosidl C headers) and the Pose-pointer
+# FFI shims. Independent of `std` — the bindgen output is `use_core()` POD, so these work in no_std
+# too. The ROS-node build enables it alongside the default `std`; a no_std build could enable it
+# (it would need the generated bindings vendored, since bindgen needs ROS headers).
+ros = ["dep:bindgen"]
+
+[dependencies]
+# Pure-Rust libm: provides sqrt in no_std (and matches C++ std::sqrt — sqrt is IEEE
+# correctly-rounded — so the differential oracle stays exact).
+libm = "0.2"
+# Linear algebra for the engine port. no_std + libm; fixed-size matrices need no alloc.
+nalgebra = { version = "0.33", default-features = false, features = ["libm"] }
+# Data-parallel reduction backend (the `parallel` feature; std-only). Order-preserving
+# `collect_into_vec` keeps the parallel reduce bit-identical to serial.
+rayon = { version = "1", optional = true }
+# Lock-free engine-state double-buffer (the `std` feature). `load()` is lock-free — the read
+# (align) path takes no lock; map-update publishes a fresh state with an atomic store. Replaces
+# the C++ giant `ndt_ptr_` mutex on the ON path. no_std uses a `RefCell` cell instead (single core).
+arc-swap = { version = "1", optional = true }
+# Kernel-grade locks for the `mt` (multi-core no_std) build: `mutex::Mutex` selects its backend by
+# feature (default no_std -> MCS lock; `std` -> parking_lot). The lock guard disables interrupts
+# while held, so the engine only ever wraps short critical sections in it (an `Arc` clone or a
+# pointer swap — never an align). Unpublished on crates.io -> pinned git rev (recorded in
+# Cargo.lock); default-features off so the backend choice stays with the final binary.
+awkernel_sync = { git = "https://github.com/tier4/awkernel_sync.git", rev = "d9ea774eb55fc62a392981dd01945e92fec0f134", default-features = false, optional = true }
+
+[build-dependencies]
+bindgen = { version = "0.69", optional = true }
+
+# Example-only (examples/tokio_ndt.rs): the async reference Host impl. std; not linked into the
+# staticlib or the no_std rlib (dev-deps are excluded from --lib builds).
+[dev-dependencies]
+tokio = { version = "1", features = ["rt", "macros"] }
+
+# rust-hardening gates (see .claude/skills/rust-hardening).
+[lints.rust]
+warnings = "deny"
+unsafe_code = "deny"
+unsafe_op_in_unsafe_fn = "deny"
+
+[lints.clippy]
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+unreachable = "deny"
+todo = "deny"
+unimplemented = "deny"
+indexing_slicing = "deny"
+string_slice = "deny"
+unwrap_in_result = "deny"
+arithmetic_side_effects = "deny"
+let_underscore_must_use = "deny"
+as_conversions = "deny"
+cast_possible_truncation = "deny"
+cast_possible_wrap = "deny"
+cast_sign_loss = "deny"
+cast_lossless = "warn"
+float_cmp = "deny"
+lossy_float_literal = "deny"
+# Suppression hygiene — prefer self-cleaning #[expect]; every allow/expect needs a reason.
+allow_attributes = "warn"
+allow_attributes_without_reason = "deny"
+pedantic = { level = "warn", priority = -1 }
+
+[profile.release]
+overflow-checks = true

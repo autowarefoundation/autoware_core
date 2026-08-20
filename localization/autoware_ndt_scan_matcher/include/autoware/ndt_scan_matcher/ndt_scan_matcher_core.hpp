@@ -20,7 +20,10 @@
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
+#include "ndt_backend.hpp"
+#include "ndt_legacy_state.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
+#include "ndt_scan_matcher_rs.hpp"
 
 #include <autoware/localization_util/smart_pose_buffer.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
@@ -54,15 +57,20 @@
 #endif
 
 #include <array>
+#include <atomic>
 #include <deque>
 #include <map>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <sstream>
 #include <string>
 #include <thread>
 #include <tuple>
 #include <vector>
+
+struct AwHost;
+struct AwNdtAlignServiceTrace;
 
 namespace autoware::ndt_scan_matcher
 {
@@ -71,8 +79,8 @@ class NDTScanMatcher : public rclcpp::Node
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
-  using NormalDistributionsTransform =
-    pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
+  // The engine type is selected in one place (ndt_backend.hpp).
+  using NormalDistributionsTransform = NdtBackend;
 
 public:
   explicit NDTScanMatcher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
@@ -83,11 +91,14 @@ public:
     return map_update_timer_->time_until_trigger();
   }
 
+  void set_align_service_trace(AwNdtAlignServiceTrace * trace) { align_service_trace_ = trace; }
+
 private:
   void callback_timer();
 
   void callback_initial_pose(
     geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr);
+  // The C++ baseline body is defined only in the legacy shell and called only by that path.
   void callback_initial_pose_main(
     const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr);
 
@@ -98,6 +109,9 @@ private:
     sensor_msgs::msg::PointCloud2::ConstSharedPtr sensor_points_msg_in_sensor_frame);
   bool callback_sensor_points_main(
     sensor_msgs::msg::PointCloud2::ConstSharedPtr sensor_points_msg_in_sensor_frame);
+  bool is_node_activated();
+  void initialize_mode_specific_state();
+  void create_map_update_module();
 
   void service_trigger_node(
     const std_srvs::srv::SetBool::Request::SharedPtr req,
@@ -113,6 +127,9 @@ private:
     autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped::Response::SharedPtr res);
 
   std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
+    const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
+    AwNdtAlignServiceTrace * trace = nullptr);
+  std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose_with_legacy_engine(
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
     NormalDistributionsTransform & ndt_ref);
 
@@ -131,7 +148,7 @@ private:
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr);
   void publish_marker(
     const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
-    NormalDistributionsTransform & ndt_ref);
+    int max_iterations);
   void publish_initial_to_result(
     const rclcpp::Time & sensor_ros_time, const geometry_msgs::msg::Pose & result_pose_msg,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_cov_msg,
@@ -140,16 +157,9 @@ private:
 
   static int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
 
-  Eigen::Matrix2d estimate_covariance(
-    const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
-    const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
-
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
-    const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-    const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref);
-
-  void add_regularization_pose(
-    const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
+  // Rust host vtable trampolines live in ndt_scan_matcher_rust_host.cpp.
+  friend struct NdtRustHostAccess;
+  AwHost make_host();
 
   rclcpp::TimerBase::SharedPtr map_update_timer_;
   rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
@@ -199,19 +209,17 @@ private:
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 
-  Guarded<std::shared_ptr<NormalDistributionsTransform>> ndt_ptr_{
-    std::make_shared<NormalDistributionsTransform>()};
+  // Legacy C++ engine/sensor-cache state. In Rust builds this is inert; the live engine and
+  // latest validated sensor cloud are owned by `rs_`.
+  NdtLegacyState legacy_ndt_;
 
-  pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
-
+  // Legacy C++ path state. Under NDT_USE_RUST the equivalent state is Rust-owned on `rs_`;
+  // these members are intentionally unused by the Rust-selected translation units.
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> initial_pose_buffer_;
-
-  // Keep latest position for dynamic map loading
   Guarded<std::optional<geometry_msgs::msg::Point>> latest_ekf_position_{std::nullopt};
-
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
-
   std::atomic<bool> is_activated_;
+
   std::unique_ptr<DiagnosticsInterface> diagnostics_scan_points_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_initial_pose_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_regularization_pose_;
@@ -222,6 +230,11 @@ private:
   std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
 
   HyperParameters param_;
+  AwNdtAlignServiceTrace * align_service_trace_{nullptr};
+
+  // Opaque Rust node handle in Rust builds; inert layout state in legacy builds. Declared last so
+  // the Rust build constructs it after `param_` (its initializer reads `param_`).
+  NDTScanMatcherRS rs_;
 };
 
 }  // namespace autoware::ndt_scan_matcher
