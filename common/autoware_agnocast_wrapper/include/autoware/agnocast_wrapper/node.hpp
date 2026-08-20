@@ -53,13 +53,15 @@ namespace autoware::agnocast_wrapper
 /// @brief Node wrapper class that can switch between rclcpp::Node and agnocast::Node at runtime
 /// based on the ENABLE_AGNOCAST environment variable.
 ///
+/// Derives from std::enable_shared_from_this so shared_from_this() works, as on rclcpp::Node.
+///
 /// @invariant The backend variant (rclcpp::Node or agnocast::Node) is chosen at construction
 ///            based on use_agnocast() and never mutates for the lifetime of the Node.
 /// @invariant `use_agnocast() == true`  iff `get_agnocast_node()` returns a valid
 ///            shared_ptr without throwing.
 /// @invariant `use_agnocast() == false` iff `get_rclcpp_node()`   returns a valid
 ///            shared_ptr without throwing.
-class Node
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
   using SharedPtr = std::shared_ptr<Node>;
@@ -144,15 +146,19 @@ public:
 
   // ===== Parameters (template) =====
   template <typename ParameterT>
-  ParameterT declare_parameter(
+  auto declare_parameter(
     const std::string & name, const ParameterT & default_value,
     const rcl_interfaces::msg::ParameterDescriptor & descriptor =
       rcl_interfaces::msg::ParameterDescriptor{},
     bool ignore_override = false)
   {
-    return declare_parameter(
-             name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
-      .get<ParameterT>();
+    try {
+      return declare_parameter(
+               name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
+        .get<ParameterT>();
+    } catch (const rclcpp::ParameterTypeException & ex) {
+      throw rclcpp::exceptions::InvalidParameterTypeException(name, ex.what());
+    }
   }
 
   template <typename ParameterT>
@@ -240,29 +246,6 @@ public:
     return create_subscription<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
       options);
-  }
-
-  // ===== Polling Subscriber =====
-  template <typename MessageT>
-  typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
-    const std::string & topic_name, const rclcpp::QoS & qos)
-  {
-    return visit_node([&](auto & n) -> typename PollingSubscriber<MessageT>::SharedPtr {
-      using NodeT = std::decay_t<decltype(*n)>;
-      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
-        return std::make_shared<AgnocastPollingSubscriber<MessageT>>(n.get(), topic_name, qos);
-      } else {
-        return std::make_shared<ROS2PollingSubscriber<MessageT>>(n.get(), topic_name, qos);
-      }
-    });
-  }
-
-  template <typename MessageT>
-  typename PollingSubscriber<MessageT>::SharedPtr create_polling_subscriber(
-    const std::string & topic_name, size_t qos_history_depth)
-  {
-    return create_polling_subscriber<MessageT>(
-      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
   // ===== Client / Service =====
@@ -453,17 +436,8 @@ Timer::SharedPtr create_timer(
 namespace autoware::agnocast_wrapper
 {
 
-// Service-callback traits (mirror of the Agnocast-build definitions; defined per-build because they
-// depend on the AUTOWARE_SERVER_*_PTR macros, which differ between builds).
-template <typename Func, typename ServiceT>
-inline constexpr bool is_message_ptr_service_callback_v = std::is_invocable_v<
-  std::decay_t<Func>, AUTOWARE_SERVER_REQUEST_PTR(ServiceT) &&,
-  AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) &&>;
-
-template <typename Func, typename ServiceT>
-inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
-  std::decay_t<Func>, std::shared_ptr<typename ServiceT::Request> &,
-  std::shared_ptr<typename ServiceT::Response> &>;
+// is_message_ptr_service_callback_v / is_shared_ptr_service_callback_v are defined in
+// service.hpp, identically named in both builds.
 
 /// @brief Node class for the non-Agnocast build.
 ///
@@ -471,7 +445,9 @@ inline constexpr bool is_shared_ptr_service_callback_v = std::is_invocable_v<
 /// from rclcpp::Node. This keeps the public surface identical to the Agnocast-build Node, so code
 /// compiles under both ENABLE_AGNOCAST=0 and =1. Deriving from rclcpp::Node would instead leak its
 /// full API into the =0 build, allowing =0-only code that breaks under =1.
-class Node
+///
+/// Derives from std::enable_shared_from_this so shared_from_this() works, as on rclcpp::Node.
+class Node : public std::enable_shared_from_this<Node>
 {
 public:
   using SharedPtr = std::shared_ptr<Node>;
@@ -609,15 +585,19 @@ public:
 
   // ===== Parameters (template) =====
   template <typename ParameterT>
-  ParameterT declare_parameter(
+  auto declare_parameter(
     const std::string & name, const ParameterT & default_value,
     const rcl_interfaces::msg::ParameterDescriptor & descriptor =
       rcl_interfaces::msg::ParameterDescriptor{},
     bool ignore_override = false)
   {
-    return declare_parameter(
-             name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
-      .get<ParameterT>();
+    try {
+      return declare_parameter(
+               name, rclcpp::ParameterValue(default_value), descriptor, ignore_override)
+        .get<ParameterT>();
+    } catch (const rclcpp::ParameterTypeException & ex) {
+      throw rclcpp::exceptions::InvalidParameterTypeException(name, ex.what());
+    }
   }
 
   template <typename ParameterT>
@@ -693,56 +673,58 @@ public:
       options);
   }
 
-  // ===== Polling Subscriber =====
-  template <typename MessageT>
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
-  create_polling_subscriber(const std::string & topic_name, const rclcpp::QoS & qos)
-  {
-    return autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::create_subscription(
-      node_.get(), topic_name, qos);
-  }
-
-  template <typename MessageT>
-  typename autoware_utils_rclcpp::InterProcessPollingSubscriber<MessageT>::SharedPtr
-  create_polling_subscriber(const std::string & topic_name, size_t qos_history_depth)
-  {
-    return create_polling_subscriber<MessageT>(
-      topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
-  }
-
-  // ===== Client (rclcpp::QoS overload; Humble's rclcpp::Node::create_client takes rmw) =====
+  // ===== Client =====
   template <typename ServiceT>
-  typename rclcpp::Client<ServiceT>::SharedPtr create_client(
+  AUTOWARE_CLIENT_PTR(ServiceT)
+  create_client(
     const std::string & service_name, const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
-#if RCLCPP_VERSION_MAJOR >= 28
-    return node_->create_client<ServiceT>(service_name, qos, group);
-#else
-    return node_->create_client<ServiceT>(service_name, qos.get_rmw_qos_profile(), group);
-#endif
+    return autoware::agnocast_wrapper::create_client<ServiceT>(
+      node_.get(), service_name, qos, group);
   }
 
-  // ===== Service (rclcpp::QoS overload; same rationale as create_client) =====
-  // Constrained to the same callback set as the Agnocast build, so the rclcpp-only forms
-  // (with-request-header / defer-response) are rejected here instead of silently accepted.
+  // ===== Service =====
+  // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR.
   template <
     typename ServiceT, typename Func,
-    std::enable_if_t<
-      is_message_ptr_service_callback_v<Func, ServiceT> ||
-        is_shared_ptr_service_callback_v<Func, ServiceT>,
-      int> = 0>
-  typename rclcpp::Service<ServiceT>::SharedPtr create_service(
+    std::enable_if_t<is_message_ptr_service_callback_v<Func, ServiceT>, int> = 0>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
     const std::string & service_name, Func && callback,
     const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
-#if RCLCPP_VERSION_MAJOR >= 28
-    return node_->create_service<ServiceT>(service_name, std::forward<Func>(callback), qos, group);
-#else
-    return node_->create_service<ServiceT>(
-      service_name, std::forward<Func>(callback), qos.get_rmw_qos_profile(), group);
-#endif
+    return autoware::agnocast_wrapper::create_service<ServiceT>(
+      node_.get(), service_name, std::forward<Func>(callback), qos, group);
+  }
+
+  // Convenience overload for rclcpp-style std::shared_ptr callbacks: adapts to the message_ptr-
+  // style callback above rather than forwarding directly, since ROS2Service only accepts that
+  // shape.
+  template <
+    typename ServiceT, typename Func,
+    std::enable_if_t<
+      !is_message_ptr_service_callback_v<Func, ServiceT> &&
+        is_shared_ptr_service_callback_v<Func, ServiceT>,
+      int> = 0>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_service<ServiceT>(
+      service_name,
+      [callback = std::forward<Func>(callback)](
+        AUTOWARE_SERVER_REQUEST_PTR(ServiceT) && req,
+        AUTOWARE_SERVER_RESPONSE_PTR(ServiceT) && res) {
+        auto request = std::make_shared<typename ServiceT::Request>(*req);
+        auto response = std::make_shared<typename ServiceT::Response>();
+        callback(request, response);
+        *res = *response;
+      },
+      qos, group);
   }
 
   // Fallback overload: neither callback form matched. Exists only to turn the otherwise opaque
@@ -753,7 +735,8 @@ public:
       !is_message_ptr_service_callback_v<Func, ServiceT> &&
         !is_shared_ptr_service_callback_v<Func, ServiceT>,
       int> = 0>
-  typename rclcpp::Service<ServiceT>::SharedPtr create_service(
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
     const std::string & /*service_name*/, Func && /*callback*/,
     const rclcpp::QoS & = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr = nullptr)
   {

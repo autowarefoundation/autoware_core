@@ -8,12 +8,15 @@ This package provides a variety of structures to represent different types of po
 
 ### Point cloud data type definition
 
-`autoware_point_types` defines multiple structures (such as PointXYZI, PointXYZIRC, PointXYZIRADRT, PointXYZIRCAEDT), each structure contains different attributes to adapt to different application scenarios.
+`autoware_point_types` defines multiple structures (such as PointXYZI, PointXYZIRC, PointXYZIRADRT, PointXYZIRCAEDT, PointXYZCPE), each structure contains different attributes to adapt to different application scenarios.
 
 - `autoware::point_types::PointXYZI`: Point type with intensity information.
 - `autoware::point_types::PointXYZIRC`: Extended PointXYZI, adds return_type and channel information.
 - `autoware::point_types::PointXYZIRADRT`: Extended PointXYZI, adds ring, azimuth, distance, return_type and time_stamp information.
 - `autoware::point_types::PointXYZIRCAEDT`: Similar to PointXYZIRADRT, but adds elevation information and uses `std::uint32_t` as the data type for time_stamp.
+- `autoware::point_types::PointXYZCPE`: Point type for segmented points, adds class_id, probability, and entropy information.
+  - `PointXYZCPE::class_id` is initialized to `PointCloudClassification::INVALID=255` to represent an invalid or unset class_id value.
+  - `PointXYZCPE::entropy` is initialized to `NaN` to represent an invalid or unset entropy value, then `PointXYZCPE` equality treats two `NaN` entropy values as equal, while a `NaN` entropy and a finite entropy are not equal.
 
 ### Operator overload
 

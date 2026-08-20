@@ -13,9 +13,13 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
+  <depend>autoware_agnocast_wrapper</depend>
   <depend>autoware_component_interface_specs</depend>
   <depend>autoware_lanelet2_extension</depend>
   <depend>autoware_map_msgs</depend>
+  <depend>lanelet2_core</depend>
+  <depend>lanelet2_io</depend>
+  <depend>lanelet2_projection</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>yaml-cpp</depend>
@@ -24,6 +28,7 @@
   <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>geographiclib</test_depend>
   <test_depend>launch_testing_ament_cmake</test_depend>
   <test_depend>ros_testing</test_depend>
 

@@ -52,6 +52,7 @@
 #include <lanelet2_routing/RoutingGraphContainer.h>
 
 #include <algorithm>
+#include <cinttypes>
 #include <functional>
 #include <iostream>
 #include <limits>
@@ -768,13 +769,14 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceAfter(
 
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
-  while (rclcpp::ok() && length < min_length) {
+  std::unordered_set<lanelet::Id> visited_ids{lanelet.id()};
+  while (length < min_length) {
     lanelet::ConstLanelet next_lanelet;
     if (!getNextLaneletWithinRoute(current_lanelet, &next_lanelet)) {
       break;
     }
-    // loop check
-    if (lanelet.id() == next_lanelet.id()) {
+    // loop check: a lanelet is visited at most once so that a cyclic route terminates
+    if (!visited_ids.insert(next_lanelet.id()).second) {
       break;
     }
     lanelet_sequence_forward.push_back(next_lanelet);
@@ -818,7 +820,7 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceUpTo(
       [&lanelet_to_check](auto & backward) { return (backward.id() == lanelet_to_check.id()); });
   };
 
-  while (rclcpp::ok() && length < min_length) {
+  while (length < min_length) {
     previous_lanelets.clear();
     if (!getPreviousLaneletsWithinRoute(current_lanelet, &previous_lanelets)) {
       break;
@@ -826,6 +828,7 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceUpTo(
 
     if (checkForLoop(previous_lanelets, true)) break;
 
+    const auto previous_id = current_lanelet.id();
     for (const auto & prev_lanelet : previous_lanelets) {
       if (!isNewLanelet(prev_lanelet) || exists(goal_lanelets_, prev_lanelet)) continue;
       lanelet_sequence_backward.push_back(prev_lanelet);
@@ -834,6 +837,8 @@ lanelet::ConstLanelets RouteHandler::getLaneletSequenceUpTo(
       current_lanelet = prev_lanelet;
       break;
     }
+    // none of the previous lanelets was new, so the traversal cannot progress any further
+    if (current_lanelet.id() == previous_id) break;
   }
 
   std::reverse(lanelet_sequence_backward.begin(), lanelet_sequence_backward.end());
@@ -1010,7 +1015,7 @@ lanelet::ConstLanelets RouteHandler::getShoulderLaneletSequenceAfter(
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
   std::set<lanelet::Id> searched_ids{};
-  while (rclcpp::ok() && length < min_length) {
+  while (length < min_length) {
     const auto next_lanelet = getFollowingShoulderLanelet(current_lanelet);
     if (!next_lanelet) break;
     lanelet_sequence_forward.push_back(*next_lanelet);
@@ -1052,7 +1057,7 @@ lanelet::ConstLanelets RouteHandler::getShoulderLaneletSequenceUpTo(
   double length = 0;
   lanelet::ConstLanelet current_lanelet = lanelet;
   std::set<lanelet::Id> searched_ids{};
-  while (rclcpp::ok() && length < min_length) {
+  while (length < min_length) {
     const auto prev_lanelet = getPreviousShoulderLanelet(current_lanelet);
     if (!prev_lanelet) break;
 
@@ -2472,8 +2477,8 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getGoalRoadLaneletForCheckpoi
           RCLCPP_WARN(
             logger_,
             "Failed to find reroute on previous preferred lanelets %s, but on previous route "
-            "segment %ld still",
-            preferred_lanelets_str.str().c_str(), closest_lanelet.id());
+            "segment %" PRId64 " still",
+            preferred_lanelets_str.str().c_str(), static_cast<int64_t>(closest_lanelet.id()));
           return closest_lanelet;
         }
       }
@@ -2548,8 +2553,9 @@ bool RouteHandler::planLaneletPathBetweenResolvedEndpoints(
     const double optional_route_length = optional_route->length2d();
     const double optional_route_cost = optional_route_length + angle_diff_weight * angle_diff;
     RCLCPP_DEBUG(
-      logger_, "Lanelet ID %ld: Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
-      st_llt.id(), optional_route_length, angle_diff, optional_route_cost);
+      logger_,
+      "Lanelet ID %" PRId64 ": Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
+      static_cast<int64_t>(st_llt.id()), optional_route_length, angle_diff, optional_route_cost);
     if (optional_route_cost < min_route_cost) {
       min_route_cost = optional_route_cost;
       shortest_path = optional_route->shortestPath();
@@ -2639,8 +2645,9 @@ bool RouteHandler::planLaneletOrAreaPathBetweenResolvedEndpoints(
     }
     const double optional_route_cost = optional_path_length + angle_diff_weight * angle_diff;
     RCLCPP_DEBUG(
-      logger_, "Lanelet ID %ld: Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
-      st_llt.id(), optional_path_length, angle_diff, optional_route_cost);
+      logger_,
+      "Lanelet ID %" PRId64 ": Route length = %.1f, Angle Diff = %.4f rad, Route cost = %.2f",
+      static_cast<int64_t>(st_llt.id()), optional_path_length, angle_diff, optional_route_cost);
     if (optional_route_cost < min_route_cost) {
       min_route_cost = optional_route_cost;
       shortest_path = *optional_path;

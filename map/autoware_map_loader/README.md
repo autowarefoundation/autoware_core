@@ -115,8 +115,8 @@ Please see [the description of `GetSelectedPointCloudMap.srv`](https://github.co
 
 ### Interfaces
 
-- `output/pointcloud_map` (sensor_msgs/msg/PointCloud2) : Raw pointcloud map
-- `output/pointcloud_map_metadata` (autoware_map_msgs/msg/PointCloudMapMetaData) : Metadata of pointcloud map
+- `output/pointcloud_map` (sensor_msgs/msg/PointCloud2) : Raw pointcloud map. Published only when `enable_whole_load` is true.
+- `output/pointcloud_map_metadata` (autoware_map_msgs/msg/PointCloudMapMetaData) : Metadata of pointcloud map. Always published once, latched (`transient_local`), as soon as the PCD metadata is loaded. Because it does not depend on `enable_whole_load`, it is the delivery-independent signal that the map is loaded and servable, and it is what a deployment using only the differential/partial services can monitor for map-module health.
 - `output/debug/downsampled_pointcloud_map` (sensor_msgs/msg/PointCloud2) : Downsampled pointcloud map
 - `service/get_partial_pcd_map` (autoware_map_msgs/srv/GetPartialPointCloudMap) : Partial pointcloud map
 - `service/get_differential_pcd_map` (autoware_map_msgs/srv/GetDifferentialPointCloudMap) : Differential pointcloud map
@@ -136,6 +136,10 @@ Please see [autoware_map_msgs/msg/MapProjectorInfo.msg](https://github.com/autow
 
 `lanelet2_map_path` can point to either a single `.osm` file or a directory.
 When a directory is given, all `.osm` files inside are loaded and merged into a single map before publishing.
+
+If no `.osm` file is found at `lanelet2_map_path`, the node throws and exits.
+Invalid configuration is treated as fail-fast so that operators notice and
+fix it (consistent with the missing-metadata and unsupported-version cases).
 
 #### Cell metadata
 

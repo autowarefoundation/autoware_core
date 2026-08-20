@@ -149,7 +149,7 @@ protected:
 
     // Create single executor for both nodes
     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
-    executor_->add_node(gnss_poser_node_);
+    executor_->add_node(gnss_poser_node_->get_node_base_interface());
     executor_->add_node(publisher_node_);
 
     createTestSubscriptions();
@@ -175,14 +175,14 @@ protected:
     pose_cov_received_ = false;
     fixed_status_received_ = false;
 
-    pose_sub_ = gnss_poser_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
+    pose_sub_ = publisher_node_->create_subscription<geometry_msgs::msg::PoseStamped>(
       "gnss_pose", rclcpp::QoS(1), [this](const geometry_msgs::msg::PoseStamped::SharedPtr msg) {
         last_pose_ = *msg;
         pose_received_ = true;
       });
 
     pose_cov_sub_ =
-      gnss_poser_node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
+      publisher_node_->create_subscription<geometry_msgs::msg::PoseWithCovarianceStamped>(
         "gnss_pose_cov", rclcpp::QoS(1),
         [this](const geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr msg) {
           last_pose_cov_ = *msg;
@@ -190,7 +190,7 @@ protected:
         });
 
     fixed_sub_ =
-      gnss_poser_node_->create_subscription<autoware_internal_debug_msgs::msg::BoolStamped>(
+      publisher_node_->create_subscription<autoware_internal_debug_msgs::msg::BoolStamped>(
         "gnss_fixed", rclcpp::QoS(1),
         [this](const autoware_internal_debug_msgs::msg::BoolStamped::SharedPtr msg) {
           last_fixed_status_ = *msg;
@@ -221,12 +221,12 @@ protected:
     fixed_sub_.reset();
 
     // Remove old node from executor, then destroy it
-    executor_->remove_node(gnss_poser_node_);
+    executor_->remove_node(gnss_poser_node_->get_node_base_interface());
     gnss_poser_node_.reset();
 
     // Create new node and add to the same executor
     gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GNSSPoser>(options);
-    executor_->add_node(gnss_poser_node_);
+    executor_->add_node(gnss_poser_node_->get_node_base_interface());
 
     // Re-create test subscriptions on the new node
     createTestSubscriptions();
