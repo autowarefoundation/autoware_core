@@ -52,6 +52,17 @@ struct EKFDiagnosticInfo
   double mahalanobis_distance{0.0};
 };
 
+/*
+To avoid importing CLCPP_WARN into isolated core, this `CoreWarnings` will be passed into update
+funcs instead. Core will push legacy warning strings `text` and throttle timing ms `throttle_ms`
+into this vector, to Node.
+
+Regarding `throttle_ms` :
+- Normally when `throttle_ms` > 0 (such as `2000`), the node uses `RCLCPP_WARN_THROTTLE`. We set
+this `2000` milsecs which is `2` secs so these msgs won't spam the whole terminal.
+- When `throttle_ms` = `0`, usually it's a severe event, and the node will use `RCLCPP_WARN` to
+immediate put that warning into terminal, hence zero throttle.
+*/
 struct CoreWarning
 {
   std::string text;
