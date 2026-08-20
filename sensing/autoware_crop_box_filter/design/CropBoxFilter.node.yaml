@@ -1,0 +1,61 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: CropBoxFilter.node
+package:
+  name: autoware_crop_box_filter
+  provider: autoware
+launch:
+  plugin: autoware::crop_box_filter::CropBoxFilterNode
+  executable: crop_box_filter
+  node_output: screen
+# interfaces
+subscribers:
+  - name: input
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: input
+publishers:
+  - name: output
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: output
+  - name: crop_box_polygon
+    message_type: geometry_msgs/msg/PolygonStamped
+    remap_target: crop_box_polygon
+# parameters
+param_files:
+  - name: crop_box_filter_param
+    default: $(find-pkg-share autoware_crop_box_filter)/config/crop_box_filter_node.param.yaml
+param_values:
+  - name: min_x
+    type: double
+    default: -5.0
+  - name: min_y
+    type: double
+    default: -5.0
+  - name: min_z
+    type: double
+    default: -5.0
+  - name: max_x
+    type: double
+    default: 5.0
+  - name: max_y
+    type: double
+    default: 5.0
+  - name: max_z
+    type: double
+    default: 5.0
+  - name: negative
+    type: bool
+    default: true
+  - name: input_frame
+    type: string
+    default: base_link
+  - name: output_frame
+    type: string
+    default: base_link
+# processes
+processes:
+  - name: crop_pointcloud
+    trigger_conditions:
+      - on_input: input
+    outcomes:
+      - to_output: output
