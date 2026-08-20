@@ -30,8 +30,6 @@
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
-#include <gtest/gtest_prod.h>
-
 #include <array>
 #include <chrono>
 #include <memory>
@@ -139,25 +137,6 @@ public:
   EKFUpdateResult update_step(const double t_curr_sec);
   void reset();
 
-private:
-  friend class MeasurementUpdatePose;
-  friend class MeasurementUpdateTwist;
-  FRIEND_TEST(TestEKFLocalizer, FindClosestDelayTimeIndex);
-  FRIEND_TEST(TestEKFLocalizer, FindClosestDelayTimeIndexEmptyTable);
-  FRIEND_TEST(TestEKFLocalizer, AccumulateDelayTime);
-  FRIEND_TEST(TestEKFLocalizer, CompensateRphWithDelayZeroAngularVelocity);
-  FRIEND_TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity);
-  FRIEND_TEST(MeasurementUpdatePose, AcceptsValidMeasurement);
-  FRIEND_TEST(MeasurementUpdatePose, RejectsOnDelayGate);
-  FRIEND_TEST(MeasurementUpdatePose, RejectsOnNan);
-  FRIEND_TEST(MeasurementUpdatePose, RejectsOnInf);
-  FRIEND_TEST(MeasurementUpdatePose, RejectsOnMahalanobisGate);
-  FRIEND_TEST(MeasurementUpdateTwist, AcceptsValidMeasurement);
-  FRIEND_TEST(MeasurementUpdateTwist, RejectsOnDelayGate);
-  FRIEND_TEST(MeasurementUpdateTwist, RejectsOnNan);
-  FRIEND_TEST(MeasurementUpdateTwist, RejectsOnInf);
-  FRIEND_TEST(MeasurementUpdateTwist, RejectsOnMahalanobisGate);
-
   [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;
 
   void accumulate_delay_time(const double dt);
@@ -174,6 +153,7 @@ private:
   geometry_msgs::msg::PoseWithCovarianceStamped compensate_rph_with_delay(
     const PoseWithCovariance & pose, tf2::Vector3 last_angular_velocity, const double delay_time);
 
+private:
   void update_simple_1d_filters(
     const geometry_msgs::msg::PoseWithCovarianceStamped & pose, const size_t smoothing_step);
 
