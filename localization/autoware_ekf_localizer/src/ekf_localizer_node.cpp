@@ -114,22 +114,6 @@ void EKFLocalizerNode::timer_callback()
 {
   stop_watch_timer_cb_.tic();
 
-  // Drain temporary queues into core
-  {
-    std::lock_guard<std::mutex> lock(pose_mtx_);
-    while (!pose_queue_tmp_.empty()) {
-      ekf_localizer_->push_pose(pose_queue_tmp_.front());
-      pose_queue_tmp_.pop();
-    }
-  }
-  {
-    std::lock_guard<std::mutex> lock(twist_mtx_);
-    while (!twist_queue_tmp_.empty()) {
-      ekf_localizer_->push_twist(twist_queue_tmp_.front());
-      twist_queue_tmp_.pop();
-    }
-  }
-
   const rclcpp::Time current_time = this->now();
 
   // Initialize diagnostic status array to collect diagnostics during processing
@@ -160,6 +144,22 @@ void EKFLocalizerNode::timer_callback()
   }
 
   DEBUG_INFO(get_logger(), "========================= timer called =========================");
+
+  // Drain temporary queues into core
+  {
+    std::lock_guard<std::mutex> lock(pose_mtx_);
+    while (!pose_queue_tmp_.empty()) {
+      ekf_localizer_->push_pose(pose_queue_tmp_.front());
+      pose_queue_tmp_.pop();
+    }
+  }
+  {
+    std::lock_guard<std::mutex> lock(twist_mtx_);
+    while (!twist_queue_tmp_.empty()) {
+      ekf_localizer_->push_twist(twist_queue_tmp_.front());
+      twist_queue_tmp_.pop();
+    }
+  }
 
   /* predict model in EKF */
   stop_watch_.tic();
