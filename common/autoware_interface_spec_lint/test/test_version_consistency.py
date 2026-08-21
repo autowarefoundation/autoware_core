@@ -52,11 +52,11 @@ def test_missing_version_warns(tmp_path):
     assert findings[0].level == "WARN"
 
 
-def test_non_zero_major_warns(tmp_path):
+def test_non_zero_major_is_allowed(tmp_path):
+    # version_consistency no longer polices the MAJOR component; a domain past 0.x
+    # is a manifest-agreement question for the other assertions, not a finding here.
     spec_dir = _write(tmp_path, _ONE_STRUCT % "static constexpr Version version{1, 0, 0};")
-    findings = version_consistency(spec_dir, None)
-    assert len(findings) == 1
-    assert "not 0.x" in findings[0].message
+    assert version_consistency(spec_dir, None) == []
 
 
 def test_manifest_version_mismatch_warns(tmp_path):
@@ -104,11 +104,9 @@ def test_macro_declared_version_passes(tmp_path):
     assert version_consistency(spec_dir, None) == []
 
 
-def test_macro_declared_non_zero_major_warns(tmp_path):
+def test_macro_declared_non_zero_major_is_allowed(tmp_path):
     spec_dir = _write(tmp_path, _MACRO_STRUCT % "1, 0, 0")
-    findings = version_consistency(spec_dir, None)
-    assert len(findings) == 1
-    assert "not 0.x" in findings[0].message
+    assert version_consistency(spec_dir, None) == []
 
 
 def test_macro_declared_version_is_cross_checked_against_the_manifest(tmp_path):

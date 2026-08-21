@@ -15,6 +15,7 @@
 #include "warning_message.hpp"
 
 #include <fmt/core.h>
+#include <fmt/format.h>
 
 #include <string>
 #include <string_view>

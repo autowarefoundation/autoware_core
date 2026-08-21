@@ -74,7 +74,7 @@ TEST(DiagnosticsTopicTest, logs_published_diagnostic_status_names)
     rclcpp::init(0, nullptr);
   }
 
-  auto ekf = std::make_shared<EKFLocalizer>(make_minimal_ekf_options());
+  auto ekf = std::make_shared<EKFLocalizerNode>(make_minimal_ekf_options());
 
   size_t message_count = 0;
   auto sub = ekf->create_subscription<diagnostic_msgs::msg::DiagnosticArray>(
