@@ -77,9 +77,8 @@ sensor_msgs::msg::PointCloud2 generateClusterWithinVoxel(const int nb_points)
   return pointcloud;
 }
 
-// Test case 1: Test case when the input pointcloud has only one cluster with points number equal to
-// max_cluster_size
-TEST(VoxelGridBasedEuclideanClusterTest, testcase1)
+// A cluster holding exactly `max_cluster_size` points is within the limit, so it is reported.
+TEST(VoxelGridBasedEuclideanClusterTest, ClusterAtMaxSizeIsReported)
 {
   int nb_generated_points = 100;
   sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
@@ -95,13 +94,12 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase1)
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(pointcloud);
 
-  // the output clusters should has only one cluster with nb_generated_points points
   EXPECT_EQ(result.cluster_message.objects.size(), 1);
 }
 
-// Test case 2: Test case when the input pointcloud has only one cluster with points number less
-// than min_cluster_size
-TEST(VoxelGridBasedEuclideanClusterTest, testcase2)
+// A cluster holding fewer than `min_cluster_size` points counts as noise, so it is dropped without
+// being reported as skipped.
+TEST(VoxelGridBasedEuclideanClusterTest, ClusterBelowMinSizeIsDropped)
 {
   int nb_generated_points = 1;
 
@@ -118,13 +116,12 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase2)
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(pointcloud);
 
-  // the output clusters should be empty
   EXPECT_EQ(result.cluster_message.objects.size(), 0);
+  EXPECT_EQ(result.skipped_cluster_count, 0);
 }
 
-// Test case 3: Test case when the input pointcloud has two clusters with points number greater to
-// max_cluster_size
-TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
+// A cluster holding more than `max_cluster_size` points is rejected and reported as skipped.
+TEST(VoxelGridBasedEuclideanClusterTest, ClusterAboveMaxSizeIsSkipped)
 {
   int nb_generated_points = 100;
   sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
@@ -140,8 +137,8 @@ TEST(VoxelGridBasedEuclideanClusterTest, testcase3)
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(pointcloud);
 
-  // the output clusters should be emtpy
   EXPECT_EQ(result.cluster_message.objects.size(), 0);
+  EXPECT_EQ(result.skipped_cluster_count, 1);
 }
 
 // Regression test: points that sit exactly on a voxel boundary must stay in their cluster.
