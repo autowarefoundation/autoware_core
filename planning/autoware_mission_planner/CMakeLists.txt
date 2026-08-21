@@ -22,6 +22,7 @@ ament_auto_add_library(${PROJECT_NAME}_component SHARED
   src/mission_planner/arrival_checker.cpp
   src/mission_planner/reroute_safety.cpp
   src/mission_planner/mission_planner.cpp
+  src/mission_planner/mission_planner_node.cpp
 )
 target_link_libraries(${PROJECT_NAME}_component ${PROJECT_NAME}_lanelet2_plugins)
 
