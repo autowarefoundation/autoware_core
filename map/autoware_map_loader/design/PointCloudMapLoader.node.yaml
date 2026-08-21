@@ -50,6 +50,9 @@ param_values:
   - name: leaf_size
     type: double
     default: 3.0
+  - name: pcd_paths_or_directory
+    type: array
+    default: []
   - name: pcd_metadata_path
     type: string
     default: ""
