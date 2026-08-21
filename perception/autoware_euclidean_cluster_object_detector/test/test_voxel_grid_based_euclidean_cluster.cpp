@@ -16,7 +16,6 @@
 #include "../src/parameters.hpp"
 
 #include <autoware/point_types/types.hpp>
-#include <experimental/random>
 
 #include <autoware_perception_msgs/msg/detected_objects.hpp>
 #include <sensor_msgs/msg/point_cloud2.hpp>
@@ -57,23 +56,43 @@ void setPointCloud2Fields(sensor_msgs::msg::PointCloud2 & pointcloud)
   pointcloud.header.stamp.nanosec = 0;
 }
 
-sensor_msgs::msg::PointCloud2 generateClusterWithinVoxel(const int nb_points)
+// Build `num_clusters` groups of `points_per_cluster` points each.
+//
+// Every group occupies a box of 0.29 m in x and y, and the groups sit 15 m apart along x. Both
+// figures are what make the grouping predictable for the parameters these tests use: the box is
+// narrower than a 0.3 m voxel, and the gap is far wider than any tolerance passed below, so a
+// group never splits and two groups never merge. z spans 0 to 30 and never splits a group,
+// because the voxel grid covers the whole z axis in one cell.
+//
+// The points are laid on a fixed lattice rather than drawn at random. The assertions depend only
+// on how many points a group holds, so random coordinates would add no coverage while making a
+// failure impossible to reproduce.
+sensor_msgs::msg::PointCloud2 generateClusters(const int points_per_cluster, const int num_clusters)
 {
   sensor_msgs::msg::PointCloud2 pointcloud;
   setPointCloud2Fields(pointcloud);
-  pointcloud.data.resize(nb_points * pointcloud.point_step);
 
-  // generate one cluster with specified number of points within 1 voxel
-  for (int i = 0; i < nb_points; ++i) {
-    PointXYZI point;
-    point.x = std::experimental::randint(0, 30) / 100.0;  // point.x within 0.0 to 0.3
-    point.y = std::experimental::randint(0, 30) / 100.0;  // point.y within 0.0 to 0.3
-    point.z = std::experimental::randint(0, 30) / 1.0;
-    point.intensity = 0.0;
-    memcpy(&pointcloud.data[i * pointcloud.point_step], &point, pointcloud.point_step);
+  const int total_points = points_per_cluster * num_clusters;
+  pointcloud.data.resize(total_points * pointcloud.point_step);
+
+  constexpr int xy_steps = 30;          // x, y take 0.00 .. 0.29 in 0.01 increments
+  constexpr int z_steps = 31;           // z takes 0 .. 30
+  constexpr float cluster_gap = 15.0f;  // distance between consecutive groups along x
+
+  for (int c = 0; c < num_clusters; ++c) {
+    for (int i = 0; i < points_per_cluster; ++i) {
+      PointXYZI point;
+      point.x = static_cast<float>(c) * cluster_gap + static_cast<float>(i % xy_steps) / 100.0f;
+      point.y = static_cast<float>((i / xy_steps) % xy_steps) / 100.0f;
+      point.z = static_cast<float>(i % z_steps);
+      point.intensity = 0.0;
+
+      const int idx = c * points_per_cluster + i;
+      memcpy(&pointcloud.data[idx * pointcloud.point_step], &point, pointcloud.point_step);
+    }
   }
-  pointcloud.width = nb_points;
-  pointcloud.row_step = pointcloud.point_step * nb_points;
+  pointcloud.width = total_points;
+  pointcloud.row_step = pointcloud.point_step * total_points;
   return pointcloud;
 }
 
@@ -81,7 +100,7 @@ sensor_msgs::msg::PointCloud2 generateClusterWithinVoxel(const int nb_points)
 TEST(VoxelGridBasedEuclideanClusterTest, ClusterAtMaxSizeIsReported)
 {
   int nb_generated_points = 100;
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
+  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(nb_generated_points, 1);
 
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
@@ -103,7 +122,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterBelowMinSizeIsDropped)
 {
   int nb_generated_points = 1;
 
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
+  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(nb_generated_points, 1);
 
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
@@ -124,7 +143,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterBelowMinSizeIsDropped)
 TEST(VoxelGridBasedEuclideanClusterTest, ClusterAboveMaxSizeIsSkipped)
 {
   int nb_generated_points = 100;
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
+  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(nb_generated_points, 1);
 
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
@@ -185,39 +204,6 @@ TEST(VoxelGridBasedEuclideanClusterTest, BoundaryVoxelPointsAreNotDropped)
   EXPECT_EQ(result.skipped_cluster_count, 1);
 }
 
-// Helper function: Generate a point cloud with multiple clusters
-sensor_msgs::msg::PointCloud2 generateMultiClusterPointCloud(
-  int point_per_cluster, int num_clusters)
-{
-  sensor_msgs::msg::PointCloud2 pointcloud;
-  setPointCloud2Fields(pointcloud);
-
-  int total_points = point_per_cluster * num_clusters;
-  pointcloud.data.resize(total_points * pointcloud.point_step);
-
-  // Generate points for each cluster
-  for (int c = 0; c < num_clusters; ++c) {
-    float offset_x =
-      c * 15.0;  // Distance between clusters should be greater than tolerance to ensure separation
-
-    for (int i = 0; i < point_per_cluster; ++i) {
-      PointXYZI point;
-      // Generate random points within each cluster
-      point.x = offset_x + std::experimental::randint(0, 30) / 100.0;
-      point.y = std::experimental::randint(0, 30) / 100.0;
-      point.z = std::experimental::randint(0, 30) / 1.0;
-      point.intensity = 0.0;
-
-      int idx = (c * point_per_cluster + i);
-      memcpy(&pointcloud.data[idx * pointcloud.point_step], &point, pointcloud.point_step);
-    }
-  }
-
-  pointcloud.width = total_points;
-  pointcloud.row_step = pointcloud.point_step * total_points;
-  return pointcloud;
-}
-
 // Characterization test: pin the exact relationship between the `objects` output and the
 // parallel `clusters` output so the map-lookup-caching and in-place cluster-building refactor
 // is proven behavior-preserving. The number of output clusters must stay in lockstep with the
@@ -227,7 +213,7 @@ sensor_msgs::msg::PointCloud2 generateMultiClusterPointCloud(
 TEST(VoxelGridBasedEuclideanClusterTest, ClusterOutputMatchesObjects)
 {
   int nb_generated_points = 100;
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusterWithinVoxel(nb_generated_points);
+  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(nb_generated_points, 1);
 
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
@@ -316,7 +302,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ExceedMaxClusterSize)
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
 
   // Create a point cloud message with many points which should exceed max_cluster_size
-  sensor_msgs::msg::PointCloud2 msg = generateMultiClusterPointCloud(200, 1);
+  sensor_msgs::msg::PointCloud2 msg = generateClusters(200, 1);
   auto result = cluster.cluster(msg);
 
   // Even when exceeding max_cluster_size, function should return true
