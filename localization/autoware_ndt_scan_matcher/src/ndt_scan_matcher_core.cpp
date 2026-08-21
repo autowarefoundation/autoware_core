@@ -250,6 +250,16 @@ void NDTScanMatcher::apply_diagnostics_update(
   diagnostics.update_level_and_message(static_cast<int8_t>(report.level), report.message);
 }
 
+void NDTScanMatcher::publish_loaded_map_if_present(
+  const MapUpdateModule::UpdateResult & result, const std::optional<rclcpp::Time> & stamp) const
+{
+  if (result.loaded_pcd_map.has_value()) {
+    auto msg = result.loaded_pcd_map.value();
+    msg.header.stamp = stamp ? *stamp : this->now();
+    loaded_pcd_pub_->publish(msg);
+  }
+}
+
 void NDTScanMatcher::callback_timer()
 {
   const rclcpp::Time ros_time_now = this->now();
@@ -284,11 +294,7 @@ void NDTScanMatcher::callback_timer()
   auto result = map_update_module_->callback_timer(latest_ekf_position.value());
   apply_diagnostics_update(*diagnostics_map_update_, result.diagnostics);
 
-  if (result.loaded_pcd_map) {
-    result.loaded_pcd_map->header.stamp = ros_time_now;
-    loaded_pcd_pub_->publish(*result.loaded_pcd_map);
-  }
-
+  publish_loaded_map_if_present(result, ros_time_now);
   diagnostics_map_update_->publish(ros_time_now);
 }
 
@@ -1076,10 +1082,7 @@ void NDTScanMatcher::service_ndt_align_main(
   auto result = map_update_module_->update_map(initial_pose_msg_in_map_frame.pose.pose.position);
   apply_diagnostics_update(*diagnostics_ndt_align_, result.diagnostics);
 
-  if (result.loaded_pcd_map) {
-    result.loaded_pcd_map->header.stamp = this->now();
-    loaded_pcd_pub_->publish(*result.loaded_pcd_map);
-  }
+  publish_loaded_map_if_present(result);
 
   ndt_ptr_.with([&](auto & ndt_ptr) {
     // check is_set_map_points
