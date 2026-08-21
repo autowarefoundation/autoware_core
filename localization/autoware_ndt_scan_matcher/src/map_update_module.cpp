@@ -278,6 +278,18 @@ sensor_msgs::msg::PointCloud2 MapUpdateModule::merge_loaded_pcd_map(
   const builtin_interfaces::msg::Time & stamp) const
 {
   sensor_msgs::msg::PointCloud2 merged;
+
+  // Pre-allocate the data buffer to the final size so the cell-by-cell concatenation below fills
+  // it in place. Without this, each concatenatePointCloud reallocates and recopies the growing
+  // buffer, degrading toward O(n^2) as the number of cells grows.
+  // Related PR comment:
+  //   - https://github.com/autowarefoundation/autoware_core/pull/1322#discussion_r3819841133
+  std::size_t total_data_size = 0;
+  for (const auto & [cell_id, pointcloud] : loaded_pcd_map_) {
+    total_data_size += pointcloud.data.size();
+  }
+  merged.data.reserve(total_data_size);
+
   for (const auto & [cell_id, pointcloud] : loaded_pcd_map_) {
     pcl::concatenatePointCloud(merged, pointcloud, merged);
   }
