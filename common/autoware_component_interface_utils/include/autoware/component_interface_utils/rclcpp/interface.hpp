@@ -15,6 +15,8 @@
 #ifndef AUTOWARE__COMPONENT_INTERFACE_UTILS__RCLCPP__INTERFACE_HPP_
 #define AUTOWARE__COMPONENT_INTERFACE_UTILS__RCLCPP__INTERFACE_HPP_
 
+#include "autoware/component_interface_utils/rclcpp/registration.hpp"
+
 #include <rclcpp/rclcpp.hpp>
 
 #include <rclcpp/version.h>
@@ -33,7 +35,10 @@
 #endif
 
 #include <memory>
+#include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace autoware::component_interface_utils
 {
@@ -73,6 +78,26 @@ struct NodeInterface
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
   rcl_service_introspection_state_t introspection_state = RCL_SERVICE_INTROSPECTION_OFF;
 #endif
+
+  /// Append one endpoint record. Called by the create/init implementation
+  /// layer; thread-safe because composed nodes may construct interfaces from
+  /// multiple callback groups.
+  void register_interface(InterfaceRecord record)
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    records_.push_back(std::move(record));
+  }
+
+  /// Snapshot of everything this node registered.
+  std::vector<InterfaceRecord> manifest() const
+  {
+    std::lock_guard<std::mutex> lock(mutex_);
+    return records_;
+  }
+
+private:
+  mutable std::mutex mutex_;
+  std::vector<InterfaceRecord> records_;
 };
 
 }  // namespace autoware::component_interface_utils
