@@ -211,11 +211,11 @@ VoxelGridBasedEuclideanClusterDetector::cluster_voxel_grid(
 // This is a known issue with PCL 1.14 and GCC 13 due to Eigen alignment
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Warray-bounds"
-    int voxel_1d_idx =
+    int centroid_idx =
       voxel_grid.getCentroidIndexAt(voxel_grid.getGridCoordinates(point.x, point.y, point.z));
 #pragma GCC diagnostic pop
 
-    auto map_it = voxel_to_cluster_map.find(voxel_1d_idx);
+    auto map_it = voxel_to_cluster_map.find(centroid_idx);
     if (map_it != voxel_to_cluster_map.end()) {
       size_t target_cluster_id = map_it->second;
 
