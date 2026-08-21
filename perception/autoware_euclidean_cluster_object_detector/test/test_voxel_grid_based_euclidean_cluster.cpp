@@ -23,6 +23,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -282,6 +283,43 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
   auto result = cluster.cluster(pointcloud);
 
   EXPECT_EQ(result.cluster_message.objects.size(), 0u);
+}
+
+// Groups lying farther apart than `tolerance` are reported as one object each, rather than being
+// merged into a single object or split further.
+TEST(VoxelGridBasedEuclideanClusterTest, SeparatedGroupsAreReportedOneObjectEach)
+{
+  constexpr int num_clusters = 3;
+  constexpr int points_per_cluster = 100;
+  constexpr double cluster_gap = 15.0;
+
+  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(points_per_cluster, num_clusters);
+
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = false;
+  param.min_cluster_size = 1;
+  param.max_cluster_size = points_per_cluster;
+  param.tolerance = 0.7f;
+  param.voxel_leaf_size = 0.3f;
+  param.min_points_number_per_voxel = 1;
+
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
+  auto result = cluster.cluster(pointcloud);
+
+  ASSERT_EQ(result.cluster_message.objects.size(), static_cast<size_t>(num_clusters));
+  EXPECT_EQ(result.skipped_cluster_count, 0);
+
+  // Each object must sit on its own group. The objects come back in no particular order, so sort
+  // the centroids and check they are spaced by the gap the groups were built with.
+  std::vector<double> centroid_x;
+  centroid_x.reserve(result.cluster_message.objects.size());
+  for (const auto & object : result.cluster_message.objects) {
+    centroid_x.push_back(object.kinematics.pose_with_covariance.pose.position.x);
+  }
+  std::sort(centroid_x.begin(), centroid_x.end());
+  for (int i = 1; i < num_clusters; ++i) {
+    EXPECT_NEAR(centroid_x[i] - centroid_x[i - 1], cluster_gap, 1e-3);
+  }
 }
 
 int main(int argc, char ** argv)
