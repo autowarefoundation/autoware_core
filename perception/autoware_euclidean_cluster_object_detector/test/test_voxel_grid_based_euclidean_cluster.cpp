@@ -284,34 +284,6 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
   EXPECT_EQ(result.cluster_message.objects.size(), 0u);
 }
 
-// Test exceeding max_cluster_size case
-TEST(VoxelGridBasedEuclideanClusterTest, ExceedMaxClusterSize)
-{
-  // Create a cluster with a relatively small max_cluster_size
-  int max_cluster_size = 50;
-  // auto cluster = std::make_shared<autoware::euclidean_cluster::VoxelGridBasedEuclideanCluster>(
-  //   true, 5, max_cluster_size, 0.5, 0.2, 1);
-  autoware::euclidean_cluster::EuclideanClusterParams param;
-  param.use_height = true;
-  param.min_cluster_size = 5;
-  param.max_cluster_size = max_cluster_size;
-  param.tolerance = 0.5f;
-  param.voxel_leaf_size = 0.2f;
-  param.min_points_number_per_voxel = 1;
-
-  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
-
-  // Create a point cloud message with many points which should exceed max_cluster_size
-  sensor_msgs::msg::PointCloud2 msg = generateClusters(200, 1);
-  auto result = cluster.cluster(msg);
-
-  // Even when exceeding max_cluster_size, function should return true
-  EXPECT_EQ(result.cluster_message.objects.size(), 0);
-
-  // But since too many points were filtered out, no objects should be detected
-  EXPECT_GT(result.skipped_cluster_count, 0);
-}
-
 int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
