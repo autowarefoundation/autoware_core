@@ -58,7 +58,7 @@ std::optional<GyroOdometer::OutputData> GyroOdometer::input_imu(
   return make_output(*twist_with_cov);
 }
 
-void GyroOdometer::input_untransformable_imu(const sensor_msgs::msg::Imu & imu_msg)
+void GyroOdometer::input_not_transformable_imu(const sensor_msgs::msg::Imu & imu_msg)
 {
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg.header.stamp;

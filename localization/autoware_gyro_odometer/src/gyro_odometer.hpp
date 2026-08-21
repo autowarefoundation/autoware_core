@@ -35,7 +35,7 @@ namespace autoware::gyro_odometer
 /// Messages are fed in through input_vehicle_twist() / input_imu(), each of which returns the fused
 /// output at the moment a fusion completes. IMU samples are expected to already be expressed in the
 /// output frame; bringing them there is the caller's business, and a sample the caller could not
-/// bring there is handed to input_untransformable_imu() instead. Staleness is judged between the
+/// bring there is handed to input_not_transformable_imu() instead. Staleness is judged between the
 /// two inputs' header stamps, so this class holds no clock or frame state of its own.
 class GyroOdometer
 {
@@ -86,7 +86,7 @@ public:
   /// on either side is dropped with it, because it can no longer be paired with a sample of the
   /// same age. How old both sides are is still recorded, so that a sample which is unusable and
   /// stale at the same time is reported as both rather than only the former.
-  void input_untransformable_imu(const sensor_msgs::msg::Imu & imu_msg);
+  void input_not_transformable_imu(const sensor_msgs::msg::Imu & imu_msg);
 
   /// \brief Read the current state for diagnostics reporting.
   Status take_status() const;

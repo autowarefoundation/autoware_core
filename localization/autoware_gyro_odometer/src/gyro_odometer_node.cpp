@@ -112,7 +112,7 @@ void GyroOdometerNode::callback_imu(
 
   // A sample that cannot be brought into the output frame must never take part in a fusion.
   if (!transformed_imu_msg) {
-    gyro_odometer_.input_untransformable_imu(*imu_msg_ptr);
+    gyro_odometer_.input_not_transformable_imu(*imu_msg_ptr);
     return;
   }
 
