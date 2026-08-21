@@ -37,7 +37,7 @@
 #include <string>
 #include <vector>
 
-using autoware::mission_planner::MissionPlanner;
+using autoware::mission_planner::MissionPlannerNode;
 using autoware_adapi_v1_msgs::msg::OperationModeState;
 using autoware_map_msgs::msg::LaneletMapBin;
 using autoware_planning_msgs::msg::LaneletPrimitive;
@@ -220,7 +220,7 @@ protected:
        autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml", "--params-file",
        mission_planner_dir + "/config/mission_planner.param.yaml"});
 
-    node_ = std::make_shared<MissionPlanner>(options);
+    node_ = std::make_shared<MissionPlannerNode>(options);
     executor_->add_node(node_);
 
     const auto start = std::chrono::steady_clock::now();
@@ -334,7 +334,7 @@ protected:
     EXPECT_EQ(received_route_->segments.back().preferred_primitive.id, expected_id);
   }
 
-  std::shared_ptr<MissionPlanner> node_;
+  std::shared_ptr<MissionPlannerNode> node_;
   std::shared_ptr<rclcpp::Node> test_node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
 
