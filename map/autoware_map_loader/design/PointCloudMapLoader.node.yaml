@@ -59,6 +59,5 @@ param_values:
 # processes
 processes:
   - name: load_pointcloud_map
-    trigger_conditions:
-      - on_input: get_partial_pcd_map
+    trigger_conditions: []
     outcomes: []
