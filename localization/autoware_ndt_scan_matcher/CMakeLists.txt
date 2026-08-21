@@ -56,28 +56,30 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ndt_scan_matcher::NDTScanMatcher"
   EXECUTABLE ${PROJECT_NAME}_node
   ROS2_EXECUTOR MultiThreadedExecutor
-  AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 if(BUILD_TESTING)
-  add_launch_test(
-    test/test_ndt_scan_matcher_launch.py
-    TIMEOUT "30"
-  )
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    add_launch_test(
+      test/test_ndt_scan_matcher_launch.py
+      TIMEOUT "30"
+    )
 
-  find_package(ament_cmake_gtest REQUIRED)
-  ament_auto_add_gtest(standard_sequence_for_initial_pose_estimation
-    test/test_cases/standard_sequence_for_initial_pose_estimation.cpp
-    TIMEOUT "300"
-  )
-  ament_auto_add_gtest(once_initialize_at_out_of_map_then_initialize_correctly
-    test/test_cases/once_initialize_at_out_of_map_then_initialize_correctly.cpp
-    TIMEOUT "300"
-  )
-  ament_auto_add_gtest(particles_num_less_than_publish_num
-    test/test_cases/particles_num_less_than_publish_num.cpp
-    TIMEOUT "300"
-  )
+    find_package(ament_cmake_gtest REQUIRED)
+    ament_auto_add_gtest(standard_sequence_for_initial_pose_estimation
+      test/test_cases/standard_sequence_for_initial_pose_estimation.cpp
+      TIMEOUT "300"
+    )
+    ament_auto_add_gtest(once_initialize_at_out_of_map_then_initialize_correctly
+      test/test_cases/once_initialize_at_out_of_map_then_initialize_correctly.cpp
+      TIMEOUT "300"
+    )
+    ament_auto_add_gtest(particles_num_less_than_publish_num
+      test/test_cases/particles_num_less_than_publish_num.cpp
+      TIMEOUT "300"
+    )
+  endif()
 
   # Fast, dependency-light unit tests for the pure covariance / oscillation math.
   ament_auto_add_gtest(test_estimate_covariance

@@ -20,6 +20,7 @@
 #include "ndt_omp/multigrid_ndt_omp.h"
 #include "particle.hpp"
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/localization_util/util_func.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_pcl/transforms.hpp>
@@ -43,7 +44,8 @@
 
 namespace autoware::ndt_scan_matcher
 {
-using DiagnosticsInterface = autoware_utils_diagnostics::DiagnosticsInterface;
+using DiagnosticsInterface =
+  autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>;
 
 class MapUpdateModule
 {
@@ -60,7 +62,8 @@ class MapUpdateModule
 
 public:
   MapUpdateModule(
-    rclcpp::Node * node, Guarded<NdtPtrType> & ndt_ptr, HyperParameters::DynamicMapLoading param);
+    autoware::agnocast_wrapper::Node * node, Guarded<NdtPtrType> & ndt_ptr,
+    HyperParameters::DynamicMapLoading param);
 
   bool out_of_map_range(const geometry_msgs::msg::Point & position);
 
@@ -89,10 +92,9 @@ private:
     std::unique_ptr<DiagnosticsInterface> & diagnostics_ptr);
   void publish_partial_pcd_map();
 
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr loaded_pcd_pub_;
+  AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) loaded_pcd_pub_;
 
-  rclcpp::Client<autoware_map_msgs::srv::GetDifferentialPointCloudMap>::SharedPtr
-    pcd_loader_client_;
+  AUTOWARE_CLIENT_PTR(autoware_map_msgs::srv::GetDifferentialPointCloudMap) pcd_loader_client_;
 
   // To prevent deadlocks, acquire locks in the following order:
   // 1. builder_state_ -> ndt_ptr_
