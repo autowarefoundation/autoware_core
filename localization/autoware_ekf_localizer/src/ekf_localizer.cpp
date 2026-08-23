@@ -269,6 +269,8 @@ void EKFLocalizer::initialize(
   z_filter_.init(z, z_var);
   roll_filter_.init(rpy.x, roll_var);
   pitch_filter_.init(rpy.y, pitch_var);
+
+  is_set_initialpose_ = true;
 }
 
 geometry_msgs::msg::PoseStamped EKFLocalizer::get_current_pose(bool get_biased_yaw) const
