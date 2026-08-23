@@ -31,9 +31,12 @@
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <optional>
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -71,6 +74,17 @@ struct CoreWarning
 
 struct EKFUpdateResult
 {
+  bool is_activated{false};
+  bool is_set_initialpose{false};
+  geometry_msgs::msg::PoseStamped pose;
+  geometry_msgs::msg::PoseStamped biased_pose;
+  geometry_msgs::msg::PoseWithCovarianceStamped pose_cov;
+  geometry_msgs::msg::PoseWithCovarianceStamped biased_pose_cov;
+  geometry_msgs::msg::TwistStamped twist;
+  geometry_msgs::msg::TwistWithCovarianceStamped twist_cov;
+  double yaw_bias{0.0};
+  double ellipse_long_radius{0.0};
+  double ellipse_size_lateral_direction{0.0};
   EKFDiagnosticInfo pose_diag_info;
   EKFDiagnosticInfo twist_diag_info;
   std::vector<CoreWarning> warnings;
