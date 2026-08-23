@@ -160,7 +160,7 @@ public:
   void push_pose(const std::shared_ptr<const PoseWithCovariance> & pose);
   void push_twist(const std::shared_ptr<const TwistWithCovariance> & twist);
   EKFUpdateResult update_step(const double t_curr_sec);
-  void reset();
+  void activate(bool active);
 
   [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;
 
@@ -205,6 +205,15 @@ private:
   AgedObjectQueue<std::shared_ptr<const PoseWithCovariance>> pose_queue_;
   AgedObjectQueue<std::shared_ptr<const TwistWithCovariance>> twist_queue_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
+
+  std::atomic<bool> is_activated_{false};
+  std::atomic<bool> is_set_initialpose_{false};
+  std::queue<std::shared_ptr<const PoseWithCovariance>> pose_queue_tmp_;
+  std::queue<std::shared_ptr<const TwistWithCovariance>> twist_queue_tmp_;
+  std::mutex pose_mtx_;
+  std::mutex twist_mtx_;
+  std::vector<CoreWarning> async_warnings_;
+  std::mutex warning_mtx_;
 };
 
 }  // namespace autoware::ekf_localizer
