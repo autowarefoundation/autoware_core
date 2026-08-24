@@ -255,7 +255,7 @@ void EKFLocalizerNode::callback_initial_pose(
 void EKFLocalizerNode::callback_pose_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg)
 {
-  ekf_localizer_->push_pose(msg);
+  ekf_localizer_->push_pose(std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(*msg));
   last_pose_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
@@ -265,7 +265,7 @@ void EKFLocalizerNode::callback_pose_with_covariance(
 void EKFLocalizerNode::callback_twist_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
-  ekf_localizer_->push_twist(msg);
+  ekf_localizer_->push_twist(std::make_shared<geometry_msgs::msg::TwistWithCovarianceStamped>(*msg));
   last_twist_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
