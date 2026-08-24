@@ -13,13 +13,22 @@ subscribers:
   - name: map_projector_info
     message_type: autoware_map_msgs/msg/MapProjectorInfo
     global: /map/map_projector_info
+    qos:
+      reliability: reliable
+      durability: transient_local
 publishers:
   - name: lanelet2_map
     message_type: autoware_map_msgs/msg/LaneletMapBin
     global: /map/vector_map
+    qos:
+      reliability: reliable
+      durability: transient_local
   - name: lanelet2_map_metadata
     message_type: autoware_map_msgs/msg/LaneletMapMetaData
     remap_target: output/lanelet2_map_metadata
+    qos:
+      reliability: reliable
+      durability: transient_local
 servers:
   - name: get_selected_lanelet2_map
     message_type: autoware_map_msgs/srv/GetSelectedLanelet2Map

@@ -13,10 +13,16 @@ subscribers:
   - name: lanelet2_map
     message_type: autoware_map_msgs/msg/LaneletMapBin
     remap_target: input/lanelet2_map
+    qos:
+      reliability: reliable
+      durability: transient_local
 publishers:
   - name: lanelet2_map_marker
     message_type: visualization_msgs/msg/MarkerArray
     remap_target: output/lanelet2_map_marker
+    qos:
+      reliability: reliable
+      durability: transient_local
 # parameters
 param_files: []
 param_values: []

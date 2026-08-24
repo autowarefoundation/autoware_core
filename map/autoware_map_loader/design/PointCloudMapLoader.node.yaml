@@ -14,12 +14,21 @@ publishers:
   - name: pointcloud_map
     message_type: sensor_msgs/msg/PointCloud2
     remap_target: output/pointcloud_map
+    qos:
+      reliability: reliable
+      durability: transient_local
   - name: downsampled_pointcloud_map
     message_type: sensor_msgs/msg/PointCloud2
     remap_target: output/debug/downsampled_pointcloud_map
+    qos:
+      reliability: reliable
+      durability: transient_local
   - name: pointcloud_map_metadata
     message_type: autoware_map_msgs/msg/PointCloudMapMetaData
     remap_target: output/pointcloud_map_metadata
+    qos:
+      reliability: reliable
+      durability: transient_local
 servers:
   - name: get_partial_pcd_map
     message_type: autoware_map_msgs/srv/GetPartialPointCloudMap

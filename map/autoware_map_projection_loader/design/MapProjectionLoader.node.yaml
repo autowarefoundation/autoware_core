@@ -14,6 +14,9 @@ publishers:
   - name: map_projector_info
     message_type: autoware_map_msgs/msg/MapProjectorInfo
     global: /map/map_projector_info
+    qos:
+      reliability: reliable
+      durability: transient_local
 # parameters
 param_files:
   - name: map_projection_loader_param
