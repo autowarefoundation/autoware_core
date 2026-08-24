@@ -114,15 +114,6 @@ private:
 
   const HyperParameters params_;
 
-  std::atomic<bool> is_activated_{false};
-  std::atomic<bool> is_set_initialpose_{false};
-
-  //!< @brief temporary queues written by subscription callbacks; drained into main queues by timer
-  std::queue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_tmp_;
-  std::queue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_tmp_;
-  std::mutex pose_mtx_;
-  std::mutex twist_mtx_;
-
   //!< @brief callback groups for parallel execution
   rclcpp::CallbackGroup::SharedPtr cb_group_pose_;
   rclcpp::CallbackGroup::SharedPtr cb_group_twist_;
