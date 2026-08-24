@@ -6,12 +6,12 @@
   <description>The autoware_behavior_velocity_stop_line_module package</description>
 
   <maintainer email="yukinari.hisaki.2@tier4.jp">Yukinari Hisaki</maintainer>
-  <maintainer email="satoshi.ota@tier4.jp">Satoshi Ota</maintainer>
 
   <license>Apache License 2.0</license>
 
   <author email="fumiya.watanabe@tier4.jp">Fumiya Watanabe</author>
   <author email="yutaka.shimizu@tier4.jp">Yutaka Shimizu</author>
+  <author email="satoshi.ota@tier4.jp">Satoshi Ota</author>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
@@ -21,6 +21,7 @@
   <depend>autoware_behavior_velocity_planner_common</depend>
   <depend>autoware_internal_planning_msgs</depend>
   <depend>autoware_motion_utils</depend>
+  <depend>autoware_planning_factor_interface</depend>
   <depend>autoware_route_handler</depend>
   <depend>autoware_trajectory</depend>
   <depend>autoware_utils_debug</depend>
@@ -28,12 +29,14 @@
   <depend>autoware_utils_rclcpp</depend>
   <depend>eigen</depend>
   <depend>geometry_msgs</depend>
+  <depend>lanelet2_core</depend>
   <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>tf2_geometry_msgs</depend>
   <depend>visualization_msgs</depend>
 
   <test_depend>ament_cmake_ros</test_depend>
+  <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
 

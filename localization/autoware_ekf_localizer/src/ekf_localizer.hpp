@@ -15,13 +15,13 @@
 #ifndef EKF_LOCALIZER_HPP_
 #define EKF_LOCALIZER_HPP_
 
+#include "utils/aged_object_queue.hpp"
 #include "utils/hyper_parameters.hpp"
 #include "utils/state_index.hpp"
-#include "utils/warning.hpp"
 
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
-#include <rclcpp/rclcpp.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
 #include <tf2/utils.hpp>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -30,7 +30,11 @@
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
+#include <array>
+#include <chrono>
 #include <memory>
+#include <optional>
+#include <string>
 #include <vector>
 
 namespace autoware::ekf_localizer
@@ -48,6 +52,31 @@ struct EKFDiagnosticInfo
   double mahalanobis_distance{0.0};
 };
 
+/*
+To avoid importing RCLCPP_WARN into isolated core, this `CoreWarnings` will be passed into update
+funcs instead. Core will push legacy warning strings `text` and throttle timing ms `throttle_ms`
+into this vector, to Node.
+
+Regarding `throttle_ms` :
+- Normally when `throttle_ms` > 0 (such as `2000`), the node uses `RCLCPP_WARN_THROTTLE`. We set
+this `2000` milliseconds which is `2` seconds so these msgs won't spam the whole terminal.
+- When `throttle_ms` = `0`, usually it's a severe event, and the node will use `RCLCPP_WARN` to
+immediate put that warning into terminal, hence zero throttle.
+*/
+struct CoreWarning
+{
+  std::string text;
+  uint32_t throttle_ms{0};
+};
+
+struct EKFUpdateResult
+{
+  EKFDiagnosticInfo pose_diag_info;
+  EKFDiagnosticInfo twist_diag_info;
+  std::vector<CoreWarning> warnings;
+  std::vector<std::string> debug_logs;
+};
+
 class Simple1DFilter
 {
 public:
@@ -58,12 +87,14 @@ public:
     var_ = 1e9;
     proc_var_x_c_ = 0.0;
   };
+
   void init(const double init_obs, const double obs_var)
   {
     x_ = init_obs;
     var_ = obs_var;
     initialized_ = true;
   };
+
   void update(const double obs, const double obs_var, const double dt)
   {
     if (!initialized_) {
@@ -80,6 +111,7 @@ public:
     x_ = x_ + kalman_gain * (obs - x_);
     var_ = (1 - kalman_gain) * var_;
   };
+
   void set_proc_var(const double proc_var) { proc_var_x_c_ = proc_var; }
   [[nodiscard]] double get_x() const { return x_; }
   [[nodiscard]] double get_var() const { return var_; }
@@ -91,39 +123,44 @@ private:
   double proc_var_x_c_;
 };
 
-class EKFModule
+class EKFLocalizer
 {
-private:
+public:
   using PoseWithCovariance = geometry_msgs::msg::PoseWithCovarianceStamped;
   using TwistWithCovariance = geometry_msgs::msg::TwistWithCovarianceStamped;
   using Pose = geometry_msgs::msg::PoseStamped;
   using Twist = geometry_msgs::msg::TwistStamped;
 
-public:
-  EKFModule(std::shared_ptr<Warning> warning, const HyperParameters & params);
+  explicit EKFLocalizer(const HyperParameters & params);
 
   void initialize(
     const PoseWithCovariance & initial_pose,
     const geometry_msgs::msg::TransformStamped & transform);
 
-  [[nodiscard]] geometry_msgs::msg::PoseStamped get_current_pose(
-    const rclcpp::Time & current_time, bool get_biased_yaw) const;
-  [[nodiscard]] geometry_msgs::msg::TwistStamped get_current_twist(
-    const rclcpp::Time & current_time) const;
+  [[nodiscard]] geometry_msgs::msg::PoseStamped get_current_pose(bool get_biased_yaw) const;
+  [[nodiscard]] geometry_msgs::msg::TwistStamped get_current_twist() const;
   [[nodiscard]] double get_yaw_bias() const;
   [[nodiscard]] std::array<double, 36> get_current_pose_covariance() const;
   [[nodiscard]] std::array<double, 36> get_current_twist_covariance() const;
 
-  [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;
-  void accumulate_delay_time(const double dt);
+  void push_pose(const std::shared_ptr<const PoseWithCovariance> & pose);
+  void push_twist(const std::shared_ptr<const TwistWithCovariance> & twist);
+  EKFUpdateResult update_step(const double t_curr_sec);
+  void reset();
 
+  [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;
+
+  void accumulate_delay_time(const double dt);
   void predict_with_delay(const double dt);
+
   bool measurement_update_pose(
-    const PoseWithCovariance & pose, const rclcpp::Time & t_curr,
-    EKFDiagnosticInfo & pose_diag_info);
+    const PoseWithCovariance & pose, const double t_curr_sec, EKFDiagnosticInfo & pose_diag_info,
+    std::vector<CoreWarning> & warnings_out);
+
   bool measurement_update_twist(
-    const TwistWithCovariance & twist, const rclcpp::Time & t_curr,
-    EKFDiagnosticInfo & twist_diag_info);
+    const TwistWithCovariance & twist, const double t_curr_sec, EKFDiagnosticInfo & twist_diag_info,
+    std::vector<CoreWarning> & warnings_out);
+
   geometry_msgs::msg::PoseWithCovarianceStamped compensate_rph_with_delay(
     const PoseWithCovariance & pose, tf2::Vector3 last_angular_velocity, const double delay_time);
 
@@ -133,7 +170,6 @@ private:
 
   TimeDelayKalmanFilter kalman_filter_;
 
-  std::shared_ptr<Warning> warning_;
   const int dim_x_;
   std::vector<double> accumulated_delay_times_;
   const HyperParameters params_;
@@ -148,6 +184,13 @@ private:
   tf2::Vector3 last_angular_velocity_;
 
   double ekf_dt_;
+
+  std::optional<double> last_predict_time_sec_;
+  EKFDiagnosticInfo pose_diag_info_;
+  EKFDiagnosticInfo twist_diag_info_;
+  AgedObjectQueue<std::shared_ptr<const PoseWithCovariance>> pose_queue_;
+  AgedObjectQueue<std::shared_ptr<const TwistWithCovariance>> twist_queue_;
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
 };
 
 }  // namespace autoware::ekf_localizer
