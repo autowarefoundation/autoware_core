@@ -16,12 +16,14 @@
 #define AUTOWARE__COMPONENT_INTERFACE_UTILS__RCLCPP__CREATE_INTERFACE_HPP_
 
 #include <autoware/component_interface_utils/rclcpp/interface.hpp>
+#include <autoware/component_interface_utils/rclcpp/registration.hpp>
 #include <autoware/component_interface_utils/rclcpp/service_client.hpp>
 #include <autoware/component_interface_utils/rclcpp/service_server.hpp>
 #include <autoware/component_interface_utils/rclcpp/topic_publisher.hpp>
 #include <autoware/component_interface_utils/rclcpp/topic_subscription.hpp>
 #include <autoware/component_interface_utils/specs.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <rosidl_runtime_cpp/traits.hpp>
 
 #include <memory>
 #include <string>
@@ -71,44 +73,58 @@ typename Service<SpecT, NodeT>::SharedPtr create_service_impl(
 
 /// Create a publisher using traits like services. This is a private implementation.
 template <class SpecT, class NodeT>
-typename Publisher<SpecT, NodeT>::SharedPtr create_publisher_impl(NodeT * node)
+typename Publisher<SpecT, NodeT>::SharedPtr create_publisher_impl(
+  std::shared_ptr<NodeInterface<NodeT>> interface)
 {
   // This function is a wrapper for the following.
   // https://github.com/ros2/rclcpp/blob/48068130edbb43cdd61076dc1851672ff1a80408/rclcpp/include/rclcpp/node.hpp#L167-L205
-  auto publisher =
-    node->template create_publisher<typename SpecT::Message>(SpecT::name, get_qos<SpecT>());
+  auto publisher = interface->node->template create_publisher<typename SpecT::Message>(
+    SpecT::name, get_qos<SpecT>());
+  interface->register_interface(
+    make_record<SpecT>(
+      InterfaceRecord::Kind::Topic, InterfaceRecord::Role::Provide, publisher->get_topic_name(),
+      rosidl_generator_traits::name<typename SpecT::Message>(),
+      publisher->get_actual_qos().get_rmw_qos_profile()));
   return Publisher<SpecT, NodeT>::make_shared(publisher);
 }
 
 /// Create a subscription using traits like services. This is a private implementation.
 template <class SpecT, class NodeT, class CallbackT>
 typename Subscription<SpecT, NodeT>::SharedPtr create_subscription_impl(
-  NodeT * node, CallbackT && callback)
+  std::shared_ptr<NodeInterface<NodeT>> interface, CallbackT && callback)
 {
+  // Hoisted out of the else-if below so the condition fits on one line.
+  constexpr bool node_makes_callbackless_subscription =
+    has_callbackless_create_subscription<NodeT, typename SpecT::Message>::value;
+
+  typename Subscription<SpecT, NodeT>::WrapSharedPtr subscription;
   if constexpr (!std::is_null_pointer_v<CallbackT>) {
     // This function is a wrapper for the following.
     // https://github.com/ros2/rclcpp/blob/48068130edbb43cdd61076dc1851672ff1a80408/rclcpp/include/rclcpp/node.hpp#L207-L238
-    auto subscription = node->template create_subscription<typename SpecT::Message>(
+    subscription = interface->node->template create_subscription<typename SpecT::Message>(
       SpecT::name, get_qos<SpecT>(), std::forward<CallbackT>(callback));
-    return Subscription<SpecT, NodeT>::make_shared(subscription);
-  } else if constexpr (has_callbackless_create_subscription<
-                         NodeT, typename SpecT::Message>::value) {
+  } else if constexpr (node_makes_callbackless_subscription) {
     // If the callback is nullptr, create a subscription for polling. The node builds whatever
     // a callback-less subscription means for it.
-    auto subscription =
-      node->template create_subscription<typename SpecT::Message>(SpecT::name, get_qos<SpecT>());
-    return Subscription<SpecT, NodeT>::make_shared(subscription);
+    subscription = interface->node->template create_subscription<typename SpecT::Message>(
+      SpecT::name, get_qos<SpecT>());
   } else {
     // If the callback is nullptr, create a subscription for polling.
     // https://github.com/autowarefoundation/autoware.universe/tree/main/common/autoware_universe_utils/include/autoware/universe_utils/ros/polling_subscriber.hpp
-    auto group = node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+    auto group =
+      interface->node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
     auto options = rclcpp::SubscriptionOptions();
     options.callback_group = group;
 
-    auto subscription = node->template create_subscription<typename SpecT::Message>(
+    subscription = interface->node->template create_subscription<typename SpecT::Message>(
       SpecT::name, get_qos<SpecT>(), [](const typename SpecT::Message) {}, options);
-    return Subscription<SpecT, NodeT>::make_shared(subscription);
   }
+  interface->register_interface(
+    make_record<SpecT>(
+      InterfaceRecord::Kind::Topic, InterfaceRecord::Role::Require, subscription->get_topic_name(),
+      rosidl_generator_traits::name<typename SpecT::Message>(),
+      subscription->get_actual_qos().get_rmw_qos_profile()));
+  return Subscription<SpecT, NodeT>::make_shared(subscription);
 }
 
 }  // namespace autoware::component_interface_utils

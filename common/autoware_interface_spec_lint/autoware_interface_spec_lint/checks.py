@@ -14,9 +14,10 @@
 
 """Static and manifest checks for the Autoware component interface specs.
 
-All checks are advisory (WARN-only) in this initial version: they report
-human-readable findings but never fail the build. Flipping the warnings into
-hard errors (the warn->error ratchet) is left to a follow-up change.
+Every check returns a list of ``Finding`` objects; it never fails the build by
+itself. Whether a finding actually fails a run is decided by the caller from
+each gate's configured severity (``off`` / ``warn`` / ``error``; see
+``config.py`` and ``config/interface_gates.yaml``).
 """
 
 from __future__ import annotations
@@ -304,8 +305,7 @@ def _manifest_versions_by_domain(manifest) -> dict:
 def version_consistency(spec_dir: Path, manifest=None) -> list:
     """WARN on version-declaration problems in the domain headers.
 
-    Flags a domain that does not declare exactly one `version{...}`, a domain
-    whose MAJOR is not 0 (the standard is unstable while at 0.x), and a
+    Flags a domain that does not declare exactly one `version{...}`, and a
     manifest version that disagrees with the header version for that domain.
     """
     findings: list = []
@@ -326,17 +326,6 @@ def version_consistency(spec_dir: Path, manifest=None) -> list:
             )
             continue
         header_version = _version_str(h.versions[0])
-        major = header_version.split(".")[0] if header_version else ""
-        if major != "0":
-            findings.append(
-                Finding(
-                    "WARN",
-                    str(path),
-                    anchor,
-                    f"domain '{domain}' version '{header_version}' is not 0.x; the "
-                    f"interface standard is unstable (0.x)",
-                )
-            )
         for manifest_version in sorted(manifest_versions.get(domain, set())):
             if manifest_version != header_version:
                 findings.append(
@@ -494,6 +483,102 @@ def qos_consistency(spec_dir: Path, manifest=None) -> list:
     return findings
 
 
+def load_manifests(paths) -> list:
+    """Read each committed manifest JSON into a dict annotated with its source path.
+
+    The ``__path__`` key lets the manifest audits anchor a finding at the file it
+    came from; synthetic in-memory fixtures omit it and fall back to a label.
+    """
+    manifests: list = []
+    for path in paths:
+        p = Path(path)
+        if not p.is_file():
+            _warn(f"manifest not found: {path}; skipping")
+            continue
+        data = json.loads(p.read_text())
+        data["__path__"] = str(p)
+        manifests.append(data)
+    return manifests
+
+
+def _manifest_label(manifest) -> str:
+    return manifest.get("__path__") or f"<manifest owner={manifest.get('owner')}>"
+
+
+def owner_isolation(manifests, base_owner: str = "autowarefoundation") -> list:
+    """WARN when a non-base-owner manifest entry shadows a base-owner interface name.
+
+    Extension (vendor) interfaces must be strictly additive to the OSS public
+    surface: they may not redefine / intercept an interface name owned by the base
+    owner. ``owner`` is a per-manifest
+    top-level field in the committed schema, so shadowing can only arise across two
+    manifests with different owners; with the single core (base-owner) manifest this
+    is vacuously clean.
+    """
+    base_names = set()
+    for manifest in manifests:
+        if manifest.get("owner") == base_owner:
+            for entry in manifest.get("interfaces", []):
+                name = entry.get("interface")
+                if name is not None:
+                    base_names.add(name)
+    findings: list = []
+    for manifest in manifests:
+        owner = manifest.get("owner")
+        if owner == base_owner:
+            continue
+        label = _manifest_label(manifest)
+        for entry in manifest.get("interfaces", []):
+            name = entry.get("interface")
+            if name in base_names:
+                findings.append(
+                    Finding(
+                        "WARN",
+                        label,
+                        1,
+                        f"interface '{name}' owned by '{owner}' shadows a "
+                        f"'{base_owner}' interface of the same name; extension "
+                        f"interfaces must not redefine a base interface",
+                    )
+                )
+    return findings
+
+
+def no_raw_spec_topic(manifests, deny, allow=None) -> list:
+    """WARN when a versioned *topic* entry's interface name matches a heavy-raw deny.
+
+    Heavy-raw payloads (point clouds, images, occupancy grids) must stay out of
+    the versioned cross-container interface surface. The check
+    matches ``deny`` substrings against the interface name of ``kind == "topic"``
+    entries only: request/response services (e.g. the sanctioned
+    ``/map/get_differential_pointcloud_map`` map-chunk query) are not raw broadcast
+    streams and are out of scope even when their name contains a deny substring.
+    An entry whose name is in ``allow`` is never flagged.
+    """
+    allow_set = set(allow or [])
+    findings: list = []
+    for manifest in manifests:
+        label = _manifest_label(manifest)
+        for entry in manifest.get("interfaces", []):
+            if entry.get("kind") != "topic":
+                continue
+            name = entry.get("interface")
+            if name is None or name in allow_set:
+                continue
+            hits = [d for d in deny if d in name]
+            if hits:
+                findings.append(
+                    Finding(
+                        "WARN",
+                        label,
+                        1,
+                        f"interface '{name}' is a heavy-raw topic (matches "
+                        f"{hits}); it must not be a versioned cross-container spec",
+                    )
+                )
+    return findings
+
+
 def _warn(message: str) -> None:
     print(f"WARN {message}", file=sys.stderr)
 
@@ -510,10 +595,11 @@ def resolve_generator(generator=None):
 def manifest_fresh(manifest=None, generator=None) -> list:
     """Rebuild the manifest with the specs generator and diff the committed copy.
 
-    For now this only RECORDS drift: it returns a WARN finding when the committed
-    manifest is stale but never raises. It skips gracefully (returns []) when the
-    generator or committed manifest is unavailable. A follow-up change flips drift to a hard
-    failure.
+    Returns a finding when the committed manifest is stale; whether that finding
+    fails the run depends on the configured severity for this gate. It skips
+    gracefully (returns []) when the generator or committed manifest is
+    unavailable -- the gate that always binds regardless of generator
+    availability is the specs-package gtest (test/test_manifest.cpp).
     """
     gen = resolve_generator(generator)
     if gen is None:
@@ -545,7 +631,7 @@ def manifest_fresh(manifest=None, generator=None) -> list:
                 str(manifest),
                 1,
                 "committed interface_manifest.json is stale: it differs from the "
-                "generator output; regenerate it (advisory for now; a follow-up fails the build)",
+                "generator output; regenerate it",
             )
         ]
     return []

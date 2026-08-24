@@ -17,7 +17,9 @@
 
 #include <autoware/component_interface_utils/rclcpp/exceptions.hpp>
 #include <autoware/component_interface_utils/rclcpp/interface.hpp>
+#include <autoware/component_interface_utils/rclcpp/registration.hpp>
 #include <rclcpp/node.hpp>
+#include <rosidl_runtime_cpp/traits.hpp>
 
 #include <chrono>
 #include <future>
@@ -44,8 +46,7 @@ auto create_client_handle(NodeT * node, rclcpp::CallbackGroup::SharedPtr group)
 
 /// The wrapper class of a service client. Service-call tracing is provided by ROS 2
 /// service introspection (enabled via NodeInterface::introspection_state), not a
-/// custom log topic. The request/response/future aliases are spelled from the spec rather than
-/// taken off the handle, so they do not depend on the node type.
+/// custom log topic.
 template <class SpecT, class NodeT = rclcpp::Node>
 class Client
 {
@@ -71,11 +72,18 @@ public:
   {
     client_ = create_client_handle<SpecT>(interface_->node, group);
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
-    if (interface_->introspection_state != RCL_SERVICE_INTROSPECTION_OFF) {
-      client_->configure_introspection(
-        interface_->node->get_clock(), rclcpp::QoS(1), interface_->introspection_state);
+    if constexpr (has_configure_introspection<WrapType>::value) {
+      if (interface_->introspection_state != RCL_SERVICE_INTROSPECTION_OFF) {
+        client_->configure_introspection(
+          interface_->node->get_clock(), rclcpp::QoS(1), interface_->introspection_state);
+      }
     }
 #endif
+    interface_->register_interface(
+      make_record<SpecT>(
+        InterfaceRecord::Kind::Service, InterfaceRecord::Role::Require, client_->get_service_name(),
+        rosidl_generator_traits::name<typename SpecT::Service>(),
+        rmw_qos_profile_services_default));
   }
 
   /// Send request.

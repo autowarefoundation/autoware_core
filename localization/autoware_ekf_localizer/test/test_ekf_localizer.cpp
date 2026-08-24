@@ -15,7 +15,6 @@
 #include "src/ekf_localizer.hpp"
 #include "utils/hyper_parameters.hpp"
 #include "utils/state_index.hpp"
-#include "utils/warning.hpp"
 
 #include <autoware_utils_geometry/msg/covariance.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -31,13 +30,14 @@
 #include <limits>
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace autoware::ekf_localizer
 {
 
 namespace
 {
-// Build a HyperParameters instance with hand-set values, so EKFModule can be exercised without a
+// Build a HyperParameters instance with hand-set values, so EKFLocalizer can be exercised without a
 // live rclcpp::Node. HyperParameters is a plain data struct (no rclcpp dependency); the test owns
 // the values it cares about and value-initializes the rest to zero/empty.
 HyperParameters make_params()
@@ -67,11 +67,9 @@ HyperParameters make_params()
   return params;
 }
 
-std::shared_ptr<EKFModule> make_module(const HyperParameters & params)
+std::shared_ptr<EKFLocalizer> make_ekf_localizer(const HyperParameters & params)
 {
-  // Warning(nullptr) is an explicitly-requested no-op logger (node_ == nullptr).
-  auto warning = std::make_shared<Warning>(nullptr);
-  return std::make_shared<EKFModule>(warning, params);
+  return std::make_shared<EKFLocalizer>(params);
 }
 
 geometry_msgs::msg::PoseWithCovarianceStamped make_pose(
@@ -128,94 +126,82 @@ geometry_msgs::msg::TransformStamped identity_transform()
 // ---------------------------------------------------------------------------
 // find_closest_delay_time_index
 // ---------------------------------------------------------------------------
-TEST(TestEKFModule, FindClosestDelayTimeIndex)
+TEST(TestEKFLocalizer, FindClosestDelayTimeIndex)
 {
   const auto params = make_params();
-  auto module = make_module(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
   // Build a strictly increasing delay-time table: front becomes 0 and the rest accumulate.
   // After one accumulate_delay_time(dt), the table is [0, 1e15 + dt, 1e15 + dt, ...].
   // Repeatedly accumulating builds a monotonically-increasing prefix.
   const double dt = 0.1;
   for (size_t i = 0; i < params.extend_state_step; ++i) {
-    module->accumulate_delay_time(dt);
+    ekf_localizer->accumulate_delay_time(dt);
   }
   // After extend_state_step accumulations the table is [0, dt, 2*dt, ..., (n-1)*dt].
 
   // target below the first element -> lower_bound at begin -> index 0
-  EXPECT_EQ(module->find_closest_delay_time_index(-1.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(-1.0), 0u);
 
   // target exactly the first element (0) -> begin -> index 0
-  EXPECT_EQ(module->find_closest_delay_time_index(0.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.0), 0u);
 
   // closest-of-two: a value between two grid points snaps to the nearer one.
   // grid is 0, 0.1, 0.2, ...; 0.14 is closer to 0.1 (index 1) than 0.2 (index 2).
-  EXPECT_EQ(module->find_closest_delay_time_index(0.14), 1u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.14), 1u);
   // 0.16 is closer to 0.2 (index 2).
-  EXPECT_EQ(module->find_closest_delay_time_index(0.16), 2u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.16), 2u);
 
   // target beyond the last element -> returns size (== extend_state_step).
   const double beyond = static_cast<double>(params.extend_state_step) * dt + 1.0;
-  EXPECT_EQ(module->find_closest_delay_time_index(beyond), params.extend_state_step);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(beyond), params.extend_state_step);
 }
 
 // Degenerate configuration: extend_state_step == 0 leaves accumulated_delay_times_ empty.
 // find_closest_delay_time_index() must not dereference .back() on the empty table; it returns the
 // safe index 0 (== size()) for any target instead of crashing. The default of 50 must NOT mask
 // this, so the test sets extend_state_step to 0 explicitly.
-TEST(TestEKFModule, FindClosestDelayTimeIndexEmptyTable)
+TEST(TestEKFLocalizer, FindClosestDelayTimeIndexEmptyTable)
 {
   HyperParameters params = make_params();
   params.extend_state_step = 0;
-  auto module = make_module(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
-  EXPECT_EQ(module->find_closest_delay_time_index(-1.0), 0u);
-  EXPECT_EQ(module->find_closest_delay_time_index(0.0), 0u);
-  EXPECT_EQ(module->find_closest_delay_time_index(1.0), 0u);
-  EXPECT_EQ(module->find_closest_delay_time_index(1.0e15), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(-1.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(1.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(1.0e15), 0u);
 }
 
 // ---------------------------------------------------------------------------
 // accumulate_delay_time: copy_backward shift + accumulation
 // ---------------------------------------------------------------------------
-TEST(TestEKFModule, AccumulateDelayTime)
+TEST(TestEKFLocalizer, AccumulateDelayTime)
 {
   HyperParameters params = make_params();
   params.extend_state_step = 4;
-  auto module = make_module(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
   // Initial table is filled with 1.0E15. find_closest_delay_time_index uses the table directly,
   // so we can probe its boundary behaviour to characterize the shift/accumulation.
   const double dt = 0.2;
 
   // First accumulation: front -> 0, others -> 1e15 + dt (still huge).
-  module->accumulate_delay_time(dt);
+  ekf_localizer->accumulate_delay_time(dt);
   // Index 0 corresponds to delay 0.
-  EXPECT_EQ(module->find_closest_delay_time_index(0.0), 0u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(0.0), 0u);
 
   // Second accumulation shifts and the second element becomes 0 + dt = dt, the rest stay huge.
-  module->accumulate_delay_time(dt);
+  ekf_localizer->accumulate_delay_time(dt);
   // Now table[0] = 0, table[1] = dt, table[2..] huge. A target at dt snaps to index 1.
-  EXPECT_EQ(module->find_closest_delay_time_index(dt), 1u);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(dt), 1u);
 
   // Third accumulation: table[0]=0, table[1]=dt, table[2]=2*dt, table[3] huge.
-  module->accumulate_delay_time(dt);
-  EXPECT_EQ(module->find_closest_delay_time_index(2.0 * dt), 2u);
+  ekf_localizer->accumulate_delay_time(dt);
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(2.0 * dt), 2u);
 
   // A target larger than the (still huge) last element returns size().
-  EXPECT_EQ(module->find_closest_delay_time_index(2.0e15), params.extend_state_step);
-}
-
-// ---------------------------------------------------------------------------
-// Warning: no-op logger constructed without a node
-// ---------------------------------------------------------------------------
-TEST(Warning, NoOpWhenConstructedWithNullptr)
-{
-  const Warning warning{nullptr};
-
-  // node_ == nullptr: warn/warn_throttle silently return without a ROS runtime.
-  EXPECT_NO_THROW(warning.warn("ignored"));
-  EXPECT_NO_THROW(warning.warn_throttle("ignored", 1000));
+  EXPECT_EQ(ekf_localizer->find_closest_delay_time_index(2.0e15), params.extend_state_step);
 }
 
 // ---------------------------------------------------------------------------
@@ -255,10 +241,10 @@ TEST(TestSimple1DFilter, ProcessVarianceInflatesPrediction)
 // ---------------------------------------------------------------------------
 // compensate_rph_with_delay: zero vs non-zero angular velocity, delta_z correction
 // ---------------------------------------------------------------------------
-TEST(TestEKFModule, CompensateRphWithDelayZeroAngularVelocity)
+TEST(TestEKFLocalizer, CompensateRphWithDelayZeroAngularVelocity)
 {
   const auto params = make_params();
-  auto module = make_module(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
   const rclcpp::Time stamp(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(1.0, 2.0, 0.3, "map", stamp);
@@ -266,7 +252,7 @@ TEST(TestEKFModule, CompensateRphWithDelayZeroAngularVelocity)
   const tf2::Vector3 zero_angular_velocity(0.0, 0.0, 0.0);
   const double delay_time = 0.2;
   const auto compensated =
-    module->compensate_rph_with_delay(pose, zero_angular_velocity, delay_time);
+    ekf_localizer->compensate_rph_with_delay(pose, zero_angular_velocity, delay_time);
 
   // With zero angular velocity the orientation is unchanged (delta is identity).
   EXPECT_NEAR(compensated.pose.pose.orientation.x, pose.pose.pose.orientation.x, 1e-9);
@@ -278,14 +264,14 @@ TEST(TestEKFModule, CompensateRphWithDelayZeroAngularVelocity)
   const rclcpp::Time compensated_stamp(compensated.header.stamp);
   EXPECT_NEAR(compensated_stamp.seconds(), stamp.seconds() + delay_time, 1e-9);
 
-  // With a fresh module (VX == 0) and zero pitch, delta_z is 0.
+  // With a fresh ekf_localizer (VX == 0) and zero pitch, delta_z is 0.
   EXPECT_NEAR(compensated.pose.pose.position.z, pose.pose.pose.position.z, 1e-9);
 }
 
-TEST(TestEKFModule, CompensateRphWithDelayNonZeroAngularVelocity)
+TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity)
 {
   const auto params = make_params();
-  auto module = make_module(params);
+  auto ekf_localizer = make_ekf_localizer(params);
 
   const rclcpp::Time stamp(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(0.0, 0.0, 0.0, "map", stamp);
@@ -293,7 +279,8 @@ TEST(TestEKFModule, CompensateRphWithDelayNonZeroAngularVelocity)
   // Non-zero yaw rate -> orientation must rotate by omega * delay_time about Z.
   const tf2::Vector3 angular_velocity(0.0, 0.0, 1.0);
   const double delay_time = 0.5;
-  const auto compensated = module->compensate_rph_with_delay(pose, angular_velocity, delay_time);
+  const auto compensated =
+    ekf_localizer->compensate_rph_with_delay(pose, angular_velocity, delay_time);
 
   // Expected yaw delta = |omega| * delay_time = 1.0 * 0.5 = 0.5 rad.
   tf2::Quaternion q(
@@ -312,26 +299,26 @@ protected:
   void SetUp() override
   {
     params_ = make_params();
-    reset_module();
+    reset_ekf_localizer();
   }
 
-  // (Re)build the module from the current params_, initialize at the origin, fill the delay-time
-  // table with realistic small values (one accumulation per predict cycle in the real node), and
-  // run a prediction so the EKF state is well-defined.
-  void reset_module()
+  // (Re)build the ekf_localizer from the current params_, initialize at the origin, fill the
+  // delay-time table with realistic small values (one accumulation per predict cycle in the real
+  // node), and run a prediction so the EKF state is well-defined.
+  void reset_ekf_localizer()
   {
-    module_ = make_module(params_);
+    ekf_localizer_ = make_ekf_localizer(params_);
     const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
     auto initial_pose = make_pose(0.0, 0.0, 0.0, "map", t0);
-    module_->initialize(initial_pose, identity_transform());
+    ekf_localizer_->initialize(initial_pose, identity_transform());
     for (size_t i = 0; i < params_.extend_state_step; ++i) {
-      module_->accumulate_delay_time(params_.ekf_dt);
+      ekf_localizer_->accumulate_delay_time(params_.ekf_dt);
     }
-    module_->predict_with_delay(params_.ekf_dt);
+    ekf_localizer_->predict_with_delay(params_.ekf_dt);
   }
 
   HyperParameters params_;
-  std::shared_ptr<EKFModule> module_;
+  std::shared_ptr<EKFLocalizer> ekf_localizer_;
 };
 
 TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
@@ -345,28 +332,30 @@ TEST_F(MeasurementUpdatePose, AcceptsValidMeasurement)
   // origin and the covariance unchanged, failing these postconditions.
   auto pose = make_pose(1.0, 2.0, 0.0, "map", t_curr);
 
-  const auto pose_before = module_->get_current_pose(t_curr, false);
-  const auto cov_before = module_->get_current_pose_covariance();
+  const auto pose_before = ekf_localizer_->get_current_pose(false);
+  const auto cov_before = ekf_localizer_->get_current_pose_covariance();
   EXPECT_DOUBLE_EQ(pose_before.pose.position.x, 0.0);
   EXPECT_DOUBLE_EQ(pose_before.pose.position.y, 0.0);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_TRUE(ok);
+  EXPECT_EQ(warnings.size(), 0u);  // No warning on valid measurement
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
 
   // Postcondition: the state is blended toward the measurement (strictly between the prior
   // estimate and the measurement), not snapped to it.
-  const auto pose_after = module_->get_current_pose(t_curr, false);
+  const auto pose_after = ekf_localizer_->get_current_pose(false);
   EXPECT_GT(pose_after.pose.position.x, 0.0);
   EXPECT_LT(pose_after.pose.position.x, 1.0);
   EXPECT_GT(pose_after.pose.position.y, 0.0);
   EXPECT_LT(pose_after.pose.position.y, 2.0);
 
   // Postcondition: the position covariance is reduced by incorporating the measurement.
-  const auto cov_after = module_->get_current_pose_covariance();
+  const auto cov_after = ekf_localizer_->get_current_pose_covariance();
   EXPECT_LT(cov_after[COV_IDX::X_X], cov_before[COV_IDX::X_X]);
   EXPECT_LT(cov_after[COV_IDX::Y_Y], cov_before[COV_IDX::Y_Y]);
 }
@@ -379,8 +368,9 @@ TEST_F(MeasurementUpdatePose, RejectsOnDelayGate)
   const rclcpp::Time t_old(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(0.0, 0.0, 0.0, "map", t_old);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
@@ -393,7 +383,8 @@ TEST_F(MeasurementUpdatePose, RejectsOnNan)
   pose.pose.pose.position.x = std::numeric_limits<double>::quiet_NaN();
 
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  std::vector<CoreWarning> warnings;
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   // The NaN gate is reached after the delay gate, so the delay gate is still marked passed.
@@ -406,8 +397,9 @@ TEST_F(MeasurementUpdatePose, RejectsOnInf)
   auto pose = make_pose(0.0, 0.0, 0.0, "map", t_curr);
   pose.pose.pose.position.y = std::numeric_limits<double>::infinity();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
 }
@@ -416,13 +408,14 @@ TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
 {
   // Tighten the gate so a far-away measurement is rejected by the Mahalanobis distance check.
   params_.pose_gate_dist = 1e-6;
-  reset_module();
+  reset_ekf_localizer();
 
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
   auto pose = make_pose(1000.0, 1000.0, 0.0, "map", t_curr);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_pose(pose, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -439,23 +432,23 @@ protected:
   void SetUp() override
   {
     params_ = make_params();
-    reset_module();
+    reset_ekf_localizer();
   }
 
-  void reset_module()
+  void reset_ekf_localizer()
   {
-    module_ = make_module(params_);
+    ekf_localizer_ = make_ekf_localizer(params_);
     const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
     auto initial_pose = make_pose(0.0, 0.0, 0.0, "map", t0);
-    module_->initialize(initial_pose, identity_transform());
+    ekf_localizer_->initialize(initial_pose, identity_transform());
     for (size_t i = 0; i < params_.extend_state_step; ++i) {
-      module_->accumulate_delay_time(params_.ekf_dt);
+      ekf_localizer_->accumulate_delay_time(params_.ekf_dt);
     }
-    module_->predict_with_delay(params_.ekf_dt);
+    ekf_localizer_->predict_with_delay(params_.ekf_dt);
   }
 
   HyperParameters params_;
-  std::shared_ptr<EKFModule> module_;
+  std::shared_ptr<EKFLocalizer> ekf_localizer_;
 };
 
 TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
@@ -467,27 +460,29 @@ TEST_F(MeasurementUpdateTwist, AcceptsValidMeasurement)
   // the velocity estimate must move toward the measurement and the velocity covariance shrink.
   auto twist = make_twist(3.0, 1.0, "base_link", t_curr);
 
-  const auto twist_before = module_->get_current_twist(t_curr);
-  const auto cov_before = module_->get_current_twist_covariance();
+  const auto twist_before = ekf_localizer_->get_current_twist();
+  const auto cov_before = ekf_localizer_->get_current_twist_covariance();
   EXPECT_DOUBLE_EQ(twist_before.twist.linear.x, 0.0);
   EXPECT_DOUBLE_EQ(twist_before.twist.angular.z, 0.0);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_TRUE(ok);
+  EXPECT_EQ(warnings.size(), 0u);  // No warning on valid measurement
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
 
   // Postcondition: the velocity estimate is blended toward the measurement, not snapped to it.
-  const auto twist_after = module_->get_current_twist(t_curr);
+  const auto twist_after = ekf_localizer_->get_current_twist();
   EXPECT_GT(twist_after.twist.linear.x, 0.0);
   EXPECT_LT(twist_after.twist.linear.x, 3.0);
   EXPECT_GT(twist_after.twist.angular.z, 0.0);
   EXPECT_LT(twist_after.twist.angular.z, 1.0);
 
   // Postcondition: the velocity covariance (vx maps to twist covariance X_X) is reduced.
-  const auto cov_after = module_->get_current_twist_covariance();
+  const auto cov_after = ekf_localizer_->get_current_twist_covariance();
   EXPECT_LT(cov_after[COV_IDX::X_X], cov_before[COV_IDX::X_X]);
 }
 
@@ -497,8 +492,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnDelayGate)
   const rclcpp::Time t_old(100, 0, RCL_ROS_TIME);
   auto twist = make_twist(0.0, 0.0, "base_link", t_old);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_FALSE(diag.is_passed_delay_gate);
@@ -510,8 +506,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnNan)
   auto twist = make_twist(0.0, 0.0, "base_link", t_curr);
   twist.twist.twist.linear.x = std::numeric_limits<double>::quiet_NaN();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);
@@ -523,8 +520,9 @@ TEST_F(MeasurementUpdateTwist, RejectsOnInf)
   auto twist = make_twist(0.0, 0.0, "base_link", t_curr);
   twist.twist.twist.angular.z = std::numeric_limits<double>::infinity();
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
 }
@@ -532,13 +530,14 @@ TEST_F(MeasurementUpdateTwist, RejectsOnInf)
 TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
 {
   params_.twist_gate_dist = 1e-6;
-  reset_module();
+  reset_ekf_localizer();
 
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
   auto twist = make_twist(1000.0, 1000.0, "base_link", t_curr);
 
+  std::vector<CoreWarning> warnings;
   EKFDiagnosticInfo diag;
-  const bool ok = module_->measurement_update_twist(twist, t_curr, diag);
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
 
   EXPECT_FALSE(ok);
   EXPECT_TRUE(diag.is_passed_delay_gate);

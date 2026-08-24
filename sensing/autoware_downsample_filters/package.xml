@@ -25,9 +25,15 @@
   <depend>autoware_utils_debug</depend>
   <depend>autoware_utils_system</depend>
   <depend>autoware_utils_tf</depend>
+  <depend>eigen</depend>
+  <depend>libboost-dev</depend>
+  <depend>libpcl-all-dev</depend>
   <depend>pcl_conversions</depend>
+  <depend>pcl_ros</depend>
   <depend>rclcpp</depend>
+  <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>
+  <depend>tf2_eigen</depend>
   <depend>tl_expected</depend>
 
   <test_depend>ament_lint_auto</test_depend>
