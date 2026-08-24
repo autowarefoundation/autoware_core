@@ -71,7 +71,31 @@ EKFLocalizer::EKFLocalizer(const HyperParameters & params)
 
 void EKFLocalizer::push_pose(const std::shared_ptr<const PoseWithCovariance> & pose)
 {
-  pose_queue_.push(pose);
+  if (!is_activated_ && !is_set_initialpose_) {
+    return;
+  }
+
+  auto pose_msg = std::make_shared<PoseWithCovariance>(*pose);
+
+  size_t dropped = 0;
+  {
+    std::lock_guard<std::mutex> lock(pose_mtx_);
+    pose_queue_tmp_.push(pose_msg);
+    while (pose_queue_tmp_.size() > params_.max_pose_queue_size) {
+      pose_queue_tmp_.pop();
+      ++dropped;
+    }
+  }
+  if (dropped > 0) {
+    const auto warning = fmt::format(
+      "[EKF] Pose staging queue is exceeding max_queue_size ({}); dropped {} oldest "
+      "message(s). "
+      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
+      "frequency.",
+      params_.max_pose_queue_size, dropped);
+    std::lock_guard<std::mutex> lock(warning_mtx_);
+    async_warnings_.push_back({warning, 2000});
+  }
 }
 
 void EKFLocalizer::push_twist(const std::shared_ptr<const TwistWithCovariance> & twist)

@@ -295,31 +295,6 @@ void EKFLocalizerNode::callback_initial_pose(
 void EKFLocalizerNode::callback_pose_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg)
 {
-  if (!is_activated_ && !is_set_initialpose_) {
-    return;
-  }
-
-  auto pose_msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(*msg);
-
-  size_t dropped = 0;
-  {
-    std::lock_guard<std::mutex> lock(pose_mtx_);
-    pose_queue_tmp_.push(pose_msg);
-    while (pose_queue_tmp_.size() > params_.max_pose_queue_size) {
-      pose_queue_tmp_.pop();
-      ++dropped;
-    }
-  }
-  if (dropped > 0) {
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 2000,
-      "[EKF] Pose staging queue is exceeding max_queue_size ({%zu}); dropped {%zu} oldest "
-      "message(s). "
-      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
-      "frequency.",
-      params_.max_pose_queue_size, dropped);
-  }
-
   last_pose_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
