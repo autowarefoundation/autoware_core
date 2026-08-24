@@ -974,24 +974,17 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
     << "a scan rejected while activated no longer advances the skip counter";
 }
 
-/// The other arm of `is_converged`'s `||`: hitting the iteration limit withholds the pose even when
-/// the score is fine.
+/// The other arm of `is_converged`'s `||`: the iteration limit withholds the pose even when the
+/// score is fine.
 ///
-/// `is_converged` is `(is_ok_iteration_num || is_local_optimal_solution_oscillation) &&
-/// is_ok_score`. The case above drives the `is_ok_score` half; without this one, rewriting the
-/// whole expression to `is_converged = is_ok_score` passes every case in the file, which is
-/// measured and was the state of this suite before this case existed. That rewrite is exactly what
-/// extracting the judgement into a helper invites.
+/// `(is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score`. The case above
+/// drives `is_ok_score` only; measured, without this one the expression collapses to `is_ok_score`
+/// with every test still green -- the collapse a helper extraction invites. `ndt.max_iterations: 1`
+/// reaches this arm: one reported iteration leaves `iteration_num < max_iterations` false while the
+/// geometry still scores well, and the oscillation arm needs three poses to see a reversal.
 ///
-/// `ndt.max_iterations: 1` is what makes the arm reachable through the node: the alignment reports
-/// one iteration, so `iteration_num < max_iterations` is false, while the geometry still scores
-/// above the threshold. `count_oscillation` needs three poses before it can even look at a
-/// reversal, so the oscillation arm stays false here.
-///
-/// The remaining combination -- oscillation rescuing a hit limit, two bad signals reading as
-/// converged -- needs eleven consecutive step reversals and is not reachable from this stimulus.
-/// Pinning it needs `decide_convergence` moved into `ndt_scan_matcher_helper`, where a truth table
-/// reaches it directly. That is the next step in the plan.
+/// Not covered: oscillation rescuing a hit limit, which needs eleven consecutive reversals and
+/// wants `decide_convergence` extracted.
 TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPose)
 {
   // Arrange
