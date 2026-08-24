@@ -304,33 +304,6 @@ void EKFLocalizerNode::callback_pose_with_covariance(
 void EKFLocalizerNode::callback_twist_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
-  auto twist_msg = std::make_shared<geometry_msgs::msg::TwistWithCovarianceStamped>(*msg);
-
-  // Ignore twist if velocity is too small.
-  // Note that this inequality must not include "equal".
-  if (std::abs(twist_msg->twist.twist.linear.x) < params_.threshold_observable_velocity_mps) {
-    twist_msg->twist.covariance[0 * 6 + 0] = 10000.0;
-  }
-
-  size_t dropped = 0;
-  {
-    std::lock_guard<std::mutex> lock(twist_mtx_);
-    twist_queue_tmp_.push(twist_msg);
-    while (twist_queue_tmp_.size() > params_.max_twist_queue_size) {
-      twist_queue_tmp_.pop();
-      ++dropped;
-    }
-  }
-  if (dropped > 0) {
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 2000,
-      "[EKF] Twist staging queue is exceeding max_queue_size ({%zu}); dropped {%zu} oldest "
-      "message(s). "
-      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
-      "frequency.",
-      params_.max_twist_queue_size, dropped);
-  }
-
   last_twist_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 

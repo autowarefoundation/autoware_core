@@ -86,6 +86,7 @@ void EKFLocalizer::push_pose(const std::shared_ptr<const PoseWithCovariance> & p
       ++dropped;
     }
   }
+
   if (dropped > 0) {
     const auto warning = fmt::format(
       "[EKF] Pose staging queue is exceeding max_queue_size ({}); dropped {} oldest "
@@ -100,7 +101,34 @@ void EKFLocalizer::push_pose(const std::shared_ptr<const PoseWithCovariance> & p
 
 void EKFLocalizer::push_twist(const std::shared_ptr<const TwistWithCovariance> & twist)
 {
-  twist_queue_.push(twist);
+  auto twist_msg = std::make_shared<TwistWithCovariance>(*twist);
+
+  // Ignore twist if velocity is too small.
+  // Note that this inequality must not include "equal".
+  if (std::abs(twist_msg->twist.twist.linear.x) < params_.threshold_observable_velocity_mps) {
+    twist_msg->twist.covariance[0 * 6 + 0] = 10000.0;
+  }
+
+  size_t dropped = 0;
+  {
+    std::lock_guard<std::mutex> lock(twist_mtx_);
+    twist_queue_tmp_.push(twist_msg);
+    while (twist_queue_tmp_.size() > params_.max_twist_queue_size) {
+      twist_queue_tmp_.pop();
+      ++dropped;
+    }
+  }
+  
+  if (dropped > 0) {
+    const auto warning = fmt::format(
+      "[EKF] Twist staging queue is exceeding max_queue_size ({}); dropped {} oldest "
+      "message(s). "
+      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
+      "frequency.",
+      params_.max_twist_queue_size, dropped);
+    std::lock_guard<std::mutex> lock(warning_mtx_);
+    async_warnings_.push_back({warning, 2000});
+  }
 }
 
 void EKFLocalizer::reset()
