@@ -122,7 +122,8 @@ void EKFLocalizerNode::timer_callback()
   // Log all warnings & debug logs
   for (const auto & warning : update_result.warnings) {
     if (warning.throttle_ms > 0) {
-      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), warning.throttle_ms, "%s", warning.text.c_str());
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), warning.throttle_ms, "%s", warning.text.c_str());
     } else {
       RCLCPP_WARN(get_logger(), "%s", warning.text.c_str());
     }
@@ -312,7 +313,7 @@ void EKFLocalizerNode::publish_estimate_result(const EKFUpdateResult & result)
   }
 
   /* publish yaw bias */
-{
+  {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_yaw_bias_);
     msg->stamp = result.twist.header.stamp;
     msg->data = result.yaw_bias;

@@ -13,8 +13,8 @@
 // limitations under the License.
 
 #include "ekf_localizer.hpp"
-#include "autoware/localization_util/covariance_ellipse.hpp"
 
+#include "autoware/localization_util/covariance_ellipse.hpp"
 #include "utils/covariance.hpp"
 #include "utils/mahalanobis.hpp"
 #include "utils/matrix_types.hpp"
@@ -189,7 +189,7 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
   result.is_set_initialpose = is_set_initialpose_;
 
   if (!is_activated_ || !is_set_initialpose_) {
-    return result; // Return early with flags so Node knows to emit errors
+    return result;  // Return early with flags so Node knows to emit errors
   }
 
   // 1. Init per-tick diagnostics
