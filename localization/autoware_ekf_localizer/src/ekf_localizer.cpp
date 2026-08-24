@@ -118,7 +118,7 @@ void EKFLocalizer::push_twist(const std::shared_ptr<const TwistWithCovariance> &
       ++dropped;
     }
   }
-  
+
   if (dropped > 0) {
     const auto warning = fmt::format(
       "[EKF] Twist staging queue is exceeding max_queue_size ({}); dropped {} oldest "
@@ -131,13 +131,28 @@ void EKFLocalizer::push_twist(const std::shared_ptr<const TwistWithCovariance> &
   }
 }
 
-void EKFLocalizer::reset()
+void EKFLocalizer::activate(bool active)
 {
-  pose_queue_.clear();
-  twist_queue_.clear();
-  last_predict_time_sec_ = std::nullopt;
-  pose_diag_info_ = EKFDiagnosticInfo();
-  twist_diag_info_ = EKFDiagnosticInfo();
+  if (active) {
+    {
+      std::lock_guard<std::mutex> lock(pose_mtx_);
+      pose_queue_tmp_ = {};
+    }
+    {
+      std::lock_guard<std::mutex> lock(twist_mtx_);
+      twist_queue_tmp_ = {};
+    }
+    
+    pose_queue_.clear();
+    twist_queue_.clear();
+    last_predict_time_sec_ = std::nullopt;
+    pose_diag_info_ = EKFDiagnosticInfo();
+    twist_diag_info_ = EKFDiagnosticInfo();
+    is_activated_ = true;
+  } else {
+    is_activated_ = false;
+    is_set_initialpose_ = false;
+  }
 }
 
 EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
