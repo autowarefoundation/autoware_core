@@ -142,7 +142,7 @@ void EKFLocalizer::activate(bool active)
       std::lock_guard<std::mutex> lock(twist_mtx_);
       twist_queue_tmp_ = {};
     }
-    
+
     pose_queue_.clear();
     twist_queue_.clear();
     last_predict_time_sec_ = std::nullopt;
@@ -158,6 +158,38 @@ void EKFLocalizer::activate(bool active)
 EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
 {
   EKFUpdateResult result;
+
+  // Drain thread-safe temporary queues
+  {
+    std::lock_guard<std::mutex> lock(pose_mtx_);
+    while (!pose_queue_tmp_.empty()) {
+      pose_queue_.push(pose_queue_tmp_.front());
+      pose_queue_tmp_.pop();
+    }
+  }
+  {
+    std::lock_guard<std::mutex> lock(twist_mtx_);
+    while (!twist_queue_tmp_.empty()) {
+      twist_queue_.push(twist_queue_tmp_.front());
+      twist_queue_tmp_.pop();
+    }
+  }
+
+  // Drain async warnings generated in push_* callbacks
+  {
+    std::lock_guard<std::mutex> lock(warning_mtx_);
+    for (const auto & w : async_warnings_) {
+      result.warnings.push_back(w);
+    }
+    async_warnings_.clear();
+  }
+
+  result.is_activated = is_activated_;
+  result.is_set_initialpose = is_set_initialpose_;
+
+  if (!is_activated_ || !is_set_initialpose_) {
+    return result; // Return early with flags so Node knows to emit errors
+  }
 
   // 1. Init per-tick diagnostics
   pose_diag_info_.queue_size = pose_queue_.size();
