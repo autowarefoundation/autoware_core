@@ -324,6 +324,42 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
   twist_diag_info_.no_update_count = twist_is_updated ? 0 : (twist_diag_info_.no_update_count + 1);
 
   // 7. Result
+  // Here packaging fully stamped ROS result struct
+  int32_t sec = static_cast<int32_t>(std::floor(t_curr_sec));
+  uint32_t nanosec = static_cast<uint32_t>((t_curr_sec - sec) * 1e9);
+
+  result.pose = get_current_pose(false);
+  result.pose.header.stamp.sec = sec;
+  result.pose.header.stamp.nanosec = nanosec;
+  result.pose.header.frame_id = params_.pose_frame_id;
+
+  result.biased_pose = get_current_pose(true);
+  result.biased_pose.header.stamp = result.pose.header.stamp;
+  result.biased_pose.header.frame_id = params_.pose_frame_id;
+
+  result.twist = get_current_twist();
+  result.twist.header.stamp = result.pose.header.stamp;
+  result.twist.header.frame_id = "base_link";
+
+  result.pose_cov.header = result.pose.header;
+  result.pose_cov.pose.pose = result.pose.pose;
+  result.pose_cov.pose.covariance = get_current_pose_covariance();
+
+  result.biased_pose_cov.header = result.biased_pose.header;
+  result.biased_pose_cov.pose.pose = result.biased_pose.pose;
+  result.biased_pose_cov.pose.covariance = get_current_pose_covariance();
+
+  result.twist_cov.header = result.twist.header;
+  result.twist_cov.twist.twist = result.twist.twist;
+  result.twist_cov.twist.covariance = get_current_twist_covariance();
+
+  result.yaw_bias = get_yaw_bias();
+
+  const autoware::localization_util::Ellipse ellipse =
+    autoware::localization_util::calculate_xy_ellipse(result.pose_cov, params_.ellipse_scale);
+  result.ellipse_long_radius = ellipse.long_radius;
+  result.ellipse_size_lateral_direction = ellipse.size_lateral_direction;
+
   result.pose_diag_info = pose_diag_info_;
   result.twist_diag_info = twist_diag_info_;
 
