@@ -285,8 +285,6 @@ void EKFLocalizerNode::callback_initial_pose(
       params_.pose_frame_id.c_str(), msg->header.frame_id.c_str());
   }
   ekf_localizer_->initialize(*msg, transform);
-
-  is_set_initialpose_ = true;
 }
 
 /*
@@ -295,6 +293,7 @@ void EKFLocalizerNode::callback_initial_pose(
 void EKFLocalizerNode::callback_pose_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg)
 {
+  ekf_localizer_->push_pose(msg);
   last_pose_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
@@ -304,6 +303,7 @@ void EKFLocalizerNode::callback_pose_with_covariance(
 void EKFLocalizerNode::callback_twist_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
+  ekf_localizer_->push_twist(msg);
   last_twist_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
@@ -481,21 +481,7 @@ void EKFLocalizerNode::service_trigger_node(
   const AUTOWARE_SERVER_REQUEST_PTR(std_srvs::srv::SetBool) req,
   AUTOWARE_SERVER_RESPONSE_PTR(std_srvs::srv::SetBool) res)
 {
-  if (req->data) {
-    {
-      std::lock_guard<std::mutex> lock(pose_mtx_);
-      pose_queue_tmp_ = {};
-    }
-    {
-      std::lock_guard<std::mutex> lock(twist_mtx_);
-      twist_queue_tmp_ = {};
-    }
-    ekf_localizer_->reset();
-    is_activated_ = true;
-  } else {
-    is_activated_ = false;
-    is_set_initialpose_ = false;
-  }
+  ekf_localizer_->activate(req->data);
   res->success = true;
 }
 
