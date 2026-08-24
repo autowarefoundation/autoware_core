@@ -113,8 +113,19 @@ EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
 void EKFLocalizerNode::timer_callback()
 {
   stop_watch_timer_cb_.tic();
-
   const rclcpp::Time current_time = this->now();
+
+  stop_watch_.tic();
+  auto update_result = ekf_localizer_->update_step(current_time.seconds());
+
+  // Log all warnings & debug logs
+  for (const auto & warning : update_result.warnings) {
+    if (warning.throttle_ms > 0) {
+      RCLCPP_WARN_THROTTLE(get_logger(), *get_clock(), warning.throttle_ms, "%s", warning.text.c_str());
+    } else {
+      RCLCPP_WARN(get_logger(), "%s", warning.text.c_str());
+    }
+  }
 
   // Initialize diagnostic status array to collect diagnostics during processing
   std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
@@ -122,7 +133,7 @@ void EKFLocalizerNode::timer_callback()
   // Check process activation status
   diag_status_array.push_back(check_process_activated(is_activated_));
 
-  if (!is_activated_) {
+  if (!update_result.is_activated) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
       "The node is not activated. Provide initial pose to pose_initializer");
@@ -144,36 +155,6 @@ void EKFLocalizerNode::timer_callback()
   }
 
   DEBUG_INFO(get_logger(), "========================= timer called =========================");
-
-  // Drain temporary queues into core
-  {
-    std::lock_guard<std::mutex> lock(pose_mtx_);
-    while (!pose_queue_tmp_.empty()) {
-      ekf_localizer_->push_pose(pose_queue_tmp_.front());
-      pose_queue_tmp_.pop();
-    }
-  }
-  {
-    std::lock_guard<std::mutex> lock(twist_mtx_);
-    while (!twist_queue_tmp_.empty()) {
-      ekf_localizer_->push_twist(twist_queue_tmp_.front());
-      twist_queue_tmp_.pop();
-    }
-  }
-
-  /* predict model in EKF */
-  stop_watch_.tic();
-  auto update_result = ekf_localizer_->update_step(current_time.seconds());
-
-  // Log all warnings emitted by core
-  for (const auto & warning : update_result.warnings) {
-    if (warning.throttle_ms > 0) {
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), warning.throttle_ms, "%s", warning.text.c_str());
-    } else {
-      RCLCPP_WARN(get_logger(), "%s", warning.text.c_str());
-    }
-  }
 
   for (const auto & debug_log : update_result.debug_logs) {
     DEBUG_INFO(get_logger(), "%s", debug_log.c_str());
@@ -207,27 +188,6 @@ void EKFLocalizerNode::timer_callback()
     "twist", update_result.twist_diag_info.is_passed_mahalanobis_gate,
     update_result.twist_diag_info.mahalanobis_distance, params_.twist_gate_dist));
 
-  // Here node injects timestamps into core logic's raw output structs
-
-  geometry_msgs::msg::PoseStamped current_ekf_pose = ekf_localizer_->get_current_pose(false);
-  current_ekf_pose.header.stamp = current_time;
-  current_ekf_pose.header.frame_id = params_.pose_frame_id;
-
-  geometry_msgs::msg::PoseStamped current_biased_ekf_pose = ekf_localizer_->get_current_pose(true);
-  current_biased_ekf_pose.header.stamp = current_time;
-  current_biased_ekf_pose.header.frame_id = params_.pose_frame_id;
-
-  geometry_msgs::msg::TwistStamped current_ekf_twist = ekf_localizer_->get_current_twist();
-  current_ekf_twist.header.stamp = current_time;
-  current_ekf_twist.header.frame_id = "base_link";
-
-  // Calculate covariance ellipse and add diagnostics
-  geometry_msgs::msg::PoseWithCovariance pose_cov;
-  pose_cov.pose = current_ekf_pose.pose;
-  pose_cov.covariance = ekf_localizer_->get_current_pose_covariance();
-  const autoware::localization_util::Ellipse ellipse =
-    autoware::localization_util::calculate_xy_ellipse(pose_cov, params_.ellipse_scale);
-
   diag_status_array.push_back(check_covariance_ellipse(
     "cov_ellipse_long_axis", ellipse.long_radius, params_.warn_ellipse_size,
     params_.error_ellipse_size));
@@ -236,7 +196,7 @@ void EKFLocalizerNode::timer_callback()
     params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction));
 
   /* publish ekf result */
-  publish_estimate_result(current_ekf_pose, current_biased_ekf_pose, current_ekf_twist);
+  publish_estimate_result(update_result);
 
   /* Latch merged diagnostics every EKF cycle; publishing is periodic via
    * diagnostics_publish_timer_, plus publish_diagnostics() inside update_diagnostics when severity
