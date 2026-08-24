@@ -910,10 +910,9 @@ TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose
 
 /// SUSPICIOUS — a non-converged scan suppresses the pose but still broadcasts the TF.
 ///
-/// `publish_tf` is called unconditionally while `publish_pose` gates on `is_converged` *inside*
-/// itself. Lifting that gate to the call site — the obvious cleanup — also gates the TF, and the
-/// vehicle then silently loses `map -> ndt_base_link` whenever NDT scores poorly. Moving the gate
-/// the other way feeds a bad pose to the EKF. Neither direction is caught by anything else.
+/// `publish_tf` is unconditional while `publish_pose` gates on `is_converged` inside itself.
+/// Lifting that gate to the call site -- the obvious cleanup -- drops the TF exactly when the score
+/// is poor; removing it feeds a bad pose to the EKF. Nothing else catches either direction.
 TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadcastsTf)
 {
   // Arrange
@@ -935,11 +934,9 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
 
   ASSERT_TRUE(harness->ensure_map_loaded()) << "the stub map never loaded";
 
-  // Declared after the map is loaded: nothing above drives a scan, so the counter cannot have
-  // advanced yet, and a failure in `ensure_map_loaded` would otherwise bury its cause under a
-  // pointless cleanup. This scan advances the counter, so the guard resets it through the
-  // `!is_activated_` branch -- which pins that branch too, since asserting `"0"` on a converged
-  // scan would pin nothing.
+  // Declared after the map load, so a failure there is not buried under a pointless cleanup: no
+  // scan has run yet. This one advances the counter, and resetting it pins the `!is_activated_`
+  // branch, which asserting `"0"` on a converged scan could not.
   const ScopeExit reset_skip_counter([&] { reset_skip_counter_via_deactivation(*harness); });
 
   // Act
@@ -960,9 +957,8 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
     harness->wait_until([&] { return points_aligned->count() >= 1 && tf->count() >= 1; }, 5s))
     << "the alignment outputs never arrived";
 
-  // The alignment ran to its last publish. The score message above already proves it reached the
-  // score check; this proves the callback did not stop there. The other unconditional publishes are
-  // not asserted: they can only stop together with the TF below, which is asserted.
+  // The score message above proves the callback reached the score check; this proves it ran to its
+  // last publish. The other unconditional publishes can only stop together with the TF below.
   EXPECT_EQ(points_aligned->count(), 1U) << "scan drive attempt was " << outcome->attempt;
   // The TF goes out, not gated on convergence ...
   EXPECT_TRUE(has_ndt_base_link_transform(*tf))
@@ -972,10 +968,8 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
   EXPECT_EQ(ndt_pose_with_cov->count(), 0U)
     << "a non-converged pose reached ndt_pose_with_covariance";
 
-  // The other half of the counter's contract: a scan rejected while the node is activated advances
-  // it. `reset_skip_counter` at the top of this case pins the reset, and cleans it up.
-  // `value_as_double` rather than comparing the string: `value()` returns "" for a missing key, and
-  // "" != "0" would pass if the key disappeared altogether. NaN fails this comparison.
+  // The counter's other half: a scan rejected while activated advances it. `value_as_double` rather
+  // than a string compare -- `value()` returns "" for a missing key, and "" != "0" would pass.
   EXPECT_GT(diag.value_as_double("skipping_publish_num"), 0.0)
     << "a scan rejected while activated no longer advances the skip counter";
 }
