@@ -21,6 +21,7 @@
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
+#include <ekf_localizer.hpp>
 #include <rclcpp/duration.hpp>
 #include <rclcpp/logging.hpp>
 
@@ -270,81 +271,67 @@ void EKFLocalizerNode::callback_twist_with_covariance(
 /*
  * publish_estimate_result
  */
-void EKFLocalizerNode::publish_estimate_result(
-  const geometry_msgs::msg::PoseStamped & current_ekf_pose,
-  const geometry_msgs::msg::PoseStamped & current_biased_ekf_pose,
-  const geometry_msgs::msg::TwistStamped & current_ekf_twist)
+void EKFLocalizerNode::publish_estimate_result(const EKFUpdateResult & result)
 {
   /* publish latest pose */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pose_);
-    *msg = current_ekf_pose;
+    *msg = result.pose;
     pub_pose_->publish(std::move(msg));
   }
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_biased_pose_);
-    *msg = current_biased_ekf_pose;
+    *msg = result.biased_pose;
     pub_biased_pose_->publish(std::move(msg));
   }
 
   /* publish latest pose with covariance */
-  geometry_msgs::msg::PoseWithCovarianceStamped pose_cov;
-  pose_cov.header = current_ekf_pose.header;
-  pose_cov.pose.pose = current_ekf_pose.pose;
-  pose_cov.pose.covariance = ekf_localizer_->get_current_pose_covariance();
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pose_cov_);
-    *msg = pose_cov;
+    *msg = result.pose_cov;
     pub_pose_cov_->publish(std::move(msg));
   }
-
-  geometry_msgs::msg::PoseWithCovarianceStamped biased_pose_cov = pose_cov;
-  biased_pose_cov.pose.pose = current_biased_ekf_pose.pose;
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_biased_pose_cov_);
-    *msg = biased_pose_cov;
+    *msg = result.biased_pose_cov;
     pub_biased_pose_cov_->publish(std::move(msg));
   }
 
   /* publish latest twist */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_twist_);
-    *msg = current_ekf_twist;
+    *msg = result.twist;
     pub_twist_->publish(std::move(msg));
   }
 
   /* publish latest twist with covariance */
-  geometry_msgs::msg::TwistWithCovarianceStamped twist_cov;
-  twist_cov.header = current_ekf_twist.header;
-  twist_cov.twist.twist = current_ekf_twist.twist;
-  twist_cov.twist.covariance = ekf_localizer_->get_current_twist_covariance();
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_twist_cov_);
-    *msg = twist_cov;
+    *msg = result.twist_cov;
     pub_twist_cov_->publish(std::move(msg));
   }
 
   /* publish yaw bias */
-  {
+{
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_yaw_bias_);
-    msg->stamp = current_ekf_twist.header.stamp;
-    msg->data = ekf_localizer_->get_yaw_bias();
+    msg->stamp = result.twist.header.stamp;
+    msg->data = result.yaw_bias;
     pub_yaw_bias_->publish(std::move(msg));
   }
 
   /* publish latest odometry */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_odom_);
-    msg->header = current_ekf_pose.header;
+    msg->header = result.pose.header;
     msg->child_frame_id = "base_link";
-    msg->pose = pose_cov.pose;
-    msg->twist = twist_cov.twist;
+    msg->pose = result.pose_cov.pose;
+    msg->twist = result.twist_cov.twist;
     pub_odom_->publish(std::move(msg));
   }
 
   /* publish tf */
   const geometry_msgs::msg::TransformStamped transform_stamped =
-    autoware_utils_geometry::pose2transform(current_ekf_pose, "base_link");
+    autoware_utils_geometry::pose2transform(result.pose, "base_link");
   tf_br_->sendTransform(transform_stamped);
 }
 
