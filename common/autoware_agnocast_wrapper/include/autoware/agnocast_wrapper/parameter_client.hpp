@@ -88,14 +88,15 @@ public:
   ROS2AsyncParametersClient(
     rclcpp::Node * node, const std::string & remote_node_name, const rclcpp::QoS & qos,
     rclcpp::CallbackGroup::SharedPtr group)
-  : client_(std::make_shared<rclcpp::AsyncParametersClient>(
-      node, remote_node_name,
+  : client_(
+      std::make_shared<rclcpp::AsyncParametersClient>(
+        node, remote_node_name,
 #if RCLCPP_VERSION_MAJOR >= 28
-      qos,
+        qos,
 #else
-      qos.get_rmw_qos_profile(),
+        qos.get_rmw_qos_profile(),
 #endif
-      std::move(group)))
+        std::move(group)))
   {
   }
 
@@ -124,8 +125,9 @@ public:
   AgnocastAsyncParametersClient(
     agnocast::Node * node, const std::string & remote_node_name, const rclcpp::QoS & qos,
     rclcpp::CallbackGroup::SharedPtr group)
-  : client_(std::make_shared<agnocast::AsyncParametersClient>(
-      node, remote_node_name, qos, std::move(group)))
+  : client_(
+      std::make_shared<agnocast::AsyncParametersClient>(
+        node, remote_node_name, qos, std::move(group)))
   {
   }
 
@@ -174,8 +176,7 @@ inline AsyncParametersClient::SharedPtr create_async_parameters_client(
   const rclcpp::QoS & qos = rclcpp::ParametersQoS(),
   rclcpp::CallbackGroup::SharedPtr group = nullptr)
 {
-  return std::make_shared<ROS2AsyncParametersClient>(
-    node, remote_node_name, qos, std::move(group));
+  return std::make_shared<ROS2AsyncParametersClient>(node, remote_node_name, qos, std::move(group));
 }
 
 }  // namespace autoware::agnocast_wrapper

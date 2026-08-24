@@ -36,7 +36,8 @@ public:
   /// `label` is a human readable name (e.g. "EKF" or "NDT") used in log messages and error
   /// responses so the behavior matches the previous per-localization modules.
   LocalizationTriggerModule(
-    autoware::agnocast_wrapper::Node * node, const std::string & service_name, const std::string & label);
+    autoware::agnocast_wrapper::Node * node, const std::string & service_name,
+    const std::string & label);
   void wait_for_service();
   void send_request(bool flag, bool need_spin = false) const;
 

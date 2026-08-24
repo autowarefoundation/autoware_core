@@ -15,7 +15,6 @@
 #include "autoware/map_height_fitter/map_height_fitter.hpp"
 
 #include <autoware/agnocast_wrapper/node.hpp>
-
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/static_transform_broadcaster.hpp>
 

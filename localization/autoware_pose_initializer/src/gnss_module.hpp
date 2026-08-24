@@ -15,9 +15,9 @@
 #ifndef GNSS_MODULE_HPP_
 #define GNSS_MODULE_HPP_
 
-#include <autoware/map_height_fitter/map_height_fitter.hpp>
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/map_height_fitter/map_height_fitter.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>

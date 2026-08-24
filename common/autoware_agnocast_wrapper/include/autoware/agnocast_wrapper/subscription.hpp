@@ -92,10 +92,9 @@ class AgnocastSubscription : public Subscription<MessageT>
   /// care which one it is.
   const agnocast::SubscriptionBase & handle() const
   {
-    return callback_subscription_ ? static_cast<const agnocast::SubscriptionBase &>(
-                                      *callback_subscription_)
-                                  : static_cast<const agnocast::SubscriptionBase &>(
-                                      *take_subscription_);
+    return callback_subscription_
+             ? static_cast<const agnocast::SubscriptionBase &>(*callback_subscription_)
+             : static_cast<const agnocast::SubscriptionBase &>(*take_subscription_);
   }
 
   agnocast::TakeSubscription<MessageT> & polling_handle()

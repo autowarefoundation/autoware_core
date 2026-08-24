@@ -93,19 +93,21 @@ template <class SpecT, class NodeT, class CallbackT>
 typename Subscription<SpecT, NodeT>::SharedPtr create_subscription_impl(
   std::shared_ptr<NodeInterface<NodeT>> interface, CallbackT && callback)
 {
+  // Hoisted out of the else-if below so the condition fits on one line.
+  constexpr bool node_makes_callbackless_subscription =
+    has_callbackless_create_subscription<NodeT, typename SpecT::Message>::value;
+
   typename Subscription<SpecT, NodeT>::WrapSharedPtr subscription;
   if constexpr (!std::is_null_pointer_v<CallbackT>) {
     // This function is a wrapper for the following.
     // https://github.com/ros2/rclcpp/blob/48068130edbb43cdd61076dc1851672ff1a80408/rclcpp/include/rclcpp/node.hpp#L207-L238
     subscription = interface->node->template create_subscription<typename SpecT::Message>(
       SpecT::name, get_qos<SpecT>(), std::forward<CallbackT>(callback));
-  } else if constexpr (has_callbackless_create_subscription<
-                         NodeT, typename SpecT::Message>::value) {
+  } else if constexpr (node_makes_callbackless_subscription) {
     // If the callback is nullptr, create a subscription for polling. The node builds whatever
     // a callback-less subscription means for it.
-    subscription =
-      interface->node->template create_subscription<typename SpecT::Message>(
-        SpecT::name, get_qos<SpecT>());
+    subscription = interface->node->template create_subscription<typename SpecT::Message>(
+      SpecT::name, get_qos<SpecT>());
   } else {
     // If the callback is nullptr, create a subscription for polling.
     // https://github.com/autowarefoundation/autoware.universe/tree/main/common/autoware_universe_utils/include/autoware/universe_utils/ros/polling_subscriber.hpp

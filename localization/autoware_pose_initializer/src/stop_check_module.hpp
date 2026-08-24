@@ -15,9 +15,9 @@
 #ifndef STOP_CHECK_MODULE_HPP_
 #define STOP_CHECK_MODULE_HPP_
 
-#include <autoware/motion_utils/vehicle/vehicle_state_checker.hpp>
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/motion_utils/vehicle/vehicle_state_checker.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>

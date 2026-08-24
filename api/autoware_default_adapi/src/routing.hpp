@@ -49,12 +49,12 @@ private:
   // AD API Interface
   autoware::component_interface_utils::Publisher<
     autoware::adapi_specs::routing::RouteState, NodeT>::SharedPtr pub_state_;
-  autoware::component_interface_utils::Publisher<autoware::adapi_specs::routing::Route, NodeT>::SharedPtr
-    pub_route_;
+  autoware::component_interface_utils::Publisher<
+    autoware::adapi_specs::routing::Route, NodeT>::SharedPtr pub_route_;
   autoware::component_interface_utils::Service<
     autoware::adapi_specs::routing::SetRoutePoints, NodeT>::SharedPtr srv_set_route_points_;
-  autoware::component_interface_utils::Service<autoware::adapi_specs::routing::SetRoute, NodeT>::SharedPtr
-    srv_set_route_;
+  autoware::component_interface_utils::Service<
+    autoware::adapi_specs::routing::SetRoute, NodeT>::SharedPtr srv_set_route_;
   autoware::component_interface_utils::Service<
     autoware::adapi_specs::routing::ChangeRoutePoints, NodeT>::SharedPtr srv_change_route_points_;
   autoware::component_interface_utils::Service<
@@ -76,7 +76,8 @@ private:
   autoware::component_interface_utils::Client<
     autoware::component_interface_specs::planning::ClearRoute, NodeT>::SharedPtr cli_clear_route_;
   autoware::component_interface_utils::Subscription<
-    autoware::component_interface_specs::system::OperationModeState, NodeT>::SharedPtr sub_operation_mode_;
+    autoware::component_interface_specs::system::OperationModeState, NodeT>::SharedPtr
+    sub_operation_mode_;
   autoware::component_interface_utils::Client<
     autoware::component_interface_specs::system::ChangeOperationMode, NodeT>::SharedPtr
     cli_operation_mode_;
