@@ -22,15 +22,15 @@
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
-#include <nav_msgs/msg/odometry.hpp>
-#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <tf2/utils.hpp>
 
+#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 #include <array>
 #include <atomic>
@@ -87,7 +87,7 @@ struct EKFUpdateResult
 
   nav_msgs::msg::Odometry odom;
   autoware_internal_debug_msgs::msg::Float64Stamped yaw_bias_msg;
-  
+
   double ellipse_long_radius{0.0};
   double ellipse_size_lateral_direction{0.0};
   EKFDiagnosticInfo pose_diag_info;

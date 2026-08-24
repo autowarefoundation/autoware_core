@@ -314,7 +314,7 @@ void EKFLocalizerNode::publish_estimate_result(const EKFUpdateResult & result)
   }
 
   /* publish yaw bias */
-{
+  {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_yaw_bias_);
     *msg = result.yaw_bias_msg;
     pub_yaw_bias_->publish(std::move(msg));
