@@ -354,7 +354,13 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
   result.twist_cov.twist.twist = result.twist.twist;
   result.twist_cov.twist.covariance = get_current_twist_covariance();
 
-  result.yaw_bias = get_yaw_bias();
+  result.yaw_bias_msg.stamp = result.twist.header.stamp;
+  result.yaw_bias_msg.data = get_yaw_bias();
+
+  result.odom.header = result.pose.header;
+  result.odom.child_frame_id = "base_link";
+  result.odom.pose = result.pose_cov.pose;
+  result.odom.twist = result.twist_cov.twist;
 
   const autoware::localization_util::Ellipse ellipse =
     autoware::localization_util::calculate_xy_ellipse(result.pose_cov.pose, params_.ellipse_scale);

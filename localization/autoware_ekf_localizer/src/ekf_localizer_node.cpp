@@ -314,20 +314,14 @@ void EKFLocalizerNode::publish_estimate_result(const EKFUpdateResult & result)
   }
 
   /* publish yaw bias */
-  {
+{
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_yaw_bias_);
-    msg->stamp = result.twist.header.stamp;
-    msg->data = result.yaw_bias;
+    *msg = result.yaw_bias_msg;
     pub_yaw_bias_->publish(std::move(msg));
   }
-
-  /* publish latest odometry */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_odom_);
-    msg->header = result.pose.header;
-    msg->child_frame_id = "base_link";
-    msg->pose = result.pose_cov.pose;
-    msg->twist = result.twist_cov.twist;
+    *msg = result.odom;
     pub_odom_->publish(std::move(msg));
   }
 
