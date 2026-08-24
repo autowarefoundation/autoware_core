@@ -24,12 +24,11 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <iostream>
-#include <memory>
+#include <cmath>
 #include <vector>
 
 using autoware::point_types::PointXYZI;
-void setPointCloud2Fields(sensor_msgs::msg::PointCloud2 & pointcloud)
+void set_point_cloud2_fields(sensor_msgs::msg::PointCloud2 & pointcloud)
 {
   pointcloud.fields.resize(4);
   pointcloud.fields[0].name = "x";
@@ -57,107 +56,122 @@ void setPointCloud2Fields(sensor_msgs::msg::PointCloud2 & pointcloud)
   pointcloud.header.stamp.nanosec = 0;
 }
 
-// Build `num_clusters` groups of `points_per_cluster` points each.
-//
-// Every group occupies a box of 0.29 m in x and y, and the groups sit 15 m apart along x. Both
-// figures are what make the grouping predictable for the parameters these tests use: the box is
-// narrower than a 0.3 m voxel, and the gap is far wider than any tolerance passed below, so a
-// group never splits and two groups never merge. z spans 0 to 30 and never splits a group,
-// because the voxel grid covers the whole z axis in one cell.
-//
-// The points are laid on a fixed lattice rather than drawn at random. The assertions depend only
-// on how many points a group holds, so random coordinates would add no coverage while making a
-// failure impossible to reproduce.
-sensor_msgs::msg::PointCloud2 generateClusters(const int points_per_cluster, const int num_clusters)
+/// \brief Append \p points to \p cloud, which may be empty or already hold points.
+void add_points(sensor_msgs::msg::PointCloud2 & cloud, const std::vector<PointXYZI> & points)
 {
-  sensor_msgs::msg::PointCloud2 pointcloud;
-  setPointCloud2Fields(pointcloud);
+  if (cloud.fields.empty()) {
+    set_point_cloud2_fields(cloud);
+  }
+  const size_t offset = cloud.data.size();
+  cloud.data.resize(offset + points.size() * cloud.point_step);
+  for (size_t i = 0; i < points.size(); ++i) {
+    memcpy(&cloud.data[offset + i * cloud.point_step], &points[i], cloud.point_step);
+  }
+  cloud.width += static_cast<uint32_t>(points.size());
+  cloud.row_step = cloud.point_step * cloud.width;
+}
 
-  const int total_points = points_per_cluster * num_clusters;
-  pointcloud.data.resize(total_points * pointcloud.point_step);
+/// \brief Fill the voxel cell at \p cell_x with a uniform \p nx by \p ny by \p nz grid of points.
+///
+/// The grid is inset from the cell edges, so every point belongs to that one cell whatever
+/// \p leaf_size is. Filling two cells a known number apart therefore puts a known distance
+/// between the two groups of points.
+/// \return how many points were added.
+int fill_voxel_uniformly(
+  sensor_msgs::msg::PointCloud2 & cloud, const float leaf_size, const int cell_x, const int nx,
+  const int ny, const int nz)
+{
+  // Stay inside the middle 80% of the cell, so no rounding at a cell edge can move a point into
+  // the neighbouring cell.
+  const float margin = leaf_size * 0.1f;
+  const float span = leaf_size * 0.8f;
+  const auto coordinate = [margin, span](const int i, const int count) {
+    if (count == 1) {
+      return margin + span / 2.0f;
+    }
+    return margin + span * static_cast<float>(i) / static_cast<float>(count - 1);
+  };
+  const float cell_origin = static_cast<float>(cell_x) * leaf_size;
 
-  constexpr int xy_steps = 30;          // x, y take 0.00 .. 0.29 in 0.01 increments
-  constexpr int z_steps = 31;           // z takes 0 .. 30
-  constexpr float cluster_gap = 15.0f;  // distance between consecutive groups along x
-
-  for (int c = 0; c < num_clusters; ++c) {
-    for (int i = 0; i < points_per_cluster; ++i) {
-      PointXYZI point;
-      point.x = static_cast<float>(c) * cluster_gap + static_cast<float>(i % xy_steps) / 100.0f;
-      point.y = static_cast<float>((i / xy_steps) % xy_steps) / 100.0f;
-      point.z = static_cast<float>(i % z_steps);
-      point.intensity = 0.0;
-
-      const int idx = c * points_per_cluster + i;
-      memcpy(&pointcloud.data[idx * pointcloud.point_step], &point, pointcloud.point_step);
+  std::vector<PointXYZI> points;
+  points.reserve(static_cast<size_t>(nx) * ny * nz);
+  for (int ix = 0; ix < nx; ++ix) {
+    for (int iy = 0; iy < ny; ++iy) {
+      for (int iz = 0; iz < nz; ++iz) {
+        points.push_back(
+          PointXYZI{
+            cell_origin + coordinate(ix, nx), coordinate(iy, ny), coordinate(iz, nz), 0.0f});
+      }
     }
   }
-  pointcloud.width = total_points;
-  pointcloud.row_step = pointcloud.point_step * total_points;
-  return pointcloud;
+  add_points(cloud, points);
+  return static_cast<int>(points.size());
 }
 
 // A cluster holding exactly `max_cluster_size` points is within the limit, so it is reported.
 TEST(VoxelGridBasedEuclideanClusterTest, ClusterAtMaxSizeIsReported)
 {
-  int nb_generated_points = 100;
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(nb_generated_points, 1);
-
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
   param.min_cluster_size = 1;
-  param.max_cluster_size = 100;
   param.tolerance = 0.7f;
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
-  auto result = cluster.cluster(pointcloud);
+  sensor_msgs::msg::PointCloud2 cloud;
+  const int points_in_cluster =
+    fill_voxel_uniformly(cloud, param.voxel_leaf_size, /*cell_x=*/0, /*nx=*/3, /*ny=*/3, /*nz=*/3);
+  param.max_cluster_size = points_in_cluster;
 
-  EXPECT_EQ(result.cluster_message.objects.size(), 1);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
+  auto result = cluster.cluster(cloud);
+
+  EXPECT_EQ(result.cluster_message.objects.size(), 1u);
 }
 
 // A cluster holding fewer than `min_cluster_size` points counts as noise, so it is dropped without
 // being reported as skipped.
 TEST(VoxelGridBasedEuclideanClusterTest, ClusterBelowMinSizeIsDropped)
 {
-  int nb_generated_points = 1;
-
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(nb_generated_points, 1);
-
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
-  param.min_cluster_size = 2;
-  param.max_cluster_size = 100;
   param.tolerance = 0.7f;
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
-  auto result = cluster.cluster(pointcloud);
+  sensor_msgs::msg::PointCloud2 cloud;
+  const int points_in_cluster =
+    fill_voxel_uniformly(cloud, param.voxel_leaf_size, /*cell_x=*/0, /*nx=*/1, /*ny=*/1, /*nz=*/1);
+  param.min_cluster_size = points_in_cluster + 1;
+  // a valid pair of limits (min <= max), so the drop can only come from the min check
+  param.max_cluster_size = points_in_cluster + 1;
 
-  EXPECT_EQ(result.cluster_message.objects.size(), 0);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
+  auto result = cluster.cluster(cloud);
+
+  EXPECT_EQ(result.cluster_message.objects.size(), 0u);
   EXPECT_EQ(result.skipped_cluster_count, 0);
 }
 
 // A cluster holding more than `max_cluster_size` points is rejected and reported as skipped.
 TEST(VoxelGridBasedEuclideanClusterTest, ClusterAboveMaxSizeIsSkipped)
 {
-  int nb_generated_points = 100;
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(nb_generated_points, 1);
-
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
   param.min_cluster_size = 1;
-  param.max_cluster_size = 99;
   param.tolerance = 0.7f;
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
-  auto result = cluster.cluster(pointcloud);
+  sensor_msgs::msg::PointCloud2 cloud;
+  const int points_in_cluster =
+    fill_voxel_uniformly(cloud, param.voxel_leaf_size, /*cell_x=*/0, /*nx=*/3, /*ny=*/3, /*nz=*/3);
+  param.max_cluster_size = points_in_cluster - 1;
 
-  EXPECT_EQ(result.cluster_message.objects.size(), 0);
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
+  auto result = cluster.cluster(cloud);
+
+  EXPECT_EQ(result.cluster_message.objects.size(), 0u);
   EXPECT_EQ(result.skipped_cluster_count, 1);
 }
 
@@ -201,72 +215,45 @@ TEST(VoxelGridBasedEuclideanClusterTest, BoundaryVoxelPointsAreNotDropped)
   auto result = cluster.cluster(pointcloud);
 
   // all points form one cluster that exceeds max_cluster_size, so it must be rejected
-  EXPECT_EQ(result.cluster_message.objects.size(), 0);
+  EXPECT_EQ(result.cluster_message.objects.size(), 0u);
   EXPECT_EQ(result.skipped_cluster_count, 1);
 }
 
-// Characterization test: pin the exact relationship between the `objects` output and the
-// parallel `clusters` output so the map-lookup-caching and in-place cluster-building refactor
-// is proven behavior-preserving. The number of output clusters must stay in lockstep with the
-// number of detected objects (one cluster per object), and every extracted point must lie within
-// the originating voxel region (x,y in [0,0.3], z in [0,30]) along with the object centroid. The
-// per-cluster point count is governed by voxel grouping and is intentionally not asserted.
-TEST(VoxelGridBasedEuclideanClusterTest, ClusterOutputMatchesObjects)
+// The object position a cluster is reported at is the mean of the points that formed it, on all
+// three axes, z included even though the grouping ignores it. Two points spell that out: written
+// down, they let the expected answer be read off rather than computed.
+TEST(VoxelGridBasedEuclideanClusterTest, ObjectPositionIsTheMeanOfItsPoints)
 {
-  int nb_generated_points = 100;
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(nb_generated_points, 1);
-
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
   param.min_cluster_size = 1;
-  param.max_cluster_size = 100;
-  param.tolerance = 0.7f;
-  param.voxel_leaf_size = 0.3f;
+  param.max_cluster_size = 10;
+  param.tolerance = 1.0f;
+  param.voxel_leaf_size = 1.0f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
-  auto result = cluster.cluster(pointcloud);
+  // Both points fall in the cell spanning [0, 1) on x and y, so they form one cluster.
+  sensor_msgs::msg::PointCloud2 cloud;
+  add_points(cloud, {PointXYZI{0.1f, 0.2f, 0.3f, 0.0f}, PointXYZI{0.9f, 0.8f, 0.7f, 0.0f}});
 
-  // Exactly one cluster, and the parallel outputs stay in lockstep.
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
+  auto result = cluster.cluster(cloud);
+
   ASSERT_EQ(result.cluster_message.objects.size(), 1u);
 
-  // The single extracted cluster must be non-empty, and every point must lie inside the
-  // generated voxel region (x,y in [0,0.3], z in [0,30]). The exact count is governed by the
-  // voxel grouping rather than the raw point count, so it is not asserted here.
-  sensor_msgs::PointCloud2ConstIterator<float> iter_x(result.debug_message, "x");
-  sensor_msgs::PointCloud2ConstIterator<float> iter_y(result.debug_message, "y");
-  sensor_msgs::PointCloud2ConstIterator<float> iter_z(result.debug_message, "z");
-
-  size_t point_count = 0;
-  for (; iter_x != iter_x.end(); ++iter_x, ++iter_y, ++iter_z) {
-    point_count++;
-    EXPECT_GE(*iter_x, 0.0f);
-    EXPECT_LE(*iter_x, 0.3f);
-    EXPECT_GE(*iter_y, 0.0f);
-    EXPECT_LE(*iter_y, 0.3f);
-    EXPECT_GE(*iter_z, 0.0f);
-    EXPECT_LE(*iter_z, 30.0f);
-  }
-  EXPECT_GT(point_count, 0u);
-
-  // The object centroid's x/y must fall within the same region as the input points.
   const auto & position =
     result.cluster_message.objects.front().kinematics.pose_with_covariance.pose.position;
-  EXPECT_GE(position.x, 0.0);
-  EXPECT_LE(position.x, 0.3);
-  EXPECT_GE(position.y, 0.0);
-  EXPECT_LE(position.y, 0.3);
+  EXPECT_NEAR(position.x, 0.5, 1e-6);
+  EXPECT_NEAR(position.y, 0.5, 1e-6);
+  EXPECT_NEAR(position.z, 0.5, 1e-6);
 }
 
-// Characterization test for the previously-untested empty-input path of the implemented
-// `cluster(pointcloud_msg, objects, clusters)` overload. An empty cloud (fields and point_step
-// set, no data, width 0) must flow through fromROSMsg -> voxel filter -> KdTree -> extraction
-// without crashing and pin the degenerate-input contract: the call returns true and produces no
-// objects and no clusters.
+// A cloud with its fields and point_step set but no data must pass through without crashing and
+// produce no objects.
 TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
 {
   sensor_msgs::msg::PointCloud2 pointcloud;
-  setPointCloud2Fields(pointcloud);
+  set_point_cloud2_fields(pointcloud);
   pointcloud.data.clear();
   pointcloud.width = 0;
   pointcloud.row_step = 0;
@@ -289,36 +276,47 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
 // merged into a single object or split further.
 TEST(VoxelGridBasedEuclideanClusterTest, SeparatedGroupsAreReportedOneObjectEach)
 {
-  constexpr int num_clusters = 3;
-  constexpr int points_per_cluster = 100;
-  constexpr double cluster_gap = 15.0;
-
-  sensor_msgs::msg::PointCloud2 pointcloud = generateClusters(points_per_cluster, num_clusters);
-
   autoware::euclidean_cluster::EuclideanClusterParams param;
   param.use_height = false;
   param.min_cluster_size = 1;
-  param.max_cluster_size = points_per_cluster;
   param.tolerance = 0.7f;
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
-  auto result = cluster.cluster(pointcloud);
+  constexpr int num_groups = 3;
+  // Well past the cells it takes to cover `tolerance`, so no two groups can ever be linked.
+  constexpr int spare_cells = 10;
+  const int cells_apart =
+    static_cast<int>(std::ceil(param.tolerance / param.voxel_leaf_size)) * spare_cells;
 
-  ASSERT_EQ(result.cluster_message.objects.size(), static_cast<size_t>(num_clusters));
+  sensor_msgs::msg::PointCloud2 cloud;
+  // every group is laid out identically, so each call reports the same count
+  int points_per_group = 0;
+  for (int i = 0; i < num_groups; ++i) {
+    points_per_group = fill_voxel_uniformly(
+      cloud, param.voxel_leaf_size, i * cells_apart, /*nx=*/3, /*ny=*/3, /*nz=*/3);
+  }
+  param.max_cluster_size = points_per_group;
+
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
+  auto result = cluster.cluster(cloud);
+
+  ASSERT_EQ(result.cluster_message.objects.size(), static_cast<size_t>(num_groups));
   EXPECT_EQ(result.skipped_cluster_count, 0);
 
-  // Each object must sit on its own group. The objects come back in no particular order, so sort
-  // the centroids and check they are spaced by the gap the groups were built with.
-  std::vector<double> centroid_x;
-  centroid_x.reserve(result.cluster_message.objects.size());
+  // One object per group, each standing in the cell its group was laid in. The objects come back
+  // in no particular order, so sort by x before pairing them up with the cells.
+  std::vector<double> reported_x;
+  reported_x.reserve(result.cluster_message.objects.size());
   for (const auto & object : result.cluster_message.objects) {
-    centroid_x.push_back(object.kinematics.pose_with_covariance.pose.position.x);
+    reported_x.push_back(object.kinematics.pose_with_covariance.pose.position.x);
   }
-  std::sort(centroid_x.begin(), centroid_x.end());
-  for (int i = 1; i < num_clusters; ++i) {
-    EXPECT_NEAR(centroid_x[i] - centroid_x[i - 1], cluster_gap, 1e-3);
+  std::sort(reported_x.begin(), reported_x.end());
+
+  for (int i = 0; i < num_groups; ++i) {
+    const double cell_lower = i * cells_apart * static_cast<double>(param.voxel_leaf_size);
+    EXPECT_GT(reported_x[i], cell_lower);
+    EXPECT_LT(reported_x[i], cell_lower + static_cast<double>(param.voxel_leaf_size));
   }
 }
 
