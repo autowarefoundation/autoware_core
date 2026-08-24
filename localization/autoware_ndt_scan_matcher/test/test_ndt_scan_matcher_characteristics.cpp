@@ -1019,7 +1019,9 @@ TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPos
   EXPECT_EQ(diag.level(), level_warn);
   EXPECT_TRUE(contains(diag.message(), "The number of iterations has reached its upper limit."))
     << "message was: " << diag.message();
-  EXPECT_FALSE(contains(diag.message(), "Score is below the threshold."))
+  // Fatal: if the score arm failed too, the pose would be withheld for the wrong reason and the
+  // assertion below would pass while proving nothing.
+  ASSERT_FALSE(contains(diag.message(), "Score is below the threshold."))
     << "the score arm also failed, so this case no longer isolates the iteration arm: "
     << diag.message();
 
