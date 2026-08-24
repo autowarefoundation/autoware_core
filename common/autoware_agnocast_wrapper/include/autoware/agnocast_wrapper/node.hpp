@@ -517,7 +517,7 @@ namespace autoware::agnocast_wrapper
 {
 
 // is_message_ptr_service_callback_v / is_shared_ptr_service_callback_v are defined in
-// autoware_agnocast_wrapper.hpp, identically named in both builds.
+// service.hpp, identically named in both builds.
 
 /// @brief Node class for the non-Agnocast build.
 ///

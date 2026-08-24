@@ -12,4 +12,4 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""WARN-only lint for the Autoware component interface specs."""
+"""Config-driven CI lint for the Autoware component interface specs."""
