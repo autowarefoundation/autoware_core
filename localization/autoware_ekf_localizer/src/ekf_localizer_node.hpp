@@ -161,10 +161,7 @@ private:
   /**
    * @brief publish current EKF estimation result
    */
-  void publish_estimate_result(
-    const geometry_msgs::msg::PoseStamped & current_ekf_pose,
-    const geometry_msgs::msg::PoseStamped & current_biased_ekf_pose,
-    const geometry_msgs::msg::TwistStamped & current_ekf_twist);
+  void publish_estimate_result(const EKFUpdateResult & result);
 
   /**
    * @brief Overwrite merged_diagnostic_status_ from merged diagnostics each tick;
