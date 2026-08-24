@@ -160,6 +160,22 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
 {
   EKFUpdateResult result;
 
+  // Drain async warnings FIRST, generated in push_* callbacks
+  {
+    std::lock_guard<std::mutex> lock(warning_mtx_);
+    for (const auto & w : async_warnings_) {
+      result.warnings.push_back(w);
+    }
+    async_warnings_.clear();
+  }
+
+  result.is_activated = is_activated_;
+  result.is_set_initialpose = is_set_initialpose_;
+
+  if (!is_activated_ || !is_set_initialpose_) {
+    return result;  // Return early with flags so Node knows to emit errors
+  }
+
   // Drain thread-safe temporary queues
   {
     std::lock_guard<std::mutex> lock(pose_mtx_);
@@ -174,22 +190,6 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
       twist_queue_.push(twist_queue_tmp_.front());
       twist_queue_tmp_.pop();
     }
-  }
-
-  // Drain async warnings generated in push_* callbacks
-  {
-    std::lock_guard<std::mutex> lock(warning_mtx_);
-    for (const auto & w : async_warnings_) {
-      result.warnings.push_back(w);
-    }
-    async_warnings_.clear();
-  }
-
-  result.is_activated = is_activated_;
-  result.is_set_initialpose = is_set_initialpose_;
-
-  if (!is_activated_ || !is_set_initialpose_) {
-    return result;  // Return early with flags so Node knows to emit errors
   }
 
   // 1. Init per-tick diagnostics
