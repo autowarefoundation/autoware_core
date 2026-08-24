@@ -17,7 +17,7 @@ publishers:
 # parameters
 param_files:
   - name: map_projection_loader_param
-    default: $(find-pkg-share autoware_map_projection_loader)/config/map_projection_loader.param.yaml
+    default: config/map_projection_loader.param.yaml
 param_values:
   - name: map_projector_info_path
     type: string

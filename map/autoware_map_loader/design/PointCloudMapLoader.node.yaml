@@ -33,7 +33,7 @@ servers:
 # parameters
 param_files:
   - name: pointcloud_map_loader_param
-    default: $(find-pkg-share autoware_map_loader)/config/pointcloud_map_loader.param.yaml
+    default: config/pointcloud_map_loader.param.yaml
 param_values:
   - name: enable_whole_load
     type: bool

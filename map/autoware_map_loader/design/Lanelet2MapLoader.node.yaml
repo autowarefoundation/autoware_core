@@ -27,7 +27,7 @@ servers:
 # parameters
 param_files:
   - name: lanelet2_map_loader_param
-    default: $(find-pkg-share autoware_map_loader)/config/lanelet2_map_loader.param.yaml
+    default: config/lanelet2_map_loader.param.yaml
 param_values:
   - name: allow_unsupported_version
     type: bool
