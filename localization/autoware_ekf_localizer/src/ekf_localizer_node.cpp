@@ -132,7 +132,7 @@ void EKFLocalizerNode::timer_callback()
   std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
 
   // Check process activation status
-  diag_status_array.push_back(check_process_activated(is_activated_));
+  diag_status_array.push_back(check_process_activated(update_result.is_activated));
 
   if (!update_result.is_activated) {
     RCLCPP_WARN_THROTTLE(
@@ -144,9 +144,9 @@ void EKFLocalizerNode::timer_callback()
   }
 
   // Check initial pose status
-  diag_status_array.push_back(check_set_initialpose(is_set_initialpose_));
+  diag_status_array.push_back(check_set_initialpose(update_result.is_set_initialpose));
 
-  if (!is_set_initialpose_) {
+  if (!update_result.is_set_initialpose) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
       "Initial pose is not set. Provide initial pose to pose_initializer");
@@ -190,10 +190,10 @@ void EKFLocalizerNode::timer_callback()
     update_result.twist_diag_info.mahalanobis_distance, params_.twist_gate_dist));
 
   diag_status_array.push_back(check_covariance_ellipse(
-    "cov_ellipse_long_axis", ellipse.long_radius, params_.warn_ellipse_size,
+    "cov_ellipse_long_axis", update_result.ellipse_long_radius, params_.warn_ellipse_size,
     params_.error_ellipse_size));
   diag_status_array.push_back(check_covariance_ellipse(
-    "cov_ellipse_lateral_direction", ellipse.size_lateral_direction,
+    "cov_ellipse_lateral_direction", update_result.ellipse_size_lateral_direction,
     params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction));
 
   /* publish ekf result */

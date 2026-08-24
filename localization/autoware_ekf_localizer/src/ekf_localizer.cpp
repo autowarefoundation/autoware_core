@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "ekf_localizer.hpp"
+#include "autoware/localization_util/covariance_ellipse.hpp"
 
 #include "utils/covariance.hpp"
 #include "utils/mahalanobis.hpp"
@@ -356,7 +357,7 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
   result.yaw_bias = get_yaw_bias();
 
   const autoware::localization_util::Ellipse ellipse =
-    autoware::localization_util::calculate_xy_ellipse(result.pose_cov, params_.ellipse_scale);
+    autoware::localization_util::calculate_xy_ellipse(result.pose_cov.pose, params_.ellipse_scale);
   result.ellipse_long_radius = ellipse.long_radius;
   result.ellipse_size_lateral_direction = ellipse.size_lateral_direction;
 
