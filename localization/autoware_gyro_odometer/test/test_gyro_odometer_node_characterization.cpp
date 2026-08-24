@@ -740,6 +740,51 @@ TEST_F(GyroOdometerNodeCharacterization, ResolvableImuFrameRotatesTheAngularVelo
   EXPECT_TRUE(reported_flag(diagnostics, "is_succeed_transform_imu"));
 }
 
+// Staleness is judged between the two inputs' stamps, not against the node clock: a pair whose
+// stamps agree with each other fuses however far the clock has moved past them, and the ages the
+// diagnostics report are measured between the stamps as well.
+TEST_F(GyroOdometerNodeCharacterization, MutuallyFreshPairFusesRegardlessOfTheClock)
+{
+  start_node("base_link", 1.0);
+  const auto stamp = make_stamp(100, 0);
+
+  send_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
+  send_imu(make_imu(stamp, "base_link", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+  send_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
+  ASSERT_TRUE(take_output().has_value()) << "priming did not reach a first fusion";
+
+  set_now(rclcpp::Time(200, 0, RCL_ROS_TIME));
+  send_vehicle_twist(make_vehicle_twist(make_stamp(100, 500000000), 1.0, 4.0));
+  send_imu(make_imu(make_stamp(100, 500000000), "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+
+  const auto output = take_output();
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(output->twist_with_covariance_raw.twist.twist.linear.x, 1.0);
+
+  const DiagnosticsSnapshot diagnostics = take_diagnostics();
+  EXPECT_EQ(diagnostics.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
+}
+
+// The staleness judgment depends only on each side's most recent stamp: stamps seen earlier leave
+// no residue, so a mutually consistent pair fuses regardless of what was fused before it.
+TEST_F(GyroOdometerNodeCharacterization, StalenessDependsOnlyOnTheLatestStamps)
+{
+  start_node("base_link", 1.0);
+
+  send_vehicle_twist(make_vehicle_twist(make_stamp(100, 0), 0.0, 0.0));
+  send_imu(make_imu(make_stamp(100, 0), "base_link", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+  send_vehicle_twist(make_vehicle_twist(make_stamp(100, 0), 0.0, 0.0));
+  ASSERT_TRUE(take_output().has_value()) << "priming did not reach a first fusion";
+
+  send_vehicle_twist(make_vehicle_twist(make_stamp(10, 0), 3.0, 4.0));
+  send_imu(make_imu(make_stamp(10, 0), "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+  send_vehicle_twist(make_vehicle_twist(make_stamp(10, 0), 3.0, 4.0));
+
+  const auto output = take_output();
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(output->twist_with_covariance_raw.twist.twist.linear.x, 3.0);
+}
+
 // A vehicle twist waiting for its IMU counterpart survives an unresolvable sample in between: the
 // next resolvable sample fuses with it as if the unresolvable one had never been published.
 TEST_F(GyroOdometerNodeCharacterization, PendingDataSurvivesAnUnresolvableImu)
