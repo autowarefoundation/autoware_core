@@ -269,7 +269,7 @@ SetWaypointRouteResult MissionPlanner::set_waypoint_route(
     result.goal_footprint_marker =
       lanelet2::DefaultPlanner::visualize_debug_footprint(*waypoint_plan_result.goal_footprint);
   }
-  result.planner_warning_message = waypoint_plan_result.warning_message;
+  result.warning_message = waypoint_plan_result.warning_message;
 
   if (route.segments.empty()) {
     cancel_route();

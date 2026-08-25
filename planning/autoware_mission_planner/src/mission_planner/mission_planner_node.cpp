@@ -221,8 +221,8 @@ void MissionPlannerNode::on_set_waypoint_route(
   const auto result = mission_planner_.set_waypoint_route(*req, transform_to_map);
   *res = result.response;
 
-  if (result.planner_warning_message) {
-    RCLCPP_WARN(get_logger(), "%s", result.planner_warning_message->c_str());
+  if (result.warning_message) {
+    RCLCPP_WARN(get_logger(), "%s", result.warning_message->c_str());
   }
   if (result.goal_footprint_marker) {
     pub_goal_footprint_marker_->publish(*result.goal_footprint_marker);

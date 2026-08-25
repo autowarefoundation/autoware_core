@@ -83,7 +83,7 @@ struct SetWaypointRouteResult
   std::optional<LaneletRoute> route;
   std::optional<MarkerArray> route_marker;
   std::optional<MarkerArray> goal_footprint_marker;
-  std::optional<std::string> planner_warning_message;
+  std::optional<std::string> warning_message;
   std::optional<std::string> error_message;
   Pose initial_pose;
 };
