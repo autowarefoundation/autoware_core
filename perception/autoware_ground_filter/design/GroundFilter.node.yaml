@@ -1,0 +1,77 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: GroundFilter.node
+
+description: Removes the ground points from the input pointcloud.
+
+package:
+  name: autoware_ground_filter
+  provider: autoware
+
+launch:
+  plugin: autoware::ground_filter::GroundFilterComponent
+  executable: ground_filter_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: points
+    message_type: sensor_msgs/msg/PointCloud2
+    description: the pointcloud to be segmented into ground and non-ground points
+    remap_target: input
+    qos:
+      reliability: best_effort
+      durability: volatile
+  - name: indices
+    message_type: pcl_msgs/msg/PointIndices
+    description: the indices of the input pointcloud to be processed, subscribed only when use_indices is true
+    remap_target: indices
+    qos:
+      reliability: best_effort
+      durability: volatile
+
+publishers:
+  - name: points
+    message_type: sensor_msgs/msg/PointCloud2
+    description: the input pointcloud without the points classified as ground
+    remap_target: output
+    qos:
+      reliability: best_effort
+      durability: volatile
+
+# parameters
+param_files:
+  - name: ground_segmentation_param_file
+    default: config/ground_filter.param.yaml
+    description: Parameters of the ground segmentation
+  - name: vehicle_info_param_file
+    default: $(find-pkg-share autoware_vehicle_info_utils)/config/vehicle_info.param.yaml
+    description: Vehicle dimensions used to place the virtual ground point
+
+param_values:
+  - name: max_queue_size
+    type: int
+    default: 5
+    description: the queue size of the input and output topics
+  - name: use_indices
+    type: bool
+    default: false
+    description: switch to segment only the points listed in the indices input
+  - name: latched_indices
+    type: bool
+    default: false
+    description: switch to keep the last received indices for the following pointclouds
+  - name: approximate_sync
+    type: bool
+    default: false
+    description: switch to synchronize the pointcloud and indices inputs by approximate time instead of exact time
+
+# processes
+processes:
+  - name: segment_ground
+    trigger_conditions:
+      - and:
+          - on_input: points
+    outcomes:
+      - to_output: points
