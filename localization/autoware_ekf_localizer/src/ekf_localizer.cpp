@@ -156,9 +156,11 @@ void EKFLocalizer::activate(bool active)
   }
 }
 
-EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
+EKFUpdateResult EKFLocalizer::update_step(const rclcpp::Time & t_curr)
 {
   EKFUpdateResult result;
+
+  const double t_curr_sec = t_curr.seconds();
 
   // Drain async warnings FIRST, generated in push_* callbacks
   {
@@ -326,20 +328,16 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
 
   // 7. Result
   // Here packaging fully stamped ROS result struct
-  int32_t sec = static_cast<int32_t>(std::floor(t_curr_sec));
-  uint32_t nanosec = static_cast<uint32_t>((t_curr_sec - sec) * 1e9);
-
   result.pose = get_current_pose(false);
-  result.pose.header.stamp.sec = sec;
-  result.pose.header.stamp.nanosec = nanosec;
+  result.pose.header.stamp = t_curr;
   result.pose.header.frame_id = params_.pose_frame_id;
 
   result.biased_pose = get_current_pose(true);
-  result.biased_pose.header.stamp = result.pose.header.stamp;
+  result.biased_pose.header.stamp = t_curr;
   result.biased_pose.header.frame_id = params_.pose_frame_id;
 
   result.twist = get_current_twist();
-  result.twist.header.stamp = result.pose.header.stamp;
+  result.twist.header.stamp = t_curr;
   result.twist.header.frame_id = "base_link";
 
   result.pose_cov.header = result.pose.header;

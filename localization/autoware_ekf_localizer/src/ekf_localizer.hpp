@@ -32,6 +32,8 @@
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
+#include <rclcpp/time.hpp>
+
 #include <array>
 #include <atomic>
 #include <chrono>
@@ -164,7 +166,7 @@ public:
 
   void push_pose(const std::shared_ptr<const PoseWithCovariance> & pose);
   void push_twist(const std::shared_ptr<const TwistWithCovariance> & twist);
-  EKFUpdateResult update_step(const double t_curr_sec);
+  EKFUpdateResult update_step(const rclcpp::Time & t_curr);
   void activate(bool active);
 
   [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;

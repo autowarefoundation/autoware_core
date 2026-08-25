@@ -117,7 +117,7 @@ void EKFLocalizerNode::timer_callback()
   const rclcpp::Time current_time = this->now();
 
   stop_watch_.tic();
-  auto update_result = ekf_localizer_->update_step(current_time.seconds());
+  auto update_result = ekf_localizer_->update_step(current_time);
 
   // Log all warnings & debug logs
   for (const auto & warning : update_result.warnings) {
