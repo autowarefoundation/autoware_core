@@ -250,6 +250,20 @@ TEST(object_classification, test_fromString)
     EXPECT_EQ(toLabel("MOTORCYCLE"), ObjectClassification::MOTORCYCLE);
     EXPECT_EQ(toLabel("BICYCLE"), ObjectClassification::BICYCLE);
     EXPECT_EQ(toLabel("PEDESTRIAN"), ObjectClassification::PEDESTRIAN);
+    EXPECT_EQ(toLabel("ANIMAL"), ObjectClassification::ANIMAL);
+    EXPECT_EQ(toLabel("HAZARD"), ObjectClassification::HAZARD);
+    // lowercases
+    EXPECT_EQ(toLabel("unknown"), ObjectClassification::UNKNOWN);
+    EXPECT_EQ(toLabel("car"), ObjectClassification::CAR);
+    EXPECT_EQ(toLabel("truck"), ObjectClassification::TRUCK);
+    EXPECT_EQ(toLabel("bus"), ObjectClassification::BUS);
+    EXPECT_EQ(toLabel("trailer"), ObjectClassification::TRAILER);
+    EXPECT_EQ(toLabel("motorcycle"), ObjectClassification::MOTORCYCLE);
+    EXPECT_EQ(toLabel("bicycle"), ObjectClassification::BICYCLE);
+    EXPECT_EQ(toLabel("pedestrian"), ObjectClassification::PEDESTRIAN);
+    EXPECT_EQ(toLabel("animal"), ObjectClassification::ANIMAL);
+    EXPECT_EQ(toLabel("hazard"), ObjectClassification::HAZARD);
+
     EXPECT_THROW(toLabel(""), std::runtime_error);
   }
 
@@ -258,6 +272,16 @@ TEST(object_classification, test_fromString)
     auto classification = toObjectClassification("CAR", 0.7);
     EXPECT_EQ(classification.label, ObjectClassification::CAR);
     EXPECT_NEAR(classification.probability, 0.7, epsilon);
+  }
+  {
+    auto classification = toObjectClassification("ANIMAL", 0.6);
+    EXPECT_EQ(classification.label, ObjectClassification::ANIMAL);
+    EXPECT_NEAR(classification.probability, 0.6, epsilon);
+  }
+  {
+    auto classification = toObjectClassification("HAZARD", 0.5);
+    EXPECT_EQ(classification.label, ObjectClassification::HAZARD);
+    EXPECT_NEAR(classification.probability, 0.5, epsilon);
   }
   // Classifications
   {
@@ -282,6 +306,8 @@ TEST(object_classification, test_convertLabelToString)
     EXPECT_EQ(convertLabelToString(ObjectClassification::MOTORCYCLE), "MOTORCYCLE");
     EXPECT_EQ(convertLabelToString(ObjectClassification::BICYCLE), "BICYCLE");
     EXPECT_EQ(convertLabelToString(ObjectClassification::PEDESTRIAN), "PEDESTRIAN");
+    EXPECT_EQ(convertLabelToString(ObjectClassification::ANIMAL), "ANIMAL");
+    EXPECT_EQ(convertLabelToString(ObjectClassification::HAZARD), "HAZARD");
   }
 
   // from ObjectClassification

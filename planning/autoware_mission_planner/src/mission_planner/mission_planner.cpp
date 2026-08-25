@@ -14,31 +14,73 @@
 
 #include "mission_planner.hpp"
 
-#include "service_utils.hpp"
+#include "reroute_safety.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
-#include <autoware/lanelet2_utils/geometry.hpp>
-#include <autoware/lanelet2_utils/nn_search.hpp>
+#include <autoware_utils_math/unit_conversion.hpp>
+#include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
+#include <autoware_common_msgs/msg/response_status.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include <lanelet2_core/geometry/Lanelet.h>
-#include <lanelet2_core/geometry/LineString.h>
-
-#include <algorithm>
 #include <memory>
+#include <optional>
 #include <string>
-#include <utility>
 #include <vector>
 
 namespace autoware::mission_planner
 {
 
+namespace
+{
+void set_fail_response(
+  const SetLaneletRoute::Response::SharedPtr & res, const uint16_t code,
+  const std::string & message)
+{
+  res->status.success = false;
+  res->status.code = code;
+  res->status.message = message;
+}
+
+void set_fail_response(
+  const SetWaypointRoute::Response::SharedPtr & res, const uint16_t code,
+  const std::string & message)
+{
+  res->status.success = false;
+  res->status.code = code;
+  res->status.message = message;
+}
+
+void set_success_response(
+  const ClearRoute::Response::SharedPtr & res, const uint16_t code, const std::string & message)
+{
+  res->status.success = true;
+  res->status.code = code;
+  res->status.message = message;
+}
+
+ArrivalCheckerThreshold get_arrival_checker_threshold(rclcpp::Node & node)
+{
+  ArrivalCheckerThreshold threshold;
+  threshold.angle =
+    autoware_utils_math::deg2rad(node.declare_parameter<double>("arrival_check_angle_deg"));
+  threshold.distance = node.declare_parameter<double>("arrival_check_distance");
+  threshold.duration = node.declare_parameter<double>("arrival_check_duration");
+  return threshold;
+}
+
+Pose transform_pose(const Pose & pose, const geometry_msgs::msg::TransformStamped & transform)
+{
+  Pose result;
+  tf2::doTransform(pose, result, transform);
+  return result;
+}
+}  // namespace
+
 MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
 : Node("mission_planner", options),
-  arrival_checker_(this),
-  plugin_loader_("autoware_mission_planner", "autoware::mission_planner::PlannerPlugin"),
+  arrival_checker_(get_arrival_checker_threshold(*this)),
   tf_buffer_(get_clock()),
   tf_listener_(tf_buffer_),
   odometry_(nullptr),
@@ -52,9 +94,19 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   minimum_reroute_length_ = declare_parameter<double>("minimum_reroute_length");
   allow_reroute_in_autonomous_mode_ = declare_parameter<bool>("allow_reroute_in_autonomous_mode");
 
-  planner_ =
-    plugin_loader_.createSharedInstance("autoware::mission_planner::lanelet2::DefaultPlanner");
-  planner_->initialize(this);
+  lanelet2::DefaultPlannerParameters default_planner_param;
+  default_planner_param.goal_angle_threshold_deg =
+    declare_parameter<double>("goal_angle_threshold_deg");
+  default_planner_param.enable_correct_goal_pose =
+    declare_parameter<bool>("enable_correct_goal_pose");
+  default_planner_param.consider_no_drivable_lanes =
+    declare_parameter<bool>("consider_no_drivable_lanes");
+  default_planner_param.check_footprint_inside_lanes =
+    declare_parameter<bool>("check_footprint_inside_lanes");
+
+  const auto vehicle_info = autoware::vehicle_info_utils::VehicleInfoUtils(*this).getVehicleInfo();
+
+  planner_ = std::make_shared<lanelet2::DefaultPlanner>(default_planner_param, vehicle_info);
 
   const auto durable_qos = rclcpp::QoS(1).transient_local();
   sub_odometry_ = create_subscription<Odometry>(
@@ -65,20 +117,22 @@ MissionPlanner::MissionPlanner(const rclcpp::NodeOptions & options)
   sub_vector_map_ = create_subscription<LaneletMapBin>(
     "~/input/vector_map", durable_qos, std::bind(&MissionPlanner::on_map, this, _1));
   pub_marker_ = create_publisher<MarkerArray>("~/debug/route_marker", durable_qos);
+  pub_goal_footprint_marker_ = create_publisher<MarkerArray>("~/debug/goal_footprint", durable_qos);
 
   // NOTE: The route interface should be mutually exclusive by callback group.
-  srv_clear_route = create_service<ClearRouteSpecs::Service>(
-    "~/clear_route", service_utils::handle_exception(&MissionPlanner::on_clear_route, this));
-  srv_set_lanelet_route = create_service<SetLaneletRouteSpecs::Service>(
-    "~/set_lanelet_route",
-    service_utils::handle_exception(&MissionPlanner::on_set_lanelet_route, this));
-  srv_set_waypoint_route = create_service<SetWaypointRouteSpecs::Service>(
-    "~/set_waypoint_route",
-    service_utils::handle_exception(&MissionPlanner::on_set_waypoint_route, this));
-  pub_route_ = create_publisher<LaneletRouteSpecs::Message>(
-    "~/route", autoware::component_interface_specs::get_qos<LaneletRouteSpecs>());
-  pub_state_ = create_publisher<RouteStateSpecs::Message>(
-    "~/state", autoware::component_interface_specs::get_qos<RouteStateSpecs>());
+  srv_clear_route = adaptor_.create_service<ClearRouteSpecs>(this, &MissionPlanner::on_clear_route);
+  srv_set_lanelet_route =
+    adaptor_.create_service<SetLaneletRouteSpecs>(this, &MissionPlanner::on_set_lanelet_route);
+  srv_set_waypoint_route =
+    adaptor_.create_service<SetWaypointRouteSpecs>(this, &MissionPlanner::on_set_waypoint_route);
+  pub_route_ = adaptor_.create_publisher<LaneletRouteSpecs>();
+  pub_state_ = adaptor_.create_publisher<RouteStateSpecs>();
+  on_change_state_ = [this](RouteState::_state_type state) {
+    RouteState msg;
+    msg.stamp = now();
+    msg.state = state;
+    pub_state_->publish(msg);
+  };
 
   // Route state will be published when the node gets ready for route api after initialization,
   // otherwise the mission planner rejects the request for the API.
@@ -138,13 +192,11 @@ void MissionPlanner::check_initialization()
 void MissionPlanner::on_odometry(const Odometry::ConstSharedPtr msg)
 {
   odometry_ = msg;
+  arrival_checker_.update(*msg);
 
   // NOTE: Do not check in the other states as goal may change.
-  if (state_.state == RouteState::SET) {
-    PoseStamped pose;
-    pose.header = odometry_->header;
-    pose.pose = odometry_->pose.pose;
-    if (arrival_checker_.is_arrived(pose)) {
+  if (state_ == RouteState::SET) {
+    if (arrival_checker_.is_arrived()) {
       change_state(RouteState::ARRIVED);
     }
   }
@@ -160,38 +212,29 @@ void MissionPlanner::on_map(const LaneletMapBin::ConstSharedPtr msg)
   map_ptr_ = msg;
   lanelet_map_ptr_ = autoware::experimental::lanelet2_utils::remove_const(
     autoware::experimental::lanelet2_utils::from_autoware_map_msgs(*map_ptr_));
-}
-
-Pose MissionPlanner::transform_pose(const Pose & pose, const Header & header)
-{
-  geometry_msgs::msg::TransformStamped transform;
-  geometry_msgs::msg::Pose result;
-  try {
-    transform = tf_buffer_.lookupTransform(map_frame_, header.frame_id, tf2::TimePointZero);
-    tf2::doTransform(pose, result, transform);
-    return result;
-  } catch (tf2::TransformException & error) {
-    throw service_utils::TransformError(error.what());
-  }
+  planner_->set_map(*map_ptr_);
 }
 
 void MissionPlanner::change_state(RouteState::_state_type state)
 {
-  state_.stamp = now();
-  state_.state = state;
-  pub_state_->publish(state_);
+  state_ = state;
+  if (on_change_state_) {
+    on_change_state_(state);
+  }
 }
 
 void MissionPlanner::on_clear_route(
   const ClearRoute::Request::SharedPtr, const ClearRoute::Response::SharedPtr res)
 {
+  ScopedProcessingTimePublisher processing_time_publisher(*this);
+
   if (!is_mission_planner_ready_) {
     using ResponseCode = autoware_adapi_v1_msgs::msg::ResponseStatus;
-    throw service_utils::ServiceException(
-      ResponseCode::NO_EFFECT, "The mission planner is not ready.", true);
+    set_success_response(res, ResponseCode::NO_EFFECT, "The mission planner is not ready.");
+    return;
   }
 
-  change_route();
+  clear_route();
   change_state(RouteState::UNSET);
   res->status.success = true;
 }
@@ -199,20 +242,34 @@ void MissionPlanner::on_clear_route(
 void MissionPlanner::on_set_lanelet_route(
   const SetLaneletRoute::Request::SharedPtr req, const SetLaneletRoute::Response::SharedPtr res)
 {
+  ScopedProcessingTimePublisher processing_time_publisher(*this);
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
-  const auto is_reroute = state_.state == RouteState::SET;
+  const auto is_reroute = state_ == RouteState::SET;
 
-  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
+  std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
+  try {
+    transform_to_map =
+      tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
+  } catch (const tf2::TransformException &) {
+    // Explicit assignment to avoid clang-tidy's check.
+    // Failure is handled by the transform_to_map check below.
+    transform_to_map = std::nullopt;
+  }
+
+  if (state_ != RouteState::UNSET && state_ != RouteState::SET) {
+    set_fail_response(
+      res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
+    return;
   }
   if (!is_mission_planner_ready_) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
+    set_fail_response(
+      res, ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
+    return;
   }
   if (is_reroute && !operation_mode_state_) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
+    set_fail_response(
+      res, ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
+    return;
   }
 
   const bool is_autonomous_driving =
@@ -221,31 +278,44 @@ void MissionPlanner::on_set_lanelet_route(
                           : false;
 
   if (is_reroute && !allow_reroute_in_autonomous_mode_ && is_autonomous_driving) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_INVALID_STATE, "Reroute is not allowed in autonomous mode.");
+    set_fail_response(
+      res, ResponseCode::ERROR_INVALID_STATE, "Reroute is not allowed in autonomous mode.");
+    return;
   }
 
   change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-  const auto route = create_route(*req);
+  if (!transform_to_map) {
+    set_fail_response(
+      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR,
+      "Failed to transform pose to map frame.");
+    return;
+  }
+  const auto route = create_lanelet_route(*req, *transform_to_map);
 
   if (route.segments.empty()) {
     cancel_route();
     change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
+    set_fail_response(res, ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
+    return;
   }
 
-  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-    cancel_route();
-    change_state(RouteState::SET);
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+  if (is_reroute && is_autonomous_driving) {
+    const auto reroute_safety_result = check_reroute_safety(*current_route_, route);
+    if (!reroute_safety_result.is_safe) {
+      RCLCPP_ERROR(get_logger(), "%s", reroute_safety_result.reason.c_str());
+      cancel_route();
+      change_state(RouteState::SET);
+      set_fail_response(
+        res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+      return;
+    }
   }
 
   change_route(route);
   change_state(RouteState::SET);
   res->status.success = true;
 
+  publish_route(route);
   publish_pose_log(odometry_->pose.pose, "initial");
   publish_pose_log(req->goal_pose, "goal");
 }
@@ -253,20 +323,34 @@ void MissionPlanner::on_set_lanelet_route(
 void MissionPlanner::on_set_waypoint_route(
   const SetWaypointRoute::Request::SharedPtr req, const SetWaypointRoute::Response::SharedPtr res)
 {
+  ScopedProcessingTimePublisher processing_time_publisher(*this);
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
-  const auto is_reroute = state_.state == RouteState::SET;
+  const auto is_reroute = state_ == RouteState::SET;
 
-  if (state_.state != RouteState::UNSET && state_.state != RouteState::SET) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
+  std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
+  try {
+    transform_to_map =
+      tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
+  } catch (const tf2::TransformException &) {
+    // Explicit assignment to avoid clang-tidy's check.
+    // Failure is handled by the transform_to_map check below.
+    transform_to_map = std::nullopt;
+  }
+
+  if (state_ != RouteState::UNSET && state_ != RouteState::SET) {
+    set_fail_response(
+      res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
+    return;
   }
   if (!is_mission_planner_ready_) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
+    set_fail_response(
+      res, ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
+    return;
   }
   if (is_reroute && !operation_mode_state_) {
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
+    set_fail_response(
+      res, ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
+    return;
   }
 
   const bool is_autonomous_driving =
@@ -275,39 +359,57 @@ void MissionPlanner::on_set_waypoint_route(
                           : false;
 
   change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-  const auto route = create_route(*req);
+  if (!transform_to_map) {
+    set_fail_response(
+      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR,
+      "Failed to transform pose to map frame.");
+    return;
+  }
+  const auto route = create_waypoint_route(*req, *transform_to_map);
 
   if (route.segments.empty()) {
     cancel_route();
     change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
+    set_fail_response(res, ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
+    return;
   }
 
-  if (is_reroute && is_autonomous_driving && !check_reroute_safety(*current_route_, route)) {
-    cancel_route();
-    change_state(RouteState::SET);
-    throw service_utils::ServiceException(
-      ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+  if (is_reroute && is_autonomous_driving) {
+    const auto reroute_safety_result = check_reroute_safety(*current_route_, route);
+    if (!reroute_safety_result.is_safe) {
+      RCLCPP_ERROR(get_logger(), "%s", reroute_safety_result.reason.c_str());
+      cancel_route();
+      change_state(RouteState::SET);
+      set_fail_response(
+        res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
+      return;
+    }
   }
 
   change_route(route);
   change_state(RouteState::SET);
   res->status.success = true;
 
+  publish_route(route);
   publish_pose_log(odometry_->pose.pose, "initial");
   publish_pose_log(req->goal_pose, "goal");
 }
 
-void MissionPlanner::change_route()
+void MissionPlanner::clear_route()
 {
   current_route_ = nullptr;
   planner_->clearRoute();
-  arrival_checker_.set_goal();
+  arrival_checker_.clear_goal();
 
   // TODO(Takagi, Isamu): publish an empty route here
   // pub_route_->publish();
   // pub_marker_->publish();
+}
+
+void MissionPlanner::publish_route(const LaneletRoute & route)
+{
+  pub_route_->publish(route);
+  pub_marker_->publish(planner_->visualize(route));
 }
 
 void MissionPlanner::change_route(const LaneletRoute & route)
@@ -320,9 +422,6 @@ void MissionPlanner::change_route(const LaneletRoute & route)
   current_route_ = std::make_shared<LaneletRoute>(route);
   planner_->updateRoute(route);
   arrival_checker_.set_goal(goal);
-
-  pub_route_->publish(route);
-  pub_marker_->publish(planner_->visualize(route));
 }
 
 void MissionPlanner::cancel_route()
@@ -333,268 +432,64 @@ void MissionPlanner::cancel_route()
   }
 }
 
-LaneletRoute MissionPlanner::create_route(const SetLaneletRoute::Request & req)
-{
-  const auto & header = req.header;
-  const auto & segments = req.segments;
-  const auto & goal_pose = req.goal_pose;
-  const auto & uuid = req.uuid;
-  const auto & allow_goal_modification = req.allow_modification;
-
-  return create_route(header, segments, goal_pose, uuid, allow_goal_modification);
-}
-
-LaneletRoute MissionPlanner::create_route(const SetWaypointRoute::Request & req)
-{
-  const auto & header = req.header;
-  const auto & waypoints = req.waypoints;
-  const auto & goal_pose = req.goal_pose;
-  const auto & uuid = req.uuid;
-  const auto & allow_goal_modification = req.allow_modification;
-
-  return create_route(
-    header, waypoints, odometry_->pose.pose, goal_pose, uuid, allow_goal_modification);
-}
-
-LaneletRoute MissionPlanner::create_route(
-  const Header & header, const std::vector<LaneletSegment> & segments, const Pose & goal_pose,
-  const UUID & uuid, const bool allow_goal_modification)
+LaneletRoute MissionPlanner::create_lanelet_route(
+  const SetLaneletRoute::Request & req,
+  const geometry_msgs::msg::TransformStamped & transform_to_map)
 {
   LaneletRoute route;
-  route.header.stamp = header.stamp;
+  route.header.stamp = req.header.stamp;
   route.header.frame_id = map_frame_;
   route.start_pose = odometry_->pose.pose;
-  route.goal_pose = transform_pose(goal_pose, header);
-  route.segments = segments;
-  route.uuid = uuid;
-  route.allow_modification = allow_goal_modification;
+  route.goal_pose = transform_pose(req.goal_pose, transform_to_map);
+  route.segments = req.segments;
+  route.uuid = req.uuid;
+  route.allow_modification = req.allow_modification;
   return route;
 }
 
-LaneletRoute MissionPlanner::create_route(
-  const Header & header, const std::vector<Pose> & waypoints, const Pose & start_pose,
-  const Pose & goal_pose, const UUID & uuid, const bool allow_goal_modification)
+LaneletRoute MissionPlanner::create_waypoint_route(
+  const SetWaypointRoute::Request & req,
+  const geometry_msgs::msg::TransformStamped & transform_to_map)
 {
-  PlannerPlugin::RoutePoints points;
-  points.push_back(start_pose);
-  for (const auto & waypoint : waypoints) {
-    points.push_back(transform_pose(waypoint, header));
+  lanelet2::DefaultPlanner::RoutePoints points;
+  points.push_back(odometry_->pose.pose);
+  for (const auto & waypoint : req.waypoints) {
+    points.push_back(transform_pose(waypoint, transform_to_map));
   }
-  points.push_back(transform_pose(goal_pose, header));
+  points.push_back(transform_pose(req.goal_pose, transform_to_map));
 
-  LaneletRoute route = planner_->plan(points);
-  route.header.stamp = header.stamp;
+  const auto plan_result = planner_->plan(points);
+  if (plan_result.warning_message) {
+    RCLCPP_WARN(get_logger(), "%s", plan_result.warning_message->c_str());
+  }
+  if (plan_result.goal_footprint) {
+    pub_goal_footprint_marker_->publish(
+      lanelet2::DefaultPlanner::visualize_debug_footprint(*plan_result.goal_footprint));
+  }
+
+  LaneletRoute route = plan_result.route;
+  route.header.stamp = req.header.stamp;
   route.header.frame_id = map_frame_;
-  route.uuid = uuid;
-  route.allow_modification = allow_goal_modification;
+  route.uuid = req.uuid;
+  route.allow_modification = req.allow_modification;
   return route;
 }
 
-bool MissionPlanner::check_reroute_safety(
+RerouteSafetyResult MissionPlanner::check_reroute_safety(
   const LaneletRoute & original_route, const LaneletRoute & target_route)
 {
-  if (
-    original_route.segments.empty() || target_route.segments.empty() || !map_ptr_ ||
-    !lanelet_map_ptr_ || !odometry_) {
-    RCLCPP_ERROR(get_logger(), "Check reroute safety failed. Route, map or odometry is not set.");
-    return false;
+  // The pure check_reroute_safety free function validates the routes and the map, but the node
+  // owns the odometry, so guard it here to keep the original observable behavior (same failure
+  // reason and early return when odometry or map is not yet available).
+  if (!map_ptr_ || !lanelet_map_ptr_ || !odometry_) {
+    return {false, "Check reroute safety failed. Route, map or odometry is not set."};
   }
 
   const auto current_velocity = odometry_->twist.twist.linear.x;
 
-  // if vehicle is stopped, do not check safety
-  if (current_velocity < 0.01) {
-    return true;
-  }
-
-  auto hasSamePrimitives = [](
-                             const std::vector<LaneletPrimitive> & original_primitives,
-                             const std::vector<LaneletPrimitive> & target_primitives) {
-    if (original_primitives.size() != target_primitives.size()) {
-      return false;
-    }
-
-    for (const auto & primitive : original_primitives) {
-      const auto has_same = [&](const auto & p) { return p.id == primitive.id; };
-      const bool is_same =
-        std::find_if(target_primitives.begin(), target_primitives.end(), has_same) !=
-        target_primitives.end();
-      if (!is_same) {
-        return false;
-      }
-    }
-    return true;
-  };
-
-  // =============================================================================================
-  // NOTE: the target route is calculated while ego is driving on the original route, so basically
-  // the first lane of the target route should be in the original route lanelets. So the common
-  // segment interval matches the beginning of the target route. The exception is that if ego is
-  // on an intersection lanelet, getClosestLanelet() may not return the same lanelet which exists
-  // in the original route. In that case the common segment interval does not match the beginning of
-  // the target lanelet
-  // =============================================================================================
-  const auto start_idx_opt =
-    std::invoke([&]() -> std::optional<std::pair<size_t /* original */, size_t /* target */>> {
-      for (size_t i = 0; i < original_route.segments.size(); ++i) {
-        const auto & original_segment = original_route.segments.at(i).primitives;
-        for (size_t j = 0; j < target_route.segments.size(); ++j) {
-          const auto & target_segment = target_route.segments.at(j).primitives;
-          if (hasSamePrimitives(original_segment, target_segment)) {
-            return std::make_pair(i, j);
-          }
-        }
-      }
-      return std::nullopt;
-    });
-  if (!start_idx_opt.has_value()) {
-    RCLCPP_ERROR(
-      get_logger(), "Check reroute safety failed. Cannot find the start index of the route.");
-    return false;
-  }
-  const auto [start_idx_original, start_idx_target] = start_idx_opt.value();
-
-  // find last idx that matches the target primitives
-  size_t end_idx_original = start_idx_original;
-  size_t end_idx_target = start_idx_target;
-  for (size_t i = 1; i < target_route.segments.size() - start_idx_target; ++i) {
-    if (start_idx_original + i > original_route.segments.size() - 1) {
-      break;
-    }
-
-    const auto & original_primitives =
-      original_route.segments.at(start_idx_original + i).primitives;
-    const auto & target_primitives = target_route.segments.at(start_idx_target + i).primitives;
-    if (!hasSamePrimitives(original_primitives, target_primitives)) {
-      break;
-    }
-    end_idx_original = start_idx_original + i;
-    end_idx_target = start_idx_target + i;
-  }
-
-  // make sure that ego is within the reroute target
-  const bool ego_is_on_first_target_section = std::any_of(
-    target_route.segments.front().primitives.begin(),
-    target_route.segments.front().primitives.end(), [&](const auto & primitive) {
-      const auto lanelet = lanelet_map_ptr_->laneletLayer.get(primitive.id);
-      return autoware::experimental::lanelet2_utils::is_in_lanelet(
-        target_route.start_pose, lanelet);
-    });
-  if (!ego_is_on_first_target_section) {
-    RCLCPP_ERROR(
-      get_logger(),
-      "Check reroute safety failed. Ego is not on the first section of target route.");
-    return false;
-  }
-
-  // if the front of target route is not the front of common segment, it is expected that the front
-  // of the target route is conflicting with another lane which is equal to original
-  // route[start_idx_original-1]
-  double accumulated_length = 0.0;
-
-  if (start_idx_target != 0 && start_idx_original > 1) {
-    // compute distance from the current pose to the beginning of the common segment
-    const auto current_pose = target_route.start_pose;
-    const auto primitives = original_route.segments.at(start_idx_original - 1).primitives;
-    lanelet::ConstLanelets start_lanelets;
-    for (const auto & primitive : primitives) {
-      const auto lanelet = lanelet_map_ptr_->laneletLayer.get(primitive.id);
-      start_lanelets.push_back(lanelet);
-    }
-    // closest lanelet in start lanelets
-    const auto closest_lanelet_opt =
-      experimental::lanelet2_utils::get_closest_lanelet(start_lanelets, current_pose);
-    if (!closest_lanelet_opt) {
-      RCLCPP_ERROR(get_logger(), "Check reroute safety failed. Cannot find the closest lanelet.");
-      return false;
-    }
-    const auto & closest_lanelet = closest_lanelet_opt.value();
-
-    const auto & centerline_2d = lanelet::utils::to2D(closest_lanelet.centerline());
-    const auto lanelet_point = experimental::lanelet2_utils::from_ros(current_pose.position);
-    const auto arc_coordinates = lanelet::geometry::toArcCoordinates(
-      centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
-    const double dist_to_current_pose = arc_coordinates.length;
-    const double lanelet_length = lanelet::geometry::length2d(closest_lanelet);
-    accumulated_length = lanelet_length - dist_to_current_pose;
-  } else {
-    // compute distance from the current pose to the end of the current lanelet
-    const auto current_pose = target_route.start_pose;
-    const auto primitives = original_route.segments.at(start_idx_original).primitives;
-    lanelet::ConstLanelets start_lanelets;
-    for (const auto & primitive : primitives) {
-      const auto lanelet = lanelet_map_ptr_->laneletLayer.get(primitive.id);
-      start_lanelets.push_back(lanelet);
-    }
-    // closest lanelet in start lanelets
-    const auto closest_lanelet_opt =
-      experimental::lanelet2_utils::get_closest_lanelet(start_lanelets, current_pose);
-    if (!closest_lanelet_opt) {
-      RCLCPP_ERROR(get_logger(), "Check reroute safety failed. Cannot find the closest lanelet.");
-      return false;
-    }
-    const auto & closest_lanelet = closest_lanelet_opt.value();
-
-    const auto & centerline_2d = lanelet::utils::to2D(closest_lanelet.centerline());
-    const auto lanelet_point = experimental::lanelet2_utils::from_ros(current_pose.position);
-    const auto arc_coordinates = lanelet::geometry::toArcCoordinates(
-      centerline_2d, lanelet::utils::to2D(lanelet_point).basicPoint());
-    const double dist_to_current_pose = arc_coordinates.length;
-    const double lanelet_length = lanelet::geometry::length2d(closest_lanelet);
-    accumulated_length = lanelet_length - dist_to_current_pose;
-  }
-
-  // compute distance from the start_idx+1 to end_idx
-  for (size_t i = start_idx_original + 1; i <= end_idx_original; ++i) {
-    const auto primitives = original_route.segments.at(i).primitives;
-    if (primitives.empty()) {
-      break;
-    }
-
-    std::vector<double> lanelets_length(primitives.size());
-    for (size_t primitive_idx = 0; primitive_idx < primitives.size(); ++primitive_idx) {
-      const auto & primitive = primitives.at(primitive_idx);
-      const auto & lanelet = lanelet_map_ptr_->laneletLayer.get(primitive.id);
-      lanelets_length.at(primitive_idx) = (lanelet::geometry::length2d(lanelet));
-    }
-    accumulated_length += *std::min_element(lanelets_length.begin(), lanelets_length.end());
-  }
-
-  // check if the goal is inside of the target terminal lanelet
-  const auto & target_end_primitives = target_route.segments.at(end_idx_target).primitives;
-  const auto & target_goal = target_route.goal_pose;
-  for (const auto & target_end_primitive : target_end_primitives) {
-    const auto lanelet = lanelet_map_ptr_->laneletLayer.get(target_end_primitive.id);
-    if (autoware::experimental::lanelet2_utils::is_in_lanelet(target_goal, lanelet)) {
-      const auto target_goal_position =
-        experimental::lanelet2_utils::from_ros(target_goal.position);
-      const double dist_to_goal = lanelet::geometry::toArcCoordinates(
-                                    lanelet::utils::to2D(lanelet.centerline()),
-                                    lanelet::utils::to2D(target_goal_position).basicPoint())
-                                    .length;
-      const double target_lanelet_length = lanelet::geometry::length2d(lanelet);
-      // NOTE: `accumulated_length` here contains the length of the entire target_end_primitive, so
-      // the remaining distance from the goal to the end of the target_end_primitive needs to be
-      // subtracted.
-      const double remaining_dist = target_lanelet_length - dist_to_goal;
-      accumulated_length = std::max(accumulated_length - remaining_dist, 0.0);
-      break;
-    }
-  }
-
-  // check safety
-  const double safety_length =
-    std::max(current_velocity * reroute_time_threshold_, minimum_reroute_length_);
-  if (accumulated_length > safety_length) {
-    return true;
-  }
-
-  RCLCPP_WARN(
-    get_logger(),
-    "Length of lane where original and B target (= %f) is less than safety length (= %f), so "
-    "reroute is not safe.",
-    accumulated_length, safety_length);
-  return false;
+  return autoware::mission_planner::check_reroute_safety(
+    original_route, target_route, lanelet_map_ptr_, current_velocity, reroute_time_threshold_,
+    minimum_reroute_length_);
 }
 }  // namespace autoware::mission_planner
 

@@ -21,4 +21,10 @@ rclcpp_components_register_node(${PROJECT_NAME}
   EXECUTOR SingleThreadedExecutor
 )
 
+if(BUILD_TESTING)
+  ament_auto_add_gtest(test_${PROJECT_NAME}
+    test/test_helpers.cpp
+  )
+endif()
+
 autoware_ament_auto_package(INSTALL_TO_SHARE config launch)

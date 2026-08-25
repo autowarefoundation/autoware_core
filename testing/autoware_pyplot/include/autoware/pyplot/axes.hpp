@@ -55,6 +55,10 @@ public:
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
 
+  PyObjectWrapper contourf(
+    const pybind11::tuple & args = pybind11::tuple(),
+    const pybind11::dict & kwargs = pybind11::dict()) const;
+
   PyObjectWrapper errorbar(
     const pybind11::tuple & args = pybind11::tuple(),
     const pybind11::dict & kwargs = pybind11::dict()) const;
@@ -141,9 +145,11 @@ private:
   pybind11::object add_patch_attr;
   pybind11::object axhline_attr;
   pybind11::object axvline_attr;
+  pybind11::object bar_label_attr;
   pybind11::object cla_attr;
   pybind11::object contour_attr;
   pybind11::object contourf_attr;
+  pybind11::object errorbar_attr;
   pybind11::object fill_attr;
   pybind11::object fill_between_attr;
   pybind11::object get_xlim_attr;

@@ -9,12 +9,14 @@ ament_auto_find_build_dependencies()
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_projection_loader.cpp
   src/load_info_from_lanelet2_map.cpp
+  src/map_projection_loader_node.cpp
 )
 
-rclcpp_components_register_node(${PROJECT_NAME}
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::map_projection_loader::MapProjectionLoader"
   EXECUTABLE ${PROJECT_NAME}_node
-  EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
+  ROS2_EXECUTOR SingleThreadedExecutor
 )
 
 target_link_libraries(${PROJECT_NAME} yaml-cpp)
@@ -29,22 +31,24 @@ endfunction()
 
 if(BUILD_TESTING)
   # Test python scripts
-  add_launch_test(
-    test/test_node_load_mgrs_from_yaml.test.py
-    TIMEOUT "30"
-  )
-  add_launch_test(
-    test/test_node_load_local_from_yaml.test.py
-    TIMEOUT "30"
-  )
-  add_launch_test(
-    test/test_node_load_local_cartesian_utm_from_yaml.test.py
-    TIMEOUT "30"
-  )
-  add_launch_test(
-    test/test_node_load_transverse_mercator_from_yaml.test.py
-    TIMEOUT "30"
-  )
+  if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+    add_launch_test(
+      test/test_node_load_mgrs_from_yaml.test.py
+      TIMEOUT "30"
+    )
+    add_launch_test(
+      test/test_node_load_local_from_yaml.test.py
+      TIMEOUT "30"
+    )
+    add_launch_test(
+      test/test_node_load_local_cartesian_utm_from_yaml.test.py
+      TIMEOUT "30"
+    )
+    add_launch_test(
+      test/test_node_load_transverse_mercator_from_yaml.test.py
+      TIMEOUT "30"
+    )
+  endif()
   install(DIRECTORY
     test/data/
     DESTINATION share/${PROJECT_NAME}/test/data/
@@ -54,6 +58,7 @@ if(BUILD_TESTING)
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
   add_testcase(test/test_load_info_from_lanelet2_map.cpp)
+  add_testcase(test/test_load_info_from_yaml.cpp)
 endif()
 
 autoware_ament_auto_package(

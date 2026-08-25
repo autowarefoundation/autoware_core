@@ -71,6 +71,39 @@ TEST(UtilFuncTest, CalcDiffForRadian)
   EXPECT_NEAR(calc_diff_for_radian(0.0, 6.0), 0.28318530718, 1e-6);
 }
 
+// Characterization: a difference already strictly inside (-pi, pi) is returned unchanged, and a
+// difference in (pi, 3*pi) / (-3*pi, -pi) is wrapped by a single +/-2*pi into (-pi, pi). Away from
+// the +/-pi boundary this matches both the previous single-step implementation and
+// autoware_utils_math::normalize_radian.
+TEST(UtilFuncTest, CalcDiffForRadianWrapsIntoPrincipalRange)
+{
+  EXPECT_NEAR(calc_diff_for_radian(0.0, 0.0), 0.0, 1e-12);
+  EXPECT_NEAR(calc_diff_for_radian(M_PI - 0.1, 0.0), M_PI - 0.1, 1e-12);
+  EXPECT_NEAR(calc_diff_for_radian(-M_PI + 0.1, 0.0), -M_PI + 0.1, 1e-12);
+  // diff = 1.5*pi -> wraps to 1.5*pi - 2*pi = -0.5*pi
+  EXPECT_NEAR(calc_diff_for_radian(1.5 * M_PI, 0.0), -0.5 * M_PI, 1e-12);
+  // diff = -1.5*pi -> wraps to -1.5*pi + 2*pi = 0.5*pi
+  EXPECT_NEAR(calc_diff_for_radian(-1.5 * M_PI, 0.0), 0.5 * M_PI, 1e-12);
+}
+
+// RED-for-the-fix: a difference whose magnitude exceeds 3*pi cannot be brought into [-pi, pi) by a
+// single +/-2*pi step. The previous single-step implementation left it out of range; delegating to
+// autoware_utils_math::normalize_radian wraps it correctly. diff = 3.5*pi -> normalized to -0.5*pi.
+TEST(UtilFuncTest, CalcDiffForRadianWrapsLargeDifference)
+{
+  const double diff = calc_diff_for_radian(3.5 * M_PI, 0.0);
+  // Half-open interval [-pi, pi): lower bound inclusive, upper bound exclusive.
+  EXPECT_GE(diff, -M_PI);
+  EXPECT_LT(diff, M_PI);
+  EXPECT_NEAR(diff, -0.5 * M_PI, 1e-9);
+
+  const double diff_neg = calc_diff_for_radian(-3.5 * M_PI, 0.0);
+  // Half-open interval [-pi, pi): lower bound inclusive, upper bound exclusive.
+  EXPECT_GE(diff_neg, -M_PI);
+  EXPECT_LT(diff_neg, M_PI);
+  EXPECT_NEAR(diff_neg, 0.5 * M_PI, 1e-9);
+}
+
 TEST(UtilFuncTest, MakeEigenCovariance)
 {
   std::array<double, 36> covariance;
@@ -319,6 +352,26 @@ TEST(UtilFuncTest, NormCalculation)
     std::sqrt(std::pow(p1.x - p2.x, 2) + std::pow(p1.y - p2.y, 2) + std::pow(p1.z - p2.z, 2));
 
   EXPECT_DOUBLE_EQ(norm(p1, p2), expected);
+}
+
+// Characterization for the Euclidean 3D distance contract that norm() must keep when delegating to
+// autoware_utils_geometry::calc_distance3d: symmetry, zero for identical points, and a 3-4-12
+// triple whose distance is exactly 13.
+TEST(UtilFuncTest, NormContract)
+{
+  geometry_msgs::msg::Point a;
+  a.x = 0.0;
+  a.y = 0.0;
+  a.z = 0.0;
+
+  geometry_msgs::msg::Point b;
+  b.x = 3.0;
+  b.y = 4.0;
+  b.z = 12.0;
+
+  EXPECT_NEAR(norm(a, b), 13.0, 1e-9);
+  EXPECT_NEAR(norm(b, a), 13.0, 1e-9);
+  EXPECT_DOUBLE_EQ(norm(a, a), 0.0);
 }
 
 TEST(UtilFuncTest, OutputPoseToCovLog)

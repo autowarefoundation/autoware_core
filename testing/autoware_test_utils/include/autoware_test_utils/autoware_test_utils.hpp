@@ -36,12 +36,14 @@
 
 #include <lanelet2_io/Io.h>
 
+#include <chrono>
 #include <filesystem>
 #include <limits>
 #include <memory>
 #include <optional>
 #include <regex>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <vector>
 
@@ -324,8 +326,16 @@ LaneletRoute makeBehaviorGoalOnLeftSideRoute();
  * @param repeat_count The number of times to spin the nodes.
  */
 void spinSomeNodes(
-  rclcpp::Node::SharedPtr test_node, rclcpp::Node::SharedPtr target_node,
-  const int repeat_count = 1);
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr test_node,
+  rclcpp::node_interfaces::NodeBaseInterface::SharedPtr target_node, const int repeat_count = 1);
+
+inline void spinSomeNodes(
+  const rclcpp::Node::SharedPtr & test_node, const rclcpp::Node::SharedPtr & target_node,
+  const int repeat_count = 1)
+{
+  spinSomeNodes(
+    test_node->get_node_base_interface(), target_node->get_node_base_interface(), repeat_count);
+}
 
 /**
  * @brief Updates node options with parameter files.
@@ -551,7 +561,7 @@ void setSubscriber(
 template <typename T>
 void publishToTargetNode(
   rclcpp::Node::SharedPtr test_node, rclcpp::Node::SharedPtr target_node, std::string topic_name,
-  typename rclcpp::Publisher<T>::SharedPtr publisher, T data, const int repeat_count = 3)
+  typename rclcpp::Publisher<T>::SharedPtr publisher, const T & data, const int repeat_count = 3)
 {
   if (topic_name.empty()) {
     int status = 1;
@@ -563,12 +573,27 @@ void publishToTargetNode(
   }
 
   autoware::test_utils::setPublisher<T>(test_node, topic_name, publisher);
-  publisher->publish(data);
+
+  constexpr auto kTimeout = std::chrono::seconds(5);
+  constexpr auto kWaitInterval = std::chrono::milliseconds(100);
+  const auto start = std::chrono::steady_clock::now();
+
+  while (rclcpp::ok() && (std::chrono::steady_clock::now() - start) < kTimeout) {
+    if (target_node->count_subscribers(topic_name) > 0) {
+      break;
+    }
+    rclcpp::spin_some(test_node);
+    rclcpp::spin_some(target_node);
+    std::this_thread::sleep_for(kWaitInterval);
+  }
 
   if (target_node->count_subscribers(topic_name) == 0) {
     throw std::runtime_error("No subscriber for " + topic_name);
   }
-  autoware::test_utils::spinSomeNodes(test_node, target_node, repeat_count);
+
+  publisher->publish(data);
+  autoware::test_utils::spinSomeNodes(
+    test_node->get_node_base_interface(), target_node->get_node_base_interface(), repeat_count);
 }
 
 /**
@@ -588,17 +613,16 @@ public:
     pub_clock_ = test_node_->create_publisher<rosgraph_msgs::msg::Clock>("/clock", 1);
   }
 
-  template <typename MessageType>
-  void test_pub_msg(
-    rclcpp::Node::SharedPtr target_node, const std::string & topic_name, MessageType & msg)
+  template <typename MessageType, typename NodePtrT>
+  void test_pub_msg(const NodePtrT & target_node, const std::string & topic_name, MessageType & msg)
   {
     rclcpp::QoS qos(rclcpp::KeepLast(10));
     test_pub_msg(target_node, topic_name, msg, qos);
   }
 
-  template <typename MessageType>
+  template <typename MessageType, typename NodePtrT>
   void test_pub_msg(
-    rclcpp::Node::SharedPtr target_node, const std::string & topic_name, MessageType & msg,
+    const NodePtrT & target_node, const std::string & topic_name, MessageType & msg,
     rclcpp::QoS qos)
   {
     if (publishers_.find(topic_name) == publishers_.end()) {
@@ -611,7 +635,8 @@ public:
 
     publisher->publish(msg);
     const int repeat_count = 3;
-    autoware::test_utils::spinSomeNodes(test_node_, target_node, repeat_count);
+    autoware::test_utils::spinSomeNodes(
+      test_node_->get_node_base_interface(), target_node->get_node_base_interface(), repeat_count);
     RCLCPP_INFO(test_node_->get_logger(), "Published message on topic '%s'", topic_name.c_str());
   }
 

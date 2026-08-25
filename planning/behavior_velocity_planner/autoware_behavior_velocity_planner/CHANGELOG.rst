@@ -5,6 +5,34 @@ Changelog for package autoware_behavior_velocity_planner
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_behavior_velocity_planner): extract node-agnostic data-ingestion helpers (`#1114 <https://github.com/autowarefoundation/autoware_core/issues/1114>`_)
+  * refactor(autoware_behavior_velocity_planner): extract node-agnostic data-ingestion helpers
+  Extract the byte-identical traffic-signal aggregation and velocity-buffer
+  pruning logic that was copy-pasted between the legacy and experimental
+  BehaviorVelocityPlannerNode variants into package-internal, node-agnostic
+  free functions (data_processing::apply_traffic_signals and
+  data_processing::prune_velocity_buffer).
+  Both node variants now call one implementation, removing the duplicated
+  logic from processOdometry/processTrafficSignals. The new free functions
+  are pure transforms over PlannerData fields, which creates a unit-test seam
+  that previously did not exist: the only test was a launch-style smoke test
+  with zero scene plugins.
+  Add gtests asserting the traffic-signal UNKNOWN-keep-last-observation
+  contract (keep prior body, refresh timestamp; first UNKNOWN stored as-is)
+  and the velocity-buffer time pruning (stale-from-back removal, exact-threshold
+  boundary retention, future-stamp negative-time guard).
+  This change is internal-only and behavior-preserving: no public node API,
+  topics, or message types change.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * refactor(autoware_behavior_velocity_planner): add <deque> include and bump new-file copyright year
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* fix(planning): skip processing empty no_ground_pointcloud to avoid PCL warning spam (`#1082 <https://github.com/autowarefoundation/autoware_core/issues/1082>`_)
+* Contributors: Mert Yavuz, Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

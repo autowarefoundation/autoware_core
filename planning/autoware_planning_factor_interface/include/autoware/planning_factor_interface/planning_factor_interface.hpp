@@ -29,6 +29,7 @@
 
 #include <sstream>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::planning_factor_interface
@@ -40,15 +41,16 @@ using autoware_internal_planning_msgs::msg::PlanningFactorArray;
 using autoware_internal_planning_msgs::msg::SafetyFactorArray;
 using geometry_msgs::msg::Pose;
 
-class PlanningFactorInterface
+template <typename NodeT>
+class PlanningFactorInterfaceT
 {
 public:
-  PlanningFactorInterface(
-    rclcpp::Node * node, const std::string & name, bool enable_console_output = false,
+  PlanningFactorInterfaceT(
+    NodeT * node, const std::string & name, bool enable_console_output = false,
     int throttle_duration_ms = 1000)
   : name_{name},
-    pub_factors_{
-      node->create_publisher<PlanningFactorArray>("/planning/planning_factors/" + name, 1)},
+    pub_factors_{node->template create_publisher<PlanningFactorArray>(
+      "/planning/planning_factors/" + name, 1)},
     clock_{node->get_clock()},
     enable_console_output_{enable_console_output},
     throttle_duration_ms_{throttle_duration_ms}
@@ -139,15 +141,15 @@ public:
                                  .shift_length(shift_length)
                                  .distance(distance);
 
-    const auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
-                          .module(name_)
-                          .is_driving_forward(is_driving_forward)
-                          .control_points({control_point})
-                          .behavior(behavior)
-                          .detail(detail)
-                          .safety_factors(safety_factors);
+    auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
+                    .module(name_)
+                    .is_driving_forward(is_driving_forward)
+                    .control_points({control_point})
+                    .behavior(behavior)
+                    .detail(detail)
+                    .safety_factors(safety_factors);
 
-    factors_.push_back(factor);
+    factors_.push_back(std::move(factor));
   }
 
   /**
@@ -185,15 +187,15 @@ public:
                                      .shift_length(end_shift_length)
                                      .distance(end_distance);
 
-    const auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
-                          .module(name_)
-                          .is_driving_forward(is_driving_forward)
-                          .control_points({control_start_point, control_end_point})
-                          .behavior(behavior)
-                          .detail(detail)
-                          .safety_factors(safety_factors);
+    auto factor = autoware_internal_planning_msgs::build<PlanningFactor>()
+                    .module(name_)
+                    .is_driving_forward(is_driving_forward)
+                    .control_points({control_start_point, control_end_point})
+                    .behavior(behavior)
+                    .detail(detail)
+                    .safety_factors(safety_factors);
 
-    factors_.push_back(factor);
+    factors_.push_back(std::move(factor));
   }
 
   /**
@@ -204,11 +206,11 @@ public:
     PlanningFactorArray msg;
     msg.header.frame_id = "map";
     msg.header.stamp = clock_->now();
-    msg.factors = factors_;
+    msg.factors = std::move(factors_);
 
     pub_factors_->publish(msg);
 
-    if (enable_console_output_ && !factors_.empty()) {
+    if (enable_console_output_ && !msg.factors.empty()) {
       print_factors_to_console(msg);
     }
 
@@ -218,7 +220,7 @@ public:
   /**
    * @brief get the current factors (for test purpose).
    */
-  std::vector<PlanningFactor> get_factors() const { return factors_; }
+  const std::vector<PlanningFactor> & get_factors() const { return factors_; }
 
 private:
   /**
@@ -237,9 +239,13 @@ private:
     }
   }
 
+  using PublisherPtr =
+    decltype(std::declval<NodeT &>().template create_publisher<PlanningFactorArray>(
+      std::declval<const std::string &>(), 1));
+
   std::string name_;
 
-  rclcpp::Publisher<PlanningFactorArray>::SharedPtr pub_factors_;
+  PublisherPtr pub_factors_;
 
   rclcpp::Clock::SharedPtr clock_;
 
@@ -249,30 +255,36 @@ private:
   int throttle_duration_ms_{0};
 };
 
-extern template void
-PlanningFactorInterface::add<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
+using PlanningFactorInterface = PlanningFactorInterfaceT<rclcpp::Node>;
+
+extern template void PlanningFactorInterfaceT<rclcpp::Node>::add<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &, const Pose &,
   const Pose &, const uint16_t behavior, const SafetyFactorArray &, const bool, const double,
   const double, const std::string &);
-extern template void PlanningFactorInterface::add<autoware_planning_msgs::msg::PathPoint>(
+extern template void
+PlanningFactorInterfaceT<rclcpp::Node>::add<autoware_planning_msgs::msg::PathPoint>(
   const std::vector<autoware_planning_msgs::msg::PathPoint> &, const Pose &, const Pose &,
   const uint16_t behavior, const SafetyFactorArray &, const bool, const double, const double,
   const std::string &);
-extern template void PlanningFactorInterface::add<autoware_planning_msgs::msg::TrajectoryPoint>(
+extern template void
+PlanningFactorInterfaceT<rclcpp::Node>::add<autoware_planning_msgs::msg::TrajectoryPoint>(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> &, const Pose &, const Pose &,
   const uint16_t behavior, const SafetyFactorArray &, const bool, const double, const double,
   const std::string &);
 
-extern template void
-PlanningFactorInterface::add<autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
+extern template void PlanningFactorInterfaceT<rclcpp::Node>::add<
+  autoware_internal_planning_msgs::msg::PathPointWithLaneId>(
   const std::vector<autoware_internal_planning_msgs::msg::PathPointWithLaneId> &, const Pose &,
   const Pose &, const Pose &, const uint16_t behavior, const SafetyFactorArray &, const bool,
   const double, const double, const double, const double, const std::string &);
-extern template void PlanningFactorInterface::add<autoware_planning_msgs::msg::PathPoint>(
+extern template void
+PlanningFactorInterfaceT<rclcpp::Node>::add<autoware_planning_msgs::msg::PathPoint>(
   const std::vector<autoware_planning_msgs::msg::PathPoint> &, const Pose &, const Pose &,
   const Pose &, const uint16_t behavior, const SafetyFactorArray &, const bool, const double,
   const double, const double, const double, const std::string &);
-extern template void PlanningFactorInterface::add<autoware_planning_msgs::msg::TrajectoryPoint>(
+extern template void
+PlanningFactorInterfaceT<rclcpp::Node>::add<autoware_planning_msgs::msg::TrajectoryPoint>(
   const std::vector<autoware_planning_msgs::msg::TrajectoryPoint> &, const Pose &, const Pose &,
   const Pose &, const uint16_t behavior, const SafetyFactorArray &, const bool, const double,
   const double, const double, const double, const std::string &);

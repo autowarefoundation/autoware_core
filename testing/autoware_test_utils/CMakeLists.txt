@@ -6,22 +6,40 @@ autoware_package()
 
 find_package(yaml-cpp REQUIRED)
 
+# Ubuntu 22.04 ships yaml-cpp 0.7, which exports the target without a namespace.
+# Ubuntu 24.04 ships 0.8, which exports yaml-cpp::yaml-cpp.
+if(NOT TARGET yaml-cpp::yaml-cpp)
+  add_library(yaml-cpp::yaml-cpp INTERFACE IMPORTED)
+  set_property(
+    TARGET yaml-cpp::yaml-cpp
+    PROPERTY INTERFACE_LINK_LIBRARIES yaml-cpp
+  )
+endif()
+
 ament_auto_add_library(autoware_test_utils SHARED
   src/autoware_test_utils.cpp
   src/mock_data_parser.cpp
 )
 target_link_libraries(autoware_test_utils
-  yaml-cpp
+  yaml-cpp::yaml-cpp
 )
+
+if(NOT MSVC)
+  target_compile_options(autoware_test_utils
+    PUBLIC
+      -Wno-deprecated-declarations
+  )
+endif()
 
 ament_auto_add_executable(topic_snapshot_saver src/topic_snapshot_saver.cpp)
 
-target_link_libraries(topic_snapshot_saver autoware_test_utils yaml-cpp)
+target_link_libraries(topic_snapshot_saver autoware_test_utils yaml-cpp::yaml-cpp)
 
 if(BUILD_TESTING)
   ament_auto_add_gtest(test_autoware_test_utils
     test/test_mock_data_parser.cpp
     test/test_autoware_test_manager.cpp
+    test/test_autoware_test_utils.cpp
   )
 endif()
 

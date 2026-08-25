@@ -10,8 +10,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/localization_module.cpp
   src/stop_check_module.cpp
   src/pose_error_check_module.cpp
-  src/ekf_localization_trigger_module.cpp
-  src/ndt_localization_trigger_module.cpp
+  src/localization_trigger_module.cpp
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
@@ -26,13 +25,13 @@ if(BUILD_TESTING)
     string(REGEX REPLACE ".cpp" "" test_name ${filename})
     ament_add_gmock(${test_name} ${filepath})
     target_include_directories(${test_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    target_link_libraries(${test_name} fmt)
     ament_target_dependencies(${test_name} ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
   endfunction()
 
   find_package(ament_lint_auto REQUIRED)
   ament_lint_auto_find_test_dependencies()
   add_testcase(test/test_copy_vector_to_array.cpp)
+  add_testcase(test/test_localization_util.cpp)
 endif()
 
 autoware_ament_auto_package(

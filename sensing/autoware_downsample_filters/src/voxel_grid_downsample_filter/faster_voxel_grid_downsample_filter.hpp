@@ -15,17 +15,22 @@
 #ifndef VOXEL_GRID_DOWNSAMPLE_FILTER__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
 #define VOXEL_GRID_DOWNSAMPLE_FILTER__FASTER_VOXEL_GRID_DOWNSAMPLE_FILTER_HPP_
 
-#include "transform_info.hpp"
-
 #include <pcl/filters/voxel_grid.h>
 #include <pcl_conversions/pcl_conversions.h>
 #include <sensor_msgs/msg/point_cloud2.h>
 
+#include <string>
 #include <unordered_map>
 #include <vector>
 
 namespace autoware::downsample_filters
 {
+
+struct ValidationResult
+{
+  bool is_valid;
+  std::string reason;
+};
 
 class FasterVoxelGridDownsampleFilter
 {
@@ -35,10 +40,7 @@ class FasterVoxelGridDownsampleFilter
 public:
   FasterVoxelGridDownsampleFilter();
   void set_voxel_size(float voxel_size_x, float voxel_size_y, float voxel_size_z);
-  void set_field_offsets(const PointCloud2ConstPtr & input, const rclcpp::Logger & logger);
-  void filter(
-    const PointCloud2ConstPtr & input, PointCloud2 & output, const TransformInfo & transform_info,
-    const rclcpp::Logger & logger);
+  ValidationResult filter(const PointCloud2ConstPtr & input, PointCloud2 & output);
 
 private:
   struct Centroid
@@ -75,15 +77,6 @@ private:
   };
 
   Eigen::Vector3f inverse_voxel_size_;
-  int x_offset_;
-  int y_offset_;
-  int z_offset_;
-  int intensity_index_;
-  int intensity_offset_;
-  bool offset_initialized_;
-
-  Eigen::Vector4f get_point_from_global_offset(
-    const PointCloud2ConstPtr & input, size_t global_offset) const;
 
   bool get_min_max_voxel(
     const PointCloud2ConstPtr & input, Eigen::Vector3i & min_voxel, Eigen::Vector3i & max_voxel);
@@ -92,9 +85,8 @@ private:
     const PointCloud2ConstPtr & input, const Eigen::Vector3i & max_voxel,
     const Eigen::Vector3i & min_voxel);
 
-  void copy_centroids_to_output(
-    const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output,
-    const TransformInfo & transform_info) const;
+  static void copy_centroids_to_output(
+    const std::unordered_map<uint32_t, Centroid> & voxel_centroid_map, PointCloud2 & output);
 };
 
 }  // namespace autoware::downsample_filters

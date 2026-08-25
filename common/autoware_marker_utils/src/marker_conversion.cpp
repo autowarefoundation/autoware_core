@@ -33,7 +33,8 @@
 #include <lanelet2_core/primitives/Lanelet.h>
 
 #include <algorithm>
-#include <limits>
+#include <iomanip>
+#include <sstream>
 #include <string>
 #include <vector>
 
@@ -43,6 +44,13 @@ using autoware_utils_visualization::create_default_marker;
 using autoware_utils_visualization::create_marker_color;
 using autoware_utils_visualization::create_marker_position;
 using autoware_utils_visualization::create_marker_scale;
+
+static const rclcpp::Logger & get_logger()
+{
+  static const rclcpp::Logger logger =
+    rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion");
+  return logger;
+}
 
 static int64_t bitShift(int64_t original_id)
 {
@@ -58,6 +66,7 @@ visualization_msgs::msg::Marker create_autoware_geometry_marker(
     create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
 
   if (marker_type == visualization_msgs::msg::Marker::LINE_LIST) {
+    marker.points.reserve(2 * polygon.outer().size());
     for (size_t i = 0; i < polygon.outer().size(); ++i) {
       const auto & cur = polygon.outer().at(i);
       const auto & nxt = polygon.outer().at((i + 1) % polygon.outer().size());
@@ -73,6 +82,7 @@ visualization_msgs::msg::Marker create_autoware_geometry_marker(
     }
   } else if (marker_type == visualization_msgs::msg::Marker::LINE_STRIP) {
     marker.pose.orientation = autoware_utils_visualization::create_marker_orientation(0, 0, 0, 1.0);
+    marker.points.reserve(polygon.outer().size());
     for (const auto & p : polygon.outer()) {
       geometry_msgs::msg::Point pt;
       pt.x = p.x();
@@ -82,8 +92,7 @@ visualization_msgs::msg::Marker create_autoware_geometry_marker(
     }
   } else {
     RCLCPP_WARN(
-      rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
-      "Unsupported marker type: only LINE_STRIP and LINE_LIST are supported.");
+      get_logger(), "Unsupported marker type: only LINE_STRIP and LINE_LIST are supported.");
     // return null Marker
     marker.action = visualization_msgs::msg::Marker::DELETE;
     return marker;
@@ -98,6 +107,7 @@ visualization_msgs::msg::Marker create_autoware_geometry_marker(
 {
   visualization_msgs::msg::Marker marker = create_default_marker(
     "map", stamp, ns, id, visualization_msgs::msg::Marker::LINE_STRIP, scale, color);
+  marker.points.reserve(ls.size());
   for (const auto & point : ls) {
     geometry_msgs::msg::Point p;
     p.x = point.x();
@@ -183,8 +193,7 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
     }
   } else {
     RCLCPP_WARN(
-      rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
-      "Unsupported marker type: only LINE_STRIP and LINE_LIST are supported.");
+      get_logger(), "Unsupported marker type: only LINE_STRIP and LINE_LIST are supported.");
     // return null MarkerArray
     return marker_array;
   }
@@ -244,14 +253,12 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
 
   if (marker_type == visualization_msgs::msg::Marker::ARROW) {
     if (points.size() < 2) {
-      RCLCPP_WARN(
-        rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
-        "ARROW type Marker requires exactly 2 points, Point is not enough");
+      RCLCPP_WARN(get_logger(), "ARROW type Marker requires exactly 2 points, Point is not enough");
       // return empty marker array
       return marker_array;
     } else if (points.size() > 2) {
       RCLCPP_WARN(
-        rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
+        get_logger(),
         "ARROW type Marker requires exactly 2 points. Too many points, use the first two points.");
     }
     auto marker = create_default_marker(
@@ -281,8 +288,7 @@ visualization_msgs::msg::MarkerArray create_geometry_msgs_marker_array(
     marker_array.markers.push_back(marker);
   } else {
     RCLCPP_WARN(
-      rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
-      "Unsupported marker type: only ARROW, SPHERE and LINE_STRIP are supported.");
+      get_logger(), "Unsupported marker type: only ARROW, SPHERE and LINE_STRIP are supported.");
   }
 
   return marker_array;
@@ -312,6 +318,7 @@ visualization_msgs::msg::MarkerArray create_autoware_geometry_marker_array(
   auto marker =
     create_default_marker("map", stamp, ns, id, static_cast<int32_t>(marker_type), scale, color);
 
+  marker.points.reserve(ring.size() + 1);
   for (size_t i = 0; i < ring.size(); ++i) {
     geometry_msgs::msg::Point pt;
     pt.x = ring[i][0];
@@ -336,6 +343,9 @@ visualization_msgs::msg::Marker create_lanelet_linestring_marker(
 {
   visualization_msgs::msg::Marker marker = create_default_marker(
     "map", stamp, ns, id, visualization_msgs::msg::Marker::LINE_LIST, scale, color);
+  if (ls.size() > 1) {
+    marker.points.reserve((ls.size() - 1) * 2);
+  }
   geometry_msgs::msg::Point p1, p2;
   p1.z = p2.z = z;
   for (auto i = 0UL; i + 1 < ls.size(); ++i) {
@@ -407,6 +417,7 @@ visualization_msgs::msg::MarkerArray create_lanelet_polygon_marker_array(
   auto marker = create_default_marker(
     "map", stamp, ns, id, visualization_msgs::msg::Marker::LINE_STRIP,
     create_marker_scale(0.1, 0.0, 0.0), color);
+  marker.points.reserve(polygon.size());
   for (const auto & p : polygon) {
     geometry_msgs::msg::Point pt;
     pt.x = p.x();
@@ -428,6 +439,7 @@ visualization_msgs::msg::MarkerArray create_lanelet_polygon_marker_array(
     "map", stamp, ns, id, visualization_msgs::msg::Marker::LINE_STRIP, scale, color);
 
   marker.points.clear();
+  marker.points.reserve(polygon.size() + 1);
   for (const auto & p : polygon) {
     geometry_msgs::msg::Point point = create_marker_position(p.x(), p.y(), z + 0.5);
     marker.points.push_back(point);
@@ -479,8 +491,7 @@ visualization_msgs::msg::MarkerArray create_lanelet_polygon_marker_array(
     }
   } else {
     RCLCPP_WARN(
-      rclcpp::get_logger("autoware_marker_utils").get_child("marker_conversion"),
-      "Unsupported marker type: only LINE_STRIP and LINE_LIST are supported.");
+      get_logger(), "Unsupported marker type: only LINE_STRIP and LINE_LIST are supported.");
     // return null MarkerArray
     return marker_array;
   }
@@ -582,6 +593,10 @@ visualization_msgs::msg::MarkerArray create_path_with_lane_id_marker_array(
     "map", now, ns, static_cast<int32_t>(uid), visualization_msgs::msg::Marker::ARROW, scale,
     color);
 
+  // The arc-length array is independent of the loop iteration, so compute it once up front
+  // (only when text markers are requested) instead of recomputing it on every text marker.
+  const auto arclength = with_text ? calc_path_arc_length_array(path) : std::vector<double>{};
+
   for (const auto & p : path.points) {
     marker.id = uid + i++;
 
@@ -592,7 +607,6 @@ visualization_msgs::msg::MarkerArray create_path_with_lane_id_marker_array(
     }
     msg.markers.push_back(marker);
     if (i % 10 == 0 && with_text) {
-      const auto arclength = calc_path_arc_length_array(path);
       visualization_msgs::msg::Marker marker_text = create_default_marker(
         "map", now, ns, 0L, visualization_msgs::msg::Marker::TEXT_VIEW_FACING,
         create_marker_scale(0.2, 0.1, 0.3), create_marker_color(1, 1, 1, 0.999));

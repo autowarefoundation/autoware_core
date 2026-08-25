@@ -15,6 +15,7 @@
 #include "ground_filter.hpp"
 
 #include <autoware/point_types/types.hpp>
+#include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
 #include <pcl/point_cloud.h>
@@ -22,14 +23,23 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <memory>
-#include <utility>
 #include <vector>
+
+namespace
+{
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
+}  // namespace
+
+// ======================= LEGACY 11 TESTS (FOCUSING ON GRID MODE) ======================= //
 
 class GroundFilterTest : public ::testing::Test
 {
 protected:
   void SetUp() override
   {
+    param_.elevation_grid_mode = true;
+
     // Initialize parameter structure
     param_.global_slope_max_angle_rad = 0.26f;  // ~15 degrees
     param_.local_slope_max_angle_rad = 0.26f;   // ~15 degrees
@@ -41,9 +51,18 @@ protected:
     param_.grid_size_m = 0.5f;
     param_.grid_mode_switch_radius = 20.0f;
     param_.ground_grid_buffer_size = 3;
-    param_.virtual_lidar_x = 1.4f;
-    param_.virtual_lidar_y = 0.0f;
-    param_.virtual_lidar_z = 1.9f;
+    param_.split_points_distance_tolerance = 0.2f;
+    param_.split_height_distance = 0.2f;
+    param_.use_virtual_ground_point = true;
+
+    // So here previously we had virtual lidar origin params:
+    // - param_.virtual_lidar_x = 1.4f;
+    // - param_.virtual_lidar_y = 0.0f;
+    // - param_.virtual_lidar_z = 1.9f;
+    // But now we gonna use vehicle's intuitive info to set these values:
+    param_.wheel_base_m = 2.8f;  // 2.8 / 2 = 1.4 for the X origin
+    param_.center_pcl_shift = 0.0f;
+    param_.vehicle_height_m = 1.9f;  // Directly maps to the Z origin
 
     // Create filter
     ground_filter_ = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
@@ -58,25 +77,31 @@ protected:
   {
     auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
 
-    // Create simple XYZ point cloud for testing
-    pcl::PointCloud<pcl::PointXYZ> pcl_cloud;
+    // Create simple XYZIRC point cloud for testing
+    pcl::PointCloud<autoware::point_types::PointXYZIRC> pcl_cloud;
 
     // Add ground points
     for (int i = 0; i < 50; ++i) {
-      pcl::PointXYZ point;
+      autoware::point_types::PointXYZIRC point;
       point.x = static_cast<float>(i % 10) - 5.0f;
       point.y = static_cast<float>(i / 10.0f) - 2.5f;
       point.z =
         0.0f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX) - 0.5f) * 0.1f;
+      point.intensity = 100;
+      point.return_type = 1;
+      point.channel = 0;
       pcl_cloud.push_back(point);
     }
 
     // Add non-ground points
     for (int i = 0; i < 25; ++i) {
-      pcl::PointXYZ point;
+      autoware::point_types::PointXYZIRC point;
       point.x = static_cast<float>(i % 5) - 2.5f;
       point.y = static_cast<float>(i / 5.0f) - 2.5f;
       point.z = 0.5f + (static_cast<float>(std::rand()) / static_cast<float>(RAND_MAX)) * 0.5f;
+      point.intensity = 100;
+      point.return_type = 1;
+      point.channel = 0;
       pcl_cloud.push_back(point);
     }
 
@@ -100,16 +125,13 @@ TEST_F(GroundFilterTest, TestInitialization)
 
 TEST_F(GroundFilterTest, TestBasicFiltering)
 {
-  pcl::PointIndices no_ground_indices;
+  auto result = ground_filter_->filter(cloud_);
 
-  // Set data accessor
-  ground_filter_->setDataAccessor(cloud_);
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
 
-  // Process the point cloud
-  ground_filter_->process(cloud_, no_ground_indices);
-
-  // Should have some non-ground points
-  EXPECT_GT(no_ground_indices.indices.size(), 0);
+  // Expect output cloud to have some points (ground points should be filtered out)
+  EXPECT_GT(result.value().width * result.value().height, 0U);
 }
 
 TEST_F(GroundFilterTest, TestNonGroundHeightThreshold)
@@ -118,12 +140,13 @@ TEST_F(GroundFilterTest, TestNonGroundHeightThreshold)
   param_.non_ground_height_threshold = 0.1f;
   auto test_filter = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
 
-  pcl::PointIndices no_ground_indices;
-  test_filter->setDataAccessor(cloud_);
-  test_filter->process(cloud_, no_ground_indices);
+  auto result = test_filter->filter(cloud_);
 
-  // Should detect non-ground points
-  EXPECT_GE(no_ground_indices.indices.size(), 0);
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
+
+  // Expect some points
+  EXPECT_GT(result.value().width * result.value().height, 0U);
 }
 
 TEST_F(GroundFilterTest, TestTimeKeeper)
@@ -132,9 +155,7 @@ TEST_F(GroundFilterTest, TestTimeKeeper)
   auto time_keeper = std::make_shared<autoware_utils_debug::TimeKeeper>();
   ground_filter_->setTimeKeeper(time_keeper);
 
-  pcl::PointIndices no_ground_indices;
-  ground_filter_->setDataAccessor(cloud_);
-  EXPECT_NO_THROW(ground_filter_->process(cloud_, no_ground_indices));
+  EXPECT_NO_THROW({ auto result = ground_filter_->filter(cloud_); });
 }
 
 TEST_F(GroundFilterTest, TestPointsCentroidFunctionality)
@@ -247,27 +268,18 @@ TEST_F(GroundFilterTest, TestVariousParameterConfigurations)
   // Test with different parameter configurations to cover more code paths
   param_.use_recheck_ground_cluster = false;
   auto test_filter1 = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
-
-  pcl::PointIndices no_ground_indices1;
-  test_filter1->setDataAccessor(cloud_);
-  test_filter1->process(cloud_, no_ground_indices1);
+  EXPECT_TRUE(test_filter1->filter(cloud_).has_value());
 
   param_.use_recheck_ground_cluster = true;
   param_.use_lowest_point = false;
   auto test_filter2 = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
-
-  pcl::PointIndices no_ground_indices2;
-  test_filter2->setDataAccessor(cloud_);
-  test_filter2->process(cloud_, no_ground_indices2);
+  EXPECT_TRUE(test_filter2->filter(cloud_).has_value());
 
   param_.grid_size_m = 1.0f;
   param_.grid_mode_switch_radius = 10.0f;
   param_.ground_grid_buffer_size = 1;
   auto test_filter3 = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
-
-  pcl::PointIndices no_ground_indices3;
-  test_filter3->setDataAccessor(cloud_);
-  EXPECT_NO_THROW(test_filter3->process(cloud_, no_ground_indices3));
+  EXPECT_TRUE(test_filter3->filter(cloud_).has_value());
 }
 
 TEST_F(GroundFilterTest, TestDifferentPointCloudLayouts)
@@ -291,11 +303,9 @@ TEST_F(GroundFilterTest, TestDifferentPointCloudLayouts)
   xyzirc_cloud->header.frame_id = "base_link";
   xyzirc_cloud->header.stamp = rclcpp::Clock().now();
 
-  pcl::PointIndices no_ground_indices;
-  ground_filter_->setDataAccessor(xyzirc_cloud);
-  ground_filter_->process(xyzirc_cloud, no_ground_indices);
-
-  EXPECT_GE(no_ground_indices.indices.size(), 0);
+  auto result = ground_filter_->filter(xyzirc_cloud);
+  ASSERT_TRUE(result.has_value()) << result.error();
+  EXPECT_GE(result.value().width * result.value().height, 0U);
 }
 
 TEST_F(GroundFilterTest, TestExtremeParameterValues)
@@ -309,13 +319,182 @@ TEST_F(GroundFilterTest, TestExtremeParameterValues)
 
   auto extreme_filter = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
 
-  pcl::PointIndices no_ground_indices;
-  extreme_filter->setDataAccessor(cloud_);
-  EXPECT_NO_THROW(extreme_filter->process(cloud_, no_ground_indices));
+  EXPECT_NO_THROW({ auto result = extreme_filter->filter(cloud_); });
+}
+
+// ======================================================================================= //
+
+// ======================== NEW 3 TESTS (FOCUSING ON RADIAL MODE) ======================== //
+
+class GroundFilterRadialTest : public ::testing::Test
+{
+protected:
+  autoware::ground_filter::GroundFilterParameter param_;
+  std::unique_ptr<autoware::ground_filter::GroundFilter> filter_;
+
+  // Set up test environment with radial mode params.
+  void SetUp() override
+  {
+    // Lock to radial mode
+    param_.elevation_grid_mode = false;
+
+    // Set slopes to exactly 15 deg
+    param_.global_slope_max_angle_rad = 0.26f;
+    param_.local_slope_max_angle_rad = 0.26f;
+
+    // Set slice size to 1 deg
+    param_.radial_divider_angle_rad = 0.0175f;
+
+    // Other params
+    param_.split_points_distance_tolerance = 0.2f;
+    param_.split_height_distance = 0.2f;
+    param_.use_virtual_ground_point = true;
+    param_.wheel_base_m = 2.8f;
+    param_.center_pcl_shift = 0.0f;
+    param_.vehicle_height_m = 1.9f;
+
+    filter_ = std::make_unique<autoware::ground_filter::GroundFilter>(param_);
+  }
+
+  /**
+   * @brief Helper function to create a point cloud from a vector of PointXYZIRC points.
+   *
+   * @param points Vector of PointXYZIRC points to include in the point cloud.
+   *
+   * @return Shared pointer to the created PointCloud2 message.
+   */
+  sensor_msgs::msg::PointCloud2::SharedPtr create_point_cloud(
+    const std::vector<autoware::point_types::PointXYZIRC> & points)
+  {
+    auto cloud = std::make_shared<sensor_msgs::msg::PointCloud2>();
+    pcl::PointCloud<autoware::point_types::PointXYZIRC> pcl_cloud;
+    for (const auto & p : points) {
+      pcl_cloud.push_back(p);
+    }
+    pcl::toROSMsg(pcl_cloud, *cloud);
+    cloud->header.frame_id = "base_link";
+    cloud->header.stamp = rclcpp::Clock().now();
+    return cloud;
+  }
+};
+
+// TEST 1. Confirm points in different azimuths are correctly classified as non-ground
+// when they are towering above ground.
+// This test creates a simple point cloud with 3 points:
+// - Point A (5, 0, 5)
+// - Point B (0, 5, 5)
+// - Point C (-5, 0, 5).
+// All points have height z = 5.0 and should be classified as non-ground.
+TEST_F(GroundFilterRadialTest, RadialDifferentAzimuths)
+{
+  autoware::point_types::PointXYZIRC pA, pB, pC;
+  pA.x = 5.0f;
+  pA.y = 0.0f;
+  pA.z = 5.0f;
+  pB.x = 0.0f;
+  pB.y = 5.0f;
+  pB.z = 5.0f;
+  pC.x = -5.0f;
+  pC.y = 0.0f;
+  pC.z = 5.0f;
+
+  auto cloud = create_point_cloud({pA, pB, pC});
+  auto result = filter_->filter(cloud);
+
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
+
+  // Convert output ROS message back to PCL to check actual data
+  pcl::PointCloud<autoware::point_types::PointXYZIRC> out_cloud;
+  pcl::fromROSMsg(result.value(), out_cloud);
+
+  // All 3 should be ground
+  EXPECT_EQ(out_cloud.size(), 3U);
+}
+
+// TEST 2. Confirm point classification logic in classifyPointCloud.
+// This test creates a simple point cloud with 3 points: (3, 0, 0), (4, 0, 0.6), (5, 0, 2.0).
+// With given slope threshold 15 deg and height threshold 0.2, we expect:
+// - Point A (3, 0, 0) : ground (slope 0, height 0)
+// - Point B (4, 0, 0.6) : non-ground (slope 30 deg, height 0.6 > 0.2)
+// - Point C (5, 0, 2.0) : non-ground (slope ~21.8 deg, height 2.0 > 0.2)
+TEST_F(GroundFilterRadialTest, ClassifyLocalAndGlobalSlopes)
+{
+  autoware::point_types::PointXYZIRC pA, pB, pC;
+  pA.x = 3.0f;
+  pA.y = 0.0f;
+  pA.z = 0.0f;
+  pB.x = 4.0f;
+  pB.y = 0.0f;
+  pB.z = 0.6f;
+  pC.x = 5.0f;
+  pC.y = 0.0f;
+  pC.z = 2.0f;
+
+  auto cloud = create_point_cloud({pA, pB, pC});
+  auto result = filter_->filter(cloud);
+
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
+
+  // Convert output ROS message back to PCL to check actual data
+  pcl::PointCloud<autoware::point_types::PointXYZIRC> out_cloud;
+  pcl::fromROSMsg(result.value(), out_cloud);
+
+  // Expect 2 non-ground points B and C in that order
+  ASSERT_EQ(out_cloud.points.size(), 2U);
+  // B
+  EXPECT_NEAR(out_cloud.points[0].x, 4.0f, near_tol);
+  EXPECT_NEAR(out_cloud.points[0].z, 0.6f, near_tol);
+  // C
+  EXPECT_NEAR(out_cloud.points[1].x, 5.0f, near_tol);
+  EXPECT_NEAR(out_cloud.points[1].z, 2.0f, near_tol);
+}
+
+// TEST 3. Testing point follow logic.
+// This test creates a simple point cloud with 3 points: (3, 0, 0), (3.05, 0, 0.02), (3.10, 0, 2.0).
+// I designed first 2 points to be kinda close so that the second one is considered "following" the
+// first one, while the third point is far away and should be classified as non-ground.
+// Expects:
+// - Point A (3, 0, 0) : ground
+// - Point B (3.05, 0, 0.02) : ground too, following above
+// - Point C (3.10, 0, 2.0) : non-ground
+TEST_F(GroundFilterRadialTest, ClassifyPointFollowLogic)
+{
+  autoware::point_types::PointXYZIRC pA, pB, pC;
+  pA.x = 3.0f;
+  pA.y = 0.0f;
+  pA.z = 0.0f;
+  pB.x = 3.05f;
+  pB.y = 0.0f;
+  pB.z = 0.02f;
+  pC.x = 3.10f;
+  pC.y = 0.0f;
+  pC.z = 2.0f;
+
+  auto cloud = create_point_cloud({pA, pB, pC});
+  auto result = filter_->filter(cloud);
+
+  // Expect filter to succeed
+  ASSERT_TRUE(result.has_value()) << result.error();
+
+  // Convert output ROS message back to PCL to check actual data
+  pcl::PointCloud<autoware::point_types::PointXYZIRC> out_cloud;
+  pcl::fromROSMsg(result.value(), out_cloud);
+
+  // Expect 1 non-ground point being C
+  ASSERT_EQ(out_cloud.points.size(), 1U);
+  EXPECT_NEAR(out_cloud.points[0].x, 3.10f, near_tol);
+  EXPECT_NEAR(out_cloud.points[0].z, 2.0f, near_tol);
 }
 
 int main(int argc, char ** argv)
 {
   ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+
+  rclcpp::init(argc, argv);
+  int result = RUN_ALL_TESTS();
+  rclcpp::shutdown();
+
+  return result;
 }

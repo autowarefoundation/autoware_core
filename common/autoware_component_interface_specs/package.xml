@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_component_interface_specs</name>
-  <version>1.8.0</version>
+  <version>1.9.0</version>
   <description>The autoware_component_interface_specs package</description>
   <maintainer email="isamu.takagi@tier4.jp">Takagi, Isamu</maintainer>
   <maintainer email="yukihiro.saito@tier4.jp">Yukihiro Saito</maintainer>
@@ -20,10 +20,14 @@
   <depend>autoware_planning_msgs</depend>
   <depend>autoware_system_msgs</depend>
   <depend>autoware_vehicle_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>nav_msgs</depend>
-  <depend>rcl</depend>
   <depend>rclcpp</depend>
+  <depend>rcutils</depend>
+  <depend>rmw</depend>
+  <depend>rosidl_runtime_c</depend>
   <depend>rosidl_runtime_cpp</depend>
+  <depend>rosidl_typesupport_cpp</depend>
   <depend>sensor_msgs</depend>
 
   <test_depend>ament_cmake_gtest</test_depend>

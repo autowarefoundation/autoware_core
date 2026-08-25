@@ -12,6 +12,10 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_autoware_planning_test_manager
     test/test_planning_test_manager.cpp
   )
+
+  ament_auto_add_gtest(test_autoware_planning_test_manager_utils
+    test/test_planning_test_manager_utils.cpp
+  )
 endif()
 
 autoware_ament_auto_package(

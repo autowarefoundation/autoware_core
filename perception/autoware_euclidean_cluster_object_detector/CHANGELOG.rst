@@ -2,6 +2,34 @@
 Changelog for package autoware_euclidean_cluster_object_detector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* perf(autoware_euclidean_cluster_object_detector): eliminate hot-loop allocations in clustering (`#1124 <https://github.com/autowarefoundation/autoware_core/issues/1124>`_)
+  * perf(autoware_euclidean_cluster_object_detector): eliminate hot-loop allocations in clustering
+  Build the output clusters in place with emplace_back instead of heap-allocating a
+  pcl::PointCloud via new and deep-copying it into the output vector per cluster, and
+  reserve the per-cluster point buffers up front. Cache the single unordered_map hash
+  lookup per input point in the voxel path (previously map[index] was re-probed several
+  times), reserve the map, and reserve the 2D-flatten loops in both implementations.
+  Internal-only and behavior-preserving; the public cluster() API is unchanged.
+  Characterization tests pinning cluster membership, per-point coordinates, the empty
+  -input path, and the objects/clusters lockstep relationship are added first to prove
+  equivalence.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * fix(autoware_euclidean_cluster_object_detector): address review feedback
+  - Replace pcl::PointCloud::emplace_back with push_back for PCL portability
+  - Correct centroid comment to match the asserted x/y bounds
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_euclidean_cluster_object_detector): pin empty-cloud input on implemented voxel cluster overload (`#71 <https://github.com/autowarefoundation/autoware_core/issues/71>`_)
+  Add a characterization test calling the implemented 3-arg VoxelGridBasedEuclideanCluster::cluster(msg, objects, clusters) overload with an empty point cloud, pinning that it returns true with empty objects and clusters (no crash, no guard needed).
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * test(autoware_euclidean_cluster_object_detector): pin clustering output via set comparison
+  Rewrite the clustering test so the named input point sets are the single source of truth: sort the points within each cluster and the clusters themselves, then assert a single EXPECT_EQ against {near_points\_, far_points\_}. Drops the per-point if-reclassification and the tautological near/far counters that re-derived the production decision on the test side, per review.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

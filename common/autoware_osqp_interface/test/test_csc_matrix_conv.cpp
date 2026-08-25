@@ -164,6 +164,47 @@ TEST(TestCscMatrixConv, Trapezoidal)
     EXPECT_EQ(e.what(), std::string("Matrix must be square (n, n)"));
   }
 }
+TEST(TestCscMatrixConv, NearZeroPruning)
+{
+  using autoware::osqp_interface::calCSCMatrix;
+  using autoware::osqp_interface::calCSCMatrixTrapezoidal;
+  using autoware::osqp_interface::CSC_Matrix;
+
+  // Values with magnitude < 1e-9 are treated as zero (pruned); values >= 1e-9 are kept.
+  // Row vector: [below-threshold, above-threshold, negative-below-threshold, negative-kept]
+  Eigen::MatrixXd rect(1, 4);
+  rect << 1.0e-10, 1.0e-8, -1.0e-10, -1.0e-8;
+
+  const CSC_Matrix csc = calCSCMatrix(rect);
+  // Only the two >= 1e-9 magnitude values survive.
+  ASSERT_EQ(csc.m_vals.size(), size_t(2));
+  EXPECT_DOUBLE_EQ(csc.m_vals[0], 1.0e-8);
+  EXPECT_DOUBLE_EQ(csc.m_vals[1], -1.0e-8);
+  ASSERT_EQ(csc.m_row_idxs.size(), size_t(2));
+  EXPECT_EQ(csc.m_row_idxs[0], c_int(0));
+  EXPECT_EQ(csc.m_row_idxs[1], c_int(0));
+  // One entry per column boundary: col 0 pruned, col 1 keeps 1, col 2 pruned, col 3 keeps 1.
+  ASSERT_EQ(csc.m_col_idxs.size(), size_t(5));
+  EXPECT_EQ(csc.m_col_idxs[0], c_int(0));
+  EXPECT_EQ(csc.m_col_idxs[1], c_int(0));
+  EXPECT_EQ(csc.m_col_idxs[2], c_int(1));
+  EXPECT_EQ(csc.m_col_idxs[3], c_int(1));
+  EXPECT_EQ(csc.m_col_idxs[4], c_int(2));
+
+  // The same threshold applies along the diagonal of the trapezoidal conversion.
+  Eigen::MatrixXd square(2, 2);
+  square << 1.0e-10, 1.0e-8, 0.0, -1.0e-10;
+  const CSC_Matrix square_csc = calCSCMatrixTrapezoidal(square);
+  // (0,0)=1e-10 pruned, (0,1)=1e-8 kept, (1,1)=-1e-10 pruned.
+  ASSERT_EQ(square_csc.m_vals.size(), size_t(1));
+  EXPECT_DOUBLE_EQ(square_csc.m_vals[0], 1.0e-8);
+  ASSERT_EQ(square_csc.m_row_idxs.size(), size_t(1));
+  EXPECT_EQ(square_csc.m_row_idxs[0], c_int(0));
+  ASSERT_EQ(square_csc.m_col_idxs.size(), size_t(3));
+  EXPECT_EQ(square_csc.m_col_idxs[0], c_int(0));
+  EXPECT_EQ(square_csc.m_col_idxs[1], c_int(0));
+  EXPECT_EQ(square_csc.m_col_idxs[2], c_int(1));
+}
 TEST(TestCscMatrixConv, Print)
 {
   using autoware::osqp_interface::calCSCMatrix;

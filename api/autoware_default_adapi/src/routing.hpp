@@ -18,6 +18,7 @@
 #include <autoware/adapi_specs/routing.hpp>
 #include <autoware/component_interface_specs/planning.hpp>
 #include <autoware/component_interface_specs/system.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
 #include <autoware/motion_utils/vehicle/vehicle_state_checker.hpp>
 #include <diagnostic_updater/diagnostic_updater.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -35,36 +36,43 @@ private:
   using State = autoware::component_interface_specs::planning::RouteState;
   using Route = autoware::component_interface_specs::planning::LaneletRoute;
 
+  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_cli_;
 
   // AD API Interface
-  rclcpp::Publisher<autoware::adapi_specs::routing::RouteState::Message>::SharedPtr pub_state_;
-  rclcpp::Publisher<autoware::adapi_specs::routing::Route::Message>::SharedPtr pub_route_;
-  rclcpp::Service<autoware::adapi_specs::routing::SetRoutePoints::Service>::SharedPtr
-    srv_set_route_points_;
-  rclcpp::Service<autoware::adapi_specs::routing::SetRoute::Service>::SharedPtr srv_set_route_;
-  rclcpp::Service<autoware::adapi_specs::routing::ChangeRoutePoints::Service>::SharedPtr
-    srv_change_route_points_;
-  rclcpp::Service<autoware::adapi_specs::routing::ChangeRoute::Service>::SharedPtr
-    srv_change_route_;
-  rclcpp::Service<autoware::adapi_specs::routing::ClearRoute::Service>::SharedPtr srv_clear_route_;
+  autoware::component_interface_utils::Publisher<
+    autoware::adapi_specs::routing::RouteState>::SharedPtr pub_state_;
+  autoware::component_interface_utils::Publisher<autoware::adapi_specs::routing::Route>::SharedPtr
+    pub_route_;
+  autoware::component_interface_utils::Service<
+    autoware::adapi_specs::routing::SetRoutePoints>::SharedPtr srv_set_route_points_;
+  autoware::component_interface_utils::Service<autoware::adapi_specs::routing::SetRoute>::SharedPtr
+    srv_set_route_;
+  autoware::component_interface_utils::Service<
+    autoware::adapi_specs::routing::ChangeRoutePoints>::SharedPtr srv_change_route_points_;
+  autoware::component_interface_utils::Service<
+    autoware::adapi_specs::routing::ChangeRoute>::SharedPtr srv_change_route_;
+  autoware::component_interface_utils::Service<
+    autoware::adapi_specs::routing::ClearRoute>::SharedPtr srv_clear_route_;
 
   // Component Interface
-  rclcpp::Subscription<
-    autoware::component_interface_specs::planning::RouteState::Message>::SharedPtr sub_state_;
-  rclcpp::Subscription<
-    autoware::component_interface_specs::planning::LaneletRoute::Message>::SharedPtr sub_route_;
-  rclcpp::Client<autoware::component_interface_specs::planning::SetWaypointRoute::Service>::
-    SharedPtr cli_set_waypoint_route_;
-  rclcpp::Client<autoware::component_interface_specs::planning::SetLaneletRoute::Service>::SharedPtr
+  autoware::component_interface_utils::Subscription<
+    autoware::component_interface_specs::planning::RouteState>::SharedPtr sub_state_;
+  autoware::component_interface_utils::Subscription<
+    autoware::component_interface_specs::planning::LaneletRoute>::SharedPtr sub_route_;
+  autoware::component_interface_utils::Client<
+    autoware::component_interface_specs::planning::SetWaypointRoute>::SharedPtr
+    cli_set_waypoint_route_;
+  autoware::component_interface_utils::Client<
+    autoware::component_interface_specs::planning::SetLaneletRoute>::SharedPtr
     cli_set_lanelet_route_;
-  rclcpp::Client<autoware::component_interface_specs::planning::ClearRoute::Service>::SharedPtr
-    cli_clear_route_;
-  rclcpp::Subscription<autoware::component_interface_specs::system::OperationModeState::Message>::
-    SharedPtr sub_operation_mode_;
-
-  rclcpp::Client<autoware::component_interface_specs::system::ChangeOperationMode::Service>::
-    SharedPtr cli_operation_mode_;
+  autoware::component_interface_utils::Client<
+    autoware::component_interface_specs::planning::ClearRoute>::SharedPtr cli_clear_route_;
+  autoware::component_interface_utils::Subscription<
+    autoware::component_interface_specs::system::OperationModeState>::SharedPtr sub_operation_mode_;
+  autoware::component_interface_utils::Client<
+    autoware::component_interface_specs::system::ChangeOperationMode>::SharedPtr
+    cli_operation_mode_;
 
   void diagnose_state(diagnostic_updater::DiagnosticStatusWrapper & stat);
   void change_stop_mode();

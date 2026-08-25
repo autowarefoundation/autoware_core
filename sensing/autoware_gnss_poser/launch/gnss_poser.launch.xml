@@ -7,6 +7,8 @@
   <arg name="output_topic_gnss_pose_cov" default="gnss_pose_cov"/>
   <arg name="output_topic_gnss_fixed" default="gnss_fixed"/>
 
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
+
   <node pkg="autoware_gnss_poser" exec="gnss_poser" name="gnss_poser" output="both">
     <remap from="fix" to="$(var input_topic_fix)"/>
     <remap from="autoware_orientation" to="$(var input_topic_orientation)"/>
@@ -14,5 +16,6 @@
     <remap from="gnss_pose_cov" to="$(var output_topic_gnss_pose_cov)"/>
     <remap from="gnss_fixed" to="$(var output_topic_gnss_fixed)"/>
     <param from="$(var param_file)"/>
+    <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
   </node>
 </launch>

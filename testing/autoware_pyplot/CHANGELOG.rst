@@ -10,6 +10,31 @@ Changelog for package autoware_pyplot
   ---------
 * Contributors: Mamoru Sobue
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_pyplot): implement declared-but-undefined Axes/Text forwarders and fix move ctors (`#1153 <https://github.com/autowarefoundation/autoware_core/issues/1153>`_)
+  The static library declared several public members that had no definition,
+  so any caller linking against them would hit an undefined-reference error,
+  and some eagerly loaded Python attributes were dead state:
+  - Axes::bar_label and Axes::errorbar were declared in the header but never
+  defined and never loaded in load_attrs(); add their backing _attr members,
+  load them, and define the forwarders.
+  - contourf_attr was loaded for every Axes but had no public forwarder; add
+  Axes::contourf() to use it (mirrors Axes::contour()).
+  - Text::load_attrs() was never invoked from either constructor, so
+  set_rotation_attr stayed null, and Text::set_rotation() had no definition;
+  wire load_attrs() into both constructors and define set_rotation().
+  - The rvalue-taking constructors of Axes/Figure/Legend/Quiver/Text forwarded
+  their object&& to the base as an lvalue, defeating the move overload; pass
+  std::move(object) so the base move constructor is selected.
+  All changes are additive (no existing signature changed) and behavior
+  preserving for existing callers. Extend the gtest to exercise the new
+  forwarders, Text::set_rotation, and the subplots(r,c) 1x1 / 1xN / NxM
+  row-major flattening branches with value assertions.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+* Contributors: Yutaka Kondo, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

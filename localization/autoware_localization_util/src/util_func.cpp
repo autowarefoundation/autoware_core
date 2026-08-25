@@ -14,6 +14,9 @@
 
 #include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/util_func.hpp>
+#include <autoware_utils_geometry/geometry.hpp>
+#include <autoware_utils_math/normalization.hpp>
+#include <autoware_utils_math/unit_conversion.hpp>
 
 #include <algorithm>
 #include <string>
@@ -51,13 +54,9 @@ std_msgs::msg::ColorRGBA exchange_color_crc(double x)
 
 double calc_diff_for_radian(const double lhs_rad, const double rhs_rad)
 {
-  double diff_rad = lhs_rad - rhs_rad;
-  if (diff_rad > M_PI) {
-    diff_rad = diff_rad - 2 * M_PI;
-  } else if (diff_rad < -M_PI) {
-    diff_rad = diff_rad + 2 * M_PI;
-  }
-  return diff_rad;
+  // Delegate to autoware_utils_math::normalize_radian. Unlike the previous single-step wrap, this
+  // correctly normalizes differences whose magnitude exceeds 3*pi. The output range is [-pi, pi).
+  return autoware_utils_math::normalize_radian(lhs_rad - rhs_rad);
 }
 
 Eigen::Map<const RowMatrixXd> make_eigen_covariance(const std::array<double, 36> & covariance)
@@ -68,10 +67,7 @@ Eigen::Map<const RowMatrixXd> make_eigen_covariance(const std::array<double, 36>
 // x: roll, y: pitch, z: yaw
 geometry_msgs::msg::Vector3 get_rpy(const geometry_msgs::msg::Pose & pose)
 {
-  geometry_msgs::msg::Vector3 rpy;
-  tf2::Quaternion q(pose.orientation.x, pose.orientation.y, pose.orientation.z, pose.orientation.w);
-  tf2::Matrix3x3(q).getRPY(rpy.x, rpy.y, rpy.z);
-  return rpy;
+  return autoware_utils_geometry::get_rpy(pose);
 }
 
 geometry_msgs::msg::Vector3 get_rpy(const geometry_msgs::msg::PoseStamped & pose)
@@ -87,23 +83,15 @@ geometry_msgs::msg::Vector3 get_rpy(const geometry_msgs::msg::PoseWithCovariance
 geometry_msgs::msg::Quaternion rpy_rad_to_quaternion(
   const double r_rad, const double p_rad, const double y_rad)
 {
-  tf2::Quaternion q;
-  q.setRPY(r_rad, p_rad, y_rad);
-  geometry_msgs::msg::Quaternion quaternion_msg;
-  quaternion_msg.x = q.x();
-  quaternion_msg.y = q.y();
-  quaternion_msg.z = q.z();
-  quaternion_msg.w = q.w();
-  return quaternion_msg;
+  return autoware_utils_geometry::create_quaternion_from_rpy(r_rad, p_rad, y_rad);
 }
 
 geometry_msgs::msg::Quaternion rpy_deg_to_quaternion(
   const double r_deg, const double p_deg, const double y_deg)
 {
-  const double r_rad = r_deg * M_PI / 180.0;
-  const double p_rad = p_deg * M_PI / 180.0;
-  const double y_rad = y_deg * M_PI / 180.0;
-  return rpy_rad_to_quaternion(r_rad, p_rad, y_rad);
+  return rpy_rad_to_quaternion(
+    autoware_utils_math::deg2rad(r_deg), autoware_utils_math::deg2rad(p_deg),
+    autoware_utils_math::deg2rad(y_deg));
 }
 
 geometry_msgs::msg::Twist calc_twist(
@@ -227,10 +215,7 @@ geometry_msgs::msg::Pose matrix4f_to_pose(const Eigen::Matrix4f & eigen_pose_mat
 
 double norm(const geometry_msgs::msg::Point & p1, const geometry_msgs::msg::Point & p2)
 {
-  const double dx = p1.x - p2.x;
-  const double dy = p1.y - p2.y;
-  const double dz = p1.z - p2.z;
-  return std::sqrt(dx * dx + dy * dy + dz * dz);
+  return autoware_utils_geometry::calc_distance3d(p1, p2);
 }
 
 void output_pose_with_cov_to_log(

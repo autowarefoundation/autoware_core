@@ -16,6 +16,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #ifdef USE_AGNOCAST_ENABLED
@@ -39,19 +40,23 @@ Node::Node(
   }
 }
 
-std::string Node::get_name() const
+const char * Node::get_name() const
 {
-  return visit_node([](const auto & n) { return std::string(n->get_name()); });
+  // Return the persistent const char * owned by the node base interface so the pointer stays valid
+  // for the node's lifetime. This matches rclcpp::Node::get_name()'s signature (drop-in compatible)
+  // and avoids returning a dangling pointer into a temporary std::string.
+  return visit_node([](const auto & n) { return n->get_node_base_interface()->get_name(); });
 }
 
-std::string Node::get_namespace() const
+const char * Node::get_namespace() const
 {
-  return visit_node([](const auto & n) { return std::string(n->get_namespace()); });
+  return visit_node([](const auto & n) { return n->get_node_base_interface()->get_namespace(); });
 }
 
-std::string Node::get_fully_qualified_name() const
+const char * Node::get_fully_qualified_name() const
 {
-  return visit_node([](const auto & n) { return std::string(n->get_fully_qualified_name()); });
+  return visit_node(
+    [](const auto & n) { return n->get_node_base_interface()->get_fully_qualified_name(); });
 }
 
 rclcpp::Logger Node::get_logger() const
@@ -69,14 +74,14 @@ rclcpp::Time Node::now() const
   return visit_node([](const auto & n) { return n->now(); });
 }
 
-rclcpp::node_interfaces::NodeBaseInterface::SharedPtr Node::get_node_base_interface()
+rclcpp::node_interfaces::NodeBaseInterface::SharedPtr Node::get_node_base_interface() const
 {
-  return visit_node([](auto & n) { return n->get_node_base_interface(); });
+  return visit_node([](const auto & n) { return n->get_node_base_interface(); });
 }
 
-rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr Node::get_node_topics_interface()
+rclcpp::node_interfaces::NodeTopicsInterface::SharedPtr Node::get_node_topics_interface() const
 {
-  return visit_node([](auto & n) { return n->get_node_topics_interface(); });
+  return visit_node([](const auto & n) { return n->get_node_topics_interface(); });
 }
 
 rclcpp::node_interfaces::NodeParametersInterface::SharedPtr Node::get_node_parameters_interface()
@@ -178,7 +183,8 @@ rcl_interfaces::msg::ListParametersResult Node::list_parameters(
 rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr
 Node::add_on_set_parameters_callback(OnSetParametersCallbackType callback)
 {
-  return visit_node([&](auto & n) { return n->add_on_set_parameters_callback(callback); });
+  return visit_node(
+    [&](auto & n) { return n->add_on_set_parameters_callback(std::move(callback)); });
 }
 
 void Node::remove_on_set_parameters_callback(

@@ -5,6 +5,43 @@ Changelog for package autoware_motion_velocity_planner
 1.1.0 (2025-05-01)
 ------------------
 
+1.9.0 (2026-06-24)
+------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(motion_velocity_planner): apply autoware_agnocast_wrapper for CIE (`#1187 <https://github.com/autowarefoundation/autoware_core/issues/1187>`_)
+  Switch the motion_velocity_planner node registration from rclcpp_components_register_node to autoware_agnocast_wrapper_register_node (ROS2_EXECUTOR SingleThreadedExecutor, AGNOCAST_EXECUTOR CallbackIsolatedAgnocastExecutor) so the node can be isolated by the agnocast CIE thread configurator.
+* refactor(autoware_motion_velocity_planner): extract pure node logic into testable free functions (`#1136 <https://github.com/autowarefoundation/autoware_core/issues/1136>`_)
+  * refactor(autoware_motion_velocity_planner): extract pure node logic into testable free functions
+  Extract three pure pieces of MotionVelocityPlannerNode logic into free
+  functions in an internal header (node_utils.hpp/.cpp), turning the node
+  methods into thin wrappers with no public API change:
+  - process_traffic_signals: build the raw and last-observed traffic-light
+  maps from a TrafficLightGroupArray, including the UNKNOWN-with-prior
+  carry-over (keep prior body, refresh timestamp).
+  - resample_trajectory_by_min_interval: the min-interval point decimation
+  previously inlined in generate_trajectory.
+  - select_pointcloud_transform_source: the TF transform-selection branch
+  (at-stamp / time-zero fallback / none) from process_no_ground_pointcloud,
+  expressed as a pure decision over canTransform results.
+  Add focused unit tests (test_node_utils) covering the UNKNOWN carry-over,
+  empty/single-point/all-close/threshold resampling cases, and the TF
+  fallback/no-transform branches. Behavior preserving.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * refactor(autoware_motion_velocity_planner): address review feedback
+  - node_utils.hpp: include lanelet2_core/Forward.h instead of the heavy
+  primitives/Lanelet.h since only lanelet::Id is needed for the map key
+  (consistent with planner_data.hpp)
+  - node.cpp: correct the AtTimeZero fallback debug message; the branch is
+  also taken when the stamp is valid but no transform exists at that stamp,
+  so do not claim the pointcloud time is always invalid
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  * refactor(autoware_motion_velocity_planner): inline pointcloud transform-source selection
+  Drop the select_pointcloud_transform_source() extraction per review: the seam captured only a trivial 3-bool decision while the real tf2 coupling (which time to look up, the 0.05s timeout, fallback order and side effects) stayed in the node untested. Inline the decision back into the no-ground-pointcloud handler and remove the PointcloudTransformSource enum and its unit tests. The process_traffic_signals and resample_trajectory_by_min_interval extractions are kept.
+  Refs: `autowarefoundation/autoware_core#1096 <https://github.com/autowarefoundation/autoware_core/issues/1096>`_
+  ---------
+* fix(planning): skip processing empty no_ground_pointcloud to avoid PCL warning spam (`#1082 <https://github.com/autowarefoundation/autoware_core/issues/1082>`_)
+* Contributors: Mert Yavuz, Yutaka Kondo, atsushi yano, github-actions
+
 1.8.0 (2026-05-01)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
