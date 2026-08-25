@@ -22,6 +22,7 @@
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <rclcpp/time.hpp>
 #include <tf2/utils.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
@@ -31,8 +32,6 @@
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <nav_msgs/msg/odometry.hpp>
-
-#include <rclcpp/time.hpp>
 
 #include <array>
 #include <atomic>
