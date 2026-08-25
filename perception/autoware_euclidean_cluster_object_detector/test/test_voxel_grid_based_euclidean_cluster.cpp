@@ -29,47 +29,42 @@
 
 using autoware::point_types::PointXYZI;
 
-void set_point_cloud2_fields(sensor_msgs::msg::PointCloud2 & pointcloud)
+/// \brief Build a cloud that holds \p points.
+sensor_msgs::msg::PointCloud2 make_point_cloud(const std::vector<PointXYZI> & points)
 {
-  pointcloud.fields.resize(4);
-  pointcloud.fields[0].name = "x";
-  pointcloud.fields[1].name = "y";
-  pointcloud.fields[2].name = "z";
-  pointcloud.fields[3].name = "intensity";
-  pointcloud.fields[0].offset = 0;
-  pointcloud.fields[1].offset = 4;
-  pointcloud.fields[2].offset = 8;
-  pointcloud.fields[3].offset = 12;
-  pointcloud.fields[0].datatype = sensor_msgs::msg::PointField::FLOAT32;
-  pointcloud.fields[1].datatype = sensor_msgs::msg::PointField::FLOAT32;
-  pointcloud.fields[2].datatype = sensor_msgs::msg::PointField::FLOAT32;
-  pointcloud.fields[3].datatype = sensor_msgs::msg::PointField::FLOAT32;
-  pointcloud.fields[0].count = 1;
-  pointcloud.fields[1].count = 1;
-  pointcloud.fields[2].count = 1;
-  pointcloud.fields[3].count = 1;
-  pointcloud.height = 1;
-  pointcloud.point_step = 16;
-  pointcloud.is_bigendian = false;
-  pointcloud.is_dense = true;
-  pointcloud.header.frame_id = "dummy_frame_id";
-  pointcloud.header.stamp.sec = 0;
-  pointcloud.header.stamp.nanosec = 0;
-}
+  sensor_msgs::msg::PointCloud2 cloud;
+  cloud.fields.resize(4);
+  cloud.fields[0].name = "x";
+  cloud.fields[1].name = "y";
+  cloud.fields[2].name = "z";
+  cloud.fields[3].name = "intensity";
+  cloud.fields[0].offset = 0;
+  cloud.fields[1].offset = 4;
+  cloud.fields[2].offset = 8;
+  cloud.fields[3].offset = 12;
+  cloud.fields[0].datatype = sensor_msgs::msg::PointField::FLOAT32;
+  cloud.fields[1].datatype = sensor_msgs::msg::PointField::FLOAT32;
+  cloud.fields[2].datatype = sensor_msgs::msg::PointField::FLOAT32;
+  cloud.fields[3].datatype = sensor_msgs::msg::PointField::FLOAT32;
+  cloud.fields[0].count = 1;
+  cloud.fields[1].count = 1;
+  cloud.fields[2].count = 1;
+  cloud.fields[3].count = 1;
+  cloud.height = 1;
+  cloud.point_step = 16;
+  cloud.is_bigendian = false;
+  cloud.is_dense = true;
+  cloud.header.frame_id = "dummy_frame_id";
+  cloud.header.stamp.sec = 0;
+  cloud.header.stamp.nanosec = 0;
 
-/// \brief Append \p points to \p cloud, which may be empty or already hold points.
-void add_points(sensor_msgs::msg::PointCloud2 & cloud, const std::vector<PointXYZI> & points)
-{
-  if (cloud.fields.empty()) {
-    set_point_cloud2_fields(cloud);
-  }
-  const size_t offset = cloud.data.size();
-  cloud.data.resize(offset + points.size() * cloud.point_step);
+  cloud.data.resize(points.size() * cloud.point_step);
   for (size_t i = 0; i < points.size(); ++i) {
-    memcpy(&cloud.data[offset + i * cloud.point_step], &points[i], cloud.point_step);
+    memcpy(&cloud.data[i * cloud.point_step], &points[i], cloud.point_step);
   }
-  cloud.width += static_cast<uint32_t>(points.size());
+  cloud.width = static_cast<uint32_t>(points.size());
   cloud.row_step = cloud.point_step * cloud.width;
+  return cloud;
 }
 
 // A cluster whose point count sits exactly on both limits at once, `min_cluster_size` and
@@ -84,12 +79,10 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterAtBothSizeLimitsIsReported)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  sensor_msgs::msg::PointCloud2 cloud;
-  add_points(
-    cloud, {
-             PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{0.2f, 0.1f, 0.1f, 0.0f},
-           });
+  const auto cloud = make_point_cloud({
+    PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{0.2f, 0.1f, 0.1f, 0.0f},
+  });
 
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(cloud);
@@ -111,8 +104,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterBelowMinSizeIsDropped)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  sensor_msgs::msg::PointCloud2 cloud;
-  add_points(cloud, {PointXYZI{0.1f, 0.1f, 0.1f, 0.0f}});
+  const auto cloud = make_point_cloud({PointXYZI{0.1f, 0.1f, 0.1f, 0.0f}});
 
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(cloud);
@@ -132,12 +124,10 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterAboveMaxSizeIsSkipped)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  sensor_msgs::msg::PointCloud2 cloud;
-  add_points(
-    cloud, {
-             PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{0.2f, 0.1f, 0.1f, 0.0f},
-           });
+  const auto cloud = make_point_cloud({
+    PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{0.2f, 0.1f, 0.1f, 0.0f},
+  });
 
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(cloud);
@@ -159,12 +149,10 @@ TEST(VoxelGridBasedEuclideanClusterTest, ContradictorySizeLimitsReportNothing)
   param.voxel_leaf_size = 0.3f;
   param.min_points_number_per_voxel = 1;
 
-  sensor_msgs::msg::PointCloud2 cloud;
-  add_points(
-    cloud, {
-             PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{0.2f, 0.1f, 0.1f, 0.0f},
-           });
+  const auto cloud = make_point_cloud({
+    PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{0.2f, 0.1f, 0.1f, 0.0f},
+  });
 
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(cloud);
@@ -185,15 +173,13 @@ TEST(VoxelGridBasedEuclideanClusterTest, OversizedGroupIsSkippedWhileValidGroupI
   param.min_points_number_per_voxel = 1;
 
   // The groups are 9 m apart, far past `tolerance`, so they can never be linked to each other.
-  sensor_msgs::msg::PointCloud2 cloud;
-  add_points(
-    cloud, {
-             PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{9.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{9.2f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{18.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{18.2f, 0.1f, 0.1f, 0.0f},
-           });
+  const auto cloud = make_point_cloud({
+    PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{9.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{9.2f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{18.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{18.2f, 0.1f, 0.1f, 0.0f},
+  });
 
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(cloud);
@@ -220,16 +206,14 @@ TEST(VoxelGridBasedEuclideanClusterTest, SeparatedGroupsAreReportedOneObjectEach
   param.min_points_number_per_voxel = 1;
 
   // Three pairs, each 9 m from the next, which is far past `tolerance`.
-  sensor_msgs::msg::PointCloud2 cloud;
-  add_points(
-    cloud, {
-             PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{0.2f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{9.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{9.2f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{18.1f, 0.1f, 0.1f, 0.0f},
-             PointXYZI{18.2f, 0.1f, 0.1f, 0.0f},
-           });
+  const auto cloud = make_point_cloud({
+    PointXYZI{0.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{0.2f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{9.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{9.2f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{18.1f, 0.1f, 0.1f, 0.0f},
+    PointXYZI{18.2f, 0.1f, 0.1f, 0.0f},
+  });
 
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(cloud);
@@ -265,12 +249,10 @@ TEST(VoxelGridBasedEuclideanClusterTest, ObjectPositionIsTheMeanOfItsPoints)
   param.min_points_number_per_voxel = 1;
 
   // Both points fall in the cell spanning [0, 1) on x and y, so they form one cluster.
-  sensor_msgs::msg::PointCloud2 cloud;
-  add_points(
-    cloud, {
-             PointXYZI{0.1f, 0.2f, 0.3f, 0.0f},
-             PointXYZI{0.9f, 0.8f, 0.7f, 0.0f},
-           });
+  const auto cloud = make_point_cloud({
+    PointXYZI{0.1f, 0.2f, 0.3f, 0.0f},
+    PointXYZI{0.9f, 0.8f, 0.7f, 0.0f},
+  });
 
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
   auto result = cluster.cluster(cloud);
@@ -341,8 +323,7 @@ TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)
   param.min_points_number_per_voxel = 1;
 
   autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
-  sensor_msgs::msg::PointCloud2 cloud;
-  add_points(cloud, {});
+  const auto cloud = make_point_cloud({});
   auto result = cluster.cluster(cloud);
 
   EXPECT_EQ(result.cluster_message.objects.size(), 0u);
