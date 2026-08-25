@@ -138,7 +138,9 @@ void MissionPlannerNode::check_initialization()
 
   const auto result = mission_planner_.check_initialization();
   if (!result.became_ready) {
-    RCLCPP_INFO_THROTTLE(logger, clock, 5000, "%s", result.waiting_message->c_str());
+    if (result.waiting_message) {
+      RCLCPP_INFO_THROTTLE(logger, clock, 5000, "%s", result.waiting_message->c_str());
+    }
     return;
   }
 
@@ -190,7 +192,7 @@ void MissionPlannerNode::on_set_lanelet_route(
   const auto result = mission_planner_.set_lanelet_route(*req, transform_to_map);
   *res = result.response;
 
-  if (!res->status.success) {
+  if (!result.route || !result.route_marker) {
     if (result.error_message) {
       RCLCPP_ERROR(get_logger(), "%s", result.error_message->c_str());
     }
@@ -228,7 +230,7 @@ void MissionPlannerNode::on_set_waypoint_route(
     pub_goal_footprint_marker_->publish(*result.goal_footprint_marker);
   }
 
-  if (!res->status.success) {
+  if (!result.route || !result.route_marker) {
     if (result.error_message) {
       RCLCPP_ERROR(get_logger(), "%s", result.error_message->c_str());
     }
