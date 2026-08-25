@@ -62,12 +62,6 @@ struct MissionPlannerConfig
   autoware::vehicle_info_utils::VehicleInfo vehicle_info;
 };
 
-struct InitializationCheckResult
-{
-  bool became_ready;
-  std::optional<std::string> waiting_message;
-};
-
 struct SetLaneletRouteResult
 {
   SetLaneletRoute::Response response;
@@ -99,7 +93,7 @@ public:
   void on_operation_mode_state(const OperationModeState::ConstSharedPtr msg);
   void on_map(const LaneletMapBin::ConstSharedPtr msg);
 
-  InitializationCheckResult check_initialization();
+  bool check_initialization();
 
   ClearRoute::Response clear_route();
 

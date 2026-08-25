@@ -83,19 +83,16 @@ MissionPlanner::MissionPlanner(
 {
 }
 
-InitializationCheckResult MissionPlanner::check_initialization()
+bool MissionPlanner::check_initialization()
 {
-  if (!planner_->ready()) {
-    return {false, std::string("waiting lanelet map... Route API is not ready.")};
-  }
-  if (!odometry_) {
-    return {false, std::string("waiting odometry... Route API is not ready.")};
+  if (!planner_->ready() || !odometry_) {
+    return false;
   }
 
   // All data is ready. Now API is available.
   is_mission_planner_ready_ = true;
   change_state(RouteState::UNSET);
-  return {true, std::nullopt};
+  return true;
 }
 
 void MissionPlanner::on_odometry(const Odometry::ConstSharedPtr msg)

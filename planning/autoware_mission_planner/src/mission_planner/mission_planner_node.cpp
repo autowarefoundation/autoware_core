@@ -136,11 +136,10 @@ void MissionPlannerNode::check_initialization()
   auto logger = get_logger();
   auto clock = *get_clock();
 
-  const auto result = mission_planner_.check_initialization();
-  if (!result.became_ready) {
-    if (result.waiting_message) {
-      RCLCPP_INFO_THROTTLE(logger, clock, 5000, "%s", result.waiting_message->c_str());
-    }
+  const auto became_ready = mission_planner_.check_initialization();
+  if (!became_ready) {
+    RCLCPP_INFO_THROTTLE(
+      logger, clock, 5000, "waiting lanelet map and odometry... Route API is not ready.");
     return;
   }
 
