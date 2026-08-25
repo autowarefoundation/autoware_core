@@ -72,7 +72,7 @@ EKFLocalizer::EKFLocalizer(const HyperParameters & params)
 
 void EKFLocalizer::push_pose(const std::shared_ptr<const PoseWithCovariance> & pose)
 {
-  if (!is_activated_ && !is_set_initialpose_) {
+  if (!is_activated_ || !is_set_initialpose_) {
     return;
   }
 
