@@ -22,7 +22,10 @@ from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import SetParameter
 from launch_ros.substitutions import FindPackageShare
+import launch.logging
 import yaml
+
+logger = launch.logging.get_logger("global_parameter_loader")
 
 PARAM_FILE_SEPARATOR = ","
 
@@ -61,8 +64,11 @@ def create_set_parameter_actions(param_files):
     """
     params = {}
     for param_file in param_files:
-        if os.path.isfile(param_file):
-            params.update(load_param_file(param_file))
+        if not os.path.isfile(param_file):
+            logger.info(f"skipping the parameter file '{param_file}' because it does not exist")
+            continue
+        logger.info(f"loading the parameter file '{param_file}'")
+        params.update(load_param_file(param_file))
     return [SetParameter(name=k, value=v) for k, v in params.items()]
 
 
