@@ -59,21 +59,27 @@ protected:
     executor_->add_node(harness_node_);
 
     // Pubs
-    pub_map_ = harness_node_->create_publisher<autoware_map_msgs::msg::LaneletMapBin>("~/input/vector_map", 1);
-    pub_odom_ = harness_node_->create_publisher<nav_msgs::msg::Odometry>("~/input/odometry", 1);
-    pub_route_ = harness_node_->create_publisher<autoware_planning_msgs::msg::LaneletRoute>("~/input/route", 1);
+    pub_map_ = harness_node_->create_publisher<autoware_map_msgs::msg::LaneletMapBin>(
+      "/path_generator/input/vector_map", 
+      rclcpp::QoS(1).transient_local()
+    );
+    pub_odom_ = harness_node_->create_publisher<nav_msgs::msg::Odometry>("/path_generator/input/odometry", 1);
+    pub_route_ = harness_node_->create_publisher<autoware_planning_msgs::msg::LaneletRoute>(
+      "/path_generator/input/route",
+      rclcpp::QoS(1).transient_local()
+    );
 
     // Subs
     sub_path_ = harness_node_->create_subscription<autoware_internal_planning_msgs::msg::PathWithLaneId>(
-      "~/output/path", 1, [this](const autoware_internal_planning_msgs::msg::PathWithLaneId::ConstSharedPtr msg) {
+      "/path_generator/output/path", 1, [this](const autoware_internal_planning_msgs::msg::PathWithLaneId::ConstSharedPtr msg) {
         latest_path_ = msg;
       });
     sub_turn_ = harness_node_->create_subscription<autoware_vehicle_msgs::msg::TurnIndicatorsCommand>(
-      "~/output/turn_indicators_cmd", 1, [this](const autoware_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr msg) {
+      "/path_generator/output/turn_indicators_cmd", 1, [this](const autoware_vehicle_msgs::msg::TurnIndicatorsCommand::ConstSharedPtr msg) {
         latest_turn_ = msg;
       });
     sub_hazard_ = harness_node_->create_subscription<autoware_vehicle_msgs::msg::HazardLightsCommand>(
-      "~/output/hazard_lights_cmd", 1, [this](const autoware_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr msg) {
+      "/path_generator/output/hazard_lights_cmd", 1, [this](const autoware_vehicle_msgs::msg::HazardLightsCommand::ConstSharedPtr msg) {
         latest_hazard_ = msg;
       });
   }
@@ -146,6 +152,8 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
   // Set odom to route start
   auto odom = autoware::test_utils::makeOdometry();
   odom.pose.pose = route.start_pose;
+  odom.header.frame_id = "map";
+  route.header.frame_id = "map";
   
   pub_odom_->publish(odom);
   // Allow map & odom to register
@@ -179,6 +187,8 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   // Set odom a bit away from intersection initially
   auto odom = autoware::test_utils::makeOdometry();
   odom.pose.pose = route.start_pose;
+  odom.header.frame_id = "map";
+  route.header.frame_id = "map";
   
   pub_odom_->publish(odom);
   pub_route_->publish(route);
