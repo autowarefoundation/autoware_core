@@ -33,8 +33,18 @@
     <arg name="raw_vehicle_cmd_converter_param_path" value="$(find-pkg-share autoware_core)/config/vehicle/raw_vehicle_cmd_converter.param.yaml"/>
   </include>
 
-  <!-- Dummy Perception -->
-  <!--
+  <group>
+    <push-ros-namespace namespace="localization"/>
+    <push-ros-namespace namespace="util"/>
+    <include file="$(find-pkg-share autoware_pose_initializer)/launch/pose_initializer.launch.xml">
+      <arg name="ekf_enabled" value="false"/>
+      <arg name="gnss_enabled" value="false"/>
+      <arg name="yabloc_enabled" value="false"/>
+      <arg name="ndt_enabled" value="false"/>
+      <arg name="stop_check_enabled" value="false"/>
+    </include>
+  </group>
+
   <arg name="perception/enable_detection_failure" default="true" description="enable to simulate detection failure when using dummy perception"/>
   <arg name="perception/enable_object_recognition" default="false" description="enable object recognition"/>
   <arg name="perception/use_base_link_z" default="true" description="dummy perception uses base_link z axis coordinate if it is true"/>
@@ -45,15 +55,11 @@
     <arg name="use_base_link_z" value="$(var perception/use_base_link_z)"/>
     <arg name="visible_range" value="$(var sensing/visible_range)"/>
   </include>
-  -->
 
-  <!-- publish empty objects instead of object recognition module -->
-  <!--
   <group unless="$(var perception/enable_object_recognition)">
     <push-ros-namespace namespace="object_recognition"/>
     <node pkg="autoware_dummy_perception_publisher" exec="empty_objects_publisher" name="empty_objects_publisher" output="screen">
       <remap from="~/output/objects" to="/perception/object_recognition/objects"/>
     </node>
   </group>
-  -->
 </launch>
