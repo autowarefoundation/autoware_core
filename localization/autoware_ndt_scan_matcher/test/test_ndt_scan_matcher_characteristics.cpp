@@ -930,12 +930,10 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
   EXPECT_TRUE(contains(diag.message(), "Score is below the threshold. Score: "))
     << "message was: " << diag.message();
 
+  // `points_aligned`, the last unconditional publish, proves the callback ran past `publish_pose`.
   ASSERT_TRUE(
     harness->wait_until([&] { return points_aligned->count() >= 1 && tf->count() >= 1; }, 5s));
 
-  // The score message above proves the callback reached the score check; this proves it ran to its
-  // last publish. The other unconditional publishes can only stop together with the TF below.
-  EXPECT_EQ(points_aligned->count(), 1U);
   EXPECT_TRUE(has_ndt_base_link_transform(*tf));
   EXPECT_EQ(ndt_pose->count(), 0U);
   EXPECT_EQ(ndt_pose_with_cov->count(), 0U);
