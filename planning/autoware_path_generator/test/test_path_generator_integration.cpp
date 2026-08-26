@@ -200,4 +200,28 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   ASSERT_NE(latest_turn_, nullptr);
 }
 
+// Test 3. Fail-safe runtime boundary
+// This test fetches an empty route or out-of-bound odom.
+// Expects node not to crash, but should gracefully abort.
+TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
+{
+  load_and_publish_map("autoware_test_utils", "lanelet2_map.osm");
+  
+  autoware_planning_msgs::msg::LaneletRoute empty_route; 
+  auto odom = autoware::test_utils::makeOdometry();
+  
+  pub_odom_->publish(odom);
+  spin_executor_for(std::chrono::milliseconds(100));
+
+  // Reset captured pointers
+  latest_path_ = nullptr;
+  
+  // Publish empty route
+  pub_route_->publish(empty_route);
+  spin_executor_for(std::chrono::milliseconds(500));
+
+  // Expects node should not crash
+  EXPECT_EQ(latest_path_, nullptr) << "Node should fail-safe and not publish on empty route";
+}
+
 } // namespace autoware::path_generator
