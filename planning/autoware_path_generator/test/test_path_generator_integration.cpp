@@ -127,7 +127,7 @@ protected:
     return route_opt.value();
   }
 
-  static Odometry set_start_odom(const autoware_planning_msgs::msg::LaneletRoute & route) {
+  static nav_msgs::msg::Odometry set_start_odom(const autoware_planning_msgs::msg::LaneletRoute & route) {
     auto odom = autoware::test_utils::makeOdometry();
     odom.pose.pose = route.start_pose;
     odom.header.frame_id = "map";
