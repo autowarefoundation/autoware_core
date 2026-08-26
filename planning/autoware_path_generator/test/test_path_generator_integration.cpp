@@ -33,6 +33,12 @@
 #include <string>
 #include <vector>
 
+namespace
+{
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-2F;
+}  // namespace
+
 namespace autoware::path_generator {
 
 class PathGeneratorIntegrationHarness : public ::testing::Test
@@ -179,6 +185,7 @@ protected:
 TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
 {
   load_and_publish_map("autoware_test_utils", "lanelet2_map.osm");
+  
   auto route = load_route_stamped("autoware_path_generator", "common_route.yaml");
   
   // Set odom to route start
@@ -209,6 +216,7 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
 TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
 {
   load_and_publish_map("autoware_test_utils", "consecutive_turn/lanelet2_map.osm");
+  
   auto route = load_route_stamped("autoware_path_generator", "turn_signal_route.yaml");
   
   auto odom = set_start_odom(route);
@@ -236,7 +244,10 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
 {
   load_and_publish_map("autoware_test_utils", "lanelet2_map.osm");
   
+  // Empty route declared
   autoware_planning_msgs::msg::LaneletRoute empty_route; 
+  
+  // Empty odom declared
   auto odom = autoware::test_utils::makeOdometry();
   
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
@@ -257,6 +268,7 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
 TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
 {
   load_and_publish_map("autoware_test_utils", "2km_test.osm");
+  
   auto route = load_route_stamped("autoware_path_generator", "path_cut_route.yaml");
   
   auto odom = set_start_odom(route);
@@ -265,6 +277,32 @@ TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
 
   ASSERT_NE(latest_path_, nullptr) << "Failed to output path for path_cut_route (self-intersection truncation failed)";
   EXPECT_GT(latest_path_->points.size(), 0u);
+}
+
+// TEST 5: Goal connection scenario
+// This test checks if final point of generated path is smoothly aligned 
+// and matches requested goal pose.
+// As a matter of fact, this test is supposed to replace the old, removed
+// `test_dense_centerline.cpp` test suite in previous code version.
+TEST_F(PathGeneratorIntegrationHarness, GoalConnectionScenario)
+{
+  const auto map_path = ament_index_cpp::get_package_share_directory("autoware_lanelet2_utils") + "/sample_map/vm_01_10-12/dense_centerline/lanelet2_map.osm";
+  pub_map_->publish(autoware::test_utils::make_map_bin_msg(map_path));
+  
+  auto route = load_route_stamped("autoware_path_generator", "dense_centerline_route.yaml");
+  
+  auto odom = set_start_odom(route);
+
+  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
+
+  ASSERT_NE(latest_path_, nullptr) << "Failed to output path for dense_centerline_route";
+  ASSERT_GT(latest_path_->points.size(), 0u);
+  
+  // Assert final point aligns geometrically with goal pose
+  const auto & final_point = latest_path_->points.back().point.pose.position;
+  const auto & goal_point = route.goal_pose.position;
+  EXPECT_NEAR(final_point.x, goal_point.x, near_tol) << "Goal connection smoothing failed on X axis";
+  EXPECT_NEAR(final_point.y, goal_point.y, near_tol) << "Goal connection smoothing failed on Y axis";
 }
 
 } // namespace autoware::path_generator
