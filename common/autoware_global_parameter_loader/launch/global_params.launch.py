@@ -19,10 +19,10 @@ from launch.actions import DeclareLaunchArgument
 from launch.actions import IncludeLaunchDescription
 from launch.actions import OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
+import launch.logging
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import SetParameter
 from launch_ros.substitutions import FindPackageShare
-import launch.logging
 import yaml
 
 logger = launch.logging.get_logger("global_parameter_loader")
