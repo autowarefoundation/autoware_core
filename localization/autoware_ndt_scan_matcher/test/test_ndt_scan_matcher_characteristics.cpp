@@ -57,7 +57,7 @@ using ndt_test::InitialPoseSpec;
 using ndt_test::NdtHarness;
 using ndt_test::ScanDrive;
 
-using ndt_test::base_frame;
+using ndt_test::base_link_frame;
 using ndt_test::map_center_x;
 using ndt_test::map_center_y;
 using ndt_test::map_frame;
@@ -155,7 +155,7 @@ TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
   const auto outcome = harness->drive_one_scan(drive);
 
   // Assert
-  ASSERT_TRUE(outcome.has_value()) << "no scan_matching_status for the stale scan";
+  ASSERT_TRUE(outcome.has_value());
   const auto & diag = outcome->diag;
 
   EXPECT_GT(diag.value_as_double("sensor_points_delay_time_sec"), timeout_sec);
@@ -231,14 +231,12 @@ TEST(NdtScanMatcherCharacteristics, SensorPointsAreStoredEvenWhileDeactivated)
     harness->call_ndt_align(make_pose_at(harness->now(), map_center_x, map_center_y));
 
   // Assert
-  ASSERT_TRUE(response.has_value()) << "ndt_align_srv did not answer";
+  ASSERT_TRUE(response.has_value());
 
   // Waited for, not sampled: the service response can outrun the diagnostics its handler published.
   const auto diag = harness->wait_for_diag_since_mark(ndt_align_status);
   ASSERT_TRUE(diag.has_value());
-  EXPECT_EQ(diag->value("is_set_sensor_points"), "True")
-    << "the scan received while deactivated was discarded, so ndt_align can no longer run "
-       "before activation";
+  EXPECT_EQ(diag->value("is_set_sensor_points"), "True");
   EXPECT_TRUE(response->success);
 }
 
@@ -340,8 +338,7 @@ TEST(NdtScanMatcherCharacteristics, ActivatingClearsTheInitialPoseBuffer)
 
     // Assert
     ASSERT_TRUE(outcome.has_value());
-    EXPECT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "False")
-      << "re-activating no longer clears the initial-pose buffer";
+    EXPECT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "False");
   }
 }
 
@@ -378,23 +375,19 @@ TEST(NdtScanMatcherCharacteristics, InitialPoseIsRejectedBeforeTheFrameCheckWhen
 
 /// A wrong `frame_id` on the initial pose is an ERROR, not a WARN.
 ///
-/// The node's severities split by whether the condition can resolve itself. WARN covers transient
-/// states -- not yet activated, no pose to interpolate, no map yet, a poor score. ERROR covers
-/// configuration that will never fix itself: a missing TF, an out-of-range
-/// `converged_param_type`, a map that cannot be loaded, and this. Whoever publishes
-/// `ekf_pose_with_covariance` in the wrong frame will keep doing so, so ERROR is the consistent
-/// choice rather than an outlier.
-///
-/// It is pinned because that split is a convention rather than something the code states, and a
-/// pass that normalizes severities into a `determine_diagnostics()`-style helper would flatten it.
-/// Downgrading this to WARN silently disarms whatever supervises the node.
+/// Severity splits by whether the condition can resolve itself: WARN for transient states -- not
+/// activated, no pose to interpolate, no map yet, a poor score -- and ERROR for configuration that
+/// never will, a missing TF and this. (`map_update_status` has one that does not fit.) Whoever
+/// publishes `ekf_pose_with_covariance` in the wrong frame keeps doing so, so ERROR is consistent,
+/// not an outlier. The split is nowhere stated in code, so normalizing severities into one helper
+/// would flatten it -- and WARN silently disarms whatever supervises the node.
 TEST(NdtScanMatcherCharacteristics, WrongFrameIdOnInitialPoseIsErrorNotWarn)
 {
   // Arrange
   auto harness = make_ready_harness();
   ASSERT_EQ(harness->activate(), std::optional<bool>(true));
 
-  const auto pose = make_pose_at(harness->now(), 0.0, 0.0, base_frame);
+  const auto pose = make_pose_at(harness->now(), 0.0, 0.0, base_link_frame);
 
   // Act
   ASSERT_TRUE(harness->publish_initial_pose_and_confirm(pose));
@@ -422,7 +415,7 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
   // Only wrong-frame poses are ever published.
   ScanDrive drive;
   drive.initial_pose = InitialPoseSpec{};
-  drive.initial_pose->frame_id = base_frame;
+  drive.initial_pose->frame_id = base_link_frame;
 
   // Act
   const auto outcome = harness->drive_one_scan(drive);
@@ -430,8 +423,7 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
   // Assert
   // The buffer stayed empty.
   ASSERT_TRUE(outcome.has_value());
-  EXPECT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "False")
-    << "a wrong-frame pose reached the interpolation buffer";
+  EXPECT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "False");
 
   // The map anchor stayed unset, so the timer cannot even try to load.
   const auto diag = harness->wait_for_diag(
@@ -441,10 +433,9 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
              record.has_key("is_set_last_update_position");
     },
     std::chrono::seconds(15));
-  ASSERT_TRUE(diag.has_value()) << "no activated map_update_status arrived";
+  ASSERT_TRUE(diag.has_value());
 
-  EXPECT_EQ(diag->value("is_set_last_update_position"), "False")
-    << "a wrong-frame pose became the map anchor";
+  EXPECT_EQ(diag->value("is_set_last_update_position"), "False");
   EXPECT_EQ(diag->level(), level_warn);
 }
 }  // namespace

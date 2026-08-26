@@ -455,7 +455,7 @@ private:
     static_tf_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(observer_);
     geometry_msgs::msg::TransformStamped transform;
     transform.header.stamp = rclcpp::Time(0, 0);
-    transform.header.frame_id = base_frame;
+    transform.header.frame_id = base_link_frame;
     transform.child_frame_id = sensor_frame;
     transform.transform.rotation.w = 1.0;
     static_tf_broadcaster_->sendTransform(transform);

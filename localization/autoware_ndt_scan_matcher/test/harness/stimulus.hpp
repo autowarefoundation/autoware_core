@@ -33,7 +33,7 @@ namespace ndt_test
 {
 
 inline constexpr const char * map_frame = "map";
-inline constexpr const char * base_frame = "base_link";
+inline constexpr const char * base_link_frame = "base_link";
 inline constexpr const char * sensor_frame = "sensor_frame";
 
 /// @brief Diagnostic status names published by the node under test.

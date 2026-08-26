@@ -48,6 +48,11 @@ class DiagnosticsCapture
 {
 public:
   /// @brief One captured `DiagnosticArray` (the node only ever puts one status in each).
+  ///
+  /// Which accessor to read a value with is not free. Equality goes through `value()` and compares
+  /// strings: a missing key gives `""`, which never equals a non-empty expected value. Order goes
+  /// through `value_as_double()`: on a missing key `"" != "0"` would pass, while NaN fails any
+  /// comparison. Both directions leave a vanished key failing rather than quietly satisfied.
   class Record
   {
   public:
@@ -87,6 +92,9 @@ public:
 
     /// @brief Parsed value, or NaN when the key is absent, so a missing key fails the comparison
     /// it was used in rather than throwing out of `std::stod`.
+    ///
+    /// Not for `topic_time_stamp`, which is `rclcpp::Time::nanoseconds()` -- an `int64_t` around
+    /// 1.8e18, past the 2^53 where `double` stops holding integers exactly.
     [[nodiscard]] double value_as_double(const std::string & key) const
     {
       return has_key(key) ? std::stod(value(key)) : std::numeric_limits<double>::quiet_NaN();
