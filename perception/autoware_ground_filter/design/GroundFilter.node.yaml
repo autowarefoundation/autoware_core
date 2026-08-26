@@ -1,0 +1,85 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: GroundFilter.node
+package:
+  name: autoware_ground_filter
+  provider: autoware
+launch:
+  plugin: autoware::ground_filter::GroundFilterComponent
+  executable: ground_filter_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: input
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: input
+publishers:
+  - name: output
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: output
+  - name: processing_time_detail_ms
+    message_type: autoware_utils_debug/msg/ProcessingTimeDetail
+    remap_target: debug/processing_time_detail_ms
+# parameters
+param_files:
+  - name: ground_filter_param
+    default: $(find-pkg-share autoware_ground_filter)/config/ground_filter.param.yaml
+param_values:
+  - name: global_slope_max_angle_deg
+    type: double
+    default: 10.0
+  - name: local_slope_max_angle_deg
+    type: double
+    default: 13.0
+  - name: split_points_distance_tolerance
+    type: double
+    default: 0.2
+  - name: use_virtual_ground_point
+    type: bool
+    default: true
+  - name: split_height_distance
+    type: double
+    default: 0.2
+  - name: non_ground_height_threshold
+    type: double
+    default: 0.20
+  - name: grid_size_m
+    type: double
+    default: 0.5
+  - name: grid_mode_switch_radius
+    type: double
+    default: 20.0
+  - name: ground_grid_buffer_size
+    type: int
+    default: 4
+  - name: detection_range_z_max
+    type: double
+    default: 2.5
+  - name: elevation_grid_mode
+    type: bool
+    default: true
+  - name: low_priority_region_x
+    type: double
+    default: -20.0
+  - name: center_pcl_shift
+    type: double
+    default: 0.0
+  - name: radial_divider_angle_deg
+    type: double
+    default: 1.0
+  - name: use_recheck_ground_cluster
+    type: bool
+    default: true
+  - name: use_lowest_point
+    type: bool
+    default: true
+  - name: publish_processing_time_detail
+    type: bool
+    default: false
+# processes
+processes:
+  - name: filter_ground
+    trigger_conditions:
+      - on_input: input
+    outcomes:
+      - to_output: output
