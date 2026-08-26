@@ -1,28 +1,39 @@
 # autoware_interface_spec_lint
 
-WARN-only static and manifest checks for the Autoware component interface specifications defined in `autoware_component_interface_specs`. This package gives fast, pre-build, human-readable warnings that complement the compile-time `all_specs_valid<>` static assertions: it catches "defined-but-unregistered" specs and manifest drift that the compiler alone does not.
+Config-driven static and manifest checks for the Autoware component interface specifications defined in `autoware_component_interface_specs`. This package gives fast, pre-build, human-readable diagnostics that complement the compile-time `all_specs_valid<>` static assertions: it catches "defined-but-unregistered" specs, version inconsistencies, cross-owner shadowing, heavy-raw topics that must not be versioned, and manifest drift that the compiler alone does not.
 
-In this initial version every check is advisory: the tool prints findings but always exits 0 with `--warn-only`, and the pre-commit hook never fails the commit. Flipping the warnings into hard errors (the warn-to-error ratchet) is left to a follow-up change.
+Each gate's severity comes from the committed gate config (`config/interface_gates.yaml`): `off` (not run), `warn` (advisory, prints findings but never fails), or `error` (fails the build when it reports at least one finding). Every implemented gate is set to `error`, so a finding now fails CI and the pre-commit hook; only the gates listed under "Honest deferrals" below are `off`. `--warn-only` overrides every gate to exit 0 for local advisory runs.
 
-## Checks
+## Gates
 
-| Check                    | Input                      | Flags (WARN)                                                                                                                                                                                        |
-| ------------------------ | -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `interface_spec_concept` | domain headers             | a struct with a `name[]` that is neither a valid topic (`Message` + `depth` + `reliability` + `durability`) nor a valid service (`Service`)                                                         |
-| `spec_registered`        | domain headers             | a spec struct not listed in its namespace's `using Specs = std::tuple<...>`                                                                                                                         |
-| `version_consistency`    | headers + manifest         | a domain not declaring exactly one `version{...}`, a MAJOR that is not `0` (the standard is unstable while at `0.x`), or a manifest version that disagrees with the header version                  |
-| `qos_consistency`        | headers + manifest         | a registered spec whose `history` / `depth` / `reliability` / `durability` disagrees with its manifest `qos` block, is missing from the manifest, or names a QoS policy the manifest cannot express |
-| `manifest_fresh`         | generator + committed JSON | the rebuilt generator output differs from the committed `interface_manifest.json`                                                                                                                   |
+| Gate                     | Input                      | Severity | Flags                                                                                                                                                                                               |
+| ------------------------ | -------------------------- | -------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `interface_spec_concept` | domain headers             | error    | a struct with a `name[]` that is neither a valid topic (`Message` + `depth` + `reliability` + `durability`) nor a valid service (`Service`)                                                         |
+| `spec_registered`        | domain headers             | error    | a spec struct not listed in its namespace's `using Specs = std::tuple<...>` (unless it carries the suppression marker)                                                                              |
+| `version_consistency`    | headers + manifest         | error    | a domain not declaring exactly one `version{...}`, or a manifest version that disagrees with the header version                                                                                     |
+| `qos_consistency`        | headers + manifest         | error    | a registered spec whose `history` / `depth` / `reliability` / `durability` disagrees with its manifest `qos` block, is missing from the manifest, or names a QoS policy the manifest cannot express |
+| `manifest_fresh`         | generator + committed JSON | error    | the rebuilt generator output differs from the committed `interface_manifest.json` (see the binding-gate note below)                                                                                 |
+| `owner_isolation`        | manifest(s)                | error    | a non-base-owner manifest entry whose interface name shadows a base-owner (`autowarefoundation`) entry                                                                                              |
+| `no_raw_spec_topic`      | manifest(s)                | error    | a versioned **topic** whose interface name contains a heavy-raw deny substring; services are out of scope                                                                                           |
 
-`interface_spec_concept`, `spec_registered`, `version_consistency` and `qos_consistency` are pure-Python static analyses over the domain headers and are wired into pre-commit. `manifest_fresh` is a colcon test because it needs the built manifest generator binary.
+The manifest audits (`owner_isolation`, `no_raw_spec_topic`) take a _list_ of manifest dicts so a future vendor-partition manifest can be cross-checked against the base manifest; with the single committed core manifest `owner_isolation` is vacuously clean.
 
-A domain declares its `version` and its `Specs` tuple either literally or through `AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(MAJOR, MINOR, PATCH, ...)`, which expands to both. The header parser understands each form, including the multi-line invocation clang-format produces.
+### Binding manifest-freshness gate
 
-### `qos_consistency` vs `manifest_fresh`
+The lint's `manifest_fresh` can only bind where the manifest generator binary is available; on a plain checkout / pre-commit run it skips gracefully. The **binding** freshness gate is the specs-package gtest (`autoware_component_interface_specs/test/test_manifest.cpp`), which regenerates the manifest with the built generator and asserts byte-equality against the committed `interface_manifest.json` on every build-and-test CI run. Manifest drift is therefore a hard failure regardless of the advisory lint.
 
-Both catch QoS drift between the domain headers and the committed manifest, but `manifest_fresh` needs the built generator binary and skips without it — which is the ordinary pre-commit path. `qos_consistency` reads only the headers and the committed JSON, so `reliability` and `durability` stay verified there too. Those are the two axes ROS 2 evaluates before it will let a publisher and a subscription talk at all: a `RELIABLE` subscription never hears a `BEST_EFFORT` publisher, and a `TRANSIENT_LOCAL` one never receives the latched message a `VOLATILE` publisher dropped.
+## Honest deferrals
 
-Topic specs carry their own QoS. Service specs carry none, so `qos_consistency` derives theirs from the single `service_qos` profile in `utils.hpp` rather than restating the values — a second copy would be one more place for the specs and the wire to drift apart.
+The following design gate-table entries are declared `off` in the committed config and are intentionally deferred; enabling one is rejected by the config loader because there is no implementation to run yet.
+
+| Gate                       | Why deferred                                                                                                                             |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `no_foreign_if_dependency` | needs per-component provided/required role manifests, which do not exist yet (they arrive with the deploy-time OCI-label manifest track) |
+| `profile_compat`           | needs a vendor-specific interface profile that does not exist in this package yet; out of scope for this change                          |
+| `if_usage_coverage`        | runtime gate; needs runtime introspection data this static-analysis package does not have, deferred to future work                       |
+| `admission_smoke`          | runtime gate; needs runtime introspection data this static-analysis package does not have, deferred to future work                       |
+
+`owner_isolation` is wired and at `error` but binds only once a second (vendor-partition) manifest exists to cross-check against. Today the universe versioned surface is exactly the core re-exports (single version authority in core) and universe-owned specs are unversioned, so there is no separate universe-side gate wiring yet.
 
 ## Suppression contract
 
@@ -30,38 +41,40 @@ A spec struct is exempt from `spec_registered` when the marker `// interface-spe
 
 ```cpp
 // interface-spec-lint: not-versioned
-struct PlanningDebugMarkers {
-  using Message = visualization_msgs::msg::MarkerArray;
-  static constexpr char name[] = "/planning/debug/markers";
+struct PointCloudMap {
+  using Message = sensor_msgs::msg::PointCloud2;
+  static constexpr char name[] = "/map/point_cloud_map";
   // ...
 };
 ```
 
-The struct above is illustrative: a debug/visualization topic is the kind of interface that is deliberately outside the versioned set. It is not a real spec in this package -- the committed domain headers do not use the marker, since every struct they declare is registered.
-
 ## Usage
 
 ```bash
-# Lint the core specs include dir (defaults resolve relative to the repo root).
+# Lint the core specs with the committed gate config (severities from the config).
+ament_autoware_interface_spec_lint
+
+# Advisory local run: print findings but always exit 0.
 ament_autoware_interface_spec_lint --warn-only
 
-# Lint an explicit directory and diff against a manifest.
-ament_autoware_interface_spec_lint --warn-only \
+# Explicit paths and an alternate gate config.
+ament_autoware_interface_spec_lint \
+  --config common/autoware_interface_spec_lint/config/interface_gates.yaml \
   --spec-dir common/autoware_component_interface_specs/include/autoware/component_interface_specs \
   --manifest common/autoware_component_interface_specs/interface_manifest.json
 ```
 
 ### `manifest_fresh`
 
-`manifest_fresh` needs the manifest generator binary. Point at it with `--generator <path>` or the `INTERFACE_MANIFEST_GENERATOR` environment variable. When neither is available the check skips gracefully with a warning and records nothing, so it never blocks a build.
+`manifest_fresh` needs the manifest generator binary. Point at it with `--generator <path>` or the `INTERFACE_MANIFEST_GENERATOR` environment variable. When neither is available the check skips gracefully (the binding gate is the specs-package gtest).
 
 ```bash
 export INTERFACE_MANIFEST_GENERATOR=$PWD/build/autoware_component_interface_specs/generate_interface_manifest
-ament_autoware_interface_spec_lint --warn-only \
+ament_autoware_interface_spec_lint \
   --manifest common/autoware_component_interface_specs/interface_manifest.json \
   --generator "$INTERFACE_MANIFEST_GENERATOR"
 ```
 
-## Status
+## Gate config
 
-The checks are advisory only. `manifest_fresh` records drift but returns success; the pre-commit hook prints warnings and exits 0. A follow-up change flips both the static checks and `manifest_fresh` to hard failures.
+`config/interface_gates.yaml` maps each gate to a severity and carries the `no_raw_spec_topic` deny/allow lists and the `owner_isolation` base owner. The loader rejects an unknown gate name and rejects enabling a deferred gate (it may only be declared `off`).

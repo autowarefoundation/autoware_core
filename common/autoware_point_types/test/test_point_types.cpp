@@ -118,6 +118,34 @@ TEST(PointCloudClassification, ToString)
   EXPECT_THROW(to_string(static_cast<PointCloudClassification>(254U)), std::invalid_argument);
 }
 
+TEST(PointCloudClassification, ToPointcloudClassification)
+{
+  using autoware::point_types::PointCloudClassification;
+  using autoware::point_types::to_pointcloud_classification;
+  using autoware::point_types::to_string;
+
+  // Round trip with every name to_string() can produce, including INVALID.
+  for (const auto classification :
+       {PointCloudClassification::CAR, PointCloudClassification::TRUCK,
+        PointCloudClassification::BUS, PointCloudClassification::MOTORCYCLE,
+        PointCloudClassification::BICYCLE, PointCloudClassification::PEDESTRIAN,
+        PointCloudClassification::ANIMAL, PointCloudClassification::HAZARD,
+        PointCloudClassification::FLAT_SURFACE, PointCloudClassification::STRUCTURE,
+        PointCloudClassification::VEGETATION, PointCloudClassification::NOISE,
+        PointCloudClassification::INVALID}) {
+    EXPECT_EQ(to_pointcloud_classification(to_string(classification)), classification);
+  }
+
+  // Matching is case-insensitive for every name, NOISE included.
+  EXPECT_EQ(to_pointcloud_classification("car"), PointCloudClassification::CAR);
+  EXPECT_EQ(to_pointcloud_classification("flat_surface"), PointCloudClassification::FLAT_SURFACE);
+  EXPECT_EQ(to_pointcloud_classification("noise"), PointCloudClassification::NOISE);
+  EXPECT_EQ(to_pointcloud_classification("Noise"), PointCloudClassification::NOISE);
+
+  EXPECT_THROW(to_pointcloud_classification("UNKNOWN"), std::invalid_argument);
+  EXPECT_THROW(to_pointcloud_classification(""), std::invalid_argument);
+}
+
 TEST(PointCloudClassification, ConstexprToString)
 {
   using autoware::point_types::PointCloudClassification;

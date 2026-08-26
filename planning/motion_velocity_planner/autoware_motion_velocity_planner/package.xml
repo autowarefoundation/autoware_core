@@ -38,9 +38,15 @@
   <depend>eigen</depend>
   <depend>geometry_msgs</depend>
   <depend>grid_map_core</depend>
+  <depend>lanelet2_core</depend>
+  <depend>lanelet2_routing</depend>
+  <depend>lanelet2_traffic_rules</depend>
   <depend>libboost-dev</depend>
+  <depend>libpcl-all-dev</depend>
+  <depend>nav_msgs</depend>
   <depend>pcl_conversions</depend>
   <depend>pluginlib</depend>
+  <depend>rcl_interfaces</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>
@@ -53,9 +59,13 @@
   <exec_depend>rosidl_default_runtime</exec_depend>
 
   <test_depend>ament_cmake_ros</test_depend>
+  <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
   <test_depend>autoware_test_utils</test_depend>
+  <test_depend>builtin_interfaces</test_depend>
+  <test_depend>tf2_msgs</test_depend>
+  <test_depend>yaml-cpp</test_depend>
 
   <member_of_group>rosidl_interface_packages</member_of_group>
 

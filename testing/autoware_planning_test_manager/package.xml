@@ -16,11 +16,14 @@
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend>autoware_component_interface_specs</depend>
+  <depend>autoware_internal_planning_msgs</depend>
   <depend>autoware_motion_utils</depend>
   <depend>autoware_planning_msgs</depend>
   <depend>autoware_route_handler</depend>
   <depend>autoware_test_utils</depend>
   <depend>autoware_utils_geometry</depend>
+  <depend>geometry_msgs</depend>
+  <depend>lanelet2_core</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>tf2_msgs</depend>
@@ -32,6 +35,7 @@
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>rosidl_runtime_cpp</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
