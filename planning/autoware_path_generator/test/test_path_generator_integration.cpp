@@ -251,4 +251,20 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
   EXPECT_EQ(latest_path_, nullptr) << "Node should fail-safe and not publish on empty route";
 }
 
+// TEST 4. Path cut scenario
+// This test checks if node successfully processes self-intersecting bounds and 
+// outputs a valid truncated path without crashing.
+TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
+{
+  load_and_publish_map("autoware_test_utils", "2km_test.osm");
+  auto route = load_route_stamped("autoware_path_generator", "path_cut_route.yaml");
+  
+  auto odom = set_start_odom(route);
+
+  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
+
+  ASSERT_NE(latest_path_, nullptr) << "Failed to output path for path_cut_route (self-intersection truncation failed)";
+  EXPECT_GT(latest_path_->points.size(), 0u);
+}
+
 } // namespace autoware::path_generator
