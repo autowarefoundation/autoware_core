@@ -7916,6 +7916,23 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Assumptions / Known limits">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#cluster-size-limits" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Cluster size limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -8112,6 +8129,9 @@
 </tbody>
 </table>
 <h2 id="assumptions-known-limits">Assumptions / Known limits<a class="headerlink" href="#assumptions-known-limits" title="Permanent link">#</a></h2>
+<h3 id="cluster-size-limits">Cluster size limits<a class="headerlink" href="#cluster-size-limits" title="Permanent link">#</a></h3>
+<p>The two size parameters are assumed to satisfy <code>1 &lt;= min_cluster_size &lt;= max_cluster_size</code>. The
+nodes do not check this, and the behaviour is undefined otherwise.</p>
 <!-- Write assumptions and limitations of your implementation.
 
 Example:
