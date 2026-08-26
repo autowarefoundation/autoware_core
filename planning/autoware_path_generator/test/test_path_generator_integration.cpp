@@ -134,4 +134,41 @@ protected:
   rclcpp::Subscription<autoware_vehicle_msgs::msg::HazardLightsCommand>::SharedPtr sub_hazard_;
 };
 
+// ================== TESTING AREA HERE ==================
+
+// Test 1. Nominal generation & observability
+// This test verifies a standard route outputs a path, correctly stamps headers, and constant hazard rule.
+TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
+{
+  load_and_publish_map("autoware_test_utils", "lanelet2_map.osm");
+  auto route = load_route("autoware_path_generator", "common_route.yaml");
+  
+  // Set odom to route start
+  auto odom = autoware::test_utils::makeOdometry();
+  odom.pose.pose = route.start_pose;
+  
+  pub_odom_->publish(odom);
+  // Allow map & odom to register
+  spin_executor_for(std::chrono::milliseconds(100));
+
+  pub_route_->publish(route);
+  // Allow planning trigger
+  spin_executor_for(std::chrono::milliseconds(500));
+
+  // Memory check before accessing
+  ASSERT_NE(latest_path_, nullptr) << "Node failed to output PathWithLaneId";
+  ASSERT_NE(latest_hazard_, nullptr) << "Node failed to output HazardLightsCommand";
+
+  // Expects headers not empty
+  EXPECT_FALSE(latest_path_->header.frame_id.empty());
+  
+  // Expects output math bounds make sense
+  ASSERT_GT(latest_path_->points.size(), 0u) << "Output path array is empty";
+  
+  // Expects constant hazard rule makes sense
+  EXPECT_EQ(latest_hazard_->command, autoware_vehicle_msgs::msg::HazardLightsCommand::NO_COMMAND);
+}
+
+
+
 } // namespace autoware::path_generator
