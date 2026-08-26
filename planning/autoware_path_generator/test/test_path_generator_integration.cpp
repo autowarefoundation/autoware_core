@@ -305,4 +305,23 @@ TEST_F(PathGeneratorIntegrationHarness, GoalConnectionScenario)
   EXPECT_NEAR(final_point.y, goal_point.y, near_tol) << "Goal connection smoothing failed on Y axis";
 }
 
+// TEST 6: Missing dependency scenario
+// This test checks if node safely aborts and refuses to publish if a critical 
+// dependency (like vector map) is completely missing.
+TEST_F(PathGeneratorIntegrationHarness, FailSafeOnMissingDependencies)
+{
+  auto route = load_route_stamped("autoware_path_generator", "common_route.yaml");
+  
+  auto odom = set_start_odom(route);
+
+  // We don't publish map here
+  latest_path_ = nullptr;
+  
+  // Trigger execution with only odom and route
+  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
+  
+  // Node must not crash, and must fail-safe by not publishing a path
+  EXPECT_EQ(latest_path_, nullptr) << "Node published a path despite missing vector map dependency";
+}
+
 } // namespace autoware::path_generator
