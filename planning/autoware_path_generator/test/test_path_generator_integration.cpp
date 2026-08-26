@@ -121,12 +121,20 @@ protected:
     return route_opt.value();
   }
 
-  static Odometry set_start_odom(const autoware_planning_msgs::msg::LaneletRoute route) {
+  static Odometry set_start_odom(const autoware_planning_msgs::msg::LaneletRoute & route) {
     auto odom = autoware::test_utils::makeOdometry();
     odom.pose.pose = route.start_pose;
     odom.header.frame_id = "map";
     
     return odom;
+  }
+
+  static autoware_planning_msgs::msg::LaneletRoute load_route_stamped(const std::string & package_name, const std::string & map_filename) 
+  {
+    auto route = load_route(package_name, map_filename);
+    route.header.frame_id = "map";
+
+    return route;
   }
 
   void retrigger_pubs_spin(
@@ -166,13 +174,12 @@ protected:
 
 // ================== TESTING AREA HERE ==================
 
-// Test 1. Nominal generation & observability
+// TEST 1. Nominal generation & observability
 // This test verifies a standard route outputs a path, correctly stamps headers, and constant hazard rule.
 TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
 {
   load_and_publish_map("autoware_test_utils", "lanelet2_map.osm");
-  auto route = load_route("autoware_path_generator", "common_route.yaml");
-  route.header.frame_id = "map";
+  auto route = load_route_stamped("autoware_path_generator", "common_route.yaml");
   
   // Set odom to route start
   auto odom = set_start_odom(route);
@@ -197,13 +204,12 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
   EXPECT_EQ(latest_hazard_->command, autoware_vehicle_msgs::msg::HazardLightsCommand::NO_COMMAND);
 }
 
-// Test 2. Turns signal state machine
+// TEST 2. Turns signal state machine
 // This test verifies turn signal strictly triggers at expected proximity to consecutive turns.
 TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
 {
   load_and_publish_map("autoware_test_utils", "consecutive_turn/lanelet2_map.osm");
-  auto route = load_route("autoware_path_generator", "turn_signal_route.yaml");
-  route.header.frame_id = "map";
+  auto route = load_route_stamped("autoware_path_generator", "turn_signal_route.yaml");
   
   auto odom = set_start_odom(route);
   
@@ -223,7 +229,7 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   ASSERT_NE(latest_turn_, nullptr);
 }
 
-// Test 3. Fail-safe runtime boundary
+// TEST 3. Fail-safe runtime boundary
 // This test fetches an empty route or out-of-bound odom.
 // Expects node not to crash, but should gracefully abort.
 TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
