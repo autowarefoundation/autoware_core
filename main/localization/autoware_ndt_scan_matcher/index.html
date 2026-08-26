@@ -8346,21 +8346,21 @@
 </thead>
 <tbody>
 <tr>
-<td>base_frame</td>
+<td>base_<wbr>frame</wbr></td>
 <td>string</td>
 <td>Vehicle reference frame.</td>
-<td>base_link</td>
+<td>base_<wbr>link</wbr></td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>ndt_base_frame</td>
+<td>ndt_<wbr>base_<wbr>frame</wbr></wbr></td>
 <td>string</td>
 <td>NDT reference frame.</td>
-<td>ndt_base_link</td>
+<td>ndt_<wbr>base_<wbr>link</wbr></wbr></td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>map_frame</td>
+<td>map_<wbr>frame</wbr></td>
 <td>string</td>
 <td>Map frame.</td>
 <td>map</td>
@@ -8381,14 +8381,14 @@
 </thead>
 <tbody>
 <tr>
-<td>timeout_sec</td>
+<td>timeout_<wbr>sec</wbr></td>
 <td>float</td>
 <td>Tolerance of timestamp difference between current time and sensor pointcloud. [sec]</td>
 <td>1</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>required_distance</td>
+<td>required_<wbr>distance</wbr></td>
 <td>float</td>
 <td>Required distance of input sensor points [m]. If the max distance of input sensor points is lower than this value, the scan matching will not be performed.</td>
 <td>10</td>
@@ -8409,14 +8409,14 @@
 </thead>
 <tbody>
 <tr>
-<td>trans_epsilon</td>
+<td>trans_<wbr>epsilon</wbr></td>
 <td>float</td>
 <td>The maximum difference between two consecutive transformations in order to consider convergence.</td>
 <td>0.01</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>step_size</td>
+<td>step_<wbr>size</wbr></td>
 <td>float</td>
 <td>The newton line search maximum step length.</td>
 <td>0.1</td>
@@ -8426,22 +8426,36 @@
 <td>resolution</td>
 <td>float</td>
 <td>The ND voxel grid resolution.</td>
-<td>2</td>
+<td>2.0</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>max_iterations</td>
+<td>max_<wbr>iterations</wbr></td>
 <td>float</td>
 <td>The number of iterations required to calculate alignment.</td>
 <td>30</td>
 <td>≥1</td>
 </tr>
 <tr>
-<td>num_threads</td>
+<td>num_<wbr>threads</wbr></td>
 <td>float</td>
 <td>Number of threads used for parallel computing.</td>
 <td>4</td>
 <td>≥1</td>
+</tr>
+<tr>
+<td>regularization.<wbr>enable</wbr></td>
+<td>boolean</td>
+<td>Regularization switch.</td>
+<td>false</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>regularization.<wbr>scale_<wbr>factor</wbr></wbr></td>
+<td>float</td>
+<td>Regularization scale factor.</td>
+<td>0.01</td>
+<td>≥0.0</td>
 </tr>
 </tbody>
 </table>
@@ -8458,14 +8472,14 @@
 </thead>
 <tbody>
 <tr>
-<td>particles_num</td>
+<td>particles_<wbr>num</wbr></td>
 <td>float</td>
 <td>The number of particles to estimate initial pose.</td>
 <td>200</td>
 <td>≥1</td>
 </tr>
 <tr>
-<td>n_startup_trials</td>
+<td>n_<wbr>startup_<wbr>trials</wbr></wbr></td>
 <td>float</td>
 <td>The number of initial random trials in the TPE (Tree-Structured Parzen Estimator). This value should be equal to or less than 'initial_estimate_particles_num' and more than 0. If it is equal to 'initial_estimate_particles_num', the search will be the same as a full random search.</td>
 <td>100</td>
@@ -8486,35 +8500,35 @@
 </thead>
 <tbody>
 <tr>
-<td>initial_pose_timeout_sec</td>
+<td>initial_<wbr>pose_<wbr>timeout_<wbr>sec</wbr></wbr></wbr></td>
 <td>float</td>
 <td>Tolerance of timestamp difference between initial_pose and sensor pointcloud. [sec]</td>
 <td>1</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>initial_pose_distance_tolerance_m</td>
+<td>initial_<wbr>pose_<wbr>distance_<wbr>tolerance_<wbr>m</wbr></wbr></wbr></wbr></td>
 <td>float</td>
 <td>Tolerance of distance difference between two initial poses used for linear interpolation. [m]</td>
 <td>10</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>initial_to_result_distance_tolerance_m</td>
+<td>initial_<wbr>to_<wbr>result_<wbr>distance_<wbr>tolerance_<wbr>m</wbr></wbr></wbr></wbr></wbr></td>
 <td>float</td>
 <td>Tolerance of distance difference from initial pose to result pose. [m]</td>
 <td>3</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>critical_upper_bound_exe_time_ms</td>
+<td>critical_<wbr>upper_<wbr>bound_<wbr>exe_<wbr>time_<wbr>ms</wbr></wbr></wbr></wbr></wbr></td>
 <td>float</td>
 <td>The execution time which means probably NDT cannot matches scans properly. [ms]</td>
 <td>100</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>skipping_publish_num</td>
+<td>skipping_<wbr>publish_<wbr>num</wbr></wbr></td>
 <td>float</td>
 <td>Tolerance for the number for times rejected estimation results consecutively.</td>
 <td>5</td>
@@ -8535,24 +8549,38 @@
 </thead>
 <tbody>
 <tr>
-<td>converged_param_type</td>
+<td>converged_<wbr>param_<wbr>type</wbr></wbr></td>
 <td>float</td>
 <td>Converged param type. 0=TRANSFORM_PROBABILITY, 1=NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD</td>
 <td>1</td>
 <td>≥0<br>≤1</td>
 </tr>
 <tr>
-<td>converged_param_transform_probability</td>
+<td>converged_<wbr>param_<wbr>transform_<wbr>probability</wbr></wbr></wbr></td>
 <td>float</td>
 <td>If converged_param_type is 0, threshold for deciding whether to trust the estimation result.</td>
-<td>3</td>
+<td>3.0</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>converged_param_nearest_voxel_transformation_likelihood</td>
+<td>converged_<wbr>param_<wbr>nearest_<wbr>voxel_<wbr>transformation_<wbr>likelihood</wbr></wbr></wbr></wbr></wbr></td>
 <td>float</td>
 <td>If converged_param_type is 1, threshold for deciding whether to trust the estimation result.</td>
 <td>2.3</td>
+<td>≥0.0</td>
+</tr>
+<tr>
+<td>no_<wbr>ground_<wbr>points.<wbr>enable</wbr></wbr></wbr></td>
+<td>boolean</td>
+<td>A flag for using scan matching score based on de-grounded LiDAR scan.</td>
+<td>false</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>no_<wbr>ground_<wbr>points.<wbr>z_<wbr>margin_<wbr>for_<wbr>ground_<wbr>removal</wbr></wbr></wbr></wbr></wbr></wbr></wbr></td>
+<td>float</td>
+<td>If lidar_point.z - base_link.z &lt;= this threshold , the point will be removed.</td>
+<td>0.8</td>
 <td>≥0.0</td>
 </tr>
 </tbody>
@@ -8570,11 +8598,46 @@
 </thead>
 <tbody>
 <tr>
-<td>output_pose_covariance</td>
+<td>output_<wbr>pose_<wbr>covariance</wbr></wbr></td>
 <td>array</td>
 <td>The covariance of output pose. Note that this covariance matrix is empirically derived.</td>
 <td>[0.0225, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0225, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0225, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.000625, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.000625, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.000625]</td>
 <td>N/A</td>
+</tr>
+<tr>
+<td>covariance_<wbr>estimation.<wbr>covariance_<wbr>estimation_<wbr>type</wbr></wbr></wbr></wbr></td>
+<td>float</td>
+<td>2D Real-time Converged estimation type. 0=FIXED_VALUE, 1=LAPLACE_APPROXIMATION, 2=MULTI_NDT, 3=MULTI_NDT_SCORE (FIXED_VALUE mode does not perform 2D Real-time Converged estimation)</td>
+<td>0</td>
+<td>≥0<br>≤3</td>
+</tr>
+<tr>
+<td>covariance_<wbr>estimation.<wbr>initial_<wbr>pose_<wbr>offset_<wbr>model_<wbr>x</wbr></wbr></wbr></wbr></wbr></wbr></td>
+<td>array</td>
+<td>Offset arrangement in covariance estimation [m]. initial_pose_offset_model_x &amp; initial_pose_offset_model_y must have the same number of elements.</td>
+<td>[0.0, 0.0, 0.5, -0.5, 1.0, -1.0]</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>covariance_<wbr>estimation.<wbr>initial_<wbr>pose_<wbr>offset_<wbr>model_<wbr>y</wbr></wbr></wbr></wbr></wbr></wbr></td>
+<td>array</td>
+<td>Offset arrangement in covariance estimation [m]. initial_pose_offset_model_x &amp; initial_pose_offset_model_y must have the same number of elements.</td>
+<td>[0.5, -0.5, 0.0, 0.0, 0.0, 0.0]</td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>covariance_<wbr>estimation.<wbr>temperature</wbr></wbr></td>
+<td>float</td>
+<td>In MULTI_NDT_SCORE, the parameter that adjusts the estimated 2D covariance</td>
+<td>0.05</td>
+<td>&gt;0</td>
+</tr>
+<tr>
+<td>covariance_<wbr>estimation.<wbr>scale_<wbr>factor</wbr></wbr></wbr></td>
+<td>float</td>
+<td>Scale value for adjusting the estimated covariance by a constant multiplication</td>
+<td>1.0</td>
+<td>&gt;0</td>
 </tr>
 </tbody>
 </table>
@@ -8651,11 +8714,11 @@ This is because if the base position is far off from the true value, NDT scan ma
 <td>enable</td>
 <td>boolean</td>
 <td>Regularization switch.</td>
-<td>0</td>
+<td>false</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>scale_factor</td>
+<td>scale_<wbr>factor</wbr></td>
 <td>float</td>
 <td>Regularization scale factor.</td>
 <td>0.01</td>
@@ -8733,31 +8796,31 @@ The color of the trajectory indicates the error (meter) from the reference traje
 </thead>
 <tbody>
 <tr>
-<td>update_distance</td>
+<td>update_<wbr>distance</wbr></td>
 <td>float</td>
 <td>Dynamic map loading distance.</td>
-<td>20</td>
+<td>20.0</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>map_radius</td>
+<td>map_<wbr>radius</wbr></td>
 <td>float</td>
 <td>Dynamic map loading loading radius.</td>
-<td>150</td>
+<td>150.0</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>lidar_radius</td>
+<td>lidar_<wbr>radius</wbr></td>
 <td>float</td>
 <td>Radius of input LiDAR range (used for diagnostics of dynamic map loading).</td>
-<td>100</td>
+<td>100.0</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>publish_loaded_map</td>
+<td>publish_<wbr>loaded_<wbr>map</wbr></wbr></td>
 <td>boolean</td>
 <td>Publish debug/loaded_pointcloud_map. Enabling this will save the dynamic map loaded by NDT in memory.</td>
-<td>0</td>
+<td>false</td>
 <td>N/A</td>
 </tr>
 </tbody>
@@ -8808,11 +8871,11 @@ The color of the trajectory indicates the error (meter) from the reference traje
 <td>enable</td>
 <td>boolean</td>
 <td>A flag for using scan matching score based on de-grounded LiDAR scan.</td>
-<td>0</td>
+<td>false</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>z_margin_for_ground_removal</td>
+<td>z_<wbr>margin_<wbr>for_<wbr>ground_<wbr>removal</wbr></wbr></wbr></wbr></td>
 <td>float</td>
 <td>If lidar_point.z - base_link.z &lt;= this threshold , the point will be removed.</td>
 <td>0.8</td>
@@ -8850,21 +8913,21 @@ In MULTI_NDT_SCORE mode, the scale of the output 2D covariance can be adjusted a
 </thead>
 <tbody>
 <tr>
-<td>covariance_estimation_type</td>
+<td>covariance_<wbr>estimation_<wbr>type</wbr></wbr></td>
 <td>float</td>
 <td>2D Real-time Converged estimation type. 0=FIXED_VALUE, 1=LAPLACE_APPROXIMATION, 2=MULTI_NDT, 3=MULTI_NDT_SCORE (FIXED_VALUE mode does not perform 2D Real-time Converged estimation)</td>
 <td>0</td>
 <td>≥0<br>≤3</td>
 </tr>
 <tr>
-<td>initial_pose_offset_model_x</td>
+<td>initial_<wbr>pose_<wbr>offset_<wbr>model_<wbr>x</wbr></wbr></wbr></wbr></td>
 <td>array</td>
 <td>Offset arrangement in covariance estimation [m]. initial_pose_offset_model_x &amp; initial_pose_offset_model_y must have the same number of elements.</td>
 <td>[0.0, 0.0, 0.5, -0.5, 1.0, -1.0]</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>initial_pose_offset_model_y</td>
+<td>initial_<wbr>pose_<wbr>offset_<wbr>model_<wbr>y</wbr></wbr></wbr></wbr></td>
 <td>array</td>
 <td>Offset arrangement in covariance estimation [m]. initial_pose_offset_model_x &amp; initial_pose_offset_model_y must have the same number of elements.</td>
 <td>[0.5, -0.5, 0.0, 0.0, 0.0, 0.0]</td>
@@ -8878,7 +8941,7 @@ In MULTI_NDT_SCORE mode, the scale of the output 2D covariance can be adjusted a
 <td>&gt;0</td>
 </tr>
 <tr>
-<td>scale_factor</td>
+<td>scale_<wbr>factor</wbr></td>
 <td>float</td>
 <td>Scale value for adjusting the estimated covariance by a constant multiplication</td>
 <td>1.0</td>

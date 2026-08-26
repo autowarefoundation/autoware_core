@@ -7825,10 +7825,10 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#input" class="md-nav__link">
+  <a href="#subscribers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Input
+        Subscribers
       
     </span>
   </a>
@@ -7836,10 +7836,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#output" class="md-nav__link">
+  <a href="#publishers" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Output
+        Publishers
       
     </span>
   </a>
@@ -7868,6 +7868,17 @@
     <span class="md-ellipsis">
       
         Node Parameters
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#parameter-files" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameter files
       
     </span>
   </a>
@@ -7943,95 +7954,120 @@
 </tbody>
 </table>
 <h2 id="inputs-outputs">Inputs / Outputs<a class="headerlink" href="#inputs-outputs" title="Permanent link">#</a></h2>
-<h3 id="input">Input<a class="headerlink" href="#input" title="Permanent link">#</a></h3>
+<p>The interfaces below are generated from the node design file
+<a href="design/GroundFilter.node.yaml"><code>design/GroundFilter.node.yaml</code></a>.</p>
+<h3 id="subscribers">Subscribers<a class="headerlink" href="#subscribers" title="Permanent link">#</a></h3>
 <table>
 <thead>
 <tr>
 <th>Name</th>
 <th>Type</th>
 <th>Description</th>
+<th>Remap</th>
+<th>QoS</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>~/input/points</code></td>
-<td><code>sensor_msgs::msg::PointCloud2</code></td>
-<td>reference points</td>
+<td><code>points</code></td>
+<td><code>sensor_<wbr>msgs/<wbr>msg/<wbr>PointCloud2</wbr></wbr></wbr></code></td>
+<td>the pointcloud to be segmented into ground and non-ground points</td>
+<td><code>input</code></td>
+<td>reliability: best_effort<br>durability: volatile</td>
 </tr>
 <tr>
-<td><code>~/input/indices</code></td>
-<td><code>pcl_msgs::msg::Indices</code></td>
-<td>reference indices</td>
+<td><code>indices</code></td>
+<td><code>pcl_<wbr>msgs/<wbr>msg/<wbr>PointIndices</wbr></wbr></wbr></code></td>
+<td>the indices of the input pointcloud to be processed, subscribed only when use_indices is true</td>
+<td><code>indices</code></td>
+<td>reliability: best_effort<br>durability: volatile</td>
 </tr>
 </tbody>
 </table>
-<h3 id="output">Output<a class="headerlink" href="#output" title="Permanent link">#</a></h3>
+<h3 id="publishers">Publishers<a class="headerlink" href="#publishers" title="Permanent link">#</a></h3>
 <table>
 <thead>
 <tr>
 <th>Name</th>
 <th>Type</th>
 <th>Description</th>
+<th>Remap</th>
+<th>QoS</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>~/output/points</code></td>
-<td><code>sensor_msgs::msg::PointCloud2</code></td>
-<td>filtered points</td>
+<td><code>points</code></td>
+<td><code>sensor_<wbr>msgs/<wbr>msg/<wbr>PointCloud2</wbr></wbr></wbr></code></td>
+<td>the input pointcloud without the points classified as ground</td>
+<td><code>output</code></td>
+<td>reliability: best_effort<br>durability: volatile</td>
 </tr>
 </tbody>
 </table>
 <h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">#</a></h2>
 <h3 id="node-parameters">Node Parameters<a class="headerlink" href="#node-parameters" title="Permanent link">#</a></h3>
+<p>The node launch parameters below are generated from the node design file
+<a href="design/GroundFilter.node.yaml"><code>design/GroundFilter.node.yaml</code></a>.</p>
 <table>
 <thead>
 <tr>
 <th>Name</th>
 <th>Type</th>
-<th>Default Value</th>
+<th>Default</th>
 <th>Description</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>input_frame</code></td>
-<td>string</td>
-<td>" "</td>
-<td>input frame id</td>
-</tr>
-<tr>
-<td><code>output_frame</code></td>
-<td>string</td>
-<td>" "</td>
-<td>output frame id</td>
-</tr>
-<tr>
-<td><code>max_queue_size</code></td>
+<td><code>max_<wbr>queue_<wbr>size</wbr></wbr></code></td>
 <td>int</td>
-<td>5</td>
-<td>max queue size of input/output topics</td>
+<td><code>5</code></td>
+<td>the queue size of the input and output topics</td>
 </tr>
 <tr>
-<td><code>use_indices</code></td>
+<td><code>use_<wbr>indices</wbr></code></td>
 <td>bool</td>
-<td>false</td>
-<td>flag to use pointcloud indices</td>
+<td><code>false</code></td>
+<td>switch to segment only the points listed in the indices input</td>
 </tr>
 <tr>
-<td><code>latched_indices</code></td>
+<td><code>latched_<wbr>indices</wbr></code></td>
 <td>bool</td>
-<td>false</td>
-<td>flag to latch pointcloud indices</td>
+<td><code>false</code></td>
+<td>switch to keep the last received indices for the following pointclouds</td>
 </tr>
 <tr>
-<td><code>approximate_sync</code></td>
+<td><code>approximate_<wbr>sync</wbr></code></td>
 <td>bool</td>
-<td>false</td>
-<td>flag to use approximate sync option</td>
+<td><code>false</code></td>
+<td>switch to synchronize the pointcloud and indices inputs by approximate time instead of exact time</td>
 </tr>
 </tbody>
 </table>
+<h3 id="parameter-files">Parameter files<a class="headerlink" href="#parameter-files" title="Permanent link">#</a></h3>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ground_<wbr>segmentation_<wbr>param_<wbr>file</wbr></wbr></wbr></code></td>
+<td><code>config/<wbr>ground_<wbr>filter.<wbr>param.<wbr>yaml</wbr></wbr></wbr></wbr></code></td>
+<td>Parameters of the ground segmentation</td>
+</tr>
+<tr>
+<td><code>vehicle_<wbr>info_<wbr>param_<wbr>file</wbr></wbr></wbr></code></td>
+<td><code>$(find-pkg-share autoware_<wbr>vehicle_<wbr>info_<wbr>utils)/<wbr>config/<wbr>vehicle_<wbr>info.<wbr>param.<wbr>yaml</wbr></wbr></wbr></wbr></wbr></wbr></wbr></wbr></code></td>
+<td>Vehicle dimensions used to place the virtual ground point</td>
+</tr>
+</tbody>
+</table>
+<p>The ground segmentation parameters are described in <a href="docs/ground-filter/">ground-filter.md</a>.</p>
 <h2 id="assumptions-known-limits">Assumptions / Known limits<a class="headerlink" href="#assumptions-known-limits" title="Permanent link">#</a></h2>
 <p>Implemented based on pcl_perception [1] because of <a href="https://github.com/ros-perception/perception_pcl/issues/9">this issue</a>.</p>
 <h2 id="referencesexternal-links">References/External links<a class="headerlink" href="#referencesexternal-links" title="Permanent link">#</a></h2>
