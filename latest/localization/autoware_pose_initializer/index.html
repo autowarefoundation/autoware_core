@@ -8027,91 +8027,91 @@ This node depends on the map height fitter library.
 </thead>
 <tbody>
 <tr>
-<td>user_defined_initial_pose.enable</td>
+<td>user_<wbr>defined_<wbr>initial_<wbr>pose.<wbr>enable</wbr></wbr></wbr></wbr></td>
 <td>string</td>
 <td>If true, user_defined_initial_pose.pose is set as the initial position. [boolean]</td>
 <td>false</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>user_defined_initial_pose.pose</td>
+<td>user_<wbr>defined_<wbr>initial_<wbr>pose.<wbr>pose</wbr></wbr></wbr></wbr></td>
 <td>string</td>
 <td>initial pose (x, y, z, quat_x, quat_y, quat_z, quat_w). [array]</td>
 <td>[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>gnss_pose_timeout</td>
+<td>gnss_<wbr>pose_<wbr>timeout</wbr></wbr></td>
 <td>float</td>
 <td>The duration that the GNSS pose is valid. [sec]</td>
 <td>3.0</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>pose_error_check_enabled</td>
+<td>pose_<wbr>error_<wbr>check_<wbr>enabled</wbr></wbr></wbr></td>
 <td>boolean</td>
 <td>If true, check error between initial pose result and GNSS pose.</td>
 <td>false</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>pose_error_threshold</td>
+<td>pose_<wbr>error_<wbr>threshold</wbr></wbr></td>
 <td>float</td>
 <td>The error threshold between GNSS and initial pose</td>
 <td>5.0</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>stop_check_enabled</td>
+<td>stop_<wbr>check_<wbr>enabled</wbr></wbr></td>
 <td>string</td>
 <td>If true, initialization is accepted only when the vehicle is stopped.</td>
 <td>true</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>stop_check_duration</td>
+<td>stop_<wbr>check_<wbr>duration</wbr></wbr></td>
 <td>float</td>
 <td>The duration used for the stop check above. [sec]</td>
 <td>3.0</td>
 <td>≥0.0</td>
 </tr>
 <tr>
-<td>ekf_enabled</td>
+<td>ekf_<wbr>enabled</wbr></td>
 <td>string</td>
 <td>If true, EKF localizer is activated.</td>
 <td>true</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>gnss_enabled</td>
+<td>gnss_<wbr>enabled</wbr></td>
 <td>string</td>
 <td>If true, use the GNSS pose when no pose is specified.</td>
 <td>true</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>yabloc_enabled</td>
+<td>yabloc_<wbr>enabled</wbr></td>
 <td>string</td>
 <td>If true, YabLocModule is used.</td>
 <td>true</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>ndt_enabled</td>
+<td>ndt_<wbr>enabled</wbr></td>
 <td>string</td>
 <td>If true, the pose will be estimated by NDT scan matcher, otherwise it is passed through.</td>
 <td>true</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>gnss_particle_covariance</td>
+<td>gnss_<wbr>particle_<wbr>covariance</wbr></wbr></td>
 <td>array</td>
 <td>gnss particle covariance</td>
 <td>[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 10.0]</td>
 <td>N/A</td>
 </tr>
 <tr>
-<td>output_pose_covariance</td>
+<td>output_<wbr>pose_<wbr>covariance</wbr></wbr></td>
 <td>array</td>
 <td>output pose covariance</td>
 <td>[1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0,  0.0,  0.0,  0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.2]</td>
