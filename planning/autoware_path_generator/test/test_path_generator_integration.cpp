@@ -25,9 +25,11 @@
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <autoware_vehicle_msgs/msg/hazard_lights_command.hpp>
 #include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
+#include <nav_msgs/msg/detail/odometry__struct.hpp>
 #include <nav_msgs/msg/odometry.hpp>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -119,6 +121,28 @@ protected:
     return route_opt.value();
   }
 
+  static Odometry set_start_odom(const autoware_planning_msgs::msg::LaneletRoute route) {
+    auto odom = autoware::test_utils::makeOdometry();
+    odom.pose.pose = route.start_pose;
+    odom.header.frame_id = "map";
+    
+    return odom;
+  }
+
+  void retrigger_pubs_spin(
+    const std::optional<nav_msgs::msg::Odometry> & odom, 
+    const std::optional<autoware_planning_msgs::msg::LaneletRoute> & route, 
+    std::chrono::milliseconds spin_time
+  ) {
+    if (odom.has_value()) { 
+      pub_odom_->publish(odom.value()); 
+    }
+    if (route.has_value()) { 
+      pub_route_->publish(route.value()); 
+    }
+    spin_executor_for(std::chrono::milliseconds(spin_time));
+  }
+
   // Harness pointers
   std::shared_ptr<PathGenerator> node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
@@ -148,20 +172,16 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
 {
   load_and_publish_map("autoware_test_utils", "lanelet2_map.osm");
   auto route = load_route("autoware_path_generator", "common_route.yaml");
-  
-  // Set odom to route start
-  auto odom = autoware::test_utils::makeOdometry();
-  odom.pose.pose = route.start_pose;
-  odom.header.frame_id = "map";
   route.header.frame_id = "map";
   
-  pub_odom_->publish(odom);
+  // Set odom to route start
+  auto odom = set_start_odom(route);
+  
   // Allow map & odom to register
-  spin_executor_for(std::chrono::milliseconds(100));
+  retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
 
-  pub_route_->publish(route);
   // Allow planning trigger
-  spin_executor_for(std::chrono::milliseconds(500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(500));
 
   // Memory check before accessing
   ASSERT_NE(latest_path_, nullptr) << "Node failed to output PathWithLaneId";
@@ -183,16 +203,11 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
 {
   load_and_publish_map("autoware_test_utils", "consecutive_turn/lanelet2_map.osm");
   auto route = load_route("autoware_path_generator", "turn_signal_route.yaml");
-  
-  // Set odom a bit away from intersection initially
-  auto odom = autoware::test_utils::makeOdometry();
-  odom.pose.pose = route.start_pose;
-  odom.header.frame_id = "map";
   route.header.frame_id = "map";
   
-  pub_odom_->publish(odom);
-  pub_route_->publish(route);
-  spin_executor_for(std::chrono::milliseconds(500));
+  auto odom = set_start_odom(route);
+  
+  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
 
   ASSERT_NE(latest_turn_, nullptr);
   
@@ -203,9 +218,7 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   
   // Simulate advancing odom to trigger section
   odom.pose.pose.position.x = 1500.0;
-  pub_odom_->publish(odom);
-  pub_route_->publish(route);
-  spin_executor_for(std::chrono::milliseconds(500));
+  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
   
   ASSERT_NE(latest_turn_, nullptr);
 }
@@ -220,15 +233,13 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
   autoware_planning_msgs::msg::LaneletRoute empty_route; 
   auto odom = autoware::test_utils::makeOdometry();
   
-  pub_odom_->publish(odom);
-  spin_executor_for(std::chrono::milliseconds(100));
+  retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
 
   // Reset captured pointers
   latest_path_ = nullptr;
   
   // Publish empty route
-  pub_route_->publish(empty_route);
-  spin_executor_for(std::chrono::milliseconds(500));
+  retrigger_pubs_spin(std::nullopt, empty_route, std::chrono::milliseconds(500));
 
   // Expects node should not crash
   EXPECT_EQ(latest_path_, nullptr) << "Node should fail-safe and not publish on empty route";
