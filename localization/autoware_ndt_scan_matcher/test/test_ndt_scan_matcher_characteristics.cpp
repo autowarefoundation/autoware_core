@@ -1108,13 +1108,13 @@ TEST(NdtScanMatcherCharacteristics, EstimatedCovarianceOverwritesOnlyFourOfThirt
   }
 }
 
-/// The published initial pose carries the *older* pose's covariance, never an interpolated one.
+/// The pose `align` starts from is the interpolated midpoint, not either bracketing pose.
 ///
-/// `SmartPoseBuffer::interpolate` interpolates the position and then assigns
-/// `old_pose.covariance` verbatim, with a comment saying so. Anyone reimplementing interpolation
-/// will interpolate the covariance too, because that is the obvious thing to do, and nothing else
-/// observes the difference.
-TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseCarriesOldPoseCovarianceNotInterpolated)
+/// `SmartPoseBuffer::interpolate` is what turns two EKF poses into the one initial guess, and
+/// `/initial_pose_with_covariance` publishes exactly the value that was handed to `align`. Getting
+/// the interpolation wrong -- taking an endpoint, weighting by the wrong side -- moves every
+/// scan-matching result, and no diagnostic would say so.
+TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseIsTheInterpolatedMidpoint)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides());
@@ -1124,17 +1124,11 @@ TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseCarriesOldPoseCovariance
 
   ASSERT_TRUE(harness->ensure_map_loaded());
 
-  // Neither value is `make_pose_at`'s default, which `ensure_map_loaded` already put in the buffer;
-  // reusing it would let the covariance assertion pass on the wrong pose.
-  constexpr double older_pose_variance = 0.09;
-  constexpr double newer_pose_variance = 4.0;
   constexpr double newer_pose_delta_x = 2.0;
 
   ScanDrive drive;
   InitialPoseSpec spec;
   spec.delta_x = newer_pose_delta_x;  // so the interpolated position differs from both endpoints
-  spec.old_variance_xy = older_pose_variance;
-  spec.new_variance_xy = newer_pose_variance;
   drive.initial_pose = spec;
 
   // Act
@@ -1143,7 +1137,7 @@ TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseCarriesOldPoseCovariance
   // Assert
   ASSERT_TRUE(outcome.has_value());
   ASSERT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "True");
-  // Convergence is asserted even though this case is about the covariance, because the
+  // Convergence is asserted even though this case is about the interpolated position, because the
   // non-converged case's cleanup reasoning depends on it: every converged-path case except that one
   // resets the process-global skip counter by matching successfully. Left implicit, this case could
   // stop converging and start leaving the counter advanced without saying so.
@@ -1155,11 +1149,7 @@ TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseCarriesOldPoseCovariance
   ASSERT_TRUE(published.has_value());
   const auto & interpolated = *published;
 
-  EXPECT_DOUBLE_EQ(interpolated.pose.covariance[0], older_pose_variance);
-
-  EXPECT_DOUBLE_EQ(interpolated.pose.covariance[7], older_pose_variance);
-
-  // The position *is* interpolated: the scan stamp sits exactly between the two poses.
+  // The scan stamp sits exactly between the two poses.
   EXPECT_GT(interpolated.pose.pose.position.x, map_center_x);
   EXPECT_LT(interpolated.pose.pose.position.x, map_center_x + newer_pose_delta_x);
   EXPECT_NEAR(interpolated.pose.pose.position.x, map_center_x + newer_pose_delta_x / 2.0, 1e-6);

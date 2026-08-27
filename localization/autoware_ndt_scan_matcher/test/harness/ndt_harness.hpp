@@ -62,10 +62,6 @@ struct InitialPoseSpec
   /// distinguishable from both endpoints. Must stay within
   /// `validation.initial_pose_distance_tolerance_m` (10 m) or interpolation is rejected.
   double delta_x{0.0};
-  /// Covariance of each pose. `SmartPoseBuffer` copies the *old* pose's covariance into the
-  /// interpolated result verbatim, so differing values make that choice observable.
-  double old_variance_xy{0.25};
-  double new_variance_xy{0.25};
 };
 
 /// @brief One scan-driving attempt's parameters.
@@ -413,11 +409,10 @@ public:
 
       if (drive.initial_pose.has_value()) {
         const auto & spec = drive.initial_pose.value();
-        const auto older = make_pose_at(
-          target - rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id, spec.old_variance_xy);
+        const auto older =
+          make_pose_at(target - rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id);
         const auto newer = make_pose_at(
-          target + rclcpp::Duration(100ms), spec.x + spec.delta_x, spec.y, spec.frame_id,
-          spec.new_variance_xy);
+          target + rclcpp::Duration(100ms), spec.x + spec.delta_x, spec.y, spec.frame_id);
         if (!publish_initial_pose_and_confirm(older) || !publish_initial_pose_and_confirm(newer)) {
           continue;
         }
