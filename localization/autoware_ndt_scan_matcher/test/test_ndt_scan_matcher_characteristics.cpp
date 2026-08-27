@@ -74,13 +74,18 @@ using ndt_test::make_pose_at;
 constexpr int8_t level_warn = diagnostic_msgs::msg::DiagnosticStatus::WARN;
 constexpr int8_t level_error = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
 
-/// @brief Overrides that keep the initial-pose search cheap without changing its structure.
+/// @brief Overrides that make the initial-pose search cheap enough to run in a test.
+///
+/// `particles_num` is one `ndt->align` per particle, so 200 -> 10 is the twentyfold saving.
+/// `n_startup_trials` has to come down with it: the TPE samples randomly until it has that many
+/// trials, so leaving it at 100 would make all ten random anyway. At 10/10 they are all random --
+/// the adaptive half of the search never runs here, and no case depends on it.
 std::vector<rclcpp::Parameter> fast_align_overrides()
 {
   return {
     rclcpp::Parameter("initial_pose_estimation.particles_num", 10),
     rclcpp::Parameter("initial_pose_estimation.n_startup_trials", 10),
-    rclcpp::Parameter("ndt.num_threads", 1),
+    rclcpp::Parameter("ndt.num_threads", 1),  // removes OpenMP reduction nondeterminism
   };
 }
 
