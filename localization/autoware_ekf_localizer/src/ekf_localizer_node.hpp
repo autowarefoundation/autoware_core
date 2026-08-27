@@ -114,15 +114,6 @@ private:
 
   const HyperParameters params_;
 
-  std::atomic<bool> is_activated_{false};
-  std::atomic<bool> is_set_initialpose_{false};
-
-  //!< @brief temporary queues written by subscription callbacks; drained into main queues by timer
-  std::queue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_tmp_;
-  std::queue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_tmp_;
-  std::mutex pose_mtx_;
-  std::mutex twist_mtx_;
-
   //!< @brief callback groups for parallel execution
   rclcpp::CallbackGroup::SharedPtr cb_group_pose_;
   rclcpp::CallbackGroup::SharedPtr cb_group_twist_;
@@ -170,10 +161,7 @@ private:
   /**
    * @brief publish current EKF estimation result
    */
-  void publish_estimate_result(
-    const geometry_msgs::msg::PoseStamped & current_ekf_pose,
-    const geometry_msgs::msg::PoseStamped & current_biased_ekf_pose,
-    const geometry_msgs::msg::TwistStamped & current_ekf_twist);
+  void publish_estimate_result(const EKFUpdateResult & result);
 
   /**
    * @brief Overwrite merged_diagnostic_status_ from merged diagnostics each tick;
