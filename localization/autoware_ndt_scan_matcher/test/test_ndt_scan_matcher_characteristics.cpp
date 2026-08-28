@@ -175,6 +175,37 @@ TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
     << ::testing::PrintToString(diag.keys_in_order());
 }
 
+/// A scan whose frame has no transform to `base_link` is an ERROR, and the callback stops there.
+///
+/// The "missing TF" that `WrongFrameIdOnInitialPoseIsErrorNotWarn`'s severity split names, pinned
+/// on the scan side. The lookup is `TimePointZero` with no timeout, so an unknown frame fails at
+/// once. `absent("sensor_points_max_distance")` is the witness for the stop.
+TEST(NdtScanMatcherCharacteristics, ScanWithoutATransformIsAnError)
+{
+  // Arrange
+  auto harness = make_ready_harness();
+
+  ScanDrive drive;
+  drive.make_cloud = [](const builtin_interfaces::msg::Time & stamp) {
+    auto cloud = ndt_test::make_scan_at(stamp);
+    cloud.header.frame_id = "no_such_frame";  // nothing broadcasts a transform for it
+    return cloud;
+  };
+
+  // Act
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_EQ(diag.value("is_succeed_transform_sensor_points"), "False");
+  EXPECT_EQ(diag.level(), level_error) << "message was: " << diag.message();
+  EXPECT_FALSE(diag.has_key("sensor_points_max_distance"))
+    << "the callback ran past a failed transform. keys: "
+    << ::testing::PrintToString(diag.keys_in_order());
+}
+
 /// The near-field gate runs *before* the activation check.
 ///
 /// Hoisting the cheap `is_activated_` boolean above the O(n) distance scan is a tempting
@@ -343,6 +374,44 @@ TEST(NdtScanMatcherCharacteristics, ActivatingClearsTheInitialPoseBuffer)
     ASSERT_TRUE(outcome.has_value());
     EXPECT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "False");
   }
+}
+
+/// Reaching `validation.skipping_publish_num` appends the "exceed limit" WARN, and the comparison
+/// is inclusive.
+///
+/// The counter is a function-local `static` shared by every node this binary builds, so the case
+/// zeroes it first: a rejected scan while deactivated takes the `!is_activated_` arm. One rejected
+/// scan while activated then reads 1, which against a threshold of 1 is the boundary -- `>=` warns
+/// where `>` would not.
+TEST(NdtScanMatcherCharacteristics, SkipCounterWarnsWhenItReachesTheThreshold)
+{
+  // Arrange
+  // `required_distance` is what rejects the near-field scan below, so it is pinned alongside.
+  auto harness = make_ready_harness(
+    {rclcpp::Parameter("validation.skipping_publish_num", 1),
+     rclcpp::Parameter("sensor_points.required_distance", 10.0)});
+
+  ScanDrive near_field;
+  near_field.make_cloud = [](const builtin_interfaces::msg::Time & stamp) {
+    return make_near_field_scan(stamp);
+  };
+  const auto zeroed = harness->drive_one_scan(near_field);
+  ASSERT_TRUE(zeroed.has_value());
+  ASSERT_EQ(zeroed->diag.value("skipping_publish_num"), "0");
+
+  ASSERT_EQ(harness->activate(), std::optional<bool>(true));
+
+  // Act
+  const auto outcome = harness->drive_one_scan(near_field);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_EQ(diag.value("skipping_publish_num"), "1");
+  EXPECT_EQ(diag.level(), level_warn);
+  EXPECT_TRUE(contains(diag.message(), "skipping_publish_num exceed limit"))
+    << "message was: " << diag.message();
 }
 
 // ---------------------------------------------------------------------------------------------
