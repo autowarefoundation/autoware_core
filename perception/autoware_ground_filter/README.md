@@ -14,31 +14,25 @@ Detail description of each ground segmentation algorithm is in the following lin
 
 ## Inputs / Outputs
 
-### Input
+The interfaces below are generated from the node design file
+[`design/GroundFilter.node.yaml`](design/GroundFilter.node.yaml).
 
-| Name              | Type                            | Description       |
-| ----------------- | ------------------------------- | ----------------- |
-| `~/input/points`  | `sensor_msgs::msg::PointCloud2` | reference points  |
-| `~/input/indices` | `pcl_msgs::msg::Indices`        | reference indices |
-
-### Output
-
-| Name              | Type                            | Description     |
-| ----------------- | ------------------------------- | --------------- |
-| `~/output/points` | `sensor_msgs::msg::PointCloud2` | filtered points |
+{{ node_interfaces_to_markdown("perception/autoware_ground_filter/design/GroundFilter.node.yaml") }}
 
 ## Parameters
 
 ### Node Parameters
 
-| Name               | Type   | Default Value | Description                           |
-| ------------------ | ------ | ------------- | ------------------------------------- |
-| `input_frame`      | string | " "           | input frame id                        |
-| `output_frame`     | string | " "           | output frame id                       |
-| `max_queue_size`   | int    | 5             | max queue size of input/output topics |
-| `use_indices`      | bool   | false         | flag to use pointcloud indices        |
-| `latched_indices`  | bool   | false         | flag to latch pointcloud indices      |
-| `approximate_sync` | bool   | false         | flag to use approximate sync option   |
+The node launch parameters below are generated from the node design file
+[`design/GroundFilter.node.yaml`](design/GroundFilter.node.yaml).
+
+{{ node_param_values_to_markdown("perception/autoware_ground_filter/design/GroundFilter.node.yaml") }}
+
+### Parameter files
+
+{{ node_param_files_to_markdown("perception/autoware_ground_filter/design/GroundFilter.node.yaml") }}
+
+The ground segmentation parameters are described in [ground-filter.md](docs/ground-filter.md).
 
 ## Assumptions / Known limits
 
