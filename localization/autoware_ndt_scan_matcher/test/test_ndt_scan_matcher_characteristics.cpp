@@ -47,18 +47,14 @@
 /// though only some runs get that far, because the level assertion ahead of them aborts the body
 /// first. Debugging a single case directly is fine; set `ROS_DOMAIN_ID` yourself first.
 ///
-/// **The counter values in these comments assume declaration order.** `skipping_publish_num` is a
-/// function-local `static`, so one counter is shared by every node this binary builds, and the
-/// trajectory the cases below describe -- reaching 5 by
-/// `RejectedInitialPoseUpdatesNeitherBufferNorMapAnchor` -- is the one declaration order produces.
-/// `--gtest_shuffle` and `--gtest_repeat` change it, and `--gtest_filter` to a subset drops the
-/// cases that reset it, so those numbers stop describing what happens.
-///
-/// Shuffling has been measured to pass, over a dozen seeds. What survives it is the assertions:
-/// reaching the shipped threshold of 5 appends an "exceed limit" WARN, and nothing here compares a
-/// whole message or expects OK from a case that already warns. So this is a note about which
-/// numbers to trust while reading, and a latent hazard for whoever adds a case that does compare a
-/// whole message -- not a reason to avoid the flag.
+/// **`skipping_publish_num` is a function-local `static`**: one counter, shared by every node this
+/// binary builds. In declaration order it stays under the shipped threshold of 5 -- it peaks at 4,
+/// in `ActivatingClearsTheInitialPoseBuffer` -- so no case trips the "exceed limit" WARN by
+/// accident; `SkipCounterWarnsWhenItReachesTheThreshold` pins that WARN at a threshold of its own,
+/// and the non-converging cases reset the counter on exit. `--gtest_shuffle` can still stack enough
+/// rejections to reach 5 on a shipped-threshold node. That is harmless while nothing compares a
+/// whole `scan_matching_status` message or expects OK from a case that already warns -- the
+/// hazard is for whoever adds a case that does. Shuffling has been measured to pass.
 
 #include "harness/ndt_harness.hpp"
 #include "harness/stimulus.hpp"
