@@ -122,16 +122,16 @@ protected:
   static autoware_map_msgs::msg::LaneletMapBin create_mock_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
-
-    // Left bound (y = 3.5)
-    lanelet::Point3d p1_left(lanelet::utils::getId(), 0.0, 3.5, 0.0);
-    lanelet::Point3d p2_left(lanelet::utils::getId(), 100.0, 3.5, 0.0);
-    lanelet::LineString3d left_bound(lanelet::utils::getId(), {p1_left, p2_left});
+    
+    // Left bound (y = 1.75)
+    lanelet::Point3d p1_left(1, 0.0, 1.75, 0.0);
+    lanelet::Point3d p2_left(2, 100.0, 1.75, 0.0);
+    lanelet::LineString3d left_bound(10, {p1_left, p2_left});
 
     // Right bound (y = 0.0)
-    lanelet::Point3d p1_right(lanelet::utils::getId(), 0.0, 0.0, 0.0);
-    lanelet::Point3d p2_right(lanelet::utils::getId(), 100.0, 0.0, 0.0);
-    lanelet::LineString3d right_bound(lanelet::utils::getId(), {p1_right, p2_right});
+    lanelet::Point3d p1_right(3, 0.0, -1.75, 0.0);
+    lanelet::Point3d p2_right(4, 100.0, -1.75, 0.0);
+    lanelet::LineString3d right_bound(11, {p1_right, p2_right});
 
     // Lanelet (ID 1000)
     lanelet::Lanelet mock_lanelet(1000, left_bound, right_bound);
@@ -161,12 +161,13 @@ protected:
     route.header.frame_id = "map";
 
     // Set deterministic poses within 100m map
-    route.start_pose.position.x = 5.0;
-    route.start_pose.position.y = 1.75;
+    // Here start at X = 10.0 to satisfy edge boundary check
+    route.start_pose.position.x = 10.0;
+    route.start_pose.position.y = 0.0;
     route.start_pose.orientation.w = 1.0;
 
     route.goal_pose.position.x = 90.0;
-    route.goal_pose.position.y = 1.75;
+    route.goal_pose.position.y = 0.0;
     route.goal_pose.orientation.w = 1.0;
 
     // Link to lanelet ID 1000
@@ -178,6 +179,7 @@ protected:
     autoware_planning_msgs::msg::LaneletPrimitive primitive;
     primitive.id = 1000;
     primitive.primitive_type = "lane";
+    segment.primitives.push_back(primitive);
 
     route.segments.push_back(segment);
 
