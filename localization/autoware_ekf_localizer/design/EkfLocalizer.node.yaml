@@ -1,0 +1,86 @@
+autoware_system_design_format: 0.3.0
+
+# node information
+name: EkfLocalizer.node
+
+package:
+  name: autoware_ekf_localizer
+  provider: autoware
+
+launch:
+  plugin: autoware::ekf_localizer::EKFLocalizerNode
+  executable: autoware_ekf_localizer_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: in_pose_with_covariance
+  - name: twist_with_covariance
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    remap_target: in_twist_with_covariance
+  - name: initialpose
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: initialpose
+
+publishers:
+  - name: odom
+    message_type: nav_msgs/msg/Odometry
+    remap_target: ekf_odom
+  - name: pose
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: ekf_pose
+  - name: pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: ekf_pose_with_covariance
+  - name: biased_pose
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: ekf_biased_pose
+  - name: biased_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: ekf_biased_pose_with_covariance
+  - name: twist
+    message_type: geometry_msgs/msg/TwistStamped
+    remap_target: ekf_twist
+  - name: twist_with_covariance
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    remap_target: ekf_twist_with_covariance
+  - name: processing_time_ms
+    message_type: autoware_internal_debug_msgs/msg/Float64Stamped
+    remap_target: debug/processing_time_ms
+  - name: tf
+    message_type: tf2_msgs/msg/TFMessage
+    global: /tf
+  - name: diagnostics
+    message_type: diagnostic_msgs/msg/DiagnosticArray
+    global: /diagnostics
+
+servers:
+  - name: trigger_node
+    message_type: std_srvs/srv/SetBool
+    remap_target: trigger_node_srv
+
+# parameters
+param_files:
+  - name: param_file
+    default: config/ekf_localizer.param.yaml
+
+param_values: []
+
+# processes
+processes:
+  - name: fuse
+    trigger_conditions:
+      - periodic: 50 # Hz (predict_frequency)
+    outcomes:
+      - to_output: odom
+      - to_output: pose
+      - to_output: pose_with_covariance
+      - to_output: biased_pose
+      - to_output: biased_pose_with_covariance
+      - to_output: twist
+      - to_output: twist_with_covariance
+      - to_output: processing_time_ms
+      - to_output: tf
+      - to_output: diagnostics

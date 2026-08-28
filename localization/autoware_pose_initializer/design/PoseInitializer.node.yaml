@@ -13,7 +13,19 @@ launch:
   node_output: screen
 
 # interfaces
-subscribers: []
+subscribers:
+  - name: stop_check_twist
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    remap_target: stop_check_twist
+  - name: gnss_pose_cov
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: gnss_pose_cov
+  - name: pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: ~/pointcloud_map
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    remap_target: ~/vector_map
 
 publishers:
   - name: pose_reset
@@ -27,6 +39,23 @@ servers:
   - name: initialize
     message_type: autoware_localization_msgs/srv/InitializeLocalization
     remap_target: /localization/initialize
+
+clients:
+  - name: yabloc_align
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    remap_target: yabloc_align
+  - name: ndt_align
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    remap_target: ndt_align
+  - name: ekf_trigger_node
+    message_type: std_srvs/srv/SetBool
+    remap_target: ekf_trigger_node
+  - name: ndt_trigger_node
+    message_type: std_srvs/srv/SetBool
+    remap_target: ndt_trigger_node
+  - name: partial_map_load
+    message_type: autoware_map_msgs/srv/GetPartialPointCloudMap
+    remap_target: ~/partial_map_load
 
 # parameters
 param_files:

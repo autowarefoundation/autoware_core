@@ -1,0 +1,66 @@
+autoware_system_design_format: 0.3.0
+
+# node information
+name: NdtScanMatcher.node
+
+package:
+  name: autoware_ndt_scan_matcher
+  provider: autoware
+
+launch:
+  plugin: autoware::ndt_scan_matcher::NDTScanMatcher
+  executable: autoware_ndt_scan_matcher_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: pointcloud
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: points_raw
+  - name: initial_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: ekf_pose_with_covariance
+  - name: regularization_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: regularization_pose_with_covariance
+
+publishers:
+  - name: pose
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: ndt_pose
+  - name: pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: ndt_pose_with_covariance
+  - name: diagnostics
+    message_type: diagnostic_msgs/msg/DiagnosticArray
+    global: /diagnostics
+
+servers:
+  - name: trigger_node
+    message_type: std_srvs/srv/SetBool
+    remap_target: trigger_node_srv
+  - name: ndt_align
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    remap_target: ndt_align_srv
+
+clients:
+  - name: map_loader
+    message_type: autoware_map_msgs/srv/GetDifferentialPointCloudMap
+    remap_target: pcd_loader_service
+
+# parameters
+param_files:
+  - name: param_file
+    default: config/ndt_scan_matcher.param.yaml
+
+param_values: []
+
+# processes
+processes:
+  - name: scan_match
+    trigger_conditions:
+      - on_input: pointcloud
+    outcomes:
+      - to_output: pose
+      - to_output: pose_with_covariance
+      - to_output: diagnostics
