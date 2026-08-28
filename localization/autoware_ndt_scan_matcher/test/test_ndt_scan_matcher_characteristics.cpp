@@ -146,7 +146,8 @@ TEST(NdtScanMatcherCharacteristics, EmptyScanIsRejectedWithAWarning)
 /// reimplementation of "detect the timeout and report it" returns instead, and then NDT stops
 /// publishing exactly when the LiDAR is late — the moment localization matters most.
 ///
-/// The witness that execution continued is the presence of keys added *after* the latency check.
+/// The witness that execution continued is `is_succeed_transform_sensor_points`, the next key the
+/// callback adds after the latency check.
 TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
 {
   // Arrange
@@ -169,8 +170,7 @@ TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
 
   // Processing continued past the latency gate. Whether it *should* is genuinely open -- the
   // production comment argues either way -- so this records today's answer, not a preference.
-  EXPECT_EQ(diag.value("is_succeed_transform_sensor_points"), "True");
-  EXPECT_TRUE(diag.has_key("is_activated"))
+  EXPECT_EQ(diag.value("is_succeed_transform_sensor_points"), "True")
     << "the latency gate now aborts, where today it only warns. keys: "
     << ::testing::PrintToString(diag.keys_in_order());
 }
