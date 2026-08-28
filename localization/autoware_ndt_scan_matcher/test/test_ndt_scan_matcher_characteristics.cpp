@@ -668,6 +668,8 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
 /// `ndt.resolution`, `outlier_ratio` and CI load, and these must not.
 constexpr double never_exceeded = 1.0e9;
 constexpr double never_reached = 1.0e9;
+/// A ceiling every measurement clears: the distances and times it guards are non-negative.
+constexpr double always_exceeded = -1.0;
 
 /// The diagonal of `covariance.output_pose_covariance`, which the covariance case reads back.
 constexpr double param_variance_xyz = 0.0225;
@@ -1001,6 +1003,228 @@ TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPos
   EXPECT_EQ(ndt_pose->count(), 0U);
 }
 
+/// `distance_initial_to_result` over its tolerance is a WARN, and the pose still goes out.
+///
+/// Four checks warn and continue: the latency gate and `out_of_map_range` before `align`, this and
+/// `execution_time` after it. Folding any of them into `is_converged` is the tidy-up a decision
+/// helper invites; `ndt_pose` arriving and the skip counter staying at 0 are what say the pose was
+/// not withheld.
+TEST(NdtScanMatcherCharacteristics, InitialToResultDistanceOverToleranceWarnsButStillPublishes)
+{
+  // Arrange
+  auto overrides = converged_hot_path_overrides();
+  overrides.emplace_back("validation.initial_to_result_distance_tolerance_m", always_exceeded);
+  auto harness = make_ready_harness(std::move(overrides));
+
+  auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_EQ(diag.level(), level_warn);
+  EXPECT_TRUE(contains(diag.message(), "distance_initial_to_result is too large"))
+    << "message was: " << diag.message();
+  EXPECT_EQ(diag.value("skipping_publish_num"), "0");
+
+  ASSERT_TRUE(harness->wait_until([&] { return ndt_pose->count() >= 1; }, 5s));
+  EXPECT_EQ(ndt_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
+}
+
+/// `execution_time` over its bound is a WARN, and the pose still goes out.
+TEST(NdtScanMatcherCharacteristics, ExecutionTimeOverBoundWarnsButStillPublishes)
+{
+  // Arrange
+  auto overrides = converged_hot_path_overrides();
+  overrides.emplace_back("validation.critical_upper_bound_exe_time_ms", always_exceeded);
+  auto harness = make_ready_harness(std::move(overrides));
+
+  auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_EQ(diag.level(), level_warn);
+  EXPECT_TRUE(contains(diag.message(), "NDT exe time is too long"))
+    << "message was: " << diag.message();
+  EXPECT_EQ(diag.value("skipping_publish_num"), "0");
+
+  ASSERT_TRUE(harness->wait_until([&] { return ndt_pose->count() >= 1; }, 5s));
+  EXPECT_EQ(ndt_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
+}
+
+/// Out of map range is a WARN on the scan and an ERROR on the timer, and the pose still goes out.
+///
+/// The same inequality, `distance + lidar_radius > map_radius`, is written twice: in
+/// `out_of_map_range` on the scan path, where it warns and continues, and in `should_update_map`
+/// on the timer path, where it is the "not keeping up" ERROR and sets `need_rebuild`.
+/// Deduplicating it is on the extraction list, so both faces are pinned from one override and have
+/// to move together. At the load position the distance is 0, so `lidar_radius` one metre over
+/// `map_radius` trips both on every tick. The `need_rebuild` it sets is pinned by then moving past
+/// `update_distance`: the load that follows is a rebuild, where an in-range walk takes the
+/// incremental path.
+TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsAWarnOnTheScanAndAnErrorOnTheTimer)
+{
+  // Arrange
+  auto overrides = converged_hot_path_overrides();
+  overrides.emplace_back("dynamic_map_loading.lidar_radius", 151.0);  // `map_radius` is 150
+  auto harness = make_ready_harness(std::move(overrides));
+
+  auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_EQ(diag.level(), level_warn);
+  EXPECT_TRUE(contains(diag.message(), "Lidar has gone out of the map range"))
+    << "message was: " << diag.message();
+  EXPECT_EQ(diag.value("skipping_publish_num"), "0");
+
+  ASSERT_TRUE(harness->wait_until([&] { return ndt_pose->count() >= 1; }, 5s));
+  EXPECT_EQ(ndt_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
+
+  // The timer's face. It has not moved `update_distance`, so it only reports: no rebuild is
+  // attempted, which `absent("is_need_rebuild")` witnesses.
+  const auto timer = harness->wait_for_diag(
+    map_update_status,
+    [](const NdtHarness::Record & record) { return record.level() == level_error; },
+    std::chrono::seconds(5));
+  ASSERT_TRUE(timer.has_value());
+  EXPECT_TRUE(contains(timer->message(), "Dynamic map loading is not keeping up"))
+    << "message was: " << timer->message();
+  EXPECT_FALSE(timer->has_key("is_need_rebuild"))
+    << "the timer went on to update the map. keys: "
+    << ::testing::PrintToString(timer->keys_in_order());
+
+  // The ERROR's side effect: past `update_distance`, the next load rebuilds instead of adding.
+  ASSERT_TRUE(harness->publish_initial_pose_and_confirm(
+    make_pose_at(harness->now(), map_center_x + 25.0, map_center_y)));
+  std::vector<NdtHarness::Record> loads;
+  ASSERT_TRUE(harness->wait_until(
+    [&] {
+      loads.clear();
+      for (const auto & record : harness->diag().records(map_update_status)) {
+        if (record.has_key("is_need_rebuild")) {
+          loads.push_back(record);
+        }
+      }
+      return loads.size() >= 2U;
+    },
+    std::chrono::seconds(5)))
+    << "the timer never loaded again after the move";
+  EXPECT_EQ(loads.back().value("is_need_rebuild"), "True");
+  EXPECT_EQ(loads.back().value("is_updated_map"), "True");
+}
+
+/// An unknown `converged_param_type` runs the alignment and then discards it: ERROR, nothing
+/// published.
+///
+/// `static_cast<ConvergedParamType>` at construction accepts any integer, so a mistyped config
+/// reaches this branch on every scan. The order is what is pinned: `iteration_num` present says
+/// `align` ran, `transform_probability_diff` absent says the callback left before the score diffs,
+/// and no topic arrives. Validating the parameter is a separate finding.
+TEST(NdtScanMatcherCharacteristics, UnknownConvergedParamTypeIsAnErrorAfterAligning)
+{
+  // Arrange
+  auto overrides = converged_hot_path_overrides();
+  overrides.emplace_back("score_estimation.converged_param_type", 2);  // 0 and 1 are the only types
+  auto harness = make_ready_harness(std::move(overrides));
+
+  auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
+  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, ndt_pose, points_aligned));
+
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  const ScopeExit reset_skip_counter([&] { reset_skip_counter_via_deactivation(*harness); });
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_TRUE(diag.has_key("iteration_num"))
+    << "alignment did not run. keys: " << ::testing::PrintToString(diag.keys_in_order());
+  EXPECT_FALSE(diag.has_key("transform_probability_diff"))
+    << "the callback ran past the type check. keys: "
+    << ::testing::PrintToString(diag.keys_in_order());
+  EXPECT_EQ(diag.level(), level_error);
+  EXPECT_TRUE(contains(diag.message(), "Unknown converged param type"))
+    << "message was: " << diag.message();
+  EXPECT_GT(diag.value_as_double("skipping_publish_num"), 0.0);
+
+  // The record above is published after the callback returned, so its publishes went out first.
+  EXPECT_EQ(ndt_pose->count(), 0U);
+  EXPECT_EQ(points_aligned->count(), 0U);
+}
+
+/// With TRANSFORM_PROBABILITY selected, the transform-probability threshold decides convergence.
+///
+/// Every other converged case runs NVTL. This one selects TP and puts only the TP threshold out of
+/// reach, so a hot path that ignored the type would converge on NVTL and publish. Any unification
+/// of score selection across the scan and align paths has to keep this true.
+TEST(NdtScanMatcherCharacteristics, TransformProbabilityTypeIsJudgedByItsOwnThreshold)
+{
+  // Arrange
+  auto overrides = converged_hot_path_overrides();
+  overrides.emplace_back("score_estimation.converged_param_type", 0);  // TRANSFORM_PROBABILITY
+  overrides.emplace_back("score_estimation.converged_param_transform_probability", never_reached);
+  auto harness = make_ready_harness(std::move(overrides));
+
+  auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
+  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, ndt_pose));
+
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  const ScopeExit reset_skip_counter([&] { reset_skip_counter_via_deactivation(*harness); });
+
+  // Act
+  ScanDrive drive;
+  drive.initial_pose = InitialPoseSpec{};
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_EQ(diag.level(), level_warn);
+  EXPECT_TRUE(contains(diag.message(), "Score is below the threshold. Score: "))
+    << "message was: " << diag.message();
+
+  ASSERT_TRUE(harness->wait_until([&] { return points_aligned->count() >= 1; }, 5s));
+  EXPECT_EQ(ndt_pose->count(), 0U);
+}
+
 /// A converged scan resets the skip counter -- but only observably if it is already non-zero.
 ///
 /// `skipping_publish_num` is assigned `(is_succeed_scan_matching || !is_activated_) ? 0 : n + 1`.
@@ -1113,6 +1337,42 @@ TEST(NdtScanMatcherCharacteristics, EstimatedCovarianceOverwritesOnlyFourOfThirt
     }
     EXPECT_NEAR(covariance[i], 0.0, 1e-12) << "unexpected non-zero at covariance[" << i << "]";
   }
+}
+
+/// `initial_pose_distance_tolerance_m` reaches `SmartPoseBuffer`, and applies to the gap between
+/// the two bracketing poses.
+///
+/// The tolerance is lowered to 5 m and the poses set 6 m apart, so the pair is rejected only if the
+/// parameter is wired through: a buffer holding the shipped 10 m -- or no check at all -- would
+/// interpolate and pass. `PublishedInitialPoseIsTheInterpolatedMidpoint` is the control at 2 m.
+TEST(NdtScanMatcherCharacteristics, InitialPoseDistanceToleranceReachesTheInterpolationBuffer)
+{
+  // Arrange
+  auto overrides = converged_hot_path_overrides();
+  overrides.emplace_back("validation.initial_pose_distance_tolerance_m", 5.0);
+  auto harness = make_ready_harness(std::move(overrides));
+  ASSERT_EQ(harness->activate(), std::optional<bool>(true));
+
+  // Rejected while activated, so the shared skip counter advances.
+  const ScopeExit reset_skip_counter([&] { reset_skip_counter_via_deactivation(*harness); });
+
+  // Act
+  ScanDrive drive;
+  InitialPoseSpec spec;
+  spec.delta_x = 6.0;
+  drive.initial_pose = spec;
+
+  const auto outcome = harness->drive_one_scan(drive);
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  const auto & diag = outcome->diag;
+
+  EXPECT_EQ(diag.value("is_succeed_interpolate_initial_pose"), "False");
+  EXPECT_EQ(diag.level(), level_warn);
+  EXPECT_FALSE(diag.has_key("is_set_map_points"))
+    << "interpolation accepted poses 6 m apart against a 5 m tolerance. keys: "
+    << ::testing::PrintToString(diag.keys_in_order());
 }
 
 /// The pose `align` starts from is the interpolated midpoint, not either bracketing pose.

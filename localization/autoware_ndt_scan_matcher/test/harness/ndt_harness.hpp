@@ -30,6 +30,7 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <std_srvs/srv/set_bool.hpp>
 
+#include <gtest/gtest.h>
 #include <rcl_yaml_param_parser/parser.h>
 
 #include <atomic>
@@ -404,6 +405,8 @@ public:
   std::optional<ScanOutcome> drive_one_scan(const ScanDrive & drive)
   {
     const rclcpp::Time base = now() + rclcpp::Duration(drive.stamp_offset);
+    std::optional<std::string> last_tf_failure;
+    int last_tf_failure_attempt = 0;
     for (int attempt = 0; attempt < drive.attempts; ++attempt) {
       const rclcpp::Time target = base + rclcpp::Duration(std::chrono::seconds(attempt));
 
@@ -431,10 +434,16 @@ public:
         const bool lost_tf_race = record->value("is_succeed_transform_sensor_points") == "False" &&
                                   record->message().find(sensor_frame) != std::string::npos;
         if (lost_tf_race) {
+          last_tf_failure = record->message();
+          last_tf_failure_attempt = attempt;
           continue;
         }
         return ScanOutcome{target, record.value(), attempt};
       }
+    }
+    if (last_tf_failure.has_value()) {
+      ADD_FAILURE() << *last_tf_failure << " (attempt " << last_tf_failure_attempt + 1 << " of "
+                    << drive.attempts << ")";
     }
     return std::nullopt;
   }
