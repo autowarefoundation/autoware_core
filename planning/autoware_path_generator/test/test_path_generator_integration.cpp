@@ -206,7 +206,7 @@ protected:
 
   // ===================================================================
 
-  // Mock route for above lanelet
+  // Same mock route for above lanelets
   static autoware_planning_msgs::msg::LaneletRoute create_mock_route()
   {
     autoware_planning_msgs::msg::LaneletRoute route;
@@ -383,13 +383,16 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
 // Expects node not to crash, but should gracefully abort.
 TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
 {
-  load_and_publish_map("autoware_test_utils", "lanelet2_map.osm");
+  auto map_msg = create_mock_common_map_bin();
+  pub_map_->publish(map_msg);
 
   // Empty route declared
   autoware_planning_msgs::msg::LaneletRoute empty_route;
+  empty_route.header.frame_id = "map";
 
   // Empty odom declared
   auto odom = autoware::test_utils::makeOdometry();
+  odom.header.frame_id = "map";
 
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
 
