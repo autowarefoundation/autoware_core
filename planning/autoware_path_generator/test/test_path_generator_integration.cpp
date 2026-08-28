@@ -137,13 +137,13 @@ protected:
   static autoware_map_msgs::msg::LaneletMapBin create_mock_turn_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
-    
+
     auto [left_bound, right_bound] = prep_common_straight_bounds(100.0, 1.75);
     lanelet::Lanelet turn_lanelet = prep_lanelet(left_bound, right_bound);
-    
+
     // Here simulate a right turn
     turn_lanelet.attributes()["turn_direction"] = lanelet::AttributeValueString::Right;
-    
+
     map->add(turn_lanelet);
 
     return convert_ros_bin_map(map);
@@ -168,7 +168,7 @@ protected:
            lanelet::Point3d(6, 80.0, 1.75, 0.0)});
 
     lanelet::Lanelet cross_lanelet = prep_lanelet(left_bound, right_bound);
-    
+
     map->add(cross_lanelet);
 
     return convert_ros_bin_map(map);
@@ -193,7 +193,7 @@ protected:
     lanelet::LineString3d right_bound(11, right_points);
 
     lanelet::Lanelet dense_lanelet = prep_lanelet(left_bound, right_bound);
-    
+
     map->add(dense_lanelet);
 
     return convert_ros_bin_map(map);
@@ -201,7 +201,8 @@ protected:
 
   // Helper 1
   static std::pair<lanelet::LineString3d, lanelet::LineString3d> prep_common_straight_bounds(
-    double length, double half_width) {
+    double length, double half_width)
+  {
     // Left bound
     lanelet::Point3d p1_left(1, 0.0, half_width, 0.0);
     lanelet::Point3d p2_left(2, length, half_width, 0.0);
@@ -214,19 +215,26 @@ protected:
 
     return {left_bound, right_bound};
   }
-  
+
   // Helper 2
-  static lanelet::Lanelet prep_lanelet(lanelet::LineString3d & left_bound, lanelet::LineString3d & right_bound) {
+  static lanelet::Lanelet prep_lanelet(
+    lanelet::LineString3d & left_bound, lanelet::LineString3d & right_bound)
+  {
     lanelet::Lanelet this_lanelet(1000, left_bound, right_bound);
-    this_lanelet.attributes()[lanelet::AttributeName::Type] = lanelet::AttributeValueString::Lanelet;
-    this_lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
+    this_lanelet.attributes()[lanelet::AttributeName::Type] =
+      lanelet::AttributeValueString::Lanelet;
+    this_lanelet.attributes()[lanelet::AttributeName::Subtype] =
+      lanelet::AttributeValueString::Road;
 
     return this_lanelet;
   }
 
   // Helper 3
-  static autoware_map_msgs::msg::LaneletMapBin convert_ros_bin_map(const std::shared_ptr<lanelet::LaneletMap> & map_ptr) {
-    autoware_map_msgs::msg::LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map_ptr);
+  static autoware_map_msgs::msg::LaneletMapBin convert_ros_bin_map(
+    const std::shared_ptr<lanelet::LaneletMap> & map_ptr)
+  {
+    autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
+      autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map_ptr);
     map_bin_msg.header.frame_id = "map";
 
     return map_bin_msg;
