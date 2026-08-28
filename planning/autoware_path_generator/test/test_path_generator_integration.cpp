@@ -162,29 +162,6 @@ protected:
   }
 
   // Map with a turn
-  static autoware_map_msgs::msg::LaneletMapBin create_mock_turn_map_bin()
-  {
-    auto map = std::make_shared<lanelet::LaneletMap>();
-    
-    lanelet::LineString3d left_bound(10, {lanelet::Point3d(1, 0.0, 1.75, 0.0), lanelet::Point3d(2, 100.0, 1.75, 0.0)});
-    lanelet::LineString3d right_bound(11, {lanelet::Point3d(3, 0.0, -1.75, 0.0), lanelet::Point3d(4, 100.0, -1.75, 0.0)});
-
-    lanelet::Lanelet turn_lanelet(1000, left_bound, right_bound);
-    turn_lanelet.attributes()[lanelet::AttributeName::Type] = lanelet::AttributeValueString::Lanelet;
-    turn_lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
-    
-    turn_lanelet.attributes()["turn_direction"] = lanelet::AttributeValueString::Right;
-    map->add(turn_lanelet);
-
-    // Convert to ROS binary message
-    autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
-      autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
-    map_bin_msg.header.frame_id = "map";
-
-    return map_bin_msg;
-  }
-
-  // Map with a turn
   // Used in TEST 2
   static autoware_map_msgs::msg::LaneletMapBin create_mock_turn_map_bin()
   {
