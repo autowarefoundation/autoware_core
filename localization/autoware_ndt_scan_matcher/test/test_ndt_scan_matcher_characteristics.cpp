@@ -662,6 +662,17 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
 // `TreeStructuredParzenEstimator` is constructed and the process-global RNG stays untouched.
 // ---------------------------------------------------------------------------------------------
 
+/// @brief Threshold values put far outside anything the node can produce.
+///
+/// Same magnitude, opposite jobs, which is why they are two names. A ceiling set to
+/// `never_exceeded` silences the check it guards; a floor set to `never_reached` makes that check
+/// fail every time. Both are nine orders clear of the real range -- NVTL is bounded above by
+/// `-gauss_d1_`, about 4.2 at the shipped resolution, and the timing and distance bounds are
+/// measured in tens. Deliberately not the tightest value that works: the real ceilings move with
+/// `ndt.resolution`, `outlier_ratio` and CI load, and these must not.
+constexpr double never_exceeded = 1.0e9;
+constexpr double never_reached = 1.0e9;
+
 /// The diagonal of `covariance.output_pose_covariance`, which the covariance case reads back.
 constexpr double param_variance_xyz = 0.0225;
 constexpr double param_variance_angular = 0.000625;
@@ -681,8 +692,9 @@ std::vector<double> output_pose_covariance()
 /// @brief Overrides that make a converged scan deterministic.
 ///
 /// Five differ from the shipped values: `ndt.num_threads`, an unreachable `skipping_publish_num`,
-/// and `1e9` on `critical_upper_bound_exe_time_ms`, `initial_to_result_distance_tolerance_m` and
-/// `sensor_points.timeout_sec` -- WARNs CI load would otherwise trip.
+/// and `never_exceeded` on `critical_upper_bound_exe_time_ms`,
+/// `initial_to_result_distance_tolerance_m` and `sensor_points.timeout_sec` -- WARNs CI load would
+/// otherwise trip.
 std::vector<rclcpp::Parameter> converged_hot_path_overrides()
 {
   return {
@@ -704,13 +716,13 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides()
     rclcpp::Parameter("score_estimation.no_ground_points.enable", false),
     rclcpp::Parameter("covariance.output_pose_covariance", output_pose_covariance()),
     rclcpp::Parameter("covariance.covariance_estimation.covariance_estimation_type", 0),
-    rclcpp::Parameter("validation.critical_upper_bound_exe_time_ms", 1.0e9),
-    rclcpp::Parameter("validation.initial_to_result_distance_tolerance_m", 1.0e9),
+    rclcpp::Parameter("validation.critical_upper_bound_exe_time_ms", never_exceeded),
+    rclcpp::Parameter("validation.initial_to_result_distance_tolerance_m", never_exceeded),
     rclcpp::Parameter("validation.skipping_publish_num", 1000000),
     // Both gates precede everything else. `required_distance` is geometry -- a 28.3 m cloud against
     // 10 m. `timeout_sec` is wall clock and its delay includes the two blocking initial-pose
     // round-trips `drive_one_scan` makes after stamping, so it is relaxed; the stale case pins it.
-    rclcpp::Parameter("sensor_points.timeout_sec", 1.0e9),
+    rclcpp::Parameter("sensor_points.timeout_sec", never_exceeded),
     rclcpp::Parameter("sensor_points.required_distance", 10.0),
     // Both must hold: `drive_one_scan` brackets the scan stamp +/-100 ms, up to `delta_x` apart.
     rclcpp::Parameter("validation.initial_pose_timeout_sec", 1.0),
@@ -897,9 +909,9 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
 {
   // Arrange
   auto overrides = converged_hot_path_overrides();
-  // Unreachable score threshold: convergence is forced to fail on the score, not on iterations.
+  // Convergence is forced to fail on the score, not on iterations.
   overrides.emplace_back(
-    "score_estimation.converged_param_nearest_voxel_transformation_likelihood", 1.0e9);
+    "score_estimation.converged_param_nearest_voxel_transformation_likelihood", never_reached);
   auto harness = make_ready_harness(std::move(overrides));
 
   auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
