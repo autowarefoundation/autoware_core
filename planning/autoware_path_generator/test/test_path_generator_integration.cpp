@@ -20,6 +20,13 @@
 #include <autoware_test_utils/mock_data_parser.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <lanelet2_core/Attribute.h>
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/primitives/LineString.h>
+#include <lanelet2_core/primitives/Point.h>
+#include <autoware/lanelet2_utils/conversion.hpp>
+
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
@@ -119,7 +126,7 @@ protected:
   // ================== MOCK MAP BIN GENERATION FUNCS ==================
 
   // Deterministic, 100-meter straight map
-  static autoware_map_msgs::msg::LaneletMapBin create_mock_map_bin()
+  static autoware_map_msgs::msg::LaneletMapBin create_mock_common_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
     
@@ -147,6 +154,51 @@ protected:
     // Convert to ROS binary message
     autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
       autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
+    map_bin_msg.header.frame_id = "map";
+
+    return map_bin_msg;
+  }
+
+  // Map with a turn
+  static autoware_map_msgs::msg::LaneletMapBin create_mock_turn_map_bin()
+  {
+    auto map = std::make_shared<lanelet::LaneletMap>();
+    
+    lanelet::LineString3d left_bound(10, {lanelet::Point3d(1, 0.0, 1.75, 0.0), lanelet::Point3d(2, 100.0, 1.75, 0.0)});
+    lanelet::LineString3d right_bound(11, {lanelet::Point3d(3, 0.0, -1.75, 0.0), lanelet::Point3d(4, 100.0, -1.75, 0.0)});
+
+    lanelet::Lanelet turn_lanelet(1000, left_bound, right_bound);
+    turn_lanelet.attributes()[lanelet::AttributeName::Type] = lanelet::AttributeValueString::Lanelet;
+    turn_lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
+    
+    turn_lanelet.attributes()["turn_direction"] = lanelet::AttributeValueString::Right;
+    map->add(turn_lanelet);
+
+    // Convert to ROS binary message
+    autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
+      autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
+    map_bin_msg.header.frame_id = "map";
+
+    return map_bin_msg;
+  }
+
+  // Map with a turn
+  static autoware_map_msgs::msg::LaneletMapBin create_mock_turn_map_bin()
+  {
+    auto map = std::make_shared<lanelet::LaneletMap>();
+    
+    lanelet::LineString3d left_bound(10, {lanelet::Point3d(1, 0.0, 1.75, 0.0), lanelet::Point3d(2, 100.0, 1.75, 0.0)});
+    lanelet::LineString3d right_bound(11, {lanelet::Point3d(3, 0.0, -1.75, 0.0), lanelet::Point3d(4, 100.0, -1.75, 0.0)});
+
+    lanelet::Lanelet turn_lanelet(1000, left_bound, right_bound);
+    turn_lanelet.attributes()[lanelet::AttributeName::Type] = lanelet::AttributeValueString::Lanelet;
+    turn_lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
+    
+    turn_lanelet.attributes()["turn_direction"] = lanelet::AttributeValueString::Right;
+    map->add(turn_lanelet);
+
+    // Convert to ROS binary message
+    autoware_map_msgs::msg::LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
     map_bin_msg.header.frame_id = "map";
 
     return map_bin_msg;
@@ -272,7 +324,7 @@ protected:
 // rule.
 TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
 {
-  auto map_msg = create_mock_map_bin();
+  auto map_msg = create_mock_common_map_bin();
   pub_map_->publish(map_msg);
 
   // Set odom to route start
@@ -303,10 +355,11 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
 // This test verifies turn signal strictly triggers at expected proximity to consecutive turns.
 TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
 {
-  load_and_publish_map("autoware_test_utils", "consecutive_turn/lanelet2_map.osm");
+  auto map_msg = create_mock_turn_map_bin();
+  pub_map_-> publish(map_msg);
 
-  auto route = load_route_stamped("autoware_path_generator", "turn_signal_route.yaml");
-
+  auto route = create_mock_route();
+  
   auto odom = set_start_odom(route);
 
   retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
@@ -319,7 +372,7 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   EXPECT_GE(latest_turn_->command, 0);
 
   // Simulate advancing odom to trigger section
-  odom.pose.pose.position.x = 1500.0;
+  odom.pose.pose.position.x = 80.0;
   retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
 
   ASSERT_NE(latest_turn_, nullptr);
