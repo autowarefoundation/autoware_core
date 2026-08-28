@@ -15,15 +15,10 @@
 #include "autoware/path_generator/node.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_test_utils/autoware_test_utils.hpp>
 #include <autoware_test_utils/mock_data_parser.hpp>
 #include <rclcpp/rclcpp.hpp>
-
-#include <lanelet2_core/LaneletMap.h>
-#include <lanelet2_core/primitives/Lanelet.h>
-#include <lanelet2_core/primitives/LineString.h>
-#include <lanelet2_core/primitives/Point.h>
-#include <autoware/lanelet2_utils/conversion.hpp>
 
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
@@ -34,6 +29,10 @@
 #include <nav_msgs/msg/odometry.hpp>
 
 #include <gtest/gtest.h>
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/primitives/LineString.h>
+#include <lanelet2_core/primitives/Point.h>
 
 #include <memory>
 #include <optional>
@@ -123,7 +122,7 @@ protected:
   static autoware_map_msgs::msg::LaneletMapBin create_mock_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
-    
+
     // Left bound (y = 3.5)
     lanelet::Point3d p1_left(lanelet::utils::getId(), 0.0, 3.5, 0.0);
     lanelet::Point3d p2_left(lanelet::utils::getId(), 100.0, 3.5, 0.0);
@@ -138,13 +137,16 @@ protected:
     lanelet::Lanelet mock_lanelet(1000, left_bound, right_bound);
 
     // Attributes
-    mock_lanelet.attributes()[lanelet::AttributeName::Type] = lanelet::AttributeValueString::Lanelet;
-    mock_lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
+    mock_lanelet.attributes()[lanelet::AttributeName::Type] =
+      lanelet::AttributeValueString::Lanelet;
+    mock_lanelet.attributes()[lanelet::AttributeName::Subtype] =
+      lanelet::AttributeValueString::Road;
 
     map->add(mock_lanelet);
 
     // Convert to ROS binary message
-    autoware_map_msgs::msg::LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
+    autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
+      autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
     map_bin_msg.header.frame_id = "map";
 
     return map_bin_msg;
@@ -157,16 +159,16 @@ protected:
   {
     autoware_planning_msgs::msg::LaneletRoute route;
     route.header.frame_id = "map";
-    
+
     // Set deterministic poses within 100m map
     route.start_pose.position.x = 5.0;
     route.start_pose.position.y = 1.75;
     route.start_pose.orientation.w = 1.0;
-    
+
     route.goal_pose.position.x = 90.0;
     route.goal_pose.position.y = 1.75;
     route.goal_pose.orientation.w = 1.0;
-    
+
     // Link to lanelet ID 1000
     autoware_planning_msgs::msg::LaneletSegment segment;
     segment.preferred_primitive.id = 1000;
@@ -178,7 +180,7 @@ protected:
     primitive.primitive_type = "lane";
 
     route.segments.push_back(segment);
-    
+
     return route;
   }
 
