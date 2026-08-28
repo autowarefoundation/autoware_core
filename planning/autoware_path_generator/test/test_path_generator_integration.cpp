@@ -118,70 +118,38 @@ protected:
 
   // ================== MOCK MAP BIN GENERATION FUNCS ==================
 
-  // Deterministic, 100-meter straight map
+  // 1. Deterministic, 100-meter straight map
   // Used in TEST 1, 3, 5
   static autoware_map_msgs::msg::LaneletMapBin create_mock_common_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
 
-    // Left bound (y = 1.75)
-    lanelet::Point3d p1_left(1, 0.0, 1.75, 0.0);
-    lanelet::Point3d p2_left(2, 100.0, 1.75, 0.0);
-    lanelet::LineString3d left_bound(10, {p1_left, p2_left});
-
-    // Right bound (y = 0.0)
-    lanelet::Point3d p1_right(3, 0.0, -1.75, 0.0);
-    lanelet::Point3d p2_right(4, 100.0, -1.75, 0.0);
-    lanelet::LineString3d right_bound(11, {p1_right, p2_right});
-
-    // Lanelet (ID 1000)
-    lanelet::Lanelet mock_lanelet(1000, left_bound, right_bound);
-
-    // Attributes
-    mock_lanelet.attributes()[lanelet::AttributeName::Type] =
-      lanelet::AttributeValueString::Lanelet;
-    mock_lanelet.attributes()[lanelet::AttributeName::Subtype] =
-      lanelet::AttributeValueString::Road;
+    auto [left_bound, right_bound] = prep_common_straight_bounds(100.0, 1.75);
+    lanelet::Lanelet mock_lanelet = prep_lanelet(left_bound, right_bound);
 
     map->add(mock_lanelet);
 
-    // Convert to ROS binary message
-    autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
-      autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
-    map_bin_msg.header.frame_id = "map";
-
-    return map_bin_msg;
+    return convert_ros_bin_map(map);
   }
 
-  // Map with a turn
+  // 2. Map with a turn
   // Used in TEST 2
   static autoware_map_msgs::msg::LaneletMapBin create_mock_turn_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
-
-    lanelet::LineString3d left_bound(
-      10, {lanelet::Point3d(1, 0.0, 1.75, 0.0), lanelet::Point3d(2, 100.0, 1.75, 0.0)});
-    lanelet::LineString3d right_bound(
-      11, {lanelet::Point3d(3, 0.0, -1.75, 0.0), lanelet::Point3d(4, 100.0, -1.75, 0.0)});
-
-    lanelet::Lanelet turn_lanelet(1000, left_bound, right_bound);
-    turn_lanelet.attributes()[lanelet::AttributeName::Type] =
-      lanelet::AttributeValueString::Lanelet;
-    turn_lanelet.attributes()[lanelet::AttributeName::Subtype] =
-      lanelet::AttributeValueString::Road;
-
+    
+    auto [left_bound, right_bound] = prep_common_straight_bounds(100.0, 1.75);
+    lanelet::Lanelet turn_lanelet = prep_lanelet(left_bound, right_bound);
+    
+    // Here simulate a right turn
     turn_lanelet.attributes()["turn_direction"] = lanelet::AttributeValueString::Right;
+    
     map->add(turn_lanelet);
 
-    // Convert to ROS binary message
-    autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
-      autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
-    map_bin_msg.header.frame_id = "map";
-
-    return map_bin_msg;
+    return convert_ros_bin_map(map);
   }
 
-  // Map with left/right bounds physically crossed
+  // 3. Map with left/right bounds physically crossed
   // Used in TEST 4
   static autoware_map_msgs::msg::LaneletMapBin create_mock_x_map_bin()
   {
@@ -199,22 +167,14 @@ protected:
       11, {lanelet::Point3d(4, 0.0, -1.75, 0.0), lanelet::Point3d(5, 40.0, -1.75, 0.0),
            lanelet::Point3d(6, 80.0, 1.75, 0.0)});
 
-    lanelet::Lanelet cross_lanelet(1000, left_bound, right_bound);
-    cross_lanelet.attributes()[lanelet::AttributeName::Type] =
-      lanelet::AttributeValueString::Lanelet;
-    cross_lanelet.attributes()[lanelet::AttributeName::Subtype] =
-      lanelet::AttributeValueString::Road;
-
+    lanelet::Lanelet cross_lanelet = prep_lanelet(left_bound, right_bound);
+    
     map->add(cross_lanelet);
 
-    autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
-      autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
-    map_bin_msg.header.frame_id = "map";
-
-    return map_bin_msg;
+    return convert_ros_bin_map(map);
   }
 
-  // 100-meter straight, dense map
+  // 4. 100-meter straight, dense map
   // Used in TEST 5
   static autoware_map_msgs::msg::LaneletMapBin create_mock_dense_map_bin()
   {
@@ -232,16 +192,41 @@ protected:
     lanelet::LineString3d left_bound(10, left_points);
     lanelet::LineString3d right_bound(11, right_points);
 
-    lanelet::Lanelet dense_lanelet(1000, left_bound, right_bound);
-    dense_lanelet.attributes()[lanelet::AttributeName::Type] =
-      lanelet::AttributeValueString::Lanelet;
-    dense_lanelet.attributes()[lanelet::AttributeName::Subtype] =
-      lanelet::AttributeValueString::Road;
-
+    lanelet::Lanelet dense_lanelet = prep_lanelet(left_bound, right_bound);
+    
     map->add(dense_lanelet);
 
-    autoware_map_msgs::msg::LaneletMapBin map_bin_msg =
-      autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
+    return convert_ros_bin_map(map);
+  }
+
+  // Helper 1
+  static std::pair<lanelet::LineString3d, lanelet::LineString3d> prep_common_straight_bounds(
+    double length, double half_width) {
+    // Left bound
+    lanelet::Point3d p1_left(1, 0.0, half_width, 0.0);
+    lanelet::Point3d p2_left(2, length, half_width, 0.0);
+    lanelet::LineString3d left_bound(10, {p1_left, p2_left});
+
+    // Right bound
+    lanelet::Point3d p1_right(3, 0.0, -half_width, 0.0);
+    lanelet::Point3d p2_right(4, length, -half_width, 0.0);
+    lanelet::LineString3d right_bound(11, {p1_right, p2_right});
+
+    return {left_bound, right_bound};
+  }
+  
+  // Helper 2
+  static lanelet::Lanelet prep_lanelet(lanelet::LineString3d & left_bound, lanelet::LineString3d & right_bound) {
+    lanelet::Lanelet this_lanelet(1000, left_bound, right_bound);
+    this_lanelet.attributes()[lanelet::AttributeName::Type] = lanelet::AttributeValueString::Lanelet;
+    this_lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
+
+    return this_lanelet;
+  }
+
+  // Helper 3
+  static autoware_map_msgs::msg::LaneletMapBin convert_ros_bin_map(const std::shared_ptr<lanelet::LaneletMap> & map_ptr) {
+    autoware_map_msgs::msg::LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map_ptr);
     map_bin_msg.header.frame_id = "map";
 
     return map_bin_msg;
@@ -331,7 +316,7 @@ protected:
   rclcpp::Subscription<autoware_vehicle_msgs::msg::HazardLightsCommand>::SharedPtr sub_hazard_;
 };
 
-// ================== TESTING AREA HERE ==================
+// ==================================== TESTING AREA HERE ====================================
 
 // TEST 1. Nominal generation & observability
 // This test verifies a standard route outputs a path, correctly stamps headers, and constant hazard
