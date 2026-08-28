@@ -1,0 +1,52 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: GyroOdometer.node
+package:
+  name: autoware_gyro_odometer
+  provider: autoware
+launch:
+  plugin: autoware::gyro_odometer::GyroOdometerNode
+  executable: autoware_gyro_odometer_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: twist_with_covariance
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    remap_target: vehicle/twist_with_covariance
+  - name: imu
+    message_type: sensor_msgs/msg/Imu
+    remap_target: imu
+publishers:
+  - name: twist_raw
+    message_type: geometry_msgs/msg/TwistStamped
+    remap_target: twist_raw
+  - name: twist_with_covariance_raw
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    remap_target: twist_with_covariance_raw
+  - name: twist
+    message_type: geometry_msgs/msg/TwistStamped
+    remap_target: twist
+  - name: twist_with_covariance
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    remap_target: twist_with_covariance
+# parameters
+param_files:
+  - name: gyro_odometer_param
+    default: $(find-pkg-share autoware_gyro_odometer)/config/gyro_odometer.param.yaml
+param_values:
+  - name: output_frame
+    type: string
+    default: base_link
+  - name: message_timeout_sec
+    type: double
+    default: 0.2
+# processes
+processes:
+  - name: fuse_gyro_odometry
+    trigger_conditions:
+      - on_input: imu
+    outcomes:
+      - to_output: twist
+      - to_output: twist_with_covariance
+      - to_output: twist_raw
+      - to_output: twist_with_covariance_raw
