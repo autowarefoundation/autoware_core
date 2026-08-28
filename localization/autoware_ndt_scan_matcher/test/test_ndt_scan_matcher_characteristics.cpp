@@ -225,8 +225,7 @@ TEST(NdtScanMatcherCharacteristics, SensorPointsAreStoredEvenWhileDeactivated)
   // Deliberately do not activate: the scan must be rejected, yet still be retained.
   const auto outcome = harness->drive_one_scan(ScanDrive{});
   ASSERT_TRUE(outcome.has_value());
-  ASSERT_EQ(outcome->diag.value("is_activated"), "False")
-    << "the node was already activated; this test proves nothing";
+  ASSERT_EQ(outcome->diag.value("is_activated"), "False");
 
   // Act
   ASSERT_EQ(harness->activate(), std::optional<bool>(true));
@@ -324,8 +323,7 @@ TEST(NdtScanMatcherCharacteristics, ActivatingClearsTheInitialPoseBuffer)
 
     // Assert
     ASSERT_TRUE(outcome.has_value());
-    ASSERT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "True")
-      << "control arm failed to interpolate, so the experiment below is meaningless";
+    ASSERT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "True");
   }
   {
     // Arrange
