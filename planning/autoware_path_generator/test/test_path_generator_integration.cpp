@@ -126,6 +126,7 @@ protected:
   // ================== MOCK MAP BIN GENERATION FUNCS ==================
 
   // Deterministic, 100-meter straight map
+  // Used in TEST 1, 3, 5
   static autoware_map_msgs::msg::LaneletMapBin create_mock_common_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
@@ -183,6 +184,7 @@ protected:
   }
 
   // Map with a turn
+  // Used in TEST 2
   static autoware_map_msgs::msg::LaneletMapBin create_mock_turn_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
@@ -198,6 +200,44 @@ protected:
     map->add(turn_lanelet);
 
     // Convert to ROS binary message
+    autoware_map_msgs::msg::LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
+    map_bin_msg.header.frame_id = "map";
+
+    return map_bin_msg;
+  }
+
+  // Map with left/right bounds physically crossed
+  // Used in TEST 4
+  static autoware_map_msgs::msg::LaneletMapBin create_mock_x_map_bin()
+  {
+    auto map = std::make_shared<lanelet::LaneletMap>();
+    
+    // Two bounds start as valid parallel section with x: [0, 40], 
+    // then become gradually crossing with x: (40, 80]
+    
+    // Left bound: top-left => bottom-right
+    lanelet::LineString3d left_bound(
+    10, 
+    {
+      lanelet::Point3d(1, 0.0, 1.75, 0.0),
+      lanelet::Point3d(2, 40.0, 1.75, 0.0),
+      lanelet::Point3d(3, 80.0, -1.75, 0.0)
+    });
+    // Right bound: bottom-left => top-right
+    lanelet::LineString3d right_bound(
+    11, 
+    {
+      lanelet::Point3d(4, 0.0, -1.75, 0.0),
+      lanelet::Point3d(5, 40.0, -1.75, 0.0),
+      lanelet::Point3d(6, 80.0, 1.75, 0.0)
+    });
+
+    lanelet::Lanelet cross_lanelet(1000, left_bound, right_bound);
+    cross_lanelet.attributes()[lanelet::AttributeName::Type] = lanelet::AttributeValueString::Lanelet;
+    cross_lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
+    
+    map->add(cross_lanelet);
+
     autoware_map_msgs::msg::LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
     map_bin_msg.header.frame_id = "map";
 
@@ -411,9 +451,10 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
 // outputs a valid truncated path without crashing.
 TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
 {
-  load_and_publish_map("autoware_test_utils", "2km_test.osm");
+  auto map_msg = create_mock_x_map_bin();
+  pub_map_->publish(map_msg);
 
-  auto route = load_route_stamped("autoware_path_generator", "path_cut_route.yaml");
+  auto route = create_mock_route();
 
   auto odom = set_start_odom(route);
 
