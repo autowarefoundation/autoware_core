@@ -24,35 +24,25 @@
 #include <array>
 #include <cstdint>
 #include <deque>
-#include <functional>
 #include <optional>
 #include <tuple>
 
 namespace autoware::gyro_odometer
 {
 
-/// \brief Brings the queued IMU samples into the output frame on behalf of GyroOdometer.
-///
-/// Supplied by the caller, which owns whatever frame machinery is involved. GyroOdometer calls it
-/// once per fusion attempt and never learns how the transformation is obtained. The queue is
-/// transformed in place to avoid copying it.
-/// \return true if the transformation was applied, false when it is unavailable. In the latter
-/// case the fusion attempt fails and both queues are discarded.
-using GyroQueueTransformFunc = std::function<bool(std::deque<sensor_msgs::msg::Imu> &)>;
-
 /// \brief Queue-and-fuse logic of the gyro odometer, independent of ROS communication and TF.
 ///
 /// Messages are fed in through input_vehicle_twist() / input_imu(), each of which returns the fused
-/// output at the moment a fusion completes. The current time and the IMU-to-output-frame
-/// transformation are both supplied by the caller through those calls, so this class holds no
-/// clock or TF state of its own.
+/// output at the moment a fusion completes. IMU samples are expected to already be expressed in the
+/// output frame; bringing them there is the caller's business. Staleness is judged between the
+/// two inputs' header stamps, so this class holds no clock or frame state of its own.
 class GyroOdometer
 {
 public:
   /// \brief Construct with the age beyond which a queued message is considered stale.
   ///
   /// \param message_timeout_sec a fusion attempt discards both queues once either side is older
-  /// than this, measured against the current time passed to input_vehicle_twist() / input_imu().
+  /// than this, measured against the newer of the two inputs' latest stamps.
   explicit GyroOdometer(double message_timeout_sec);
 
   /// \brief The four twist messages a successful fusion produces: raw fused twist, raw fused twist
@@ -71,7 +61,6 @@ public:
   {
     bool vehicle_twist_arrived{false};
     bool imu_arrived{false};
-    bool is_succeed_transform_imu{false};
     double latest_vehicle_twist_dt{0.0};
     double latest_imu_dt{0.0};
     rclcpp::Time latest_vehicle_twist_ros_time;
@@ -83,21 +72,19 @@ public:
   /// \brief Queue \p vehicle_twist_msg and attempt a fusion.
   /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
   std::optional<OutputData> input_vehicle_twist(
-    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg,
-    rclcpp::Time current_time, const GyroQueueTransformFunc & transform_gyro_queue_func);
+    const geometry_msgs::msg::TwistWithCovarianceStamped & vehicle_twist_msg);
 
-  /// \brief Queue \p imu_msg and attempt a fusion.
+  /// \brief Queue \p imu_msg, which must already be expressed in the output frame, and attempt a
+  /// fusion.
   /// \return the fused output if this call completed a fusion, std::nullopt otherwise.
-  std::optional<OutputData> input_imu(
-    const sensor_msgs::msg::Imu & imu_msg, rclcpp::Time current_time,
-    const GyroQueueTransformFunc & transform_gyro_queue_func);
+  std::optional<OutputData> input_imu(const sensor_msgs::msg::Imu & imu_msg);
 
   /// \brief Read the current state for diagnostics reporting.
   Status take_status() const;
 
 private:
   std::optional<geometry_msgs::msg::TwistWithCovarianceStamped> concat_gyro_and_odometer(
-    rclcpp::Time current_time, const GyroQueueTransformFunc & transform_gyro_queue_func);
+    rclcpp::Time reference_time);
 
   static OutputData make_output(
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
@@ -105,9 +92,8 @@ private:
   double message_timeout_sec_;
   bool vehicle_twist_arrived_{false};
   bool imu_arrived_{false};
-  bool is_succeed_transform_imu_{false};
-  rclcpp::Time latest_vehicle_twist_ros_time_;
-  rclcpp::Time latest_imu_ros_time_;
+  rclcpp::Time latest_vehicle_twist_ros_time_{0, 0, RCL_ROS_TIME};
+  rclcpp::Time latest_imu_ros_time_{0, 0, RCL_ROS_TIME};
   double latest_vehicle_twist_dt_{0.0};
   double latest_imu_dt_{0.0};
   int32_t latest_vehicle_twist_queue_size_{0};
