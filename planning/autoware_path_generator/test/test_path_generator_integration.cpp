@@ -16,8 +16,6 @@
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
-#include <autoware_test_utils/autoware_test_utils.hpp>
-#include <autoware_test_utils/mock_data_parser.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <lanelet2_core/Attribute.h>
@@ -286,48 +284,19 @@ protected:
     return route;
   }
 
-  void load_and_publish_map(const std::string & package_name, const std::string & map_filename)
-  {
-    const auto map_path =
-      autoware::test_utils::get_absolute_path_to_lanelet_map(package_name, map_filename);
-    auto map_msg = autoware::test_utils::make_map_bin_msg(map_path);
-
-    pub_map_->publish(map_msg);
-  }
-
-  static autoware_planning_msgs::msg::LaneletRoute load_route(
-    const std::string & package_name, const std::string & route_filename)
-  {
-    const auto route_path =
-      autoware::test_utils::get_absolute_path_to_route(package_name, route_filename);
-    auto route_opt =
-      autoware::test_utils::parse<std::optional<autoware_planning_msgs::msg::LaneletRoute>>(
-        route_path);
-
-    if (!route_opt) {
-      throw std::runtime_error("Failed to parse mock route.");
-    }
-
-    return route_opt.value();
-  }
-
   static nav_msgs::msg::Odometry set_start_odom(
-    const autoware_planning_msgs::msg::LaneletRoute & route)
+    const std::optional<autoware_planning_msgs::msg::LaneletRoute> & route)
   {
-    auto odom = autoware::test_utils::makeOdometry();
-    odom.pose.pose = route.start_pose;
+    nav_msgs::msg::Odometry odom;
+    if (route.has_value()) {
+      odom.pose.pose = route.value().start_pose;
+    }
     odom.header.frame_id = "map";
 
+    // A bit forward velocity
+    odom.twist.twist.linear.x = 5.0;
+
     return odom;
-  }
-
-  static autoware_planning_msgs::msg::LaneletRoute load_route_stamped(
-    const std::string & package_name, const std::string & map_filename)
-  {
-    auto route = load_route(package_name, map_filename);
-    route.header.frame_id = "map";
-
-    return route;
   }
 
   void retrigger_pubs_spin(
@@ -439,8 +408,7 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
   empty_route.header.frame_id = "map";
 
   // Empty odom declared
-  auto odom = autoware::test_utils::makeOdometry();
-  odom.header.frame_id = "map";
+  auto odom = set_start_odom(std::nullopt);
 
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
 
