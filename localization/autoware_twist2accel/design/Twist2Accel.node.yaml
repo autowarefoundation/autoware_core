@@ -1,7 +1,9 @@
-autoware_system_design_format: 0.3.0
+autoware_system_design_format: 0.4.0
 
 # node information
 name: Twist2Accel.node
+
+description: Estimates the ego acceleration by differentiating the EKF localizer output, with a lowpass filter to mitigate the noise.
 
 package:
   name: autoware_twist2accel
@@ -16,26 +18,31 @@ launch:
 subscribers:
   - name: odom
     message_type: nav_msgs/msg/Odometry
+    description: Localization odometry.
     remap_target: input/odom
   - name: twist
     message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    description: Twist.
     remap_target: input/twist
 
 publishers:
   - name: accel
     message_type: geometry_msgs/msg/AccelWithCovarianceStamped
+    description: Estimated acceleration.
     remap_target: output/accel
 
 # parameters
 param_files:
   - name: param_file
     default: config/twist2accel.param.yaml
+    description: Twist source selection and lowpass filter gain.
 
 param_values: []
 
 # processes
 processes:
   - name: differentiate
+    description: Differentiates the selected twist source and lowpass-filters the result.
     trigger_conditions:
       - on_input: odom
       - on_input: twist
