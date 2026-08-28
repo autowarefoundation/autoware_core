@@ -1024,8 +1024,7 @@ TEST(NdtScanMatcherCharacteristics, ConvergedScanResetsTheSkipCounter)
   };
   const auto advanced = harness->drive_one_scan(rejected);
   ASSERT_TRUE(advanced.has_value());
-  ASSERT_GT(advanced->diag.value_as_double("skipping_publish_num"), 0.0)
-    << "the near-field scan did not advance the counter, so the reset below proves nothing";
+  ASSERT_GT(advanced->diag.value_as_double("skipping_publish_num"), 0.0);
 
   // Act
   ScanDrive drive;
