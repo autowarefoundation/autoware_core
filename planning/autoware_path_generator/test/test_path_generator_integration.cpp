@@ -510,7 +510,7 @@ TEST_F(PathGeneratorIntegrationHarness, GoalConnectionScenario)
 // dependency (like vector map) is completely missing.
 TEST_F(PathGeneratorIntegrationHarness, FailSafeOnMissingDependencies)
 {
-  auto route = load_route_stamped("autoware_path_generator", "common_route.yaml");
+  auto route = create_mock_route();
 
   auto odom = set_start_odom(route);
 
