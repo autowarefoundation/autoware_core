@@ -25,16 +25,22 @@
 
 #include <algorithm>
 #include <limits>
+#include <string>
 
 namespace ndt_test
 {
 
 /// @brief The only map in this world: `make_corner_cloud` placed at the map center, in one cell.
 ///
-/// The cell is returned only when the requested circle actually covers the map center. Asking
-/// anywhere else yields an empty response, which is how a test holds the node in the "no map"
-/// state for as long as it likes — `MissingMapAbortsBeforeAlignment` asks at (-100, -100) and the
-/// 1 Hz timer never succeeds no matter how often it retries.
+/// Differential, like the loader it stands in for: the cell is returned when the requested circle
+/// covers the map center and `cached_ids` does not already list it, and a cached cell the circle no
+/// longer covers comes back in `ids_to_remove`. A node that keeps querying from inside the cell
+/// therefore gets an empty response, which `update_ndt` reports as `is_updated_map: False`.
+///
+/// Asking away from the center yields nothing at all. `MissingMapAbortsBeforeAlignment` asks at
+/// (-100, -100): the load fails once, and since a failed load still records the position
+/// (`map_update_module.cpp:176`), the timer does not try again until the vehicle moves
+/// `update_distance`.
 ///
 /// @note `test/stub_pcd_loader.hpp` also answers `pcd_loader_service`, for the three pre-existing
 /// node tests. The two are deliberately not merged *yet*: this one takes its geometry from
@@ -55,6 +61,7 @@ public:
   }
 
 private:
+  static constexpr const char * cell_id = "0";
   rclcpp::Service<GetDifferentialPointCloudMap>::SharedPtr service_;
 
   void on_get_map(
@@ -65,11 +72,17 @@ private:
 
     const auto center_x = static_cast<float>(map_center_x);
     const auto center_y = static_cast<float>(map_center_y);
-    if (
-      req->area.center_x - req->area.radius > center_x ||
-      req->area.center_x + req->area.radius < center_x ||
-      req->area.center_y - req->area.radius > center_y ||
-      req->area.center_y + req->area.radius < center_y) {
+    const bool covers_center = req->area.center_x - req->area.radius <= center_x &&
+                               req->area.center_x + req->area.radius >= center_x &&
+                               req->area.center_y - req->area.radius <= center_y &&
+                               req->area.center_y + req->area.radius >= center_y;
+    const bool cached =
+      std::find(req->cached_ids.begin(), req->cached_ids.end(), cell_id) != req->cached_ids.end();
+
+    if (cached && !covers_center) {
+      res->ids_to_remove.push_back(cell_id);
+    }
+    if (!covers_center || cached) {
       return;
     }
 
@@ -77,7 +90,7 @@ private:
       make_corner_cloud(map_spacing, map_center_x, map_center_y);
 
     autoware_map_msgs::msg::PointCloudMapCellWithID cell;
-    cell.cell_id = "0";
+    cell.cell_id = cell_id;
     cell.metadata.min_x = std::numeric_limits<float>::max();
     cell.metadata.min_y = std::numeric_limits<float>::max();
     cell.metadata.max_x = std::numeric_limits<float>::lowest();

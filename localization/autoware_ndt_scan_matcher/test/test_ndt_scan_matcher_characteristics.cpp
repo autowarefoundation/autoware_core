@@ -275,9 +275,10 @@ TEST(NdtScanMatcherCharacteristics, MissingInitialPoseAbortsBeforeMapCheck)
 
 /// With no map loaded, the scan aborts before any alignment happens.
 ///
-/// The poses sit at (-100, -100), where `StubMapLoader` answers with an empty cloud, so the map
-/// never loads no matter how often the 1 Hz timer tries. `absent("iteration_num")` is the
-/// witness that `ndt_ptr->align` was never called.
+/// The poses sit at (-100, -100), where `StubMapLoader` answers with nothing. The load fails once;
+/// a failed load still records the position (`map_update_module.cpp:176`), so the timer does not
+/// try again until the vehicle moves `update_distance`. `absent("iteration_num")` is the witness
+/// that `ndt_ptr->align` was never called.
 TEST(NdtScanMatcherCharacteristics, MissingMapAbortsBeforeAlignment)
 {
   // Arrange
