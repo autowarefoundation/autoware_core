@@ -19,6 +19,12 @@
 #include <autoware_test_utils/mock_data_parser.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/primitives/Lanelet.h>
+#include <lanelet2_core/primitives/LineString.h>
+#include <lanelet2_core/primitives/Point.h>
+#include <autoware/lanelet2_utils/conversion.hpp>
+
 #include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
@@ -109,6 +115,52 @@ protected:
       executor_->spin_some();
       std::this_thread::sleep_for(std::chrono::milliseconds(10));
     }
+  }
+
+  // Deterministic, 100-meter straight map
+  static autoware_map_msgs::msg::LaneletMapBin create_mock_map_bin()
+  {
+    auto map = std::make_shared<lanelet::LaneletMap>();
+    
+    // Left bound (y = 3.5)
+    lanelet::Point3d p1_left(lanelet::utils::getId(), 0.0, 3.5, 0.0);
+    lanelet::Point3d p2_left(lanelet::utils::getId(), 100.0, 3.5, 0.0);
+    lanelet::LineString3d left_bound(lanelet::utils::getId(), {p1_left, p2_left});
+
+    // Right bound (y = 0.0)
+    lanelet::Point3d p1_right(lanelet::utils::getId(), 0.0, 0.0, 0.0);
+    lanelet::Point3d p2_right(lanelet::utils::getId(), 100.0, 0.0, 0.0);
+    lanelet::LineString3d right_bound(lanelet::utils::getId(), {p1_right, p2_right});
+
+    // Lanelet (ID 1000)
+    lanelet::Lanelet mock_lanelet(1000, left_bound, right_bound);
+    map->add(mock_lanelet);
+
+    // Convert to ROS binary message
+    autoware_map_msgs::msg::LaneletMapBin map_bin_msg = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
+    map_bin_msg.header.frame_id = "map";
+
+    return map_bin_msg;
+  }
+
+  // Mock route for above lanelet
+  static autoware_planning_msgs::msg::LaneletRoute create_mock_route()
+  {
+    autoware_planning_msgs::msg::LaneletRoute route;
+    route.header.frame_id = "map";
+    
+    // Set deterministic poses within 100m map
+    route.start_pose.position.x = 0.0;
+    route.start_pose.position.y = 1.75;
+    route.goal_pose.position.x = 90.0;
+    route.goal_pose.position.y = 1.75;
+    
+    // Link to lanelet ID 1000
+    autoware_planning_msgs::msg::LaneletSegment segment;
+    segment.preferred_primitive.id = 1000;
+    route.segments.push_back(segment);
+    
+    return route;
   }
 
   void load_and_publish_map(const std::string & package_name, const std::string & map_filename)
