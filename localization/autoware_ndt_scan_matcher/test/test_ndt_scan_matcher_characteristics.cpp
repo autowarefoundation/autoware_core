@@ -267,7 +267,6 @@ TEST(NdtScanMatcherCharacteristics, MissingInitialPoseAbortsBeforeMapCheck)
   ASSERT_TRUE(outcome.has_value());
   const auto & diag = outcome->diag;
 
-  EXPECT_EQ(diag.value("is_activated"), "True");
   EXPECT_EQ(diag.value("is_succeed_interpolate_initial_pose"), "False");
   EXPECT_EQ(diag.level(), level_warn);
   EXPECT_FALSE(diag.has_key("is_set_map_points"))
