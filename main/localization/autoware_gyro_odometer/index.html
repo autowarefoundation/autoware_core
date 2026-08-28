@@ -8019,6 +8019,9 @@
 <li>[Assumption] The covariance in the input messages must be properly assigned.</li>
 </ul>
 <ul>
+<li>[Assumption] The header stamps of the two input topics are mutually comparable, i.e. produced by synchronized clocks. Staleness is judged between the inputs' stamps, not against this node's clock, so a pair whose stamps agree with each other is fused no matter how late it reaches this node; handling such delay is left to the consumers of the output (e.g. the EKF delay gate).</li>
+</ul>
+<ul>
 <li>[Assumption] The angular velocity is set to zero if both the longitudinal vehicle velocity and the angular velocity around the yaw axis are sufficiently small. This is for suppression of the IMU angular velocity bias. Without this process, we misestimate the vehicle status when stationary.</li>
 </ul>
 <ul>
@@ -8059,13 +8062,13 @@
 </tr>
 <tr>
 <td><code>vehicle_twist_time_stamp_dt</code></td>
-<td>the time difference between the current time and the latest vehicle twist topic. [second]</td>
+<td>the time difference between the newer of the two topics' latest stamps and the latest vehicle twist stamp. [second]</td>
 <td>none</td>
 <td>the time is <strong>longer</strong> than <code>message_timeout_sec</code></td>
 </tr>
 <tr>
 <td><code>imu_time_stamp_dt</code></td>
-<td>the time difference between the current time and the latest imu topic. [second]</td>
+<td>the time difference between the newer of the two topics' latest stamps and the latest imu stamp. [second]</td>
 <td>none</td>
 <td>the time is <strong>longer</strong> than <code>message_timeout_sec</code></td>
 </tr>
