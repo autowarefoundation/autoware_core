@@ -117,6 +117,8 @@ protected:
     }
   }
 
+  // ================== MOCK MAP BIN GENERATION FUNCS ==================
+
   // Deterministic, 100-meter straight map
   static autoware_map_msgs::msg::LaneletMapBin create_mock_map_bin()
   {
@@ -134,6 +136,11 @@ protected:
 
     // Lanelet (ID 1000)
     lanelet::Lanelet mock_lanelet(1000, left_bound, right_bound);
+
+    // Attributes
+    mock_lanelet.attributes()[lanelet::AttributeName::Type] = lanelet::AttributeValueString::Lanelet;
+    mock_lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
+
     map->add(mock_lanelet);
 
     // Convert to ROS binary message
@@ -143,6 +150,8 @@ protected:
     return map_bin_msg;
   }
 
+  // ===================================================================
+
   // Mock route for above lanelet
   static autoware_planning_msgs::msg::LaneletRoute create_mock_route()
   {
@@ -150,14 +159,24 @@ protected:
     route.header.frame_id = "map";
     
     // Set deterministic poses within 100m map
-    route.start_pose.position.x = 0.0;
+    route.start_pose.position.x = 5.0;
     route.start_pose.position.y = 1.75;
+    route.start_pose.orientation.w = 1.0;
+    
     route.goal_pose.position.x = 90.0;
     route.goal_pose.position.y = 1.75;
+    route.goal_pose.orientation.w = 1.0;
     
     // Link to lanelet ID 1000
     autoware_planning_msgs::msg::LaneletSegment segment;
     segment.preferred_primitive.id = 1000;
+    segment.preferred_primitive.primitive_type = "lane";
+
+    // Populate primitive array
+    autoware_planning_msgs::msg::LaneletPrimitive primitive;
+    primitive.id = 1000;
+    primitive.primitive_type = "lane";
+
     route.segments.push_back(segment);
     
     return route;
@@ -249,11 +268,11 @@ protected:
 // rule.
 TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
 {
-  load_and_publish_map("autoware_test_utils", "lanelet2_map.osm");
-
-  auto route = load_route_stamped("autoware_path_generator", "common_route.yaml");
+  auto map_msg = create_mock_map_bin();
+  pub_map_->publish(map_msg);
 
   // Set odom to route start
+  auto route = create_mock_route();
   auto odom = set_start_odom(route);
 
   // Allow map & odom to register
