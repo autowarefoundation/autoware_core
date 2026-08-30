@@ -290,6 +290,24 @@ TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity)
   EXPECT_NEAR(yaw, 0.5, 1e-6);
 }
 
+TEST(TestEKFLocalizer, UpdateStepEarlyReturn)
+{
+  const auto params = make_params();
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  
+  // Call update_step without activating or initializing
+  auto result = ekf_localizer->update_step(t_curr);
+
+  // Expect early return flags to be correctly set
+  EXPECT_FALSE(result.is_activated);
+  EXPECT_FALSE(result.is_set_initialpose);
+  
+  // Ensure the struct was not populated with arbitrary data
+  EXPECT_EQ(result.pose.header.frame_id, "");
+}
+
 // ---------------------------------------------------------------------------
 // measurement_update_pose: success and safety-critical rejection branches
 // ---------------------------------------------------------------------------
