@@ -299,14 +299,14 @@ TEST(TestEKFLocalizer, UpdateStepEarlyReturn)
   auto ekf_localizer = make_ekf_localizer(params);
 
   const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
-  
+
   // Call update_step without activating or initializing
   auto result = ekf_localizer->update_step(t_curr);
 
   // Expect early return flags to be correctly set
   EXPECT_FALSE(result.is_activated);
   EXPECT_FALSE(result.is_set_initialpose);
-  
+
   // Ensure the struct was not populated with arbitrary data
   EXPECT_EQ(result.pose.header.frame_id, "");
 }
@@ -321,13 +321,13 @@ TEST(TestEKFLocalizer, UpdateStepNormalExecution)
   ekf_localizer->activate(true);
 
   // Push measurements to temporary queues
-  const rclcpp::Time t1(100, 1e8, RCL_ROS_TIME); // 0.1s later
+  const rclcpp::Time t1(100, 1e8, RCL_ROS_TIME);  // 0.1s later
   auto pose = make_pose(1.0, 0.0, 0.0, "map", t1);
   auto twist = make_twist(1.0, 0.0, "base_link", t1);
 
   using PoseWithCov = geometry_msgs::msg::PoseWithCovarianceStamped;
   using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
-  
+
   ekf_localizer->push_pose(std::make_shared<PoseWithCov>(pose));
   ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
 
@@ -354,7 +354,7 @@ TEST(TestEKFLocalizer, UpdateStepNormalExecution)
 TEST(TestEKFLocalizer, UpdateStepAsyncWarningPropagation)
 {
   auto params = make_params();
-  params.max_twist_queue_size = 1; // Now I tighten queue limit here
+  params.max_twist_queue_size = 1;  // Now I tighten queue limit here
   auto ekf_localizer = make_ekf_localizer(params);
 
   const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
@@ -364,7 +364,7 @@ TEST(TestEKFLocalizer, UpdateStepAsyncWarningPropagation)
   // Flood staging queue to trigger async warning
   auto twist = make_twist(1.0, 0.0, "base_link", t0);
   using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
-  
+
   ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
   ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
 
