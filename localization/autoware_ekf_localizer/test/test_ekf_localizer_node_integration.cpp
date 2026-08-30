@@ -384,6 +384,16 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
   pub_initial_pose_->publish(init_pose);
   spin_once_tick_once();
 
+  // Guard against a vacuous assertion: ticking with an empty pose queue must not by itself
+  // produce the gate warning this test looks for. Without this, the EXPECT_TRUE below passes
+  // even when the outlier is never examined.
+  latest_diag_ = nullptr;
+  for (int i = 0; i < 5; ++i) {
+    step_time(0.02);
+  }
+  ASSERT_FALSE(has_diagnostic("[WARN]mahalanobis distance of pose topic"))
+    << "Mahalanobis gate reported a failure before any measurement was published.";
+
   latest_diag_ = nullptr;
   const size_t odom_count_before = odom_count_;
 
@@ -422,6 +432,15 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
   for (int i = 0; i < 50; ++i) {
     step_time(0.02);
   }
+
+  // Guard against a vacuous assertion: the warm-up ticks above ran with an empty pose queue,
+  // which must not by itself produce the delay warning this test looks for.
+  latest_diag_ = nullptr;
+  for (int i = 0; i < 5; ++i) {
+    step_time(0.02);
+  }
+  ASSERT_FALSE(has_diagnostic("[WARN]pose topic is delay"))
+    << "Delay gate reported a failure before any measurement was published.";
 
   latest_diag_ = nullptr;
   const size_t odom_count_before = odom_count_;
