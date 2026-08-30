@@ -351,6 +351,31 @@ TEST(TestEKFLocalizer, UpdateStepNormalExecution)
   EXPECT_GT(result.ellipse_long_radius, 0.0);
 }
 
+TEST(TestEKFLocalizer, UpdateStepAsyncWarningPropagation)
+{
+  auto params = make_params();
+  params.max_twist_queue_size = 1; // Now I tighten queue limit here
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t0), identity_transform());
+  ekf_localizer->activate(true);
+
+  // Flood staging queue to trigger async warning
+  auto twist = make_twist(1.0, 0.0, "base_link", t0);
+  using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
+  
+  ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
+  ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
+
+  // Execute to drain warnings
+  auto result = ekf_localizer->update_step(t0);
+
+  // Expects flood warning was successfully packaged into struct
+  ASSERT_FALSE(result.warnings.empty());
+  EXPECT_NE(result.warnings[0].text.find("Twist staging queue is exceeding"), std::string::npos);
+}
+
 // ---------------------------------------------------------------------------
 // measurement_update_pose: success and safety-critical rejection branches
 // ---------------------------------------------------------------------------
