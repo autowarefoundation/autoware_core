@@ -43,6 +43,7 @@ namespace
 HyperParameters make_params()
 {
   HyperParameters params{};  // value-initialize every field to zero/empty
+
   params.show_debug_info = false;
   params.ekf_rate = 50.0;
   params.ekf_dt = 1.0 / 50.0;
@@ -64,6 +65,8 @@ HyperParameters make_params()
   params.z_filter_proc_dev = 1.0;
   params.roll_filter_proc_dev = 0.01;
   params.pitch_filter_proc_dev = 0.01;
+  params.ellipse_scale = 3.0;
+
   return params;
 }
 
@@ -306,6 +309,46 @@ TEST(TestEKFLocalizer, UpdateStepEarlyReturn)
   
   // Ensure the struct was not populated with arbitrary data
   EXPECT_EQ(result.pose.header.frame_id, "");
+}
+
+TEST(TestEKFLocalizer, UpdateStepNormalExecution)
+{
+  const auto params = make_params();
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t0), identity_transform());
+  ekf_localizer->activate(true);
+
+  // Push measurements to temporary queues
+  const rclcpp::Time t1(100, 1e8, RCL_ROS_TIME); // 0.1s later
+  auto pose = make_pose(1.0, 0.0, 0.0, "map", t1);
+  auto twist = make_twist(1.0, 0.0, "base_link", t1);
+
+  using PoseWithCov = geometry_msgs::msg::PoseWithCovarianceStamped;
+  using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
+  
+  ekf_localizer->push_pose(std::make_shared<PoseWithCov>(pose));
+  ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
+
+  auto result = ekf_localizer->update_step(t1);
+
+  // Expects flags OK
+  EXPECT_TRUE(result.is_activated);
+  EXPECT_TRUE(result.is_set_initialpose);
+
+  // Expects mega-struct assembly and frame IDs OK
+  EXPECT_EQ(result.pose.header.frame_id, "map");
+  EXPECT_EQ(result.twist.header.frame_id, "base_link");
+  EXPECT_EQ(result.odom.child_frame_id, "base_link");
+  EXPECT_EQ(result.odom.header.frame_id, "map");
+
+  // Expects queues drained and processed (so no_update_count resets to 0)
+  EXPECT_EQ(result.pose_diag_info.no_update_count, 0u);
+  EXPECT_EQ(result.twist_diag_info.no_update_count, 0u);
+
+  // Expects math algorithms were triggered (ellipse should be > 0)
+  EXPECT_GT(result.ellipse_long_radius, 0.0);
 }
 
 // ---------------------------------------------------------------------------
