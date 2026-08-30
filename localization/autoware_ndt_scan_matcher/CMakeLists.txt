@@ -89,6 +89,12 @@ if(BUILD_TESTING)
     test/test_ndt_scan_matcher_helper.cpp
   )
   target_link_libraries(test_ndt_scan_matcher_helper ${PROJECT_NAME})
+
+  # Pins radiusSearchDirect() against the kd-tree radiusSearch() it replaces.
+  ament_auto_add_gtest(test_voxel_neighbour_search
+    test/test_voxel_neighbour_search.cpp
+  )
+  target_link_libraries(test_voxel_neighbour_search multigrid_ndt_omp ${PCL_LIBRARIES})
 endif()
 
 autoware_ament_auto_package(
