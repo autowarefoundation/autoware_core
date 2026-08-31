@@ -20,10 +20,12 @@
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/point_stamped.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 
 #include <gtest/gtest.h>
 #include <pcl_conversions/pcl_conversions.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -57,6 +59,28 @@ MapUpdateModule::PcdLoaderFunction make_loader_returning_cell()
     cell.cell_id = "0";
     pcl::toROSMsg(make_sample_half_cubic_pcd(), cell.pointcloud);
     response->new_pointcloud_with_ids.push_back(cell);
+    response->header.frame_id = "map";
+    return response;
+  };
+}
+
+// A fake loader that returns `num_cells` map cells, each the sample cubic pcd shifted along x so
+// the cells do not overlap. Exercises the multi-cell merge in merge_loaded_pcd_map().
+MapUpdateModule::PcdLoaderFunction make_loader_returning_cells(const std::size_t num_cells)
+{
+  return [num_cells](const GetDifferentialPointCloudMap::Request::SharedPtr & /*request*/)
+           -> GetDifferentialPointCloudMap::Response::SharedPtr {
+    auto response = std::make_shared<GetDifferentialPointCloudMap::Response>();
+    for (std::size_t i = 0; i < num_cells; ++i) {
+      autoware_map_msgs::msg::PointCloudMapCellWithID cell;
+      cell.cell_id = std::to_string(i);
+      auto cloud = make_sample_half_cubic_pcd();
+      for (auto & point : cloud.points) {
+        point.x += static_cast<float>(i) * 20.0F;
+      }
+      pcl::toROSMsg(cloud, cell.pointcloud);
+      response->new_pointcloud_with_ids.push_back(cell);
+    }
     response->header.frame_id = "map";
     return response;
   };
@@ -174,6 +198,31 @@ TEST_F(MapUpdateModuleTest, PublishesStampedLoadedMapWhenEnabled)  // NOLINT
   EXPECT_EQ(result.loaded_pcd_map->header.frame_id, "map");
   EXPECT_GT(
     static_cast<std::size_t>(result.loaded_pcd_map->width) * result.loaded_pcd_map->height, 0U);
+}
+
+// The debug cloud is the concatenation of every loaded cell: its point count and its buffer size
+// are the totals over the cells. Pins the in-place merge in merge_loaded_pcd_map().
+TEST_F(MapUpdateModuleTest, MergesAllLoadedCellsIntoOneCloud)  // NOLINT
+{
+  constexpr std::size_t num_cells = 3;
+  param_.publish_loaded_map = true;
+  MapUpdateModule module(ndt_ptr_, param_, make_loader_returning_cells(num_cells));
+
+  const auto result = update_map(module, make_point(0.0, 0.0));
+
+  ASSERT_TRUE(result.map_updated);
+  ASSERT_TRUE(result.loaded_pcd_map.has_value());
+
+  // The per-cell totals to compare against: every cell holds one sample cubic pcd.
+  sensor_msgs::msg::PointCloud2 one_cell;
+  pcl::toROSMsg(make_sample_half_cubic_pcd(), one_cell);
+
+  EXPECT_EQ(result.loaded_pcd_map->height, 1U);  // merging makes the cloud unorganized
+  EXPECT_EQ(
+    static_cast<std::size_t>(result.loaded_pcd_map->width),
+    num_cells * static_cast<std::size_t>(one_cell.width) * one_cell.height);
+  EXPECT_EQ(result.loaded_pcd_map->data.size(), num_cells * one_cell.data.size());
+  EXPECT_EQ(result.diagnostics.level, MapUpdateModule::DiagnosticLevel::OK);
 }
 
 // Without publish_loaded_map, no debug cloud is produced even on a successful update.

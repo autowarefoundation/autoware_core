@@ -134,7 +134,10 @@ private:
     const geometry_msgs::msg::Point & position, NdtType & ndt, DiagnosticsReport & diagnostics);
 
   // Concatenates the cells kept in loaded_pcd_map_ into a single cloud for the debug publish.
-  [[nodiscard]] sensor_msgs::msg::PointCloud2 merge_loaded_pcd_map() const;
+  // A cell that cannot be concatenated (mismatching field layout) is skipped and reported as a
+  // WARN in the given diagnostics.
+  [[nodiscard]] sensor_msgs::msg::PointCloud2 merge_loaded_pcd_map(
+    DiagnosticsReport & diagnostics) const;
 
   PcdLoaderFunction pcd_loader_;
 

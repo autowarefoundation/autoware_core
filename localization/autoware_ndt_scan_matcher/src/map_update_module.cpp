@@ -17,6 +17,7 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <chrono>
+#include <cstddef>
 #include <memory>
 #include <sstream>
 #include <string>
@@ -80,7 +81,7 @@ MapUpdateModule::UpdateResult MapUpdateModule::callback_timer(
 
     const bool updated = update_map_internal(secondary_ndt_ptr, position, diagnostics);
     if (updated && param_.publish_loaded_map) {
-      result.loaded_pcd_map = merge_loaded_pcd_map();
+      result.loaded_pcd_map = merge_loaded_pcd_map(diagnostics);
     }
     return updated;
   });
@@ -196,7 +197,7 @@ MapUpdateModule::UpdateResult MapUpdateModule::update_map(
   result.map_updated = secondary_ndt_ptr_.with([&](auto & secondary_ndt_ptr) {
     const bool updated = update_map_internal(secondary_ndt_ptr, position, result.diagnostics);
     if (updated && param_.publish_loaded_map) {
-      result.loaded_pcd_map = merge_loaded_pcd_map();
+      result.loaded_pcd_map = merge_loaded_pcd_map(result.diagnostics);
     }
     return updated;
   });
@@ -277,24 +278,54 @@ bool MapUpdateModule::update_ndt(
   return true;  // Updated
 }
 
-sensor_msgs::msg::PointCloud2 MapUpdateModule::merge_loaded_pcd_map() const
+sensor_msgs::msg::PointCloud2 MapUpdateModule::merge_loaded_pcd_map(
+  DiagnosticsReport & diagnostics) const
 {
   sensor_msgs::msg::PointCloud2 merged;
 
-  // Pre-allocate the data buffer to the final size so the cell-by-cell concatenation below fills
-  // it in place. Without this, each concatenatePointCloud reallocates and recopies the growing
-  // buffer, degrading toward O(n^2) as the number of cells grows.
-  // Related PR comment:
-  //   - https://github.com/autowarefoundation/autoware_core/pull/1322#discussion_r3819841133
   std::size_t total_data_size = 0;
   for (const auto & [cell_id, pointcloud] : loaded_pcd_map_) {
     total_data_size += pointcloud.data.size();
   }
-  merged.data.reserve(total_data_size);
 
+  bool seeded = false;
   for (const auto & [cell_id, pointcloud] : loaded_pcd_map_) {
-    pcl::concatenatePointCloud(merged, pointcloud, merged);
+    // An empty cell would leave `merged` empty, which sends the next concatenation down the
+    // "copy the non-empty cloud" path again and throws away the reservation below.
+    if (pointcloud.data.empty()) {
+      continue;
+    }
+
+    if (!seeded) {
+      // Seed with the first cell *before* reserving: while the destination is still empty,
+      // concatenatePointCloud just copy-assigns the source cloud, and std::vector's copy
+      // assignment is not required to preserve capacity. Reserving on the already-seeded buffer
+      // makes the reservation hold regardless of the standard library implementation.
+      merged = pointcloud;
+
+      // Pre-allocate the data buffer to the final size so the remaining cells are concatenated in
+      // place: from here on concatenatePointCloud only resizes, and the resize stays within this
+      // capacity instead of reallocating and recopying the growing buffer, which would degrade
+      // toward O(n^2) as the number of cells grows.
+      // Related PR comment:
+      //   - https://github.com/autowarefoundation/autoware_core/pull/1322#discussion_r3819841133
+      merged.data.reserve(total_data_size);
+      seeded = true;
+      continue;
+    }
+
+    // concatenatePointCloud gives up on a field layout mismatch, but only after it has already
+    // grown the width, so restore the last consistent width and drop the offending cell instead
+    // of publishing a malformed cloud.
+    const auto width_before_concat = merged.width;
+    if (!pcl::concatenatePointCloud(merged, pointcloud, merged)) {
+      merged.width = width_before_concat;
+      diagnostics.update_level_and_message(
+        DiagnosticLevel::WARN,
+        "Failed to merge the loaded pcd map cell \"" + cell_id + "\" for the debug publish.");
+    }
   }
+
   merged.header.frame_id = "map";
   return merged;
 }
