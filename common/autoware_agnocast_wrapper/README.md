@@ -45,7 +45,7 @@ The following members / free functions are provided. Unless noted, signatures mi
 | Service         | `create_service<ServiceT>()` — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                                             |
 | Timer           | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
 | Underlying node | `get_rclcpp_node()`; `get_agnocast_node()` (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free `to_rclcpp_node(node)`                                                                                                                                                                                                                            |
-| Context         | free `ok()` — mode-agnostic replacement for `rclcpp::ok()` (see [Context notes](#context-notes))                                                                                                                                                                                                                                                                                                                      |
+| Context         | free `init()`, `shutdown()` and `ok()` — mode-agnostic replacements for the rclcpp equivalents (see [Context notes](#context-notes))                                                                                                                                                                                                                                                                                  |
 
 > `OnSetParametersCallbackType` is aliased in this namespace and resolves to the correct rclcpp type
 > for both Humble (rclcpp 16.x) and Jazzy (rclcpp 28+).
@@ -138,9 +138,26 @@ autoware::agnocast_wrapper::set_period(timer_, std::chrono::milliseconds(200));
 
 #### Context notes
 
-Use `autoware::agnocast_wrapper::ok()` instead of `rclcpp::ok()`. An AgnocastOnly executable never calls
-`rclcpp::init()`, so `rclcpp::ok()` reports `false` there even while the process is healthy; `ok()` checks
-both contexts.
+A process brings up exactly one context: an AgnocastOnly executable the agnocast one, every other
+executable the rclcpp one. Both configure rcl logging and install a signal handler, so bringing up both
+leaves those owned twice.
+
+Use `init()` / `shutdown()` / `ok()` from this namespace rather than the `rclcpp` equivalents. `ok()`
+matters even if you never call `init()` yourself: in an AgnocastOnly executable `rclcpp::ok()` reports
+`false` while the process is healthy. `shutdown()` takes no argument — it tears down whatever `init()`
+brought up.
+
+`init()`'s `agnocast_only` flag is a property of the executable, not of the environment. Pass `true` if
+and only if the main spins one of agnocast's `AgnocastOnly*` executors:
+
+| Your `main()`                                                          | `agnocast_only` |
+| ---------------------------------------------------------------------- | --------------- |
+| No Agnocast executor at all (a test main, a tool, an rclcpp-only node) | omit it         |
+| A mixed-mode Agnocast executor (`SingleThreadedAgnocastExecutor`, …)   | omit it         |
+| An `AgnocastOnly*` executor                                            | `true`          |
+
+`autoware_agnocast_wrapper_register_node()` fills the flag in for the mains it generates; a main that
+has to serve both modes belongs to that macro rather than being hand-written.
 
 #### Publisher API
 

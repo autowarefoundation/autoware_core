@@ -14,58 +14,40 @@
 
 #pragma once
 
-// Runtime mode query and ok().
+// Runtime mode query, init()/shutdown() and ok().
 
-#include <rclcpp/rclcpp.hpp>
-
-#ifdef USE_AGNOCAST_ENABLED
-
-#include <agnocast/agnocast.hpp>
-
-#include <cstdlib>
+#include <string>
+#include <vector>
 
 namespace autoware::agnocast_wrapper
 {
 
-// Defaults to zero if the environment variable is missing or invalid.
-inline int get_ENABLE_AGNOCAST()
-{
-  const char * env = std::getenv("ENABLE_AGNOCAST");
-  if (env) {
-    return std::atoi(env);
-  }
-  return 0;
-}
+#ifdef USE_AGNOCAST_ENABLED
 
-inline bool use_agnocast()
-{
-  static const int sv = get_ENABLE_AGNOCAST();
-  return sv == 1;
-}
+/// @brief Whether this process runs on Agnocast, from the ENABLE_AGNOCAST environment variable.
+/// Read once and fixed for the lifetime of the process.
+bool use_agnocast();
+
+#endif
+
+/// @brief Mode-agnostic replacement for rclcpp::init(). Brings up the one context ok() reports on:
+/// the agnocast one for an AgnocastOnly executable, the rclcpp one for every other, never both.
+///
+/// @param agnocast_only True if and only if this executable spins one of agnocast's AgnocastOnly*
+///   executors. autoware_agnocast_wrapper_register_node() fills it in for the mains it generates.
+/// @return The arguments left once the ROS ones are removed, to hand to
+///   rclcpp::NodeOptions::arguments(). May be empty.
+std::vector<std::string> init(int argc, char const * const * argv, bool agnocast_only = false);
+
+/// @brief Mode-agnostic replacement for rclcpp::shutdown(). Tears down whichever context init()
+/// brought up.
+void shutdown();
 
 /// @brief Mode-agnostic replacement for rclcpp::ok().
 ///
 /// An AgnocastOnly executable initializes only the agnocast context, while mixed-mode and
 /// non-Agnocast executables initialize only the rclcpp context. Exactly one is alive in any
 /// mode, so the disjunction answers "is this process still running" everywhere.
-inline bool ok()
-{
-  return rclcpp::ok() || agnocast::ok();
-}
+bool ok();
 
 }  // namespace autoware::agnocast_wrapper
-
-#else
-
-namespace autoware::agnocast_wrapper
-{
-
-/// @brief Mode-agnostic replacement for rclcpp::ok() (non-Agnocast build).
-inline bool ok()
-{
-  return rclcpp::ok();
-}
-
-}  // namespace autoware::agnocast_wrapper
-
-#endif
