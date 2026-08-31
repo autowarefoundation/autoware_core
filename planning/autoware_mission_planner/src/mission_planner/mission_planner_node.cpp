@@ -18,7 +18,6 @@
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
 
 #include <memory>
-#include <optional>
 #include <string>
 
 namespace autoware::mission_planner
@@ -62,23 +61,17 @@ MissionPlannerConfig create_mission_planner_config(rclcpp::Node & node)
 
 MissionPlannerNode::MissionPlannerNode(const rclcpp::NodeOptions & options)
 : Node("mission_planner", options),
+  tf_buffer_(get_clock()),
+  tf_listener_(tf_buffer_),
   mission_planner_(
-    create_mission_planner_config(*this),
-    [this](RouteState::_state_type state) {
+    create_mission_planner_config(*this), tf_buffer_, [this](RouteState::_state_type state) {
       RouteState msg;
       msg.stamp = now();
       msg.state = state;
       pub_state_->publish(msg);
-    }),
-  tf_buffer_(get_clock()),
-  tf_listener_(tf_buffer_)
+    })
 {
   using std::placeholders::_1;
-
-  // NOTE: "map_frame" is already declared by create_mission_planner_config() above; the tf
-  // lookup in this node also needs the value, so read it back instead of re-declaring it.
-  // cppcheck-suppress useInitializationList
-  map_frame_ = get_parameter("map_frame").as_string();
 
   const auto durable_qos = rclcpp::QoS(1).transient_local();
   sub_odometry_ = create_subscription<Odometry>(
@@ -178,17 +171,7 @@ void MissionPlannerNode::on_set_lanelet_route(
 {
   ScopedProcessingTimePublisher processing_time_publisher(*this);
 
-  std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
-  try {
-    transform_to_map =
-      tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
-  } catch (const tf2::TransformException &) {
-    // Explicit assignment to avoid clang-tidy's check.
-    // Failure is handled by the transform_to_map check below.
-    transform_to_map = std::nullopt;
-  }
-
-  const auto result = mission_planner_.set_lanelet_route(*req, transform_to_map);
+  const auto result = mission_planner_.set_lanelet_route(*req);
   *res = result.response;
 
   if (result.error_message) {
@@ -210,17 +193,7 @@ void MissionPlannerNode::on_set_waypoint_route(
 {
   ScopedProcessingTimePublisher processing_time_publisher(*this);
 
-  std::optional<geometry_msgs::msg::TransformStamped> transform_to_map;
-  try {
-    transform_to_map =
-      tf_buffer_.lookupTransform(map_frame_, req->header.frame_id, tf2::TimePointZero);
-  } catch (const tf2::TransformException &) {
-    // Explicit assignment to avoid clang-tidy's check.
-    // Failure is handled by the transform_to_map check below.
-    transform_to_map = std::nullopt;
-  }
-
-  const auto result = mission_planner_.set_waypoint_route(*req, transform_to_map);
+  const auto result = mission_planner_.set_waypoint_route(*req);
   *res = result.response;
 
   if (result.warning_message) {

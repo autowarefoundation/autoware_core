@@ -61,11 +61,11 @@ private:
   void publish_processing_time(
     autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch);
 
-  MissionPlanner mission_planner_;
-
-  std::string map_frame_;
+  // NOTE: tf_buffer_ must be constructed before mission_planner_, which holds a reference to it.
   tf2_ros::Buffer tf_buffer_;
   tf2_ros::TransformListener tf_listener_;
+
+  MissionPlanner mission_planner_;
 
   autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   autoware::component_interface_utils::Service<ClearRouteSpecs>::SharedPtr srv_clear_route;

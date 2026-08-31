@@ -20,6 +20,7 @@
 #include "reroute_safety.hpp"
 
 #include <autoware_vehicle_info_utils/vehicle_info_utils.hpp>
+#include <tf2/buffer_core.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_common_msgs/msg/response_status.hpp>
@@ -87,7 +88,9 @@ class MissionPlanner
 public:
   using ChangeStateCallback = std::function<void(RouteState::_state_type)>;
 
-  MissionPlanner(const MissionPlannerConfig & config, ChangeStateCallback on_change_state);
+  MissionPlanner(
+    const MissionPlannerConfig & config, tf2::BufferCore & tf_buffer,
+    ChangeStateCallback on_change_state);
 
   void on_odometry(const Odometry::ConstSharedPtr msg);
   void on_operation_mode_state(const OperationModeState::ConstSharedPtr msg);
@@ -97,12 +100,8 @@ public:
 
   ClearRoute::Response clear_route();
 
-  SetLaneletRouteResult set_lanelet_route(
-    const SetLaneletRoute::Request & req,
-    const std::optional<geometry_msgs::msg::TransformStamped> & transform_to_map);
-  SetWaypointRouteResult set_waypoint_route(
-    const SetWaypointRoute::Request & req,
-    const std::optional<geometry_msgs::msg::TransformStamped> & transform_to_map);
+  SetLaneletRouteResult set_lanelet_route(const SetLaneletRoute::Request & req);
+  SetWaypointRouteResult set_waypoint_route(const SetWaypointRoute::Request & req);
 
 private:
   void change_state(RouteState::_state_type state);
@@ -122,6 +121,7 @@ private:
   std::shared_ptr<lanelet2::DefaultPlanner> planner_;
 
   std::string map_frame_;
+  tf2::BufferCore & tf_buffer_;
 
   Odometry::ConstSharedPtr odometry_;
   OperationModeState::ConstSharedPtr operation_mode_state_;
