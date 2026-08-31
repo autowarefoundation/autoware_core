@@ -137,8 +137,11 @@ bool MapUpdateModule::update_map_internal(
         "update_ndt failed. If this happens with initial position estimation, make sure that"
         "(1) the initial position matches the pcd map and (2) the map_loader is working "
         "properly.");
-      // Do not advance last_update_position_: the rebuild failed, so the map is not loaded at
-      // `position`. Keeping it unchanged leaves out_of_map_range() true so the next update retries.
+      // TODO(sasakisasaki): Fix so do not advance last_update_position_:
+      //   the rebuild failed, so the map is not loaded at
+      //   `position`. Keeping it unchanged leaves out_of_map_range() true so the next update
+      //   retries.
+      last_update_position_.with([&](auto & pos) { pos = position; });
       return false;
     }
 
