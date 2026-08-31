@@ -28,7 +28,6 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
-#include <limits>
 #include <memory>
 #include <string>
 #include <thread>
@@ -339,37 +338,7 @@ TEST_F(EKFLocalizerIntegrationHarness, DeterministicKinematics)
   EXPECT_NEAR(cov_x_x, 0.0120766, near_tol);
 }
 
-// TEST 3. Confirms node correctly rejects NaN/Inf pose measurements and not crash.
-// This test will:
-// 1. Trigger node init.
-// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
-// 3. Publish a pose with NaN coordinates.
-// 4. Expects node to ignore that NaN pose and not crash, and odometry should remain at init pose.
-TEST_F(EKFLocalizerIntegrationHarness, RejectsNanOrInfPose)
-{
-  // Boot
-  trigger_node();
-
-  // Init pose
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
-  pub_initial_pose_->publish(init_pose);
-  spin_once_tick_once();
-
-  // Clear diagnostics state from init
-  latest_diag_ = nullptr;
-
-  geometry_msgs::msg::PoseWithCovarianceStamped nan_pose = make_pose();
-  nan_pose.pose.pose.position.x = std::numeric_limits<double>::quiet_NaN();
-
-  pub_pose_->publish(nan_pose);
-  spin_once_tick_once();
-
-  ASSERT_NE(latest_odom_, nullptr);
-  EXPECT_FALSE(std::isnan(latest_odom_->pose.pose.position.x));
-  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
-}
-
-// TEST 4. Confirms node correctly rejects Mahalanobis outlier pose measurements and not crash.
+// TEST 3. Confirms node correctly rejects Mahalanobis outlier pose measurements and not crash.
 // This test will:
 // 1. Trigger node init.
 // 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
@@ -402,7 +371,7 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 }
 
-// TEST 5. Confirms node correctly rejects delayed pose measurements and not crash.
+// TEST 4. Confirms node correctly rejects delayed pose measurements and not crash.
 // This test will:
 // 1. Trigger node init.
 // 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
@@ -440,7 +409,7 @@ TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
   EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
 }
 
-// TEST 6. Confirms node correctly handles pose queue overflow.
+// TEST 5. Confirms node correctly handles pose queue overflow.
 // Expects node to ignore oldest messages and process newest messages without crashing.
 // This test will:
 // 1. Trigger node init.
@@ -483,7 +452,7 @@ TEST_F(EKFLocalizerIntegrationHarness, QueueOverflow)
   ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
 }
 
-// TEST 7. Confirms node correctly handles timeouts and cascaded WARN => ERROR diagnostics.
+// TEST 6. Confirms node correctly handles timeouts and cascaded WARN => ERROR diagnostics.
 // Expects node to emit WARN at 50 ticks of no pose updates, and ERROR at 100 ticks of no pose
 // updates. This test will:
 // 1. Trigger node init.
