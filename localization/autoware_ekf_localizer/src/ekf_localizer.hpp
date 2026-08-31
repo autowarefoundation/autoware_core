@@ -22,18 +22,24 @@
 #include <autoware/kalman_filter/kalman_filter.hpp>
 #include <autoware/kalman_filter/time_delay_kalman_filter.hpp>
 #include <autoware_utils_system/stop_watch.hpp>
+#include <rclcpp/time.hpp>
 #include <tf2/utils.hpp>
 
+#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <geometry_msgs/msg/twist_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
+#include <nav_msgs/msg/odometry.hpp>
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <memory>
+#include <mutex>
 #include <optional>
+#include <queue>
 #include <string>
 #include <vector>
 
@@ -71,6 +77,20 @@ struct CoreWarning
 
 struct EKFUpdateResult
 {
+  bool is_activated{false};
+  bool is_set_initialpose{false};
+  geometry_msgs::msg::PoseStamped pose;
+  geometry_msgs::msg::PoseStamped biased_pose;
+  geometry_msgs::msg::PoseWithCovarianceStamped pose_cov;
+  geometry_msgs::msg::PoseWithCovarianceStamped biased_pose_cov;
+  geometry_msgs::msg::TwistStamped twist;
+  geometry_msgs::msg::TwistWithCovarianceStamped twist_cov;
+
+  nav_msgs::msg::Odometry odom;
+  autoware_internal_debug_msgs::msg::Float64Stamped yaw_bias_msg;
+
+  double ellipse_long_radius{0.0};
+  double ellipse_size_lateral_direction{0.0};
   EKFDiagnosticInfo pose_diag_info;
   EKFDiagnosticInfo twist_diag_info;
   std::vector<CoreWarning> warnings;
@@ -145,8 +165,8 @@ public:
 
   void push_pose(const std::shared_ptr<const PoseWithCovariance> & pose);
   void push_twist(const std::shared_ptr<const TwistWithCovariance> & twist);
-  EKFUpdateResult update_step(const double t_curr_sec);
-  void reset();
+  EKFUpdateResult update_step(const rclcpp::Time & t_curr);
+  void activate(bool active);
 
   [[nodiscard]] size_t find_closest_delay_time_index(double target_value) const;
 
@@ -191,6 +211,15 @@ private:
   AgedObjectQueue<std::shared_ptr<const PoseWithCovariance>> pose_queue_;
   AgedObjectQueue<std::shared_ptr<const TwistWithCovariance>> twist_queue_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
+
+  std::atomic<bool> is_activated_{false};
+  std::atomic<bool> is_set_initialpose_{false};
+  std::queue<std::shared_ptr<const PoseWithCovariance>> pose_queue_tmp_;
+  std::queue<std::shared_ptr<const TwistWithCovariance>> twist_queue_tmp_;
+  std::mutex pose_mtx_;
+  std::mutex twist_mtx_;
+  std::vector<CoreWarning> async_warnings_;
+  std::mutex warning_mtx_;
 };
 
 }  // namespace autoware::ekf_localizer

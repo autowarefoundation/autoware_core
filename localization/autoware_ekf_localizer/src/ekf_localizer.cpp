@@ -14,6 +14,7 @@
 
 #include "ekf_localizer.hpp"
 
+#include "autoware/localization_util/covariance_ellipse.hpp"
 #include "utils/covariance.hpp"
 #include "utils/mahalanobis.hpp"
 #include "utils/matrix_types.hpp"
@@ -71,26 +72,127 @@ EKFLocalizer::EKFLocalizer(const HyperParameters & params)
 
 void EKFLocalizer::push_pose(const std::shared_ptr<const PoseWithCovariance> & pose)
 {
-  pose_queue_.push(pose);
+  if (!is_activated_ || !is_set_initialpose_) {
+    return;
+  }
+
+  auto pose_msg = std::make_shared<PoseWithCovariance>(*pose);
+
+  size_t dropped = 0;
+  {
+    std::lock_guard<std::mutex> lock(pose_mtx_);
+    pose_queue_tmp_.push(pose_msg);
+    while (pose_queue_tmp_.size() > params_.max_pose_queue_size) {
+      pose_queue_tmp_.pop();
+      ++dropped;
+    }
+  }
+
+  if (dropped > 0) {
+    const auto warning = fmt::format(
+      "[EKF] Pose staging queue is exceeding max_queue_size ({}); dropped {} oldest "
+      "message(s). "
+      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
+      "frequency.",
+      params_.max_pose_queue_size, dropped);
+    std::lock_guard<std::mutex> lock(warning_mtx_);
+    async_warnings_.push_back({warning, 2000});
+  }
 }
 
 void EKFLocalizer::push_twist(const std::shared_ptr<const TwistWithCovariance> & twist)
 {
-  twist_queue_.push(twist);
+  auto twist_msg = std::make_shared<TwistWithCovariance>(*twist);
+
+  // Ignore twist if velocity is too small.
+  // Note that this inequality must not include "equal".
+  if (std::abs(twist_msg->twist.twist.linear.x) < params_.threshold_observable_velocity_mps) {
+    twist_msg->twist.covariance[0 * 6 + 0] = 10000.0;
+  }
+
+  size_t dropped = 0;
+  {
+    std::lock_guard<std::mutex> lock(twist_mtx_);
+    twist_queue_tmp_.push(twist_msg);
+    while (twist_queue_tmp_.size() > params_.max_twist_queue_size) {
+      twist_queue_tmp_.pop();
+      ++dropped;
+    }
+  }
+
+  if (dropped > 0) {
+    const auto warning = fmt::format(
+      "[EKF] Twist staging queue is exceeding max_queue_size ({}); dropped {} oldest "
+      "message(s). "
+      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
+      "frequency.",
+      params_.max_twist_queue_size, dropped);
+    std::lock_guard<std::mutex> lock(warning_mtx_);
+    async_warnings_.push_back({warning, 2000});
+  }
 }
 
-void EKFLocalizer::reset()
+void EKFLocalizer::activate(bool active)
 {
-  pose_queue_.clear();
-  twist_queue_.clear();
-  last_predict_time_sec_ = std::nullopt;
-  pose_diag_info_ = EKFDiagnosticInfo();
-  twist_diag_info_ = EKFDiagnosticInfo();
+  if (active) {
+    {
+      std::lock_guard<std::mutex> lock(pose_mtx_);
+      pose_queue_tmp_ = {};
+    }
+    {
+      std::lock_guard<std::mutex> lock(twist_mtx_);
+      twist_queue_tmp_ = {};
+    }
+
+    pose_queue_.clear();
+    twist_queue_.clear();
+    last_predict_time_sec_ = std::nullopt;
+    pose_diag_info_ = EKFDiagnosticInfo();
+    twist_diag_info_ = EKFDiagnosticInfo();
+    is_activated_ = true;
+  } else {
+    is_activated_ = false;
+    is_set_initialpose_ = false;
+  }
 }
 
-EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
+EKFUpdateResult EKFLocalizer::update_step(const rclcpp::Time & t_curr)
 {
   EKFUpdateResult result;
+
+  const double t_curr_sec = t_curr.seconds();
+
+  // Drain async warnings FIRST, generated in push_* callbacks
+  {
+    std::lock_guard<std::mutex> lock(warning_mtx_);
+    for (const auto & w : async_warnings_) {
+      result.warnings.push_back(w);
+    }
+    async_warnings_.clear();
+  }
+
+  result.is_activated = is_activated_;
+  result.is_set_initialpose = is_set_initialpose_;
+
+  if (!is_activated_ || !is_set_initialpose_) {
+    return result;  // Return early with flags so Node knows to emit errors
+  }
+
+  // Drain thread-safe temporary queues
+  {
+    std::lock_guard<std::mutex> lock(pose_mtx_);
+    while (!pose_queue_tmp_.empty()) {
+      pose_queue_.push(pose_queue_tmp_.front());
+      pose_queue_tmp_.pop();
+    }
+  }
+  {
+    std::lock_guard<std::mutex> lock(twist_mtx_);
+    while (!twist_queue_tmp_.empty()) {
+      twist_queue_.push(twist_queue_tmp_.front());
+      twist_queue_tmp_.pop();
+    }
+  }
 
   // 1. Init per-tick diagnostics
   pose_diag_info_.queue_size = pose_queue_.size();
@@ -225,6 +327,44 @@ EKFUpdateResult EKFLocalizer::update_step(const double t_curr_sec)
   twist_diag_info_.no_update_count = twist_is_updated ? 0 : (twist_diag_info_.no_update_count + 1);
 
   // 7. Result
+  // Here packaging fully stamped ROS result struct
+  result.pose = get_current_pose(false);
+  result.pose.header.stamp = t_curr;
+  result.pose.header.frame_id = params_.pose_frame_id;
+
+  result.biased_pose = get_current_pose(true);
+  result.biased_pose.header.stamp = t_curr;
+  result.biased_pose.header.frame_id = params_.pose_frame_id;
+
+  result.twist = get_current_twist();
+  result.twist.header.stamp = t_curr;
+  result.twist.header.frame_id = "base_link";
+
+  result.pose_cov.header = result.pose.header;
+  result.pose_cov.pose.pose = result.pose.pose;
+  result.pose_cov.pose.covariance = get_current_pose_covariance();
+
+  result.biased_pose_cov.header = result.biased_pose.header;
+  result.biased_pose_cov.pose.pose = result.biased_pose.pose;
+  result.biased_pose_cov.pose.covariance = get_current_pose_covariance();
+
+  result.twist_cov.header = result.twist.header;
+  result.twist_cov.twist.twist = result.twist.twist;
+  result.twist_cov.twist.covariance = get_current_twist_covariance();
+
+  result.yaw_bias_msg.stamp = result.twist.header.stamp;
+  result.yaw_bias_msg.data = get_yaw_bias();
+
+  result.odom.header = result.pose.header;
+  result.odom.child_frame_id = "base_link";
+  result.odom.pose = result.pose_cov.pose;
+  result.odom.twist = result.twist_cov.twist;
+
+  const autoware::localization_util::Ellipse ellipse =
+    autoware::localization_util::calculate_xy_ellipse(result.pose_cov.pose, params_.ellipse_scale);
+  result.ellipse_long_radius = ellipse.long_radius;
+  result.ellipse_size_lateral_direction = ellipse.size_lateral_direction;
+
   result.pose_diag_info = pose_diag_info_;
   result.twist_diag_info = twist_diag_info_;
 
@@ -269,6 +409,8 @@ void EKFLocalizer::initialize(
   z_filter_.init(z, z_var);
   roll_filter_.init(rpy.x, roll_var);
   pitch_filter_.init(rpy.y, pitch_var);
+
+  is_set_initialpose_ = true;
 }
 
 geometry_msgs::msg::PoseStamped EKFLocalizer::get_current_pose(bool get_biased_yaw) const

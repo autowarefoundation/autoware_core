@@ -21,6 +21,7 @@
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
+#include <ekf_localizer.hpp>
 #include <rclcpp/duration.hpp>
 #include <rclcpp/logging.hpp>
 
@@ -113,16 +114,28 @@ EKFLocalizerNode::EKFLocalizerNode(const rclcpp::NodeOptions & node_options)
 void EKFLocalizerNode::timer_callback()
 {
   stop_watch_timer_cb_.tic();
-
   const rclcpp::Time current_time = this->now();
+
+  stop_watch_.tic();
+  auto update_result = ekf_localizer_->update_step(current_time);
+
+  // Log all warnings & debug logs
+  for (const auto & warning : update_result.warnings) {
+    if (warning.throttle_ms > 0) {
+      RCLCPP_WARN_THROTTLE(
+        get_logger(), *get_clock(), warning.throttle_ms, "%s", warning.text.c_str());
+    } else {
+      RCLCPP_WARN(get_logger(), "%s", warning.text.c_str());
+    }
+  }
 
   // Initialize diagnostic status array to collect diagnostics during processing
   std::vector<diagnostic_msgs::msg::DiagnosticStatus> diag_status_array;
 
   // Check process activation status
-  diag_status_array.push_back(check_process_activated(is_activated_));
+  diag_status_array.push_back(check_process_activated(update_result.is_activated));
 
-  if (!is_activated_) {
+  if (!update_result.is_activated) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
       "The node is not activated. Provide initial pose to pose_initializer");
@@ -132,9 +145,9 @@ void EKFLocalizerNode::timer_callback()
   }
 
   // Check initial pose status
-  diag_status_array.push_back(check_set_initialpose(is_set_initialpose_));
+  diag_status_array.push_back(check_set_initialpose(update_result.is_set_initialpose));
 
-  if (!is_set_initialpose_) {
+  if (!update_result.is_set_initialpose) {
     RCLCPP_WARN_THROTTLE(
       get_logger(), *get_clock(), 2000,
       "Initial pose is not set. Provide initial pose to pose_initializer");
@@ -144,36 +157,6 @@ void EKFLocalizerNode::timer_callback()
   }
 
   DEBUG_INFO(get_logger(), "========================= timer called =========================");
-
-  // Drain temporary queues into core
-  {
-    std::lock_guard<std::mutex> lock(pose_mtx_);
-    while (!pose_queue_tmp_.empty()) {
-      ekf_localizer_->push_pose(pose_queue_tmp_.front());
-      pose_queue_tmp_.pop();
-    }
-  }
-  {
-    std::lock_guard<std::mutex> lock(twist_mtx_);
-    while (!twist_queue_tmp_.empty()) {
-      ekf_localizer_->push_twist(twist_queue_tmp_.front());
-      twist_queue_tmp_.pop();
-    }
-  }
-
-  /* predict model in EKF */
-  stop_watch_.tic();
-  auto update_result = ekf_localizer_->update_step(current_time.seconds());
-
-  // Log all warnings emitted by core
-  for (const auto & warning : update_result.warnings) {
-    if (warning.throttle_ms > 0) {
-      RCLCPP_WARN_THROTTLE(
-        get_logger(), *get_clock(), warning.throttle_ms, "%s", warning.text.c_str());
-    } else {
-      RCLCPP_WARN(get_logger(), "%s", warning.text.c_str());
-    }
-  }
 
   for (const auto & debug_log : update_result.debug_logs) {
     DEBUG_INFO(get_logger(), "%s", debug_log.c_str());
@@ -207,36 +190,15 @@ void EKFLocalizerNode::timer_callback()
     "twist", update_result.twist_diag_info.is_passed_mahalanobis_gate,
     update_result.twist_diag_info.mahalanobis_distance, params_.twist_gate_dist));
 
-  // Here node injects timestamps into core logic's raw output structs
-
-  geometry_msgs::msg::PoseStamped current_ekf_pose = ekf_localizer_->get_current_pose(false);
-  current_ekf_pose.header.stamp = current_time;
-  current_ekf_pose.header.frame_id = params_.pose_frame_id;
-
-  geometry_msgs::msg::PoseStamped current_biased_ekf_pose = ekf_localizer_->get_current_pose(true);
-  current_biased_ekf_pose.header.stamp = current_time;
-  current_biased_ekf_pose.header.frame_id = params_.pose_frame_id;
-
-  geometry_msgs::msg::TwistStamped current_ekf_twist = ekf_localizer_->get_current_twist();
-  current_ekf_twist.header.stamp = current_time;
-  current_ekf_twist.header.frame_id = "base_link";
-
-  // Calculate covariance ellipse and add diagnostics
-  geometry_msgs::msg::PoseWithCovariance pose_cov;
-  pose_cov.pose = current_ekf_pose.pose;
-  pose_cov.covariance = ekf_localizer_->get_current_pose_covariance();
-  const autoware::localization_util::Ellipse ellipse =
-    autoware::localization_util::calculate_xy_ellipse(pose_cov, params_.ellipse_scale);
-
   diag_status_array.push_back(check_covariance_ellipse(
-    "cov_ellipse_long_axis", ellipse.long_radius, params_.warn_ellipse_size,
+    "cov_ellipse_long_axis", update_result.ellipse_long_radius, params_.warn_ellipse_size,
     params_.error_ellipse_size));
   diag_status_array.push_back(check_covariance_ellipse(
-    "cov_ellipse_lateral_direction", ellipse.size_lateral_direction,
+    "cov_ellipse_lateral_direction", update_result.ellipse_size_lateral_direction,
     params_.warn_ellipse_size_lateral_direction, params_.error_ellipse_size_lateral_direction));
 
   /* publish ekf result */
-  publish_estimate_result(current_ekf_pose, current_biased_ekf_pose, current_ekf_twist);
+  publish_estimate_result(update_result);
 
   /* Latch merged diagnostics every EKF cycle; publishing is periodic via
    * diagnostics_publish_timer_, plus publish_diagnostics() inside update_diagnostics when severity
@@ -285,8 +247,6 @@ void EKFLocalizerNode::callback_initial_pose(
       params_.pose_frame_id.c_str(), msg->header.frame_id.c_str());
   }
   ekf_localizer_->initialize(*msg, transform);
-
-  is_set_initialpose_ = true;
 }
 
 /*
@@ -295,31 +255,7 @@ void EKFLocalizerNode::callback_initial_pose(
 void EKFLocalizerNode::callback_pose_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg)
 {
-  if (!is_activated_ && !is_set_initialpose_) {
-    return;
-  }
-
-  auto pose_msg = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(*msg);
-
-  size_t dropped = 0;
-  {
-    std::lock_guard<std::mutex> lock(pose_mtx_);
-    pose_queue_tmp_.push(pose_msg);
-    while (pose_queue_tmp_.size() > params_.max_pose_queue_size) {
-      pose_queue_tmp_.pop();
-      ++dropped;
-    }
-  }
-  if (dropped > 0) {
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 2000,
-      "[EKF] Pose staging queue is exceeding max_queue_size ({%zu}); dropped {%zu} oldest "
-      "message(s). "
-      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
-      "frequency.",
-      params_.max_pose_queue_size, dropped);
-  }
-
+  ekf_localizer_->push_pose(std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>(*msg));
   last_pose_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
@@ -329,114 +265,69 @@ void EKFLocalizerNode::callback_pose_with_covariance(
 void EKFLocalizerNode::callback_twist_with_covariance(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::TwistWithCovarianceStamped) msg)
 {
-  auto twist_msg = std::make_shared<geometry_msgs::msg::TwistWithCovarianceStamped>(*msg);
-
-  // Ignore twist if velocity is too small.
-  // Note that this inequality must not include "equal".
-  if (std::abs(twist_msg->twist.twist.linear.x) < params_.threshold_observable_velocity_mps) {
-    twist_msg->twist.covariance[0 * 6 + 0] = 10000.0;
-  }
-
-  size_t dropped = 0;
-  {
-    std::lock_guard<std::mutex> lock(twist_mtx_);
-    twist_queue_tmp_.push(twist_msg);
-    while (twist_queue_tmp_.size() > params_.max_twist_queue_size) {
-      twist_queue_tmp_.pop();
-      ++dropped;
-    }
-  }
-  if (dropped > 0) {
-    RCLCPP_WARN_THROTTLE(
-      get_logger(), *get_clock(), 2000,
-      "[EKF] Twist staging queue is exceeding max_queue_size ({%zu}); dropped {%zu} oldest "
-      "message(s). "
-      "The timer callback may be starved. Consider increasing max_queue_size or reducing input "
-      "frequency.",
-      params_.max_twist_queue_size, dropped);
-  }
-
+  ekf_localizer_->push_twist(
+    std::make_shared<geometry_msgs::msg::TwistWithCovarianceStamped>(*msg));
   last_twist_callback_time_ns_.store(rclcpp::Time(msg->header.stamp).nanoseconds());
 }
 
 /*
  * publish_estimate_result
  */
-void EKFLocalizerNode::publish_estimate_result(
-  const geometry_msgs::msg::PoseStamped & current_ekf_pose,
-  const geometry_msgs::msg::PoseStamped & current_biased_ekf_pose,
-  const geometry_msgs::msg::TwistStamped & current_ekf_twist)
+void EKFLocalizerNode::publish_estimate_result(const EKFUpdateResult & result)
 {
   /* publish latest pose */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pose_);
-    *msg = current_ekf_pose;
+    *msg = result.pose;
     pub_pose_->publish(std::move(msg));
   }
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_biased_pose_);
-    *msg = current_biased_ekf_pose;
+    *msg = result.biased_pose;
     pub_biased_pose_->publish(std::move(msg));
   }
 
   /* publish latest pose with covariance */
-  geometry_msgs::msg::PoseWithCovarianceStamped pose_cov;
-  pose_cov.header = current_ekf_pose.header;
-  pose_cov.pose.pose = current_ekf_pose.pose;
-  pose_cov.pose.covariance = ekf_localizer_->get_current_pose_covariance();
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_pose_cov_);
-    *msg = pose_cov;
+    *msg = result.pose_cov;
     pub_pose_cov_->publish(std::move(msg));
   }
-
-  geometry_msgs::msg::PoseWithCovarianceStamped biased_pose_cov = pose_cov;
-  biased_pose_cov.pose.pose = current_biased_ekf_pose.pose;
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_biased_pose_cov_);
-    *msg = biased_pose_cov;
+    *msg = result.biased_pose_cov;
     pub_biased_pose_cov_->publish(std::move(msg));
   }
 
   /* publish latest twist */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_twist_);
-    *msg = current_ekf_twist;
+    *msg = result.twist;
     pub_twist_->publish(std::move(msg));
   }
 
   /* publish latest twist with covariance */
-  geometry_msgs::msg::TwistWithCovarianceStamped twist_cov;
-  twist_cov.header = current_ekf_twist.header;
-  twist_cov.twist.twist = current_ekf_twist.twist;
-  twist_cov.twist.covariance = ekf_localizer_->get_current_twist_covariance();
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_twist_cov_);
-    *msg = twist_cov;
+    *msg = result.twist_cov;
     pub_twist_cov_->publish(std::move(msg));
   }
 
   /* publish yaw bias */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_yaw_bias_);
-    msg->stamp = current_ekf_twist.header.stamp;
-    msg->data = ekf_localizer_->get_yaw_bias();
+    *msg = result.yaw_bias_msg;
     pub_yaw_bias_->publish(std::move(msg));
   }
-
-  /* publish latest odometry */
   {
     auto msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_odom_);
-    msg->header = current_ekf_pose.header;
-    msg->child_frame_id = "base_link";
-    msg->pose = pose_cov.pose;
-    msg->twist = twist_cov.twist;
+    *msg = result.odom;
     pub_odom_->publish(std::move(msg));
   }
 
   /* publish tf */
   const geometry_msgs::msg::TransformStamped transform_stamped =
-    autoware_utils_geometry::pose2transform(current_ekf_pose, "base_link");
+    autoware_utils_geometry::pose2transform(result.pose, "base_link");
   tf_br_->sendTransform(transform_stamped);
 }
 
@@ -533,21 +424,7 @@ void EKFLocalizerNode::service_trigger_node(
   const AUTOWARE_SERVER_REQUEST_PTR(std_srvs::srv::SetBool) req,
   AUTOWARE_SERVER_RESPONSE_PTR(std_srvs::srv::SetBool) res)
 {
-  if (req->data) {
-    {
-      std::lock_guard<std::mutex> lock(pose_mtx_);
-      pose_queue_tmp_ = {};
-    }
-    {
-      std::lock_guard<std::mutex> lock(twist_mtx_);
-      twist_queue_tmp_ = {};
-    }
-    ekf_localizer_->reset();
-    is_activated_ = true;
-  } else {
-    is_activated_ = false;
-    is_set_initialpose_ = false;
-  }
+  ekf_localizer_->activate(req->data);
   res->success = true;
 }
 
