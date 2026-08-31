@@ -43,23 +43,15 @@ public:
   virtual ~Subscription() = default;
 };
 
-// Which callback shape a subscription accepts, in the order they are probed: the message_ptr forms
-// win over MessageT::ConstSharedPtr, which in turn wins over the const-reference form. A callable
-// that matches more than one shape -- a generic lambda, for instance -- gets the first match.
-
-// True when Callback takes the wrapper's message_ptr. The message may be kept alive beyond the
-// callback, at one heap allocation per message for the holder, and one more per copy (which
-// clones it). Only the const-reference form is allocation-free.
+// Probed in this order, with the const-reference form last (see the dispatch below), so a callable
+// matching several shapes -- a generic lambda, for instance -- resolves to message_ptr.
 template <typename Func, typename MessageT>
 inline constexpr bool is_message_ptr_subscription_callback_v =
   std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
   std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
 
-// True when Callback is an rclcpp-style handler taking MessageT::ConstSharedPtr. This lets
-// interfaces whose callback signature cannot be templated on the pointer type -- notably
-// autoware_component_interface_utils, which binds member functions taking Message::ConstSharedPtr
-// -- be used on the wrapper Node. The payload is not copied; the cost matches message_ptr, one
-// heap allocation per message, and copies of the returned pointer are free.
+// Lets interfaces that fix their callback signature -- autoware_component_interface_utils binds
+// member functions taking Message::ConstSharedPtr -- be used on the wrapper Node.
 template <typename Func, typename MessageT>
 inline constexpr bool is_std_shared_ptr_subscription_callback_v =
   !is_message_ptr_subscription_callback_v<Func, MessageT> &&
