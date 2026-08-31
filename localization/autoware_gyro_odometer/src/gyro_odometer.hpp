@@ -64,6 +64,7 @@ public:
   {
     bool vehicle_twist_arrived{false};
     bool imu_arrived{false};
+    bool is_frame_id_consistent{true};
     double latest_vehicle_twist_dt{0.0};
     double latest_imu_dt{0.0};
     rclcpp::Time latest_vehicle_twist_ros_time;
@@ -93,6 +94,7 @@ private:
     const geometry_msgs::msg::TwistWithCovarianceStamped & twist_with_cov_raw);
 
   double message_timeout_sec_;
+  bool is_frame_id_consistent_{true};
   bool vehicle_twist_arrived_{false};
   bool imu_arrived_{false};
   rclcpp::Time latest_vehicle_twist_ros_time_{0, 0, RCL_ROS_TIME};

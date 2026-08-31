@@ -18,6 +18,8 @@
 
 #include <gtest/gtest.h>
 
+#include <string>
+
 namespace autoware::gyro_odometer
 {
 
@@ -119,6 +121,26 @@ TEST(GyroOdometerDiagnostics, DetermineDiagnosticsAggregatesToMaxSeverity)
   ASSERT_EQ(result.entries.size(), 2u);
   EXPECT_EQ(result.entries[0].level, diagnostic_msgs::msg::DiagnosticStatus::WARN);
   EXPECT_EQ(result.entries[1].level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+}
+
+// Inputs that describe different frames cannot be combined, so the state reports an error that
+// names the frame the output is expected in.
+TEST(GyroOdometerDiagnostics, InconsistentFrameIdIsAnError)
+{
+  DiagnosticsState state;
+  state.vehicle_twist_arrived = true;
+  state.imu_arrived = true;
+  state.is_succeed_transform_imu = true;
+  state.is_frame_id_consistent = false;
+  state.message_timeout_sec = 1.0;
+  state.output_frame = "base_link";
+
+  const DiagnosticsResult result = determine_diagnostics(state);
+
+  EXPECT_EQ(result.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+  EXPECT_NE(
+    result.log_message.find("Vehicle twist frame_id differs from base_link."), std::string::npos)
+    << "reported message was: " << result.log_message;
 }
 
 }  // namespace autoware::gyro_odometer

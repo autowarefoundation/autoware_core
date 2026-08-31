@@ -54,6 +54,10 @@ DiagnosticsResult determine_diagnostics(const DiagnosticsState & state)
       state.message_timeout_sec);
     raise(DiagnosticStatus::ERROR, message);
   }
+  if (!state.is_frame_id_consistent) {
+    raise(
+      DiagnosticStatus::ERROR, "Vehicle twist frame_id differs from " + state.output_frame + ".");
+  }
   if (!state.is_succeed_transform_imu) {
     raise(
       DiagnosticStatus::ERROR,
