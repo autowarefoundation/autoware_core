@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/ndt_scan_matcher_helper.hpp"
+#include "../src/ndt_scan_matcher.hpp"
 
 #include <Eigen/Core>
 #include <Eigen/Geometry>

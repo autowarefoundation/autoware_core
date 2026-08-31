@@ -12,12 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "ndt_scan_matcher_helper.hpp"
+#include "ndt_scan_matcher.hpp"
 
-#include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/tree_structured_parzen_estimator.hpp>
 #include <autoware/localization_util/util_func.hpp>
-#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
 #include <autoware/ndt_scan_matcher/particle.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
@@ -45,7 +43,6 @@
 
 namespace autoware::ndt_scan_matcher
 {
-using autoware::localization_util::exchange_color_crc;
 using autoware::localization_util::matrix4f_to_pose;
 using autoware::localization_util::pose_to_matrix4f;
 
@@ -493,71 +490,80 @@ bool NDTScanMatcher::callback_sensor_points_main(
     diagnostics_scan_points_->add_key_value(
       "nearest_voxel_transformation_likelihood",
       ndt_result.nearest_voxel_transformation_likelihood);
-    double score = 0.0;
-    double score_threshold = 0.0;
-    if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {
-      score = ndt_result.transform_probability;
-      score_threshold = param_.score_estimation.converged_param_transform_probability;
-    } else if (
+    ScoreMetric score_metric = ScoreMetric::TRANSFORM_PROBABILITY;
+    if (
       param_.score_estimation.converged_param_type ==
       ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD) {
-      score = ndt_result.nearest_voxel_transformation_likelihood;
-      score_threshold =
-        param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
-    } else {
-      std::stringstream message;
-      message
-        << "Unknown converged param type. Please check `score_estimation.converged_param_type`";
+      score_metric = ScoreMetric::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD;
+    }
+
+    const ScoreEvaluationInput score_evaluation_input{
+      score_metric, param_.score_estimation.converged_param_transform_probability,
+      param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood};
+    const ScoreEvaluationResult score_evaluation =
+      evaluate_score(ndt_result, score_evaluation_input);
+    if (!score_evaluation.is_supported_metric) {
       diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+        diagnostic_msgs::msg::DiagnosticStatus::ERROR,
+        "Unknown converged param type. Please check `score_estimation.converged_param_type`");
       return false;
     }
 
-    // check score diff
-    const std::vector<float> & tp_array = ndt_result.transform_probability_array;
-    if (static_cast<int>(tp_array.size()) != ndt_result.iteration_num + 1) {
-      // only publish warning to /diagnostics, not skip publishing pose
+    if (
+      static_cast<int>(score_evaluation.transform_probability_array_size) !=
+      score_evaluation.expected_array_size) {
       std::stringstream message;
       message << "transform_probability_array size is not equal to iteration_num + 1."
-              << " transform_probability_array size: " << tp_array.size()
+              << " transform_probability_array size: "
+              << score_evaluation.transform_probability_array_size
               << ", iteration_num: " << ndt_result.iteration_num;
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    } else {
-      const float diff = tp_array.back() - tp_array.front();
-      diagnostics_scan_points_->add_key_value("transform_probability_diff", diff);
-      diagnostics_scan_points_->add_key_value("transform_probability_before", tp_array.front());
     }
-    const std::vector<float> & nvtl_array =
-      ndt_result.nearest_voxel_transformation_likelihood_array;
-    if (static_cast<int>(nvtl_array.size()) != ndt_result.iteration_num + 1) {
-      // only publish warning to /diagnostics, not skip publishing pose
+
+    if (
+      static_cast<int>(score_evaluation.nearest_voxel_transformation_likelihood_array_size) !=
+      score_evaluation.expected_array_size) {
       std::stringstream message;
       message
         << "nearest_voxel_transformation_likelihood_array size is not equal to iteration_num + 1."
-        << " nearest_voxel_transformation_likelihood_array size: " << nvtl_array.size()
+        << " nearest_voxel_transformation_likelihood_array size: "
+        << score_evaluation.nearest_voxel_transformation_likelihood_array_size
         << ", iteration_num: " << ndt_result.iteration_num;
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    } else {
-      const float diff = nvtl_array.back() - nvtl_array.front();
-      diagnostics_scan_points_->add_key_value("nearest_voxel_transformation_likelihood_diff", diff);
+    }
+    if (score_evaluation.transform_probability_diff) {
       diagnostics_scan_points_->add_key_value(
-        "nearest_voxel_transformation_likelihood_before", nvtl_array.front());
+        "transform_probability_diff", score_evaluation.transform_probability_diff.value());
+    }
+    if (score_evaluation.transform_probability_before) {
+      diagnostics_scan_points_->add_key_value(
+        "transform_probability_before", score_evaluation.transform_probability_before.value());
+    }
+    if (score_evaluation.nearest_voxel_transformation_likelihood_diff) {
+      diagnostics_scan_points_->add_key_value(
+        "nearest_voxel_transformation_likelihood_diff",
+        score_evaluation.nearest_voxel_transformation_likelihood_diff.value());
+    }
+    if (score_evaluation.nearest_voxel_transformation_likelihood_before) {
+      diagnostics_scan_points_->add_key_value(
+        "nearest_voxel_transformation_likelihood_before",
+        score_evaluation.nearest_voxel_transformation_likelihood_before.value());
     }
 
-    bool is_ok_score = (score > score_threshold);
+    const bool is_ok_score = score_evaluation.is_score_above_threshold;
     if (!is_ok_score) {
       std::stringstream message;
-      message << "Score is below the threshold. Score: " << score
-              << ", Threshold: " << score_threshold;
+      message << "Score is below the threshold. Score: " << score_evaluation.score
+              << ", Threshold: " << score_evaluation.score_threshold;
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
       RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
     }
 
     // check is_converged
-    bool is_converged =
+    const bool is_converged =
       (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
 
     // covariance estimation
@@ -574,16 +580,11 @@ bool NDTScanMatcher::callback_sensor_points_main(
       CovarianceEstimationType::FIXED_VALUE) {
       const Eigen::Matrix2d estimated_covariance_2d =
         estimate_covariance(ndt_result, initial_pose_matrix, sensor_ros_time, *ndt_ptr);
-      const Eigen::Matrix2d estimated_covariance_2d_scaled =
-        estimated_covariance_2d * param_.covariance.covariance_estimation.scale_factor;
-      const double default_cov_xx = param_.covariance.output_pose_covariance[0];
-      const double default_cov_yy = param_.covariance.output_pose_covariance[7];
-      const Eigen::Matrix2d estimated_covariance_2d_adj = pclomp::adjust_diagonal_covariance(
-        estimated_covariance_2d_scaled, ndt_result.pose, default_cov_xx, default_cov_yy);
-      ndt_covariance[0 + 6 * 0] = estimated_covariance_2d_adj(0, 0);
-      ndt_covariance[1 + 6 * 1] = estimated_covariance_2d_adj(1, 1);
-      ndt_covariance[1 + 6 * 0] = estimated_covariance_2d_adj(1, 0);
-      ndt_covariance[0 + 6 * 1] = estimated_covariance_2d_adj(0, 1);
+      ndt_covariance = compose_output_covariance(
+        ndt_covariance, estimated_covariance_2d, ndt_result.pose,
+        param_.covariance.covariance_estimation.scale_factor,
+        /* Index 0 and 7 are covariance elements for x and y */
+        param_.covariance.output_pose_covariance[0], param_.covariance.output_pose_covariance[7]);
     }
 
     // check distance_initial_to_result
@@ -650,22 +651,10 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     // whether use no ground points to calculate score
     if (param_.score_estimation.no_ground_points.enable) {
-      // remove ground
-      pcl::shared_ptr<pcl::PointCloud<PointSource>> no_ground_points_in_map_ptr(
-        new pcl::PointCloud<PointSource>);
-      no_ground_points_in_map_ptr->points.reserve(sensor_points_in_map_ptr->size());
-      // The aligned pose z is constant over the loop; the translation z of the 4x4 matrix equals
-      // matrix4f_to_pose(ndt_result.pose).position.z. Hoist it to avoid rebuilding a full Pose
-      // (including a quaternion extraction) for every point in the scan.
       const double result_pose_z = ndt_result.pose(2, 3);
-      for (std::size_t i = 0; i < sensor_points_in_map_ptr->size(); i++) {
-        const float point_z = sensor_points_in_map_ptr->points[i].z;  // NOLINT
-        if (
-          point_z - result_pose_z >
-          param_.score_estimation.no_ground_points.z_margin_for_ground_removal) {
-          no_ground_points_in_map_ptr->points.push_back(sensor_points_in_map_ptr->points[i]);
-        }
-      }
+      const auto no_ground_points_in_map_ptr = extract_no_ground_points(
+        *sensor_points_in_map_ptr, result_pose_z,
+        param_.score_estimation.no_ground_points.z_margin_for_ground_removal);
       // pub remove-ground points
       sensor_msgs::msg::PointCloud2 no_ground_points_msg_in_map;
       pcl::toROSMsg(*no_ground_points_in_map_ptr, no_ground_points_msg_in_map);
@@ -760,30 +749,9 @@ void NDTScanMatcher::publish_marker(
   const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
   NormalDistributionsTransform & ndt_ref)
 {
-  visualization_msgs::msg::MarkerArray marker_array;
-  visualization_msgs::msg::Marker marker;
-  marker.header.stamp = sensor_ros_time;
-  marker.header.frame_id = param_.frame.map_frame;
-  marker.type = visualization_msgs::msg::Marker::ARROW;
-  marker.action = visualization_msgs::msg::Marker::ADD;
-  marker.scale = autoware_utils_visualization::create_marker_scale(0.3, 0.1, 0.1);
-  int i = 0;
-  marker.ns = "result_pose_matrix_array";
-  marker.action = visualization_msgs::msg::Marker::ADD;
-  for (const auto & pose_msg : pose_array) {
-    marker.id = i++;
-    marker.pose = pose_msg;
-    marker.color = exchange_color_crc((1.0 * i) / 15.0);
-    marker_array.markers.push_back(marker);
-  }
+  const auto marker_array = create_marker_array(
+    sensor_ros_time, param_.frame.map_frame, pose_array, ndt_ref.getMaximumIterations());
 
-  // TODO(Tier IV): delete old marker
-  for (; i < ndt_ref.getMaximumIterations() + 2;) {
-    marker.id = i++;
-    marker.pose = geometry_msgs::msg::Pose();
-    marker.color = exchange_color_crc(0);
-    marker_array.markers.push_back(marker);
-  }
   ndt_marker_pub_->publish(marker_array);
 }
 
@@ -826,81 +794,35 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
   const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
   const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
 {
-  geometry_msgs::msg::PoseArray multi_ndt_result_msg;
-  geometry_msgs::msg::PoseArray multi_initial_pose_msg;
-  multi_ndt_result_msg.header.stamp = sensor_ros_time;
-  multi_ndt_result_msg.header.frame_id = param_.frame.map_frame;
-  multi_initial_pose_msg.header.stamp = sensor_ros_time;
-  multi_initial_pose_msg.header.frame_id = param_.frame.map_frame;
-  multi_ndt_result_msg.poses.push_back(matrix4f_to_pose(ndt_result.pose));
-  multi_initial_pose_msg.poses.push_back(matrix4f_to_pose(initial_pose_matrix));
+  const CovarianceEstimationConfig config{
+    param_.covariance.covariance_estimation.covariance_estimation_type,
+    param_.covariance.covariance_estimation.initial_pose_offset_model_x,
+    param_.covariance.covariance_estimation.initial_pose_offset_model_y,
+    param_.covariance.covariance_estimation.temperature,
+    param_.covariance.output_pose_covariance[0 + 6 * 0]};
 
-  if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::LAPLACE_APPROXIMATION) {
-    return pclomp::estimate_xy_covariance_by_laplace_approximation(ndt_result.hessian);
-  } else if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::MULTI_NDT) {
-    const std::vector<Eigen::Matrix4f> poses_to_search = pclomp::propose_poses_to_search(
-      ndt_result, param_.covariance.covariance_estimation.initial_pose_offset_model_x,
-      param_.covariance.covariance_estimation.initial_pose_offset_model_y);
-    const pclomp::ResultOfMultiNdtCovarianceEstimation result_of_multi_ndt_covariance_estimation =
-      estimate_xy_covariance_by_multi_ndt(
-        ndt_result, ndt_ref, poses_to_search, sensor_points_in_baselink_frame_);
-    for (size_t i = 0; i < result_of_multi_ndt_covariance_estimation.ndt_initial_poses.size();
-         i++) {
-      multi_ndt_result_msg.poses.push_back(
-        matrix4f_to_pose(result_of_multi_ndt_covariance_estimation.ndt_results[i].pose));
-      multi_initial_pose_msg.poses.push_back(
-        matrix4f_to_pose(result_of_multi_ndt_covariance_estimation.ndt_initial_poses[i]));
-    }
-    multi_ndt_pose_pub_->publish(multi_ndt_result_msg);
-    multi_initial_pose_pub_->publish(multi_initial_pose_msg);
-    return result_of_multi_ndt_covariance_estimation.covariance;
-  } else if (
-    param_.covariance.covariance_estimation.covariance_estimation_type ==
-    CovarianceEstimationType::MULTI_NDT_SCORE) {
-    const std::vector<Eigen::Matrix4f> poses_to_search = pclomp::propose_poses_to_search(
-      ndt_result, param_.covariance.covariance_estimation.initial_pose_offset_model_x,
-      param_.covariance.covariance_estimation.initial_pose_offset_model_y);
-    const pclomp::ResultOfMultiNdtCovarianceEstimation
-      result_of_multi_ndt_score_covariance_estimation = estimate_xy_covariance_by_multi_ndt_score(
-        ndt_result, ndt_ref, poses_to_search, sensor_points_in_baselink_frame_,
-        param_.covariance.covariance_estimation.temperature);
-    for (const auto & sub_initial_pose_matrix : poses_to_search) {
-      multi_initial_pose_msg.poses.push_back(matrix4f_to_pose(sub_initial_pose_matrix));
-    }
-    multi_initial_pose_pub_->publish(multi_initial_pose_msg);
-    return result_of_multi_ndt_score_covariance_estimation.covariance;
-  } else {
-    return Eigen::Matrix2d::Identity() * param_.covariance.output_pose_covariance[0 + 6 * 0];
+  const CovarianceEstimationResult result = autoware::ndt_scan_matcher::estimate_covariance(
+    config, ndt_result, initial_pose_matrix, sensor_ros_time, param_.frame.map_frame, ndt_ref,
+    sensor_points_in_baselink_frame_);
+
+  // Publish debug pose arrays produced by the covariance estimation (node/ROS responsibility).
+  if (result.multi_ndt_result_poses) {
+    multi_ndt_pose_pub_->publish(*result.multi_ndt_result_poses);
   }
+  if (result.multi_initial_poses) {
+    multi_initial_pose_pub_->publish(*result.multi_initial_poses);
+  }
+
+  return result.covariance;
 }
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
   const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
 {
-  pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
-  nvs_points_in_map_ptr_i = ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
-  pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
-    new pcl::PointCloud<pcl::PointXYZRGB>};
-
-  const float range = upper_nvs - lower_nvs;
-  for (std::size_t i = 0; i < nvs_points_in_map_ptr_i.size(); i++) {
-    pcl::PointXYZRGB point;
-    point.x = nvs_points_in_map_ptr_i.points[i].x;
-    point.y = nvs_points_in_map_ptr_i.points[i].y;
-    point.z = nvs_points_in_map_ptr_i.points[i].z;
-    std_msgs::msg::ColorRGBA color =
-      exchange_color_crc((nvs_points_in_map_ptr_i.points[i].intensity - lower_nvs) / range);
-    point.r = static_cast<std::uint8_t>(color.r * 255);
-    point.g = static_cast<std::uint8_t>(color.g * 255);
-    point.b = static_cast<std::uint8_t>(color.b * 255);
-    nvs_points_in_map_ptr_rgb->points.push_back(point);
-  }
-  return nvs_points_in_map_ptr_rgb;
+  const pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_i =
+    ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
+  return colorize_points_by_score(nvs_points_in_map_i, lower_nvs, upper_nvs);
 }
 
 void NDTScanMatcher::add_regularization_pose(
@@ -1049,29 +971,14 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
 
-  const auto base_rpy = autoware::localization_util::get_rpy(initial_pose_with_cov);
-  const Eigen::Map<const autoware::localization_util::RowMatrixXd> covariance = {
-    initial_pose_with_cov.pose.covariance.data(), 6, 6};
-  const double stddev_x = std::sqrt(covariance(0, 0));
-  const double stddev_y = std::sqrt(covariance(1, 1));
-  const double stddev_z = std::sqrt(covariance(2, 2));
-  const double stddev_roll = std::sqrt(covariance(3, 3));
-  const double stddev_pitch = std::sqrt(covariance(4, 4));
-
-  // Since only yaw is uniformly sampled, we define the mean and standard deviation for the others.
-  const std::vector<double> sample_mean{
-    initial_pose_with_cov.pose.pose.position.x,  // trans_x
-    initial_pose_with_cov.pose.pose.position.y,  // trans_y
-    initial_pose_with_cov.pose.pose.position.z,  // trans_z
-    base_rpy.x,                                  // angle_x
-    base_rpy.y                                   // angle_y
-  };
-  const std::vector<double> sample_stddev{stddev_x, stddev_y, stddev_z, stddev_roll, stddev_pitch};
+  const TpeSampleDistribution sample_distribution =
+    create_tpe_sample_distribution(initial_pose_with_cov);
 
   // Optimizing (x, y, z, roll, pitch, yaw) 6 dimensions.
   TreeStructuredParzenEstimator tpe(
     TreeStructuredParzenEstimator::Direction::MAXIMIZE,
-    param_.initial_pose_estimation.n_startup_trials, sample_mean, sample_stddev);
+    param_.initial_pose_estimation.n_startup_trials, sample_distribution.mean,
+    sample_distribution.stddev);
 
   std::vector<Particle> particle_array;
   auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
@@ -1085,25 +992,16 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
   for (int64_t i = 0; i < param_.initial_pose_estimation.particles_num; i++) {
     const TreeStructuredParzenEstimator::Input input = tpe.get_next_input();
 
-    geometry_msgs::msg::Pose initial_pose;
-    initial_pose.position.x = input[0];
-    initial_pose.position.y = input[1];
-    initial_pose.position.z = input[2];
-    geometry_msgs::msg::Vector3 init_rpy;
-    init_rpy.x = input[3];
-    init_rpy.y = input[4];
-    init_rpy.z = input[5];
-    tf2::Quaternion tf_quaternion;
-    tf_quaternion.setRPY(init_rpy.x, init_rpy.y, init_rpy.z);
-    initial_pose.orientation = tf2::toMsg(tf_quaternion);
+    const geometry_msgs::msg::Pose initial_pose = pose_from_optimization_variables(input);
 
     const Eigen::Matrix4f initial_pose_matrix = pose_to_matrix4f(initial_pose);
     ndt_ref.align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
     const pclomp::NdtResult ndt_result = ndt_ref.getResult();
 
+    const geometry_msgs::msg::Pose result_pose = matrix4f_to_pose(ndt_result.pose);
     Particle particle(
-      initial_pose, matrix4f_to_pose(ndt_result.pose),
-      ndt_result.nearest_voxel_transformation_likelihood, ndt_result.iteration_num);
+      initial_pose, result_pose, ndt_result.nearest_voxel_transformation_likelihood,
+      ndt_result.iteration_num);
     particle_array.push_back(particle);
     push_debug_markers(marker_array, get_clock()->now(), param_.frame.map_frame, particle, i);
 
@@ -1113,17 +1011,9 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
       marker_array.markers.clear();
     }
 
-    const geometry_msgs::msg::Pose pose = matrix4f_to_pose(ndt_result.pose);
-    const geometry_msgs::msg::Vector3 rpy = autoware::localization_util::get_rpy(pose);
-
-    TreeStructuredParzenEstimator::Input result(6);
-    result[0] = pose.position.x;
-    result[1] = pose.position.y;
-    result[2] = pose.position.z;
-    result[3] = rpy.x;
-    result[4] = rpy.y;
-    result[5] = rpy.z;
-    tpe.add_trial(TreeStructuredParzenEstimator::Trial{result, ndt_result.transform_probability});
+    tpe.add_trial(
+      TreeStructuredParzenEstimator::Trial{
+        optimization_variables_from_pose(result_pose), ndt_result.transform_probability});
 
     auto sensor_points_in_map_ptr = std::make_shared<pcl::PointCloud<PointSource>>();
     autoware_utils_pcl::transform_pointcloud(
