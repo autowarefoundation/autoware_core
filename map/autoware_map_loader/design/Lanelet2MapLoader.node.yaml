@@ -3,7 +3,7 @@ autoware_system_design_format: 0.4.0
 # node information
 name: Lanelet2MapLoader.node
 
-description: Loads the Lanelet2 map once the map projector info arrives, generates centerlines at the configured resolution, and latches the map as a binary message. Optionally serves selected map cells for dynamic map loading.
+description: Loads the Lanelet2 map once the map projector info arrives, generates centerline at the configured resolution, and latches the map as a binary message. Optionally serves selected map cells for dynamic map loading.
 
 package:
   name: autoware_map_loader
