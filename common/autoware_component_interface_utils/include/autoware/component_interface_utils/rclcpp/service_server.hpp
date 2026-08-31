@@ -90,11 +90,9 @@ public:
   {
     service_ = create_service_handle<SpecT>(interface_->node, wrap(callback), group);
 #if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
-    if constexpr (has_configure_introspection<WrapType>::value) {
-      if (interface_->introspection_state != RCL_SERVICE_INTROSPECTION_OFF) {
-        service_->configure_introspection(
-          interface_->node->get_clock(), rclcpp::QoS(1), interface_->introspection_state);
-      }
+    if (interface_->introspection_state != RCL_SERVICE_INTROSPECTION_OFF) {
+      service_->configure_introspection(
+        interface_->node->get_clock(), rclcpp::QoS(1), interface_->introspection_state);
     }
 #endif
     interface_->register_interface(
