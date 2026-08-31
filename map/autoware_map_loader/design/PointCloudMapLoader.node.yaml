@@ -1,7 +1,7 @@
 autoware_system_design_format: 0.4.0
 
 # node information
-name: PointcloudMapLoader.node
+name: PointCloudMapLoader.node
 
 description: Loads PCD files and provides the pointcloud map as a latched whole-map topic and through partial, differential and selected map-loading services for dynamic map consumers.
 

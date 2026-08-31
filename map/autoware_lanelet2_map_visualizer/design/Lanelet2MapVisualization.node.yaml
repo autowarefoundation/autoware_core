@@ -1,7 +1,7 @@
 autoware_system_design_format: 0.4.0
 
 # node information
-name: Lanelet2MapVisualizer.node
+name: Lanelet2MapVisualization.node
 
 description: Converts the Lanelet2 map into a latched marker array for visualization in RViz.
 
