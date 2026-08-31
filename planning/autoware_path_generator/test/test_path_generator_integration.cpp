@@ -152,6 +152,22 @@ protected:
 
   // 3. Map with left/right bounds physically crossed
   // Used in TEST 4
+  // y (m)
+  // +1.75 ┤    L━━━━━━━━━━━━━━━━━━━━L            R
+  //       │     (left bound)          ╲         ╱
+  //       │                             ╲     ╱
+  //       │                               ╲ ╱
+  //   0  ┼     ········S·················· X ·····E
+  //       │                               ╱ ╲
+  //       │                             ╱     ╲
+  //       │     (right bound)         ╱         ╲
+  // -1.75 ┤    R━━━━━━━━━━━━━━━━━━━━R            L
+  //       └────┬───┬───┬──────┬──────┬──────┬────▶ x (m)
+  //            0   10  20     40     60     80 ←──────────┤
+  //                ↑                 ↑                    │
+  //                start pose        intersection       lanelet
+  //                (route.start)     of L/R bounds      ends here
+  //                                   (y=0, x≈60)
   static autoware_map_msgs::msg::LaneletMapBin create_mock_x_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
