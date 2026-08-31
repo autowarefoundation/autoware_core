@@ -122,13 +122,11 @@ void GyroOdometerNode::callback_imu(
 
 void GyroOdometerNode::publish_data(const GyroOdometer::OutputData & output_data)
 {
-  const auto & [twist_raw, twist_with_covariance_raw, twist, twist_with_covariance] = output_data;
+  twist_raw_pub_->publish(output_data.twist_raw);
+  twist_with_covariance_raw_pub_->publish(output_data.twist_with_covariance_raw);
 
-  twist_raw_pub_->publish(twist_raw);
-  twist_with_covariance_raw_pub_->publish(twist_with_covariance_raw);
-
-  twist_pub_->publish(twist);
-  twist_with_covariance_pub_->publish(twist_with_covariance);
+  twist_pub_->publish(output_data.twist);
+  twist_with_covariance_pub_->publish(output_data.twist_with_covariance);
 }
 
 void GyroOdometerNode::publish_diagnostics()

@@ -140,7 +140,7 @@ GyroOdometer::OutputData GyroOdometer::make_output(
   twist.header = twist_with_covariance.header;
   twist.twist = twist_with_covariance.twist.twist;
 
-  return std::make_tuple(twist_raw, twist_with_cov_raw, twist, twist_with_covariance);
+  return OutputData{twist_raw, twist_with_cov_raw, twist, twist_with_covariance};
 }
 
 std::array<double, 9> transform_covariance(const std::array<double, 9> & cov)

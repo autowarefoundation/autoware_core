@@ -250,7 +250,7 @@ TEST(GyroOdometer, ImuCovarianceIsWidenedToItsLargestDiagonalTerm)
   const auto output = gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
 
   ASSERT_TRUE(output.has_value());
-  const auto & covariance = std::get<1>(*output).twist.covariance;
+  const auto & covariance = output->twist_with_covariance_raw.twist.covariance;
   EXPECT_DOUBLE_EQ(covariance[COV_IDX_XYZRPY::ROLL_ROLL], 5.0);
   EXPECT_DOUBLE_EQ(covariance[COV_IDX_XYZRPY::PITCH_PITCH], 5.0);
   EXPECT_DOUBLE_EQ(covariance[COV_IDX_XYZRPY::YAW_YAW], 5.0);
