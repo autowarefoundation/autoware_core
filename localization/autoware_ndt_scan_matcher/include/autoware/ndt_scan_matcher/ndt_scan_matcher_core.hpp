@@ -139,8 +139,7 @@ private:
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_old_msg,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_new_msg);
   void publish_loaded_map_if_present(
-    const MapUpdateModule::UpdateResult & result,
-    const std::optional<rclcpp::Time> & stamp = std::nullopt) const;
+    MapUpdateModule::UpdateResult & result, const std::optional<rclcpp::Time> & stamp) const;
 
   static int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
 

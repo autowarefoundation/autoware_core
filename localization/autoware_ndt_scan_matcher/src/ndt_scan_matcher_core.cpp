@@ -251,13 +251,13 @@ void NDTScanMatcher::apply_diagnostics_update(
 }
 
 void NDTScanMatcher::publish_loaded_map_if_present(
-  const MapUpdateModule::UpdateResult & result, const std::optional<rclcpp::Time> & stamp) const
+  MapUpdateModule::UpdateResult & result, const std::optional<rclcpp::Time> & stamp) const
 {
-  if (result.loaded_pcd_map.has_value()) {
-    auto msg = result.loaded_pcd_map.value();
-    msg.header.stamp = stamp ? *stamp : this->now();
-    loaded_pcd_pub_->publish(msg);
+  if (!result.loaded_pcd_map.has_value()) {
+    return;
   }
+  result.loaded_pcd_map->header.stamp = *stamp;
+  loaded_pcd_pub_->publish(*result.loaded_pcd_map);
 }
 
 void NDTScanMatcher::callback_timer()
@@ -1082,7 +1082,7 @@ void NDTScanMatcher::service_ndt_align_main(
   auto result = map_update_module_->update_map(initial_pose_msg_in_map_frame.pose.pose.position);
   apply_diagnostics_update(*diagnostics_ndt_align_, result.diagnostics);
 
-  publish_loaded_map_if_present(result);
+  publish_loaded_map_if_present(result, this->now());
 
   ndt_ptr_.with([&](auto & ndt_ptr) {
     // check is_set_map_points
