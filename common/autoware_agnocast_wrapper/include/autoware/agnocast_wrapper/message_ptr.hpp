@@ -297,9 +297,14 @@ public:
 
 /// Hand a shared-memory message to an interface that insists on std::shared_ptr, without copying
 /// the payload: the holder keeps the ipc_shared_ptr alive and the returned pointer aliases into
-/// it, so the kernel-side reference lives exactly as long as the last copy. The cost is one
-/// control-block allocation per message, plus one pinned shared-memory entry for as long as any
-/// copy is alive. An empty input yields an empty (null) pointer, so `if (!p)` keeps working.
+/// it, so the kernel-side reference lives exactly as long as the last copy. The cost is one heap
+/// allocation per message -- the std::shared_ptr control block, holding the ipc_shared_ptr inline
+/// -- plus one pinned shared-memory entry for as long as any copy is alive. Copies of the returned
+/// pointer are free. An empty input yields an empty (null) pointer, so `if (!p)` keeps working.
+///
+/// Only for handles received on a subscription. The raw address is read once here, so a
+/// publisher-side loaned message would keep handing out its address after publish() invalidates
+/// the handle, losing the nullptr / std::terminate() guard that ipc_shared_ptr::get() gives.
 template <typename MessageT>
 std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT> && ptr)
 {

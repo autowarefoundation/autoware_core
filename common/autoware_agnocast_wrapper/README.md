@@ -298,6 +298,16 @@ void onPointCloud(const PointCloud2 & input_msg) {
 
 Zero-copy is preserved on the Agnocast path: the subscription dereferences the received pointer before invoking the callback, so the reference points directly into shared memory. The referenced entry is kept alive only while the callback runs: the reference is valid for the duration of the callback and must not be stored or used after the callback returns. Use `AUTOWARE_MESSAGE_CONST_SHARED_PTR` instead when the callback needs to keep the message alive beyond the callback without a copy.
 
+A callback may also take the plain rclcpp `MessageT::ConstSharedPtr`, for interfaces whose callback signature cannot be templated on the pointer type — `autoware_component_interface_utils`, for instance, binds member functions taking `Message::ConstSharedPtr`:
+
+```cpp
+void onPointCloud(const PointCloud2::ConstSharedPtr input_msg) {
+  ...
+}
+```
+
+The payload is not copied here either, and the pointer may be kept alive beyond the callback, at the same cost as `AUTOWARE_MESSAGE_CONST_SHARED_PTR` — one heap allocation per message, and copies of the pointer are free. Use it where an interface fixes the signature; elsewhere `AUTOWARE_MESSAGE_CONST_SHARED_PTR` keeps the callback spelled the same way as the rest of the wrapper API.
+
 To use the macros provided by this package in your own package, include the following lines in your `CMakeLists.txt`:
 
 ```cmake

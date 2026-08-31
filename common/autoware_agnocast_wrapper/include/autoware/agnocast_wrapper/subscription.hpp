@@ -43,6 +43,28 @@ public:
   virtual ~Subscription() = default;
 };
 
+// Which callback shape a subscription accepts, in the order they are probed: the message_ptr forms
+// win over MessageT::ConstSharedPtr, which in turn wins over the const-reference form. A callable
+// that matches more than one shape -- a generic lambda, for instance -- gets the first match.
+
+// True when Callback takes the wrapper's message_ptr. The message may be kept alive beyond the
+// callback, at one heap allocation per message for the holder, and one more per copy (which
+// clones it). Only the const-reference form is allocation-free.
+template <typename Func, typename MessageT>
+inline constexpr bool is_message_ptr_subscription_callback_v =
+  std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+  std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
+
+// True when Callback is an rclcpp-style handler taking MessageT::ConstSharedPtr. This lets
+// interfaces whose callback signature cannot be templated on the pointer type -- notably
+// autoware_component_interface_utils, which binds member functions taking Message::ConstSharedPtr
+// -- be used on the wrapper Node. The payload is not copied; the cost matches message_ptr, one
+// heap allocation per message, and copies of the returned pointer are free.
+template <typename Func, typename MessageT>
+inline constexpr bool is_std_shared_ptr_subscription_callback_v =
+  !is_message_ptr_subscription_callback_v<Func, MessageT> &&
+  std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>>;
+
 template <typename MessageT>
 class AgnocastSubscription : public Subscription<MessageT>
 {
@@ -59,24 +81,13 @@ public:
     // risks corrupting data read by other subscribers. Currently kept for compatibility with
     // CudaPointcloudPreprocessorNode which uses UNIQUE_PTR callbacks.
     static_assert(
-      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>> ||
+      is_message_ptr_subscription_callback_v<Func, MessageT> ||
+        is_std_shared_ptr_subscription_callback_v<Func, MessageT> ||
         std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
       "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, with "
-      "MessageT::ConstSharedPtr, or with a const reference to the message type");
+      "std::shared_ptr<const MessageT>, or with a const reference to the message type");
 
-    constexpr bool is_message_ptr_callback =
-      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
-    // MessageT::ConstSharedPtr, for interfaces whose callback signature cannot be templated on
-    // the pointer type -- notably autoware_component_interface_utils, which binds member
-    // functions taking Message::ConstSharedPtr. Aliases the shared-memory message rather than
-    // copying it, at the cost of one control-block allocation per message.
-    constexpr bool is_std_shared_ptr_callback =
-      !is_message_ptr_callback &&
-      std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>>;
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
@@ -85,9 +96,9 @@ public:
     subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
-        if constexpr (is_std_shared_ptr_callback) {
+        if constexpr (is_std_shared_ptr_subscription_callback_v<Func, MessageT>) {
           callback(to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
-        } else if constexpr (!is_message_ptr_callback) {
+        } else if constexpr (!is_message_ptr_subscription_callback_v<Func, MessageT>) {
           // msg keeps the shared-memory entry alive only while the callback runs: the
           // reference is valid for the duration of the callback and no copy is made, but
           // it must not be stored or used after the callback returns. Callbacks that need
@@ -107,6 +118,8 @@ public:
   }
 };
 
+/// DDS path of the Agnocast build, selected when use_agnocast() is false. The ENABLE_AGNOCAST=0
+/// build never reaches this class: its Node forwards create_subscription() straight to rclcpp.
 template <typename MessageT>
 class ROS2Subscription : public Subscription<MessageT>
 {
@@ -119,23 +132,13 @@ public:
     const agnocast::SubscriptionOptions & options)
   {
     static_assert(
-      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&> ||
-        std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>> ||
+      is_message_ptr_subscription_callback_v<Func, MessageT> ||
+        is_std_shared_ptr_subscription_callback_v<Func, MessageT> ||
         std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
       "callback should be invocable with an rvalue reference to either "
       "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, with "
-      "MessageT::ConstSharedPtr, or with a const reference to the message type");
+      "std::shared_ptr<const MessageT>, or with a const reference to the message type");
 
-    constexpr bool is_message_ptr_callback =
-      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
-    // See the AgnocastSubscription counterpart. In the non-Agnocast build
-    // AUTOWARE_MESSAGE_CONST_SHARED_PTR already is std::shared_ptr<const MessageT>, so the
-    // message_ptr branch above claims it and this one stays false.
-    constexpr bool is_std_shared_ptr_callback =
-      !is_message_ptr_callback &&
-      std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>>;
     constexpr auto ownership =
       std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
@@ -146,9 +149,9 @@ public:
     subscription_ = node->create_subscription<MessageT>(
       topic_name, qos,
       [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-        if constexpr (is_std_shared_ptr_callback) {
+        if constexpr (is_std_shared_ptr_subscription_callback_v<Func, MessageT>) {
           callback(std::shared_ptr<const MessageT>(std::move(msg)));
-        } else if constexpr (!is_message_ptr_callback) {
+        } else if constexpr (!is_message_ptr_subscription_callback_v<Func, MessageT>) {
           // as_const keeps this fallback consistent with the Agnocast path: generic
           // callbacks must not observe a mutable reference on either path.
           callback(std::as_const(*msg));
