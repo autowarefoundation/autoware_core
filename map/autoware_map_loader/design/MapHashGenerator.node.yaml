@@ -20,7 +20,7 @@ publishers:
   - name: map_hash
     message_type: tier4_external_api_msgs/msg/MapHash
     description: Hashes of the map files.
-    global: /api/autoware/get/map/info/hash
+    remap_target: /api/autoware/get/map/info/hash
     qos:
       reliability: reliable
       durability: transient_local
@@ -29,7 +29,7 @@ servers:
   - name: get_lanelet_xml
     message_type: tier4_external_api_msgs/srv/GetTextFile
     description: Returns the Lanelet2 map file content as text.
-    global: /api/autoware/get/map/lanelet/xml
+    remap_target: /api/autoware/get/map/lanelet/xml
 
 # parameters
 param_files: []
