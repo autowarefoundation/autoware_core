@@ -306,7 +306,7 @@ void onPointCloud(const PointCloud2::ConstSharedPtr input_msg) {
 }
 ```
 
-The payload is not copied here either, and the pointer may be kept alive beyond the callback, at the same cost as `AUTOWARE_MESSAGE_CONST_SHARED_PTR` — one heap allocation per message, and copies of the pointer are free. Use it where an interface fixes the signature; elsewhere `AUTOWARE_MESSAGE_CONST_SHARED_PTR` keeps the callback spelled the same way as the rest of the wrapper API.
+The payload is not copied here either, and the pointer may be kept alive beyond the callback, at the same cost as `AUTOWARE_MESSAGE_CONST_SHARED_PTR` — one heap allocation per message, and copies of the pointer are free. Use it where an interface fixes the signature.
 
 To use the macros provided by this package in your own package, include the following lines in your `CMakeLists.txt`:
 
