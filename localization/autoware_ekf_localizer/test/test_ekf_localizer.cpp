@@ -34,6 +34,8 @@
 
 namespace autoware::ekf_localizer
 {
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
 
 namespace
 {
@@ -374,6 +376,76 @@ TEST(TestEKFLocalizer, UpdateStepAsyncWarningPropagation)
   // Expects flood warning was successfully packaged into struct
   ASSERT_FALSE(result.warnings.empty());
   EXPECT_NE(result.warnings[0].text.find("Twist staging queue is exceeding"), std::string::npos);
+}
+
+TEST(TestEKFLocalizer, UpdateStepDeterministicKinematics)
+{
+  auto params = make_params();
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t_curr), identity_transform());
+  ekf_localizer->activate(true);
+
+  EKFUpdateResult result;
+
+  // Run filter for 1s (50 ticks at 50Hz, each 0.02s) in loop (deterministic)
+  for (int i = 1; i <= 50; ++i) {
+    t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
+    auto twist = make_twist(5.0, 0.0, "base_link", t_curr);
+    using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
+
+    ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
+    result = ekf_localizer->update_step(t_curr);
+  }
+
+  // This result is now 100% deterministic, fetched from a good run
+  EXPECT_NEAR(result.pose.pose.position.x, 4.38252, near_tol);
+  EXPECT_NEAR(result.pose.pose.position.y, 0.0, near_tol);
+
+  // Expects memory of covariance to grow due to prediction
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+  EXPECT_GT(result.pose_cov.pose.covariance[COV_IDX::X_X], 0.01);
+}
+
+TEST(TestEKFLocalizer, UpdateStepCounterChecks)
+{
+  auto params = make_params();
+  // Params fetched from legacy code setup
+  const int update_count_warn = 50;
+  const int update_count_error = 100;
+
+  params.pose_no_update_count_threshold_warn = update_count_warn;
+  params.twist_no_update_count_threshold_warn = update_count_warn;
+  params.pose_no_update_count_threshold_error = update_count_error;
+  params.twist_no_update_count_threshold_error = update_count_error;
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t_curr), identity_transform());
+  ekf_localizer->activate(true);
+
+  EKFUpdateResult result;
+
+  // 50 ticks, no sensor inputs
+  for (int i = 1; i <= 50; ++i) {
+    t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
+    result = ekf_localizer->update_step(t_curr);
+  }
+
+  // Diagnostic counters should hit WARN threshold
+  EXPECT_EQ(result.pose_diag_info.no_update_count, update_count_warn);
+  EXPECT_EQ(result.twist_diag_info.no_update_count, update_count_warn);
+
+  // Advance exactly 50 more ticks (reach 100)
+  for (int i = 1; i <= 50; ++i) {
+    t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
+    result = ekf_localizer->update_step(t_curr);
+  }
+
+  // The diagnostics counter should hit ERROR threshold
+  EXPECT_EQ(result.pose_diag_info.no_update_count, update_count_error);
+  EXPECT_EQ(result.twist_diag_info.no_update_count, update_count_error);
 }
 
 // ---------------------------------------------------------------------------

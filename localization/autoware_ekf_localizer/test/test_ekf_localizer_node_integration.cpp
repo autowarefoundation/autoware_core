@@ -510,12 +510,12 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
   EXPECT_FALSE(has_diagnostic("[WARN]pose is not updated"))
     << "Node failed to shut up before tick 50.";
 
-  // ============ 2. Advance 10 more tick to hit 50 (WARN state) ============
+  // ============ 2. Advance 30 more tick to exceed 50 but not yet 100 (WARN state) ============
 
   EXPECT_TRUE(poll_for_diagnostic("[WARN]pose is not updated", 30))
     << "Node failed to WARN at 50 missed updates.";
 
-  // ============ 3. Advance much more ticks to hit over 100 (ERROR state) ============
+  // ============ 3. Advance much more ticks to exceed 100 (ERROR state) ============
 
   EXPECT_TRUE(poll_for_diagnostic("[ERROR]pose is not updated", 70))
     << "Node failed to ERROR at 100 missed updates.";
