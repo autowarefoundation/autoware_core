@@ -69,6 +69,15 @@ same source compiles in both builds:
 | `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`        | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
 | Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)` | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
 
+**On the Agnocast path an owning handle must not outlive the subscription that delivered it.** This covers `AUTOWARE_MESSAGE_CONST_SHARED_PTR`, a callback taking `MessageT::ConstSharedPtr`, and the pointer returned by `polling::take_data()`. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription **before** any member that caches a message:
+
+```cpp
+AUTOWARE_SUBSCRIPTION_PTR(PointCloud2) sub_;   // declared first -> destroyed last
+std::shared_ptr<const PointCloud2> latest_;    // destroyed first -> safe
+```
+
+The DDS path lets the same pointer be held indefinitely, so a node validated only with `ENABLE_AGNOCAST=0` will not show the problem.
+
 `AUTOWARE_CLIENT_PTR(S)` / `AUTOWARE_SERVICE_PTR(S)` and the `AUTOWARE_CLIENT_*FUTURE*` macros resolve to
 the wrapper's own `Client<S>` / `Service<S>` types in **both** builds, so client and service code needs no
 per-build spelling. See [Key Macros](docs/review_guide.md#3-key-macros) for the full macro list.
@@ -483,7 +492,7 @@ The `add()` / `removeByName()` / `setHardwareID()` / `setHardwareIDf()` / `broad
   - `polling_policy::Latest` (default): re-delivers the cached message.
   - `polling_policy::Newest`: returns `nullptr` until a new message arrives.
 - `polling_policy::All` is rejected at compile time (`take_data()` returns a single message, not a vector).
-- The returned `std::shared_ptr` has the same lifetime semantics in both modes.
+- The returned `std::shared_ptr` may be held across cycles, but in agnocast mode it must not outlive the polling subscriber (see [Type spellings](#type-spellings)).
 
 ### Usage example
 

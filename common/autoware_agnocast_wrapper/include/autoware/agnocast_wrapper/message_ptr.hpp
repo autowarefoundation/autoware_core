@@ -296,9 +296,10 @@ public:
 };
 
 /// Adapt a subscription-received message to an interface that insists on std::shared_ptr. Every
-/// live copy pins one agnocast shared-memory entry. Subscriber-side handles only: the address is
-/// read once here, so a publisher-side handle would keep handing it out after publish() invalidates
-/// it.
+/// live copy pins one agnocast shared-memory entry, and none of them may outlive the subscription
+/// that delivered it: its destruction drops the kernel-side reference, so a later publish can
+/// recycle the entry the copies still point at. Subscriber-side handles only: the address is read
+/// once here, so a publisher-side handle would keep handing it out after publish() invalidates it.
 template <typename MessageT>
 std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT> && ptr)
 {
