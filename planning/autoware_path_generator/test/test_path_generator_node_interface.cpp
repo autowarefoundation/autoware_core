@@ -22,6 +22,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <memory>
 #include <string>
 #include <vector>
@@ -71,7 +72,10 @@ TEST(PlanningModuleInterfaceTest, NodeTestWithExceptionTrajectory)
   ASSERT_NO_THROW_WITH_ERROR_MSG(
     test_manager->testWithBehaviorGoalOnLeftSide(test_target_node, route_topic_name));
 
-  EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
+  // The node publishes paths from a timer callback; on a loaded CI host a single planning
+  // cycle can take several seconds, so wait for the first published path instead of
+  // assuming it arrived within the publishInput spin budget.
+  EXPECT_GE(test_manager->spinUntilReceived(test_target_node, 1, std::chrono::seconds(30)), 1u);
 
   // test with trajectory with empty/one point/overlapping point
   ASSERT_NO_THROW_WITH_ERROR_MSG(
