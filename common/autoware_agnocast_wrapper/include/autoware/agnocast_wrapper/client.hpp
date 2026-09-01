@@ -281,6 +281,19 @@ create_client(
   }
 }
 
+/// @brief Converts a client response into a plain `std::shared_ptr` without copying the payload.
+/// @note The returned pointer keeps the underlying agnocast shared-memory entry alive.
+template <typename ServiceT>
+std::shared_ptr<const typename ServiceT::Response> to_shared_ptr(
+  AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) && response)
+{
+  if (!response) {
+    return nullptr;
+  }
+  auto holder = std::make_shared<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>(std::move(response));
+  return std::shared_ptr<const typename ServiceT::Response>(holder, holder->get());
+}
+
 }  // namespace autoware::agnocast_wrapper
 
 #else
@@ -437,6 +450,14 @@ create_client(
   const rclcpp::QoS & qos = rclcpp::ServicesQoS(), rclcpp::CallbackGroup::SharedPtr group = nullptr)
 {
   return std::make_shared<ROS2Client<ServiceT>>(node, service_name, qos, group);
+}
+
+/// @brief Converts a client response into a plain `std::shared_ptr`.
+template <typename ServiceT>
+std::shared_ptr<const typename ServiceT::Response> to_shared_ptr(
+  AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) && response)
+{
+  return std::move(response);
 }
 
 }  // namespace autoware::agnocast_wrapper
