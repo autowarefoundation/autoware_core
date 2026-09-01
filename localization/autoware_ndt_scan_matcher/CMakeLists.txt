@@ -89,6 +89,12 @@ if(BUILD_TESTING)
     test/test_ndt_scan_matcher_helper.cpp
   )
   target_link_libraries(test_ndt_scan_matcher_helper ${PROJECT_NAME})
+
+  # Unit tests for the map update module driven by an injected fake pcd loader (no ROS service).
+  ament_auto_add_gtest(test_map_update_module
+    test/test_map_update_module.cpp
+  )
+  target_link_libraries(test_map_update_module ${PROJECT_NAME} multigrid_ndt_omp ${PCL_LIBRARIES})
 endif()
 
 autoware_ament_auto_package(
