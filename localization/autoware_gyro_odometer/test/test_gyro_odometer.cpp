@@ -21,6 +21,7 @@
 
 #include <array>
 #include <deque>
+#include <string>
 
 namespace autoware::gyro_odometer
 {
@@ -39,6 +40,36 @@ builtin_interfaces::msg::Time make_stamp(int32_t sec, uint32_t nanosec)
   stamp.nanosec = nanosec;
   return stamp;
 }
+
+Imu make_imu(
+  const builtin_interfaces::msg::Time & stamp, const std::string & frame_id, double wx, double wy,
+  double wz, double cov_xx, double cov_yy, double cov_zz)
+{
+  Imu imu;
+  imu.header.stamp = stamp;
+  imu.header.frame_id = frame_id;
+  imu.angular_velocity.x = wx;
+  imu.angular_velocity.y = wy;
+  imu.angular_velocity.z = wz;
+  imu.angular_velocity_covariance[COV_IDX_XYZ::X_X] = cov_xx;
+  imu.angular_velocity_covariance[COV_IDX_XYZ::Y_Y] = cov_yy;
+  imu.angular_velocity_covariance[COV_IDX_XYZ::Z_Z] = cov_zz;
+  return imu;
+}
+
+TwistWithCovarianceStamped make_vehicle_twist(
+  const builtin_interfaces::msg::Time & stamp, double vx, double cov_xx)
+{
+  TwistWithCovarianceStamped twist;
+  twist.header.stamp = stamp;
+  twist.header.frame_id = "base_link";
+  twist.twist.twist.linear.x = vx;
+  twist.twist.covariance[COV_IDX_XYZRPY::X_X] = cov_xx;
+  return twist;
+}
+
+// Large enough that none of the scenarios below ever trip the message-timeout check.
+constexpr double huge_timeout_sec = 1e12;
 
 }  // namespace
 
@@ -205,6 +236,24 @@ TEST(GyroOdometer, ApplyStopCompensationPreservesAngularWhenTurning)
 
   EXPECT_DOUBLE_EQ(out.twist.twist.angular.x, 0.1);
   EXPECT_DOUBLE_EQ(out.twist.twist.angular.z, 0.5);
+}
+
+// An IMU covariance that differs per axis is widened to the largest of its diagonal terms before
+// it reaches the fusion, so the reported angular covariances are all that largest term.
+TEST(GyroOdometer, ImuCovarianceIsWidenedToItsLargestDiagonalTerm)
+{
+  GyroOdometer gyro_odometer{huge_timeout_sec};
+  const auto stamp = make_stamp(100, 0);
+
+  gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+  gyro_odometer.input_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 1.0, 5.0, 3.0));
+  const auto output = gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+
+  ASSERT_TRUE(output.has_value());
+  const auto & covariance = std::get<1>(*output).twist.covariance;
+  EXPECT_DOUBLE_EQ(covariance[COV_IDX_XYZRPY::ROLL_ROLL], 5.0);
+  EXPECT_DOUBLE_EQ(covariance[COV_IDX_XYZRPY::PITCH_PITCH], 5.0);
+  EXPECT_DOUBLE_EQ(covariance[COV_IDX_XYZRPY::YAW_YAW], 5.0);
 }
 
 }  // namespace autoware::gyro_odometer

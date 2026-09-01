@@ -52,8 +52,6 @@ std::optional<sensor_msgs::msg::Imu> transform_imu(
   sensor_msgs::msg::Imu transformed_imu_msg = imu_msg;
   transformed_imu_msg.header.frame_id = output_frame;
   transformed_imu_msg.angular_velocity = transformed_angular_velocity.vector;
-  transformed_imu_msg.angular_velocity_covariance =
-    transform_covariance(imu_msg.angular_velocity_covariance);
   return transformed_imu_msg;
 }
 

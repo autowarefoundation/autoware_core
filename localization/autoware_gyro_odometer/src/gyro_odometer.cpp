@@ -48,7 +48,10 @@ std::optional<GyroOdometer::OutputData> GyroOdometer::input_imu(
 {
   imu_arrived_ = true;
   latest_imu_ros_time_ = imu_msg.header.stamp;
-  gyro_queue_.push_back(imu_msg);
+
+  sensor_msgs::msg::Imu sample = imu_msg;
+  sample.angular_velocity_covariance = transform_covariance(sample.angular_velocity_covariance);
+  gyro_queue_.push_back(sample);
 
   const auto twist_with_cov =
     concat_gyro_and_odometer(std::max(latest_vehicle_twist_ros_time_, latest_imu_ros_time_));
