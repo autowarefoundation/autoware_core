@@ -77,6 +77,9 @@ public:
   /// @note Not synchronized, like autoware_utils_rclcpp's polling subscriber: call it from a
   /// single thread, or from callbacks in one mutually exclusive callback group.
   virtual std::shared_ptr<const MessageT> take_data() = 0;
+
+  /// Topic name after remapping.
+  virtual const char * get_topic_name() const = 0;
 };
 
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
@@ -95,6 +98,11 @@ public:
   }
 
   std::shared_ptr<const MessageT> take_data() override { return subscriber_->take_data(); }
+
+  const char * get_topic_name() const override
+  {
+    return subscriber_->subscriber()->get_topic_name();
+  }
 };
 
 #ifdef USE_AGNOCAST_ENABLED
@@ -159,6 +167,8 @@ public:
   }
 
   std::shared_ptr<const MessageT> take_data() override { return policy_.take_data(*subscriber_); }
+
+  const char * get_topic_name() const override { return subscriber_->get_topic_name(); }
 };
 
 /// @note The returned subscriber references the node's backend by raw pointer, so it must not
