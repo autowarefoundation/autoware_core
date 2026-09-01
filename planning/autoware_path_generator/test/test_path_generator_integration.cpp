@@ -133,24 +133,7 @@ protected:
     return convert_ros_bin_map(map);
   }
 
-  // 2. Map with a turn
-  // Used in TEST 2
-  static autoware_map_msgs::msg::LaneletMapBin create_mock_turn_map_bin()
-  {
-    auto map = std::make_shared<lanelet::LaneletMap>();
-
-    auto [left_bound, right_bound] = prep_common_straight_bounds(100.0, 1.75);
-    lanelet::Lanelet turn_lanelet = prep_lanelet(left_bound, right_bound);
-
-    // Here simulate a right turn
-    turn_lanelet.attributes()["turn_direction"] = lanelet::AttributeValueString::Right;
-
-    map->add(turn_lanelet);
-
-    return convert_ros_bin_map(map);
-  }
-
-  // 3. Map with left/right bounds physically crossed
+  // 2. Map with left/right bounds physically crossed
   // Used in TEST 4
   // y (m)
   // +1.75 ┤    L━━━━━━━━━━━━━━━━━━━━L            R
@@ -191,9 +174,11 @@ protected:
     return convert_ros_bin_map(map);
   }
 
-  // 4. 100-meter straight, dense map
-  // Used in TEST 5
-  static autoware_map_msgs::msg::LaneletMapBin create_mock_dense_map_bin()
+  // 3. 100-meter straight, dense map
+  // Can inject an optional turn direction attribute
+  // Used in TEST 5 (dense map), and TEST 2 (turn map)
+  static autoware_map_msgs::msg::LaneletMapBin create_mock_dense_map_bin(
+    const std::string & turn_direction = "")
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
 
@@ -210,6 +195,11 @@ protected:
     lanelet::LineString3d right_bound(11, right_points);
 
     lanelet::Lanelet dense_lanelet = prep_lanelet(left_bound, right_bound);
+
+    // Apply turn attribute if requested
+    if (!turn_direction.empty()) {
+      dense_lanelet.attributes()["turn_direction"] = turn_direction;
+    }
 
     map->add(dense_lanelet);
 
@@ -379,7 +369,7 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
 // This test verifies turn signal strictly triggers at expected proximity to consecutive turns.
 TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
 {
-  auto map_msg = create_mock_turn_map_bin();
+  auto map_msg = create_mock_dense_map_bin("right");
   pub_map_->publish(map_msg);
 
   auto route = create_mock_route();
@@ -455,7 +445,7 @@ TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
 // `test_dense_centerline.cpp` test suite in previous code version.
 TEST_F(PathGeneratorIntegrationHarness, GoalConnectionScenario)
 {
-  auto map_msg = create_mock_x_map_bin();
+  auto map_msg = create_mock_dense_map_bin();
   pub_map_->publish(map_msg);
 
   auto route = create_mock_route();
