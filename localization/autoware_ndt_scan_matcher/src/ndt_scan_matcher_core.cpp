@@ -251,12 +251,12 @@ void NDTScanMatcher::apply_diagnostics_update(
 }
 
 void NDTScanMatcher::publish_loaded_map_if_present(
-  MapUpdateModule::UpdateResult & result, const std::optional<rclcpp::Time> & stamp) const
+  MapUpdateModule::UpdateResult & result, const rclcpp::Time & stamp) const
 {
   if (!result.loaded_pcd_map.has_value()) {
     return;
   }
-  result.loaded_pcd_map->header.stamp = *stamp;
+  result.loaded_pcd_map->header.stamp = stamp;
   loaded_pcd_pub_->publish(*result.loaded_pcd_map);
 }
 
