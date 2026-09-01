@@ -1,0 +1,72 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: PointCloudMapLoader.node
+package:
+  name: autoware_map_loader
+  provider: autoware
+launch:
+  plugin: autoware::map_loader::PointCloudMapLoaderNode
+  executable: autoware_pointcloud_map_loader
+  node_output: screen
+# interfaces
+subscribers: []
+publishers:
+  - name: pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: output/pointcloud_map
+    qos:
+      reliability: reliable
+      durability: transient_local
+  - name: downsampled_pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: output/debug/downsampled_pointcloud_map
+    qos:
+      reliability: reliable
+      durability: transient_local
+  - name: pointcloud_map_metadata
+    message_type: autoware_map_msgs/msg/PointCloudMapMetaData
+    remap_target: output/pointcloud_map_metadata
+    qos:
+      reliability: reliable
+      durability: transient_local
+servers:
+  - name: get_partial_pcd_map
+    message_type: autoware_map_msgs/srv/GetPartialPointCloudMap
+    remap_target: service/get_partial_pcd_map
+  - name: get_differential_pcd_map
+    message_type: autoware_map_msgs/srv/GetDifferentialPointCloudMap
+    remap_target: service/get_differential_pcd_map
+  - name: get_selected_pcd_map
+    message_type: autoware_map_msgs/srv/GetSelectedPointCloudMap
+    remap_target: service/get_selected_pcd_map
+# parameters
+param_files:
+  - name: pointcloud_map_loader_param
+    default: config/pointcloud_map_loader.param.yaml
+param_values:
+  - name: enable_whole_load
+    type: bool
+    default: true
+  - name: enable_downsampled_whole_load
+    type: bool
+    default: false
+  - name: enable_partial_load
+    type: bool
+    default: true
+  - name: enable_selected_load
+    type: bool
+    default: false
+  - name: leaf_size
+    type: double
+    default: 3.0
+  - name: pcd_paths_or_directory
+    type: array
+    default: []
+  - name: pcd_metadata_path
+    type: string
+    default: ""
+# processes
+processes:
+  - name: load_pointcloud_map
+    trigger_conditions: []
+    outcomes: []

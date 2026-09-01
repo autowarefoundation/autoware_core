@@ -1,0 +1,65 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: Lanelet2MapLoader.node
+package:
+  name: autoware_map_loader
+  provider: autoware
+launch:
+  plugin: autoware::map_loader::Lanelet2MapLoaderNode
+  executable: autoware_lanelet2_map_loader
+  node_output: screen
+# interfaces
+subscribers:
+  - name: map_projector_info
+    message_type: autoware_map_msgs/msg/MapProjectorInfo
+    global: /map/map_projector_info
+    qos:
+      reliability: reliable
+      durability: transient_local
+publishers:
+  - name: lanelet2_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    global: /map/vector_map
+    qos:
+      reliability: reliable
+      durability: transient_local
+  - name: lanelet2_map_metadata
+    message_type: autoware_map_msgs/msg/LaneletMapMetaData
+    remap_target: output/lanelet2_map_metadata
+    qos:
+      reliability: reliable
+      durability: transient_local
+servers:
+  - name: get_selected_lanelet2_map
+    message_type: autoware_map_msgs/srv/GetSelectedLanelet2Map
+    remap_target: service/get_selected_lanelet2_map
+# parameters
+param_files:
+  - name: lanelet2_map_loader_param
+    default: config/lanelet2_map_loader.param.yaml
+param_values:
+  - name: allow_unsupported_version
+    type: bool
+    default: true
+  - name: center_line_resolution
+    type: double
+    default: 5.0
+  - name: use_waypoints
+    type: bool
+    default: true
+  - name: enable_selected_map_loading
+    type: bool
+    default: false
+  - name: lanelet2_map_path
+    type: string
+    default: ""
+  - name: lanelet2_map_metadata_path
+    type: string
+    default: ""
+# processes
+processes:
+  - name: load_lanelet2_map
+    trigger_conditions:
+      - on_input: map_projector_info
+    outcomes:
+      - to_output: lanelet2_map
