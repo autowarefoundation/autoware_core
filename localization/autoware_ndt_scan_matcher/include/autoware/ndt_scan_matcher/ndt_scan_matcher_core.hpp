@@ -65,6 +65,8 @@
 
 namespace autoware::ndt_scan_matcher
 {
+using DiagnosticsInterface =
+  autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>;
 
 class NDTScanMatcher : public autoware::agnocast_wrapper::Node
 {
@@ -141,6 +143,8 @@ private:
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_cov_msg,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_old_msg,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_new_msg);
+  void publish_loaded_map_if_present(
+    MapUpdateModule::UpdateResult & result, const rclcpp::Time & stamp) const;
 
   static int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
 
@@ -154,6 +158,15 @@ private:
 
   void add_regularization_pose(
     const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
+
+  // Performs the pcd_loader service call for MapUpdateModule, returning nullptr on failure.
+  MapUpdateModule::GetDifferentialPointCloudMap::Response::ConstSharedPtr
+  get_differential_point_cloud_map(
+    const MapUpdateModule::GetDifferentialPointCloudMap::Request::SharedPtr & request);
+
+  // Forwards a diagnostics update produced by MapUpdateModule to the given DiagnosticsInterface.
+  static void apply_diagnostics_update(
+    DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsReport & report);
 
   AUTOWARE_TIMER_PTR map_update_timer_;
   AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) initial_pose_sub_;
@@ -190,6 +203,10 @@ private:
   AUTOWARE_PUBLISHER_PTR(visualization_msgs::msg::MarkerArray) ndt_marker_pub_;
   AUTOWARE_PUBLISHER_PTR(visualization_msgs::msg::MarkerArray)
   ndt_monte_carlo_initial_pose_marker_pub_;
+
+  // Debug publisher and pcd loader client used by MapUpdateModule (kept on the ROS node side).
+  AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) loaded_pcd_pub_;
+  AUTOWARE_CLIENT_PTR(MapUpdateModule::GetDifferentialPointCloudMap) pcd_loader_client_;
 
   AUTOWARE_SERVICE_PTR(autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped)
   service_;

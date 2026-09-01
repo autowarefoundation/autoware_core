@@ -41,31 +41,31 @@ param_files:
   - name: common_param
     default: $(find-pkg-share autoware_core_planning)/config/common.param.yaml
   - name: behavior_velocity_planner_common_param
-    default: config/behavior_velocity_planner_common.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_planner_common)/config/behavior_velocity_planner_common.param.yaml
   - name: behavior_velocity_planner_param
     default: config/behavior_velocity_planner.param.yaml
   - name: crosswalk_module_param
-    default: config/crosswalk.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_crosswalk_module)/config/crosswalk.param.yaml
   - name: walkway_module_param
-    default: config/walkway.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_walkway_module)/config/walkway.param.yaml
   - name: traffic_light_module_param
-    default: config/traffic_light.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_traffic_light_module)/config/traffic_light.param.yaml
   - name: intersection_module_param
-    default: config/intersection.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_intersection_module)/config/intersection.param.yaml
   - name: roundabout_module_param
-    default: config/roundabout.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_roundabout_module)/config/roundabout.param.yaml
   - name: blind_spot_module_param
-    default: config/blind_spot.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_blind_spot_module)/config/blind_spot.param.yaml
   - name: detection_area_module_param
-    default: config/detection_area.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_detection_area_module)/config/detection_area.param.yaml
   - name: no_stopping_area_module_param
-    default: config/no_stopping_area.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_no_stopping_area_module)/config/no_stopping_area.param.yaml
   - name: stop_line_module_param
-    default: config/stop_line.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_stop_line_module)/config/stop_line.param.yaml
   - name: virtual_traffic_light_module_param
-    default: config/virtual_traffic_light.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_virtual_traffic_light_module)/config/virtual_traffic_light.param.yaml
   - name: occlusion_spot_module_param
-    default: config/occlusion_spot.param.yaml
+    default: $(find-pkg-share autoware_behavior_velocity_occlusion_spot_module)/config/occlusion_spot.param.yaml
 
 param_values:
   - name: launch_modules
