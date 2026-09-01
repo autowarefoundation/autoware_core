@@ -293,7 +293,7 @@ TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity)
   EXPECT_NEAR(yaw, 0.5, 1e-6);
 }
 
-TEST(TestEKFLocalizer, UpdateStepEarlyReturn)
+TEST(TestEKFLocalizer, UpdateStepReportsBothStartupConditions)
 {
   const auto params = make_params();
   auto ekf_localizer = make_ekf_localizer(params);
