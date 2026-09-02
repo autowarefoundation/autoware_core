@@ -55,7 +55,11 @@ inline constexpr bool is_message_ptr_subscription_callback_v =
 template <typename Func, typename MessageT>
 inline constexpr bool is_std_shared_ptr_subscription_callback_v =
   !is_message_ptr_subscription_callback_v<Func, MessageT> &&
-  std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>>;
+  std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>> &&
+  // The probes below reject parameters that merely accept the pointer, such as std::weak_ptr:
+  // rclcpp rejects those shapes, so taking them here would compile only at ENABLE_AGNOCAST=1.
+  !std::is_invocable_v<std::decay_t<Func>, std::weak_ptr<const MessageT>> &&
+  !std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const void>>;
 
 template <typename MessageT>
 class AgnocastSubscription : public Subscription<MessageT>
