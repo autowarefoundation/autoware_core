@@ -30,7 +30,7 @@
 namespace autoware::pose_initializer
 {
 PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
-: rclcpp::Node("pose_initializer", options),
+: autoware::agnocast_wrapper::Node("pose_initializer", options),
   group_srv_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
   pub_reset_(create_publisher<PoseWithCovarianceStamped>("pose_reset", 1))
 {
@@ -40,7 +40,8 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
 
   output_pose_covariance_ = get_covariance_parameter(this, "output_pose_covariance");
   gnss_particle_covariance_ = get_covariance_parameter(this, "gnss_particle_covariance");
-  diagnostics_pose_reliable_ = std::make_unique<autoware_utils_diagnostics::DiagnosticsInterface>(
+  diagnostics_pose_reliable_ = std::make_unique<
+    autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>(
     this, "pose_initializer_status");
 
   if (declare_parameter<bool>("ekf_enabled")) {
@@ -66,7 +67,8 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
   if (declare_parameter<bool>("pose_error_check_enabled")) {
     pose_error_check_ = std::make_unique<PoseErrorCheckModule>(this);
   }
-  logger_configure_ = std::make_unique<autoware_utils_logging::LoggerLevelConfigure>(this);
+  logger_configure_ = std::make_unique<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
 
   change_state(State::Message::UNINITIALIZED);
 

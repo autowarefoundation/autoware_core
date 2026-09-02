@@ -37,11 +37,30 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
 namespace autoware::component_interface_utils
 {
+
+#if AUTOWARE_COMPONENT_INTERFACE_UTILS_RCLCPP_GE_IRON
+/// True when the client/service handle supports ROS 2 service introspection. That is an rcl
+/// feature, so a node type whose services do not pass through rcl -- Agnocast -- has no
+/// counterpart and simply cannot be introspected. Spelled as a detection idiom so this package
+/// stays independent of any particular node type.
+template <class T, class = void>
+struct has_configure_introspection : std::false_type
+{
+};
+template <class T>
+struct has_configure_introspection<
+  T, std::void_t<decltype(std::declval<T &>().configure_introspection(
+       std::declval<rclcpp::Clock::SharedPtr>(), std::declval<const rclcpp::QoS &>(),
+       std::declval<rcl_service_introspection_state_t>()))>> : std::true_type
+{
+};
+#endif
 
 /// Node-scoped adaptor context. Holds the node pointer and, where ROS 2 service
 /// introspection is available, the introspection state resolved once from the

@@ -23,6 +23,9 @@ namespace
 
 using autoware_adapi_v1_msgs::msg::ResponseStatus;
 
+// Mirrors VehicleStopChecker's own buffer length, which is private to that class.
+constexpr double velocity_buffer_time_sec = 10.0;
+
 template <class InterfaceT>
 ResponseStatus route_already_set()
 {
@@ -49,9 +52,20 @@ namespace autoware::default_adapi
 {
 
 RoutingNode::RoutingNode(const rclcpp::NodeOptions & options)
-: Node("routing", options), diagnostics_(this), vehicle_stop_checker_(this)
+: autoware::agnocast_wrapper::Node("routing", options),
+  diagnostics_(this),
+  vehicle_stop_checker_(this, velocity_buffer_time_sec)
 {
   stop_check_duration_ = declare_parameter<double>("stop_check_duration");
+
+  // Replaces VehicleStopChecker's own subscription so it follows this node's backend.
+  sub_kinematic_state_ = create_subscription<nav_msgs::msg::Odometry>(
+    "/localization/kinematic_state", rclcpp::QoS(1), [this](const nav_msgs::msg::Odometry & msg) {
+      geometry_msgs::msg::TwistStamped current_velocity;
+      current_velocity.header = msg.header;
+      current_velocity.twist = msg.twist.twist;
+      vehicle_stop_checker_.addTwist(current_velocity);
+    });
 
   diagnostics_.setHardwareID("none");
   diagnostics_.add("state", this, &RoutingNode::diagnose_state);

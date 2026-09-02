@@ -295,6 +295,21 @@ public:
   MessageT * get() const noexcept { return ptr_ ? ptr_->as_ptr() : nullptr; }
 };
 
+/// Hand a shared-memory message to an interface that insists on std::shared_ptr, without copying
+/// the payload: the holder keeps the ipc_shared_ptr alive and the returned pointer aliases into
+/// it, so the kernel-side reference lives exactly as long as the last copy. The cost is one
+/// control-block allocation per message, plus one pinned shared-memory entry for as long as any
+/// copy is alive. An empty input yields an empty (null) pointer, so `if (!p)` keeps working.
+template <typename MessageT>
+std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT> && ptr)
+{
+  if (!ptr) {
+    return nullptr;
+  }
+  auto holder = std::make_shared<agnocast::ipc_shared_ptr<const MessageT>>(std::move(ptr));
+  return std::shared_ptr<const MessageT>(holder, holder->get());
+}
+
 }  // namespace autoware::agnocast_wrapper
 
 #endif

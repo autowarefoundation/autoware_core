@@ -16,17 +16,21 @@
 #define ROUTING_HPP_
 
 #include <autoware/adapi_specs/routing.hpp>
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/diagnostic_updater.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/component_interface_specs/planning.hpp>
 #include <autoware/component_interface_specs/system.hpp>
 #include <autoware/component_interface_utils/rclcpp.hpp>
 #include <autoware/motion_utils/vehicle/vehicle_state_checker.hpp>
-#include <diagnostic_updater/diagnostic_updater.hpp>
 #include <rclcpp/rclcpp.hpp>
+
+#include <nav_msgs/msg/odometry.hpp>
 
 namespace autoware::default_adapi
 {
 
-class RoutingNode : public rclcpp::Node
+class RoutingNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit RoutingNode(const rclcpp::NodeOptions & options);
@@ -36,42 +40,46 @@ private:
   using State = autoware::component_interface_specs::planning::RouteState;
   using Route = autoware::component_interface_specs::planning::LaneletRoute;
 
-  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
+  // NodeAdaptor deduces its constructor argument separately from NodeT, so the node type has
+  // to be named explicitly here and on every endpoint below.
+  using NodeT = autoware::agnocast_wrapper::Node;
+  autoware::component_interface_utils::NodeAdaptor<NodeT> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_cli_;
 
   // AD API Interface
   autoware::component_interface_utils::Publisher<
-    autoware::adapi_specs::routing::RouteState>::SharedPtr pub_state_;
-  autoware::component_interface_utils::Publisher<autoware::adapi_specs::routing::Route>::SharedPtr
-    pub_route_;
+    autoware::adapi_specs::routing::RouteState, NodeT>::SharedPtr pub_state_;
+  autoware::component_interface_utils::Publisher<
+    autoware::adapi_specs::routing::Route, NodeT>::SharedPtr pub_route_;
   autoware::component_interface_utils::Service<
-    autoware::adapi_specs::routing::SetRoutePoints>::SharedPtr srv_set_route_points_;
-  autoware::component_interface_utils::Service<autoware::adapi_specs::routing::SetRoute>::SharedPtr
-    srv_set_route_;
+    autoware::adapi_specs::routing::SetRoutePoints, NodeT>::SharedPtr srv_set_route_points_;
   autoware::component_interface_utils::Service<
-    autoware::adapi_specs::routing::ChangeRoutePoints>::SharedPtr srv_change_route_points_;
+    autoware::adapi_specs::routing::SetRoute, NodeT>::SharedPtr srv_set_route_;
   autoware::component_interface_utils::Service<
-    autoware::adapi_specs::routing::ChangeRoute>::SharedPtr srv_change_route_;
+    autoware::adapi_specs::routing::ChangeRoutePoints, NodeT>::SharedPtr srv_change_route_points_;
   autoware::component_interface_utils::Service<
-    autoware::adapi_specs::routing::ClearRoute>::SharedPtr srv_clear_route_;
+    autoware::adapi_specs::routing::ChangeRoute, NodeT>::SharedPtr srv_change_route_;
+  autoware::component_interface_utils::Service<
+    autoware::adapi_specs::routing::ClearRoute, NodeT>::SharedPtr srv_clear_route_;
 
   // Component Interface
   autoware::component_interface_utils::Subscription<
-    autoware::component_interface_specs::planning::RouteState>::SharedPtr sub_state_;
+    autoware::component_interface_specs::planning::RouteState, NodeT>::SharedPtr sub_state_;
   autoware::component_interface_utils::Subscription<
-    autoware::component_interface_specs::planning::LaneletRoute>::SharedPtr sub_route_;
+    autoware::component_interface_specs::planning::LaneletRoute, NodeT>::SharedPtr sub_route_;
   autoware::component_interface_utils::Client<
-    autoware::component_interface_specs::planning::SetWaypointRoute>::SharedPtr
+    autoware::component_interface_specs::planning::SetWaypointRoute, NodeT>::SharedPtr
     cli_set_waypoint_route_;
   autoware::component_interface_utils::Client<
-    autoware::component_interface_specs::planning::SetLaneletRoute>::SharedPtr
+    autoware::component_interface_specs::planning::SetLaneletRoute, NodeT>::SharedPtr
     cli_set_lanelet_route_;
   autoware::component_interface_utils::Client<
-    autoware::component_interface_specs::planning::ClearRoute>::SharedPtr cli_clear_route_;
+    autoware::component_interface_specs::planning::ClearRoute, NodeT>::SharedPtr cli_clear_route_;
   autoware::component_interface_utils::Subscription<
-    autoware::component_interface_specs::system::OperationModeState>::SharedPtr sub_operation_mode_;
+    autoware::component_interface_specs::system::OperationModeState, NodeT>::SharedPtr
+    sub_operation_mode_;
   autoware::component_interface_utils::Client<
-    autoware::component_interface_specs::system::ChangeOperationMode>::SharedPtr
+    autoware::component_interface_specs::system::ChangeOperationMode, NodeT>::SharedPtr
     cli_operation_mode_;
 
   void diagnose_state(diagnostic_updater::DiagnosticStatusWrapper & stat);
@@ -98,10 +106,13 @@ private:
   bool is_autoware_control_;
   bool is_auto_mode_;
   State::Message state_;
-  diagnostic_updater::Updater diagnostics_;
+  autoware::agnocast_wrapper::diagnostic_updater::Updater diagnostics_;
 
-  // Stop check for route clear.
-  autoware::motion_utils::VehicleStopChecker vehicle_stop_checker_;
+  // Stop check for route clear. VehicleStopChecker owns an rclcpp odometry subscription, so use
+  // its base -- already templated on the node type -- and keep the subscription here, where it
+  // follows this node's backend.
+  autoware::motion_utils::VehicleStopCheckerBase vehicle_stop_checker_;
+  AUTOWARE_SUBSCRIPTION_PTR(nav_msgs::msg::Odometry) sub_kinematic_state_;
   double stop_check_duration_;
 };
 

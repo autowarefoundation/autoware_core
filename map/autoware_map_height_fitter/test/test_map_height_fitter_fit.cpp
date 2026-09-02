@@ -14,6 +14,7 @@
 
 #include "autoware/map_height_fitter/map_height_fitter.hpp"
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/static_transform_broadcaster.hpp>
 
@@ -88,7 +89,8 @@ protected:
     fitter_options.parameter_overrides(
       {{"map_height_fitter.target", "pointcloud_map"},
        {"map_height_fitter.map_loader_name", "/map_loader"}});
-    fitter_node_ = std::make_shared<rclcpp::Node>("map_height_fitter_test", fitter_options);
+    fitter_node_ =
+      std::make_shared<autoware::agnocast_wrapper::Node>("map_height_fitter_test", fitter_options);
 
     // stands in for pointcloud_map_loader: only its parameter service is used
     rclcpp::NodeOptions loader_options;
@@ -96,7 +98,10 @@ protected:
     loader_options.automatically_declare_parameters_from_overrides(true);
     loader_node_ = std::make_shared<rclcpp::Node>("map_loader", loader_options);
 
-    executor_.add_node(fitter_node_);
+    // agnocast_wrapper::Node does not derive from rclcpp::Node, so it joins the executor through
+    // its base interface. This test drives the rclcpp backend, which is what ENABLE_AGNOCAST=0
+    // gives it.
+    executor_.add_node(fitter_node_->get_node_base_interface());
     executor_.add_node(loader_node_);
     spin_thread_ = std::thread([this] { executor_.spin(); });
 
@@ -157,7 +162,7 @@ protected:
     return std::nullopt;
   }
 
-  rclcpp::Node::SharedPtr fitter_node_;
+  autoware::agnocast_wrapper::Node::SharedPtr fitter_node_;
   rclcpp::Node::SharedPtr loader_node_;
   rclcpp::executors::SingleThreadedExecutor executor_;
   std::thread spin_thread_;

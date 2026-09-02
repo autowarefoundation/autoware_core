@@ -15,6 +15,8 @@
 #ifndef LOCALIZATION_TRIGGER_MODULE_HPP_
 #define LOCALIZATION_TRIGGER_MODULE_HPP_
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <std_srvs/srv/set_bool.hpp>
@@ -34,14 +36,15 @@ public:
   /// `label` is a human readable name (e.g. "EKF" or "NDT") used in log messages and error
   /// responses so the behavior matches the previous per-localization modules.
   LocalizationTriggerModule(
-    rclcpp::Node * node, const std::string & service_name, const std::string & label);
+    autoware::agnocast_wrapper::Node * node, const std::string & service_name,
+    const std::string & label);
   void wait_for_service();
   void send_request(bool flag, bool need_spin = false) const;
 
 private:
-  rclcpp::Node * node_;
+  autoware::agnocast_wrapper::Node * node_;
   std::string label_;
-  rclcpp::Client<SetBool>::SharedPtr client_trigger_;
+  AUTOWARE_CLIENT_PTR(SetBool) client_trigger_;
 };
 }  // namespace autoware::pose_initializer
 

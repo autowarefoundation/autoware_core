@@ -48,6 +48,11 @@ protected:
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
+  // Named to match rclcpp::Client, so generic code can spell the request/response pointer types
+  // off the client rather than assuming std::shared_ptr.
+  using SharedRequest = AUTOWARE_CLIENT_REQUEST_PTR(ServiceT);
+  using SharedResponse = AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT);
+
   using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
   using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
 
@@ -81,6 +86,35 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
+
+  /// rclcpp-shaped overloads taking an ordinary std::shared_ptr request by const reference, for
+  /// callers that build the request themselves and hold it as an lvalue -- notably
+  /// autoware_component_interface_utils, whose Client::call() does exactly that. The request is
+  /// copied into an owned (on the Agnocast path, shared-memory) request, so prefer
+  /// allocate_output_service_request() plus the rvalue overloads above on hot paths.
+  ///
+  /// Taking by const reference rather than by value keeps `async_send_request(std::move(req))`
+  /// unambiguous: an rvalue still binds better to the rvalue-reference overloads.
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    return async_send_request(copy_into_owned_request(request));
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    const std::shared_ptr<typename ServiceT::Request> & request,
+    std::function<void(SharedFuture)> callback)
+  {
+    return async_send_request(copy_into_owned_request(request), std::move(callback));
+  }
+
+private:
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+  copy_into_owned_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) owned = allocate_output_service_request();
+    *owned = *request;
+    return owned;
+  }
 };
 
 template <typename ServiceT>
@@ -305,6 +339,11 @@ protected:
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
+  // Named to match rclcpp::Client, so generic code can spell the request/response pointer types
+  // off the client rather than assuming std::shared_ptr.
+  using SharedRequest = AUTOWARE_CLIENT_REQUEST_PTR(ServiceT);
+  using SharedResponse = AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT);
+
   using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
   using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
 
@@ -338,6 +377,35 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
+
+  /// rclcpp-shaped overloads taking an ordinary std::shared_ptr request by const reference, for
+  /// callers that build the request themselves and hold it as an lvalue -- notably
+  /// autoware_component_interface_utils, whose Client::call() does exactly that. The request is
+  /// copied into an owned (on the Agnocast path, shared-memory) request, so prefer
+  /// allocate_output_service_request() plus the rvalue overloads above on hot paths.
+  ///
+  /// Taking by const reference rather than by value keeps `async_send_request(std::move(req))`
+  /// unambiguous: an rvalue still binds better to the rvalue-reference overloads.
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    return async_send_request(copy_into_owned_request(request));
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    const std::shared_ptr<typename ServiceT::Request> & request,
+    std::function<void(SharedFuture)> callback)
+  {
+    return async_send_request(copy_into_owned_request(request), std::move(callback));
+  }
+
+private:
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+  copy_into_owned_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) owned = allocate_output_service_request();
+    *owned = *request;
+    return owned;
+  }
 };
 
 template <typename ServiceT>

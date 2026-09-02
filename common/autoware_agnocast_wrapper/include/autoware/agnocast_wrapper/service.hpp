@@ -44,6 +44,9 @@ public:
   using SharedPtr = std::shared_ptr<Service<ServiceT>>;
 
   virtual ~Service() = default;
+
+  /// Remap-resolved service name, mirroring rclcpp::ServiceBase::get_service_name().
+  virtual const char * get_service_name() const = 0;
 };
 
 // True when Callback takes the preferred AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr)
@@ -88,6 +91,8 @@ public:
       },
       qos, group);
   }
+
+  const char * get_service_name() const override { return srv_->get_service_name(); }
 };
 
 template <typename ServiceT>
@@ -121,6 +126,8 @@ public:
       qos.get_rmw_qos_profile(), group);
 #endif
   }
+
+  const char * get_service_name() const override { return srv_->get_service_name(); }
 };
 
 template <typename ServiceT, typename Func>
@@ -157,6 +164,9 @@ public:
   using SharedPtr = std::shared_ptr<Service<ServiceT>>;
 
   virtual ~Service() = default;
+
+  /// Remap-resolved service name, mirroring rclcpp::ServiceBase::get_service_name().
+  virtual const char * get_service_name() const = 0;
 };
 
 // True when Callback takes the preferred AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR pair, i.e. it
@@ -204,6 +214,8 @@ public:
       qos.get_rmw_qos_profile(), group);
 #endif
   }
+
+  const char * get_service_name() const override { return srv_->get_service_name(); }
 };
 
 template <typename ServiceT, typename Func>

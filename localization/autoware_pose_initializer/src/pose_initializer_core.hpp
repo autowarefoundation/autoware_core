@@ -15,6 +15,8 @@
 #ifndef POSE_INITIALIZER_CORE_HPP_
 #define POSE_INITIALIZER_CORE_HPP_
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/component_interface_specs/localization.hpp>
 #include <autoware/component_interface_utils/rclcpp.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
@@ -36,7 +38,7 @@ class LocalizationModule;
 class GnssModule;
 class LocalizationTriggerModule;
 
-class PoseInitializer : public rclcpp::Node
+class PoseInitializer : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit PoseInitializer(const rclcpp::NodeOptions & options);
@@ -46,11 +48,14 @@ private:
   using State = autoware::component_interface_specs::localization::InitializationState;
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 
-  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
+  // NodeAdaptor deduces its constructor argument separately from NodeT, so the node type has
+  // to be named explicitly here and on every endpoint below.
+  using NodeT = autoware::agnocast_wrapper::Node;
+  autoware::component_interface_utils::NodeAdaptor<NodeT> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_srv_;
-  rclcpp::Publisher<PoseWithCovarianceStamped>::SharedPtr pub_reset_;
-  autoware::component_interface_utils::Publisher<State>::SharedPtr pub_state_;
-  autoware::component_interface_utils::Service<Initialize>::SharedPtr srv_initialize_;
+  AUTOWARE_PUBLISHER_PTR(PoseWithCovarianceStamped) pub_reset_;
+  autoware::component_interface_utils::Publisher<State, NodeT>::SharedPtr pub_state_;
+  autoware::component_interface_utils::Service<Initialize, NodeT>::SharedPtr srv_initialize_;
   State::Message state_;
   std::array<double, 36> output_pose_covariance_{};
   std::array<double, 36> gnss_particle_covariance_{};
@@ -61,8 +66,12 @@ private:
   std::unique_ptr<PoseErrorCheckModule> pose_error_check_;
   std::unique_ptr<LocalizationTriggerModule> ekf_localization_trigger_;
   std::unique_ptr<LocalizationTriggerModule> ndt_localization_trigger_;
-  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
-  std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_pose_reliable_;
+  std::unique_ptr<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
+    logger_configure_;
+  std::unique_ptr<
+    autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>
+    diagnostics_pose_reliable_;
   double stop_check_duration_;
 
   void change_node_trigger(bool flag, bool need_spin = false);
