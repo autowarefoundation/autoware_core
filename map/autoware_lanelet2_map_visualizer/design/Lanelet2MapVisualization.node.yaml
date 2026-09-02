@@ -1,0 +1,50 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: Lanelet2MapVisualization.node
+
+description: Converts the Lanelet2 map into a latched marker array for visualization in RViz.
+
+package:
+  name: autoware_lanelet2_map_visualizer
+  provider: autoware
+
+launch:
+  plugin: autoware::lanelet2_map_visualizer::Lanelet2MapVisualizationNode
+  executable: autoware_lanelet2_map_visualizer
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: lanelet2_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    description: Lanelet2 map to visualize.
+    remap_target: input/lanelet2_map
+    qos:
+      reliability: reliable
+      durability: transient_local
+
+publishers:
+  - name: lanelet2_map_marker
+    message_type: visualization_msgs/msg/MarkerArray
+    description: Marker array rendering of the map primitives.
+    remap_target: output/lanelet2_map_marker
+    qos:
+      reliability: reliable
+      durability: transient_local
+
+servers: []
+
+# parameters
+param_files: []
+
+param_values: []
+
+# processes
+processes:
+  - name: visualize
+    description: Rebuilds the marker array whenever a map arrives.
+    trigger_conditions:
+      - on_input: lanelet2_map
+    outcomes:
+      - to_output: lanelet2_map_marker

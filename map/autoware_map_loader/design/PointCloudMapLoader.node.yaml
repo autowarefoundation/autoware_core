@@ -1,0 +1,82 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: PointCloudMapLoader.node
+
+description: Loads PCD files and provides the pointcloud map as a latched whole-map topic and through partial, differential and selected map-loading services for dynamic map consumers.
+
+package:
+  name: autoware_map_loader
+  provider: autoware
+
+launch:
+  plugin: autoware::map_loader::PointCloudMapLoaderNode
+  executable: autoware_pointcloud_map_loader
+  node_output: screen
+
+# interfaces
+subscribers: []
+
+publishers:
+  - name: pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    description: Whole pointcloud map. Published once when enable_whole_load is true.
+    remap_target: output/pointcloud_map
+    qos:
+      reliability: reliable
+      durability: transient_local
+  - name: pointcloud_map_metadata
+    message_type: autoware_map_msgs/msg/PointCloudMapMetaData
+    description: Metadata of the divided map cells; evidence that the map is loaded and servable.
+    remap_target: output/pointcloud_map_metadata
+    qos:
+      reliability: reliable
+      durability: transient_local
+  - name: downsampled_pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    description: Downsampled whole pointcloud map for debugging. Published once when enable_downsampled_whole_load is true.
+    remap_target: output/debug/downsampled_pointcloud_map
+    qos:
+      reliability: reliable
+      durability: transient_local
+
+servers:
+  - name: get_partial_pcd_map
+    message_type: autoware_map_msgs/srv/GetPartialPointCloudMap
+    description: Loads the map cells overlapping the requested area. Available when enable_partial_load is true.
+    remap_target: service/get_partial_pcd_map
+  - name: get_differential_pcd_map
+    message_type: autoware_map_msgs/srv/GetDifferentialPointCloudMap
+    description: Loads the map cells overlapping the requested area, minus the cells the client already holds.
+    remap_target: service/get_differential_pcd_map
+  - name: get_selected_pcd_map
+    message_type: autoware_map_msgs/srv/GetSelectedPointCloudMap
+    description: Loads the map cells with the requested cell IDs. Available when enable_selected_load is true.
+    remap_target: service/get_selected_pcd_map
+
+# parameters
+param_files:
+  - name: param_file
+    default: config/pointcloud_map_loader.param.yaml
+    description: Map file paths and map-loading feature switches.
+
+param_values:
+  - name: pcd_paths_or_directory
+    type: string_array
+    default: []
+    description: Paths to the PCD map files or directories.
+  - name: pcd_metadata_path
+    type: string
+    default: ""
+    description: Path to the pointcloud map metadata file.
+
+# processes
+processes:
+  - name: export
+    description: Loads the PCD files at startup and latches the map and its metadata.
+    trigger_conditions:
+      - once:
+    outcomes:
+      - to_output: pointcloud_map
+      - to_output: pointcloud_map_metadata
+      - to_output: downsampled_pointcloud_map

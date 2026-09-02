@@ -1,0 +1,54 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: MapHashGenerator.node
+
+description: Computes SHA-256 hashes of the Lanelet2 and pointcloud map files, latches them for the external API, and serves the Lanelet2 map XML text.
+
+package:
+  name: autoware_map_loader
+  provider: autoware
+
+launch:
+  executable: map_hash_generator
+  node_output: screen
+
+# interfaces
+subscribers: []
+
+publishers:
+  - name: map_hash
+    message_type: tier4_external_api_msgs/msg/MapHash
+    description: Hashes of the map files.
+    remap_target: /api/autoware/get/map/info/hash
+    qos:
+      reliability: reliable
+      durability: transient_local
+
+servers:
+  - name: get_lanelet_xml
+    message_type: tier4_external_api_msgs/srv/GetTextFile
+    description: Returns the Lanelet2 map file content as text.
+    remap_target: /api/autoware/get/map/lanelet/xml
+
+# parameters
+param_files: []
+
+param_values:
+  - name: lanelet2_map_path
+    type: string
+    default: ""
+    description: Path to the Lanelet2 map file.
+  - name: pointcloud_map_path
+    type: string
+    default: ""
+    description: Path to the pointcloud map file or directory.
+
+# processes
+processes:
+  - name: export
+    description: Hashes the map files at startup and latches the result.
+    trigger_conditions:
+      - once:
+    outcomes:
+      - to_output: map_hash
