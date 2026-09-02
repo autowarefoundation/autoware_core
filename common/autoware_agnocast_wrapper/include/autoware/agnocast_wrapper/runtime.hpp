@@ -26,8 +26,8 @@ namespace autoware::agnocast_wrapper
 /// Read once and fixed for the lifetime of the process; always false in a non-Agnocast build.
 bool use_agnocast();
 
-/// @brief Mode-agnostic replacement for rclcpp::init(). Brings up the one context ok() reports on:
-/// the agnocast one for an AgnocastOnly executable, the rclcpp one for every other, never both.
+/// @brief Mode-agnostic replacement for rclcpp::init(). Brings up the context ok() reports on: the
+/// agnocast one for an AgnocastOnly executable, the rclcpp one for every other.
 ///
 /// @param agnocast_only True if and only if this executable spins one of agnocast's AgnocastOnly*
 ///   executors. autoware_agnocast_wrapper_register_node() fills it in for the mains it generates.
@@ -41,9 +41,8 @@ void shutdown();
 
 /// @brief Mode-agnostic replacement for rclcpp::ok().
 ///
-/// An AgnocastOnly executable initializes only the agnocast context, while mixed-mode and
-/// non-Agnocast executables initialize only the rclcpp context. Exactly one is alive in any
-/// mode, so the disjunction answers "is this process still running" everywhere.
+/// An executable spinning an AgnocastOnly* executor brings up only the agnocast context; every
+/// other executable brings up the rclcpp one. Reports whichever is alive.
 bool ok();
 
 }  // namespace autoware::agnocast_wrapper

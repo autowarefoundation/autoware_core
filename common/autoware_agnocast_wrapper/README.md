@@ -138,9 +138,8 @@ autoware::agnocast_wrapper::set_period(timer_, std::chrono::milliseconds(200));
 
 #### Context notes
 
-A process brings up exactly one context: an AgnocastOnly executable the agnocast one, every other
-executable the rclcpp one. Both configure rcl logging and install a signal handler, so bringing up both
-leaves those owned twice.
+An AgnocastOnly executable brings up the agnocast context; every other executable brings up the rclcpp
+one. `ok()` reports whichever is alive.
 
 Use `init()` / `shutdown()` / `ok()` from this namespace rather than the `rclcpp` equivalents. `ok()`
 matters even if you never call `init()` yourself: in an AgnocastOnly executable `rclcpp::ok()` reports
@@ -150,14 +149,21 @@ brought up.
 `init()`'s `agnocast_only` flag is a property of the executable, not of the environment. Pass `true` if
 and only if the main spins one of agnocast's `AgnocastOnly*` executors:
 
-| Your `main()`                                                          | `agnocast_only` |
-| ---------------------------------------------------------------------- | --------------- |
-| No Agnocast executor at all (a test main, a tool, an rclcpp-only node) | omit it         |
-| A mixed-mode Agnocast executor (`SingleThreadedAgnocastExecutor`, …)   | omit it         |
-| An `AgnocastOnly*` executor                                            | `true`          |
+| Your `main()`                                                              | `agnocast_only` |
+| -------------------------------------------------------------------------- | --------------- |
+| No Agnocast executor at all (a test main, a tool, an rclcpp-only node)     | omit it         |
+| A non-AgnocastOnly Agnocast executor (`SingleThreadedAgnocastExecutor`, …) | omit it         |
+| An `AgnocastOnly*` executor                                                | `true`          |
 
 `autoware_agnocast_wrapper_register_node()` fills the flag in for the mains it generates; a main that
 has to serve both modes belongs to that macro rather than being hand-written.
+
+At `ENABLE_AGNOCAST=1` a node deriving from `agnocast_wrapper::Node` needs the agnocast context even
+when the executable does not bring it up, because it spins agnocast-only executors internally — for the
+`use_sim_time` clock thread, and for a tf listener with `spin_thread`. Until
+[agnocast#1517](https://github.com/autowarefoundation/agnocast/pull/1517) brings that context up
+lazily, such a node aborts at construction unless the executable is registered with an `AgnocastOnly*`
+executor.
 
 #### Publisher API
 
