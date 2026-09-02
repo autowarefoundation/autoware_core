@@ -35,7 +35,7 @@ namespace
 {
 
 // Defaults to zero if the environment variable is missing or invalid.
-int get_ENABLE_AGNOCAST()
+int read_enable_agnocast_env()
 {
   const char * env = std::getenv("ENABLE_AGNOCAST");
   if (env) {
@@ -52,7 +52,7 @@ std::atomic<bool> g_shutdown_done{false};
 
 bool use_agnocast()
 {
-  static const int sv = get_ENABLE_AGNOCAST();
+  static const int sv = read_enable_agnocast_env();
   return sv == 1;
 }
 
