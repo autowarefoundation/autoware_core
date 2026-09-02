@@ -93,7 +93,8 @@ public:
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
         if constexpr (is_std_shared_ptr_subscription_callback_v<Func, MessageT>) {
-          callback(to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
+          callback(
+            detail::to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT>(std::move(msg))));
         } else if constexpr (!is_message_ptr_subscription_callback_v<Func, MessageT>) {
           // msg keeps the shared-memory entry alive only while the callback runs: the
           // reference is valid for the duration of the callback and no copy is made, but

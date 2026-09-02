@@ -109,7 +109,7 @@ public:
   {
     // Zero-copy: the returned pointer aliases the shared-memory message, so lifetime and
     // refcount match the rclcpp heap path.
-    return to_std_shared_ptr(subscriber_->take(allow_same_message));
+    return detail::to_std_shared_ptr(subscriber_->take(allow_same_message));
   }
 };
 
