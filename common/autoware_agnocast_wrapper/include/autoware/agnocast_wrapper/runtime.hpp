@@ -22,13 +22,9 @@
 namespace autoware::agnocast_wrapper
 {
 
-#ifdef USE_AGNOCAST_ENABLED
-
 /// @brief Whether this process runs on Agnocast, from the ENABLE_AGNOCAST environment variable.
-/// Read once and fixed for the lifetime of the process.
+/// Read once and fixed for the lifetime of the process; always false in a non-Agnocast build.
 bool use_agnocast();
-
-#endif
 
 /// @brief Mode-agnostic replacement for rclcpp::init(). Brings up the one context ok() reports on:
 /// the agnocast one for an AgnocastOnly executable, the rclcpp one for every other, never both.

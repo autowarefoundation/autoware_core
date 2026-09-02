@@ -80,6 +80,11 @@ bool ok()
 
 #else
 
+bool use_agnocast()
+{
+  return false;
+}
+
 std::vector<std::string> init(int argc, char const * const * argv, const bool /* agnocast_only */)
 {
   return rclcpp::init_and_remove_ros_arguments(argc, argv);
