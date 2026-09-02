@@ -406,15 +406,12 @@ TEST(TestEKFLocalizer, UpdateStepDeterministicKinematics)
 
 TEST(TestEKFLocalizer, UpdateStepCounterChecks)
 {
-  auto params = make_params();
+  const auto params = make_params();
+
   // Params fetched from legacy code setup
   const int update_count_warn = 50;
-  const int update_count_error = 100;
+  const int update_count_error = update_count_warn * 2;
 
-  params.pose_no_update_count_threshold_warn = update_count_warn;
-  params.twist_no_update_count_threshold_warn = update_count_warn;
-  params.pose_no_update_count_threshold_error = update_count_error;
-  params.twist_no_update_count_threshold_error = update_count_error;
   auto ekf_localizer = make_ekf_localizer(params);
 
   rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
@@ -423,8 +420,8 @@ TEST(TestEKFLocalizer, UpdateStepCounterChecks)
 
   EKFUpdateResult result;
 
-  // 50 ticks, no sensor inputs
-  for (int i = 1; i <= 50; ++i) {
+  // Some ticks, no sensor inputs (reach warn threshold)
+  for (int i = 1; i <= update_count_warn; ++i) {
     t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
     result = ekf_localizer->update_step(t_curr);
   }
@@ -433,8 +430,8 @@ TEST(TestEKFLocalizer, UpdateStepCounterChecks)
   EXPECT_EQ(result.pose_diag_info.no_update_count, update_count_warn);
   EXPECT_EQ(result.twist_diag_info.no_update_count, update_count_warn);
 
-  // Advance exactly 50 more ticks (reach 100)
-  for (int i = 1; i <= 50; ++i) {
+  // Advance exactly those more ticks (reach error threshold)
+  for (int i = 1; i <= update_count_warn; ++i) {
     t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
     result = ekf_localizer->update_step(t_curr);
   }
