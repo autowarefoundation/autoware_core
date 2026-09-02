@@ -1,0 +1,54 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: MapProjectionLoader.node
+
+description: Loads the map projector info from the projector info YAML file, or derives it from the Lanelet2 map when the YAML file is absent, and latches it for the nodes that convert map coordinates.
+
+package:
+  name: autoware_map_projection_loader
+  provider: autoware
+
+launch:
+  plugin: autoware::map_projection_loader::MapProjectionLoader
+  executable: autoware_map_projection_loader_node
+  node_output: screen
+
+# interfaces
+subscribers: []
+
+publishers:
+  - name: map_projector_info
+    message_type: autoware_map_msgs/msg/MapProjectorInfo
+    description: Definition of map coordinate system.
+    remap_target: /map/map_projector_info
+    qos:
+      reliability: reliable
+      durability: transient_local
+
+servers: []
+
+# parameters
+param_files:
+  - name: param_file
+    default: config/map_projection_loader.param.yaml
+    description: Map projector info and Lanelet2 map file paths.
+
+param_values:
+  - name: map_projector_info_path
+    type: string
+    default: ""
+    description: Path to the map projector info YAML file.
+  - name: lanelet2_map_path
+    type: string
+    default: ""
+    description: Path to the Lanelet2 map file, used as the fallback projector info source.
+
+# processes
+processes:
+  - name: export
+    description: Loads the projector info at startup and latches it.
+    trigger_conditions:
+      - once:
+    outcomes:
+      - to_output: map_projector_info
