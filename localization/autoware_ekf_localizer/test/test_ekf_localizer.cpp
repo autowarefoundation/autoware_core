@@ -401,7 +401,7 @@ TEST(TestEKFLocalizer, UpdateStepDeterministicKinematics)
 
   // Expects memory of covariance to grow due to prediction
   using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
-  EXPECT_GT(result.pose_cov.pose.covariance[COV_IDX::X_X], 0.01);
+  EXPECT_GT(result.pose_cov.pose.covariance[COV_IDX::X_X], 1.0);
 }
 
 TEST(TestEKFLocalizer, UpdateStepCounterChecks)
