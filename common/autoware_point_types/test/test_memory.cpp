@@ -203,27 +203,33 @@ TEST(LayoutCompatibleRoundTrip, Xyzcpe)
 
 TEST(LayoutCompatibleCrossType, MismatchedTypesReturnFalse)
 {
-  // xyzi layout has FLOAT32 intensity and only 4 fields -> not xyzirc/xyziradrt/xyzircaedt
+  // xyzi layout has FLOAT32 intensity and only 4 fields -> not the others
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzirc(create_fields_point_xyzi()));
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzirct(create_fields_point_xyzi()));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyziradrt(create_fields_point_xyzi()));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzircaedt(create_fields_point_xyzi()));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(create_fields_point_xyzi()));
 
+  // xyzirc layout (6 fields) -> not its wider extensions
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzirct(create_fields_point_xyzirc()));
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzircaedt(create_fields_point_xyzirc()));
+
+  // xyzirct layout (7 fields, UINT8 intensity) -> not the others
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzi(create_fields_point_xyzirct()));
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyziradrt(create_fields_point_xyzirct()));
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzircaedt(create_fields_point_xyzirct()));
+  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(create_fields_point_xyzirct()));
+
   // xyzircaedt layout (10 fields, UINT8 intensity) -> not the others
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyziradrt(create_fields_point_xyzircaedt()));
-
-  // xyzirct is an exact-size check, so wider/narrower layouts must not match
-  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzirct(create_fields_point_xyzirc()));
   EXPECT_FALSE(is_data_layout_compatible_with_point_xyzirct(create_fields_point_xyzircaedt()));
-  EXPECT_FALSE(is_data_layout_compatible_with_point_xyzirct(create_fields_point_xyzi()));
 }
 
-TEST(LayoutCompatibleCrossType, XyzirctIsAnXyzircSuperset)
+TEST(LayoutCompatibleCrossType, XyzircIsAPrefixOfItsExtensions)
 {
-  // xyzirc is a prefix check by design: consumers that read only x/y/z/intensity/return_type/
-  // channel at their xyzirc offsets stay compatible with xyzirct clouds. Consumers that cannot
-  // tolerate a wider point must additionally check the field count and point_step.
+  // xyzirc is a prefix check by design, so every layout extending it must stay compatible.
   EXPECT_TRUE(is_data_layout_compatible_with_point_xyzirc(create_fields_point_xyzirct()));
+  EXPECT_TRUE(is_data_layout_compatible_with_point_xyzirc(create_fields_point_xyzircaedt()));
 }
 
 //

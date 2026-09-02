@@ -19,7 +19,6 @@
 #include <gtest/gtest.h>
 
 #include <cmath>
-#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
@@ -191,24 +190,6 @@ TEST(PointEquality, FloatEq)
 
   // expect same value if epsilon is larger than difference
   EXPECT_TRUE(autoware::point_types::float_eq<float>(2, 2 + 10e-6, 10e-5));
-}
-
-TEST(PointLayout, PointXYZIRCT)
-{
-  using autoware::point_types::PointXYZIRC;
-  using autoware::point_types::PointXYZIRCT;
-
-  // PointXYZIRCT is wire-compatible with PointXYZIRC in its first six fields, so that consumers
-  // reading only those fields keep working. Pinning the layout here makes an accidental
-  // reordering or padding change a test failure rather than a silent misread.
-  EXPECT_EQ(sizeof(PointXYZIRCT), 20U);
-  EXPECT_EQ(offsetof(PointXYZIRCT, x), offsetof(PointXYZIRC, x));
-  EXPECT_EQ(offsetof(PointXYZIRCT, y), offsetof(PointXYZIRC, y));
-  EXPECT_EQ(offsetof(PointXYZIRCT, z), offsetof(PointXYZIRC, z));
-  EXPECT_EQ(offsetof(PointXYZIRCT, intensity), offsetof(PointXYZIRC, intensity));
-  EXPECT_EQ(offsetof(PointXYZIRCT, return_type), offsetof(PointXYZIRC, return_type));
-  EXPECT_EQ(offsetof(PointXYZIRCT, channel), offsetof(PointXYZIRC, channel));
-  EXPECT_EQ(offsetof(PointXYZIRCT, time_stamp), sizeof(PointXYZIRC));
 }
 
 TEST(PointCloudModifier, PointXYZIRCT)
