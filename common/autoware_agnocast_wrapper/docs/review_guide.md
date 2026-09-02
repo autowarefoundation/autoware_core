@@ -529,7 +529,7 @@ class MyNode : public rclcpp::Node  // Remains rclcpp::Node
     pub_ = AUTOWARE_CREATE_PUBLISHER3(PointCloud2, "output", qos, options);
   }
 
-  void callback(AUTOWARE_MESSAGE_UNIQUE_PTR(const PointCloud2) && msg) {
+  void callback(AUTOWARE_MESSAGE_UNIQUE_PTR(PointCloud2) && msg) {
     auto output = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_);
     // ... processing ...
     pub_->publish(std::move(output));
@@ -565,7 +565,7 @@ public:
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
       "input", 10,
-      [this](AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) && msg) { /* ... */ });
+      [this](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) & msg) { /* ... */ });
   }
 
 private:

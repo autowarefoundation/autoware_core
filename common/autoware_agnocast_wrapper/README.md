@@ -119,7 +119,7 @@ public:
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
       "input", 10,
-      [this](AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) && msg) { /* ... */ });
+      [this](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) & msg) { /* ... */ });
 
     timer_ = create_wall_timer(
       std::chrono::milliseconds(100), [this]() { /* ... */ });
@@ -292,7 +292,7 @@ pub_output_ = AUTOWARE_CREATE_PUBLISHER3(
   pub_options
 );
 
-void onPointCloud(AUTOWARE_MESSAGE_UNIQUE_PTR(const PointCloud2) && input_msg) {
+void onPointCloud(AUTOWARE_MESSAGE_UNIQUE_PTR(PointCloud2) && input_msg) {
   auto output = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_output_);
   ...
   pub_output_->publish(std::move(output));
