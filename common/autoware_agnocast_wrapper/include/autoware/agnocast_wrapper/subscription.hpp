@@ -98,7 +98,7 @@ public:
           // msg keeps the shared-memory entry alive only while the callback runs: the
           // reference is valid for the duration of the callback and no copy is made, but
           // it must not be stored or used after the callback returns. Callbacks that need
-          // to extend the message lifetime should take AUTOWARE_MESSAGE_CONST_SHARED_PTR.
+          // to extend the message lifetime should take one of the owning forms.
           // as_const prevents generic callbacks from mutating the shared-memory entry,
           // which other processes may be reading concurrently.
           callback(std::as_const(*msg));
