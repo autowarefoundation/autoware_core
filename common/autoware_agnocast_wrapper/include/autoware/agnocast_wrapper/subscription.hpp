@@ -41,6 +41,14 @@ public:
   using SharedPtr = std::shared_ptr<Subscription<MessageT>>;
 
   virtual ~Subscription() = default;
+
+  /// Effective QoS. On the Agnocast path this is the requested QoS with any
+  /// qos_overriding_options applied, not the RMW-resolved profile
+  /// rclcpp::SubscriptionBase::get_actual_qos() reports: Agnocast has no DDS entity to query.
+  virtual rclcpp::QoS get_actual_qos() const = 0;
+
+  /// Topic name after remapping.
+  virtual const char * get_topic_name() const = 0;
 };
 
 template <typename Func, typename MessageT>
@@ -112,6 +120,10 @@ public:
       },
       options);
   }
+
+  rclcpp::QoS get_actual_qos() const override { return subscription_->get_actual_qos(); }
+
+  const char * get_topic_name() const override { return subscription_->get_topic_name(); }
 };
 
 /// DDS path of the Agnocast build, selected when use_agnocast() is false. The ENABLE_AGNOCAST=0
@@ -166,6 +178,10 @@ public:
         ros2_options);
     }
   }
+
+  rclcpp::QoS get_actual_qos() const override { return subscription_->get_actual_qos(); }
+
+  const char * get_topic_name() const override { return subscription_->get_topic_name(); }
 };
 
 template <typename MessageT, typename Func>

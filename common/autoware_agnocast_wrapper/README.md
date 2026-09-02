@@ -80,6 +80,8 @@ std::shared_ptr<const PointCloud2> latest_;    // destroyed first -> safe
 
 The DDS path lets the same pointer be held indefinitely, so a node validated only with `ENABLE_AGNOCAST=0` will not show the problem.
 
+The endpoint handles themselves carry the same read-back accessors in both builds: `get_topic_name()` and `get_actual_qos()` on a subscription, `get_topic_name()` and `get_actual_qos()` on a publisher, and `get_service_name()` on a client or a service. `get_actual_qos()` is the one that differs: on the Agnocast path it reports the QoS as requested, not RMW-resolved.
+
 `AUTOWARE_CLIENT_PTR(S)` / `AUTOWARE_SERVICE_PTR(S)` and the `AUTOWARE_CLIENT_*FUTURE*` macros resolve to
 the wrapper's own `Client<S>` / `Service<S>` types in **both** builds, so client and service code needs no
 per-build spelling. See [Key Macros](docs/review_guide.md#3-key-macros) for the full macro list.
