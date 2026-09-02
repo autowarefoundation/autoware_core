@@ -25,6 +25,8 @@
 #include <utility>
 
 #ifdef USE_AGNOCAST_ENABLED
+#include "autoware/agnocast_wrapper/message_ptr.hpp"
+
 #include <agnocast/agnocast.hpp>
 #endif
 
