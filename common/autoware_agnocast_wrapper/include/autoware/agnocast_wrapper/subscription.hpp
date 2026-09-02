@@ -43,21 +43,20 @@ public:
   virtual ~Subscription() = default;
 };
 
-// Probed in this order, with the const-reference form last (see the dispatch below), so a callable
-// matching several shapes -- a generic lambda, for instance -- resolves to message_ptr.
 template <typename Func, typename MessageT>
 inline constexpr bool is_message_ptr_subscription_callback_v =
   std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
   std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
 
-// Lets interfaces that fix their callback signature -- autoware_component_interface_utils binds
-// member functions taking Message::ConstSharedPtr -- be used on the wrapper Node.
+// For a callback whose parameter type is fixed outside the caller's control, so it cannot be
+// spelled with AUTOWARE_MESSAGE_CONST_SHARED_PTR. A parameter that merely accepts the pointer, such
+// as std::weak_ptr, is rejected because rclcpp rejects it too: it would compile only at
+// ENABLE_AGNOCAST=1.
 template <typename Func, typename MessageT>
 inline constexpr bool is_std_shared_ptr_subscription_callback_v =
   !is_message_ptr_subscription_callback_v<Func, MessageT> &&
   std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>> &&
-  // The probes below reject parameters that merely accept the pointer, such as std::weak_ptr:
-  // rclcpp rejects those shapes, so taking them here would compile only at ENABLE_AGNOCAST=1.
+  !std::is_invocable_v<std::decay_t<Func>, const MessageT &> &&
   !std::is_invocable_v<std::decay_t<Func>, std::weak_ptr<const MessageT>> &&
   !std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const void>>;
 
