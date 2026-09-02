@@ -30,7 +30,9 @@ bool use_agnocast();
 /// agnocast one for an AgnocastOnly executable, the rclcpp one for every other.
 ///
 /// @param agnocast_only True if and only if this executable spins one of agnocast's AgnocastOnly*
-///   executors. autoware_agnocast_wrapper_register_node() fills it in for the mains it generates.
+///   executors. It selects the agnocast context only when ENABLE_AGNOCAST is 1, so such an
+///   executable needs an rclcpp executor to fall back to otherwise;
+///   autoware_agnocast_wrapper_register_node() fills the flag in and generates that fallback.
 /// @return The arguments left once the ROS ones are removed, to hand to
 ///   rclcpp::NodeOptions::arguments(). Empty when the agnocast context is the one brought up, which
 ///   parses the command line itself and carries no arguments over.

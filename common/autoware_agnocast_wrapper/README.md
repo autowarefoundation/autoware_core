@@ -155,7 +155,9 @@ and only if the main spins one of agnocast's `AgnocastOnly*` executors:
 | A non-AgnocastOnly Agnocast executor (`SingleThreadedAgnocastExecutor`, …) | omit it         |
 | An `AgnocastOnly*` executor                                                | `true`          |
 
-`autoware_agnocast_wrapper_register_node()` fills the flag in for the mains it generates; a main that
+`true` selects the agnocast context only when `ENABLE_AGNOCAST` is 1, so a main that passes it needs
+an rclcpp executor to fall back to when Agnocast is off.
+`autoware_agnocast_wrapper_register_node()` fills the flag in and generates that fallback; a main that
 has to serve both modes belongs to that macro rather than being hand-written.
 
 At `ENABLE_AGNOCAST=1` a node deriving from `agnocast_wrapper::Node` needs the agnocast context even
