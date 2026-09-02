@@ -62,6 +62,8 @@ std::vector<std::string> init(int argc, char const * const * argv, const bool ag
   g_shutdown_done.store(false);
   if (g_agnocast_only_context.load()) {
     agnocast::init(argc, argv);
+    // TODO(Koichi98): return the non-ROS arguments here. agnocast::init() parses the command line
+    // into Context::get_parsed_arguments(), so rcl_arguments_get_unparsed() can recover them.
     return {};
   }
   return rclcpp::init_and_remove_ros_arguments(argc, argv);
