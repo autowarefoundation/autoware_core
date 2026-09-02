@@ -149,7 +149,7 @@ Once identified, proceed to the corresponding review procedure below.
 
 - [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc.
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -304,7 +304,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -529,7 +529,7 @@ class MyNode : public rclcpp::Node  // Remains rclcpp::Node
     pub_ = AUTOWARE_CREATE_PUBLISHER3(PointCloud2, "output", qos, options);
   }
 
-  void callback(AUTOWARE_MESSAGE_UNIQUE_PTR(const PointCloud2) && msg) {
+  void callback(AUTOWARE_MESSAGE_UNIQUE_PTR(PointCloud2) && msg) {
     auto output = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_);
     // ... processing ...
     pub_->publish(std::move(output));
@@ -565,7 +565,7 @@ public:
     pub_ = create_publisher<std_msgs::msg::String>("output", 10);
     sub_ = create_subscription<std_msgs::msg::String>(
       "input", 10,
-      [this](AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) && msg) { /* ... */ });
+      [this](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(std_msgs::msg::String) & msg) { /* ... */ });
   }
 
 private:
