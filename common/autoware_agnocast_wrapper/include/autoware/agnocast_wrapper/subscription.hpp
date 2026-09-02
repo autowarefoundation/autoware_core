@@ -43,22 +43,46 @@ public:
   virtual ~Subscription() = default;
 };
 
+namespace detail
+{
+// The dispatch lambdas below are not mutable, so a callback is invoked const-qualified. Classifying
+// on an unqualified callable would accept one the call site cannot then call.
+template <typename Func, typename... Args>
+inline constexpr bool is_const_invocable_v =
+  std::is_invocable_v<const std::decay_t<Func> &, Args...>;
+
+// True when the callback takes the pointer itself rather than something the pointer converts to. A
+// std::weak_ptr or std::shared_ptr<const void> parameter would accept it and then observe a pointer
+// that dies with the dispatch expression, and rclcpp rejects both shapes.
+template <typename Func, typename MessageT>
+inline constexpr bool takes_std_shared_ptr_v =
+  is_const_invocable_v<Func, std::shared_ptr<const MessageT>> &&
+  !is_const_invocable_v<Func, std::weak_ptr<const MessageT>> &&
+  !is_const_invocable_v<Func, std::shared_ptr<const void>>;
+}  // namespace detail
+
 template <typename Func, typename MessageT>
 inline constexpr bool is_message_ptr_subscription_callback_v =
-  std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
-  std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
+  detail::is_const_invocable_v<Func, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&> ||
+  detail::is_const_invocable_v<Func, AUTOWARE_MESSAGE_CONST_SHARED_PTR(MessageT) &&>;
 
 // For a callback whose parameter type is fixed outside the caller's control, so it cannot be
-// spelled with AUTOWARE_MESSAGE_CONST_SHARED_PTR. A parameter that merely accepts the pointer, such
-// as std::weak_ptr, is rejected because rclcpp rejects it too: it would compile only at
-// ENABLE_AGNOCAST=1.
+// spelled with AUTOWARE_MESSAGE_CONST_SHARED_PTR.
 template <typename Func, typename MessageT>
 inline constexpr bool is_std_shared_ptr_subscription_callback_v =
+  detail::takes_std_shared_ptr_v<Func, MessageT> &&
   !is_message_ptr_subscription_callback_v<Func, MessageT> &&
-  std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const MessageT>> &&
-  !std::is_invocable_v<std::decay_t<Func>, const MessageT &> &&
-  !std::is_invocable_v<std::decay_t<Func>, std::weak_ptr<const MessageT>> &&
-  !std::is_invocable_v<std::decay_t<Func>, std::shared_ptr<const void>>;
+  !detail::is_const_invocable_v<Func, const MessageT &>;
+
+// How many of the accepted shapes the callback fits. rclcpp derives a subscription's callback
+// signature from &FunctionT::operator(), which cannot be resolved for a callable that fits several
+// -- a generic lambda, an overloaded functor -- so such a callback cannot form a subscription at
+// ENABLE_AGNOCAST=0 at all. Requiring exactly one keeps the accepted set the same in both builds.
+template <typename Func, typename MessageT>
+inline constexpr int subscription_callback_shapes_v =
+  static_cast<int>(is_message_ptr_subscription_callback_v<Func, MessageT>) +
+  static_cast<int>(detail::takes_std_shared_ptr_v<Func, MessageT>) +
+  static_cast<int>(detail::is_const_invocable_v<Func, const MessageT &>);
 
 template <typename MessageT>
 class AgnocastSubscription : public Subscription<MessageT>
@@ -76,15 +100,13 @@ public:
     // risks corrupting data read by other subscribers. Currently kept for compatibility with
     // CudaPointcloudPreprocessorNode which uses UNIQUE_PTR callbacks.
     static_assert(
-      is_message_ptr_subscription_callback_v<Func, MessageT> ||
-        is_std_shared_ptr_subscription_callback_v<Func, MessageT> ||
-        std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
-      "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, with "
-      "std::shared_ptr<const MessageT>, or with a const reference to the message type");
+      subscription_callback_shapes_v<Func, MessageT> == 1,
+      "callback should take exactly one of AUTOWARE_MESSAGE_UNIQUE_PTR, "
+      "AUTOWARE_MESSAGE_CONST_SHARED_PTR, std::shared_ptr<const MessageT>, or a const reference to "
+      "the message type");
 
     constexpr auto ownership =
-      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
+      detail::is_const_invocable_v<Func, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
         : OwnershipType::Shared;
 
@@ -99,8 +121,8 @@ public:
           // reference is valid for the duration of the callback and no copy is made, but
           // it must not be stored or used after the callback returns. Callbacks that need
           // to extend the message lifetime should take one of the owning forms.
-          // as_const prevents generic callbacks from mutating the shared-memory entry,
-          // which other processes may be reading concurrently.
+          // as_const prevents the callback from mutating the shared-memory entry, which other
+          // processes may be reading concurrently.
           callback(std::as_const(*msg));
         } else if constexpr (ownership == OwnershipType::Unique) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
@@ -128,15 +150,13 @@ public:
     const agnocast::SubscriptionOptions & options)
   {
     static_assert(
-      is_message_ptr_subscription_callback_v<Func, MessageT> ||
-        is_std_shared_ptr_subscription_callback_v<Func, MessageT> ||
-        std::is_invocable_v<std::decay_t<Func>, const MessageT &>,
-      "callback should be invocable with an rvalue reference to either "
-      "AUTOWARE_MESSAGE_UNIQUE_PTR or AUTOWARE_MESSAGE_CONST_SHARED_PTR, with "
-      "std::shared_ptr<const MessageT>, or with a const reference to the message type");
+      subscription_callback_shapes_v<Func, MessageT> == 1,
+      "callback should take exactly one of AUTOWARE_MESSAGE_UNIQUE_PTR, "
+      "AUTOWARE_MESSAGE_CONST_SHARED_PTR, std::shared_ptr<const MessageT>, or a const reference to "
+      "the message type");
 
     constexpr auto ownership =
-      std::is_invocable_v<std::decay_t<Func>, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
+      detail::is_const_invocable_v<Func, AUTOWARE_MESSAGE_UNIQUE_PTR(MessageT) &&>
         ? OwnershipType::Unique
         : OwnershipType::Shared;
 
