@@ -23,6 +23,7 @@
 
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 
+#include <chrono>
 #include <memory>
 #include <sstream>
 #include <vector>
@@ -93,7 +94,16 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
     initial_pose.orientation.z = initial_pose_array[5];
     initial_pose.orientation.w = initial_pose_array[6];
 
-    set_user_defined_initial_pose(initial_pose, true);
+    // Deferred to a timer so this runs under the node's own executor: it waits for the trigger
+    // services and blocks on their responses, which cannot make progress from the constructor.
+    // group_srv_ keeps it off the callback group that has to deliver those responses.
+    user_defined_initial_pose_timer_ = create_wall_timer(
+      std::chrono::milliseconds(0),
+      [this, initial_pose]() {
+        user_defined_initial_pose_timer_->cancel();
+        set_user_defined_initial_pose(initial_pose);
+      },
+      group_srv_);
   }
 }
 
@@ -104,30 +114,27 @@ void PoseInitializer::change_state(State::Message::_state_type state)
   pub_state_->publish(state_);
 }
 
-// To execute in the constructor, you need to call ros spin.
-// Conversely, ros spin should not be called elsewhere
-void PoseInitializer::change_node_trigger(bool flag, bool need_spin)
+void PoseInitializer::change_node_trigger(bool flag)
 {
   try {
     if (ekf_localization_trigger_) {
       ekf_localization_trigger_->wait_for_service();
-      ekf_localization_trigger_->send_request(flag, need_spin);
+      ekf_localization_trigger_->send_request(flag);
     }
     if (ndt_localization_trigger_) {
       ndt_localization_trigger_->wait_for_service();
-      ndt_localization_trigger_->send_request(flag, need_spin);
+      ndt_localization_trigger_->send_request(flag);
     }
   } catch (const autoware_adapi_v1_msgs::msg::ResponseStatus & error) {
     throw;
   }
 }
 
-void PoseInitializer::set_user_defined_initial_pose(
-  const geometry_msgs::msg::Pose initial_pose, bool need_spin)
+void PoseInitializer::set_user_defined_initial_pose(const geometry_msgs::msg::Pose initial_pose)
 {
   try {
     change_state(State::Message::INITIALIZING);
-    change_node_trigger(false, need_spin);
+    change_node_trigger(false);
 
     PoseWithCovarianceStamped pose;
     pose.header.frame_id = "map";
@@ -136,7 +143,7 @@ void PoseInitializer::set_user_defined_initial_pose(
     pose.pose.covariance = output_pose_covariance_;
     pub_reset_->publish(pose);
 
-    change_node_trigger(true, need_spin);
+    change_node_trigger(true);
     change_state(State::Message::INITIALIZED);
 
     RCLCPP_INFO(get_logger(), "Set user defined initial pose");
@@ -162,7 +169,7 @@ void PoseInitializer::on_initialize(
 
     if (req->method == Initialize::Service::Request::AUTO) {
       change_state(State::Message::INITIALIZING);
-      change_node_trigger(false, false);
+      change_node_trigger(false);
 
       auto pose =
         req->pose_with_covariance.empty() ? get_gnss_pose() : req->pose_with_covariance.front();
@@ -208,7 +215,7 @@ void PoseInitializer::on_initialize(
       pose.pose.covariance = output_pose_covariance_;
       pub_reset_->publish(pose);
 
-      change_node_trigger(true, false);
+      change_node_trigger(true);
       res->status.success = true;
       change_state(State::Message::INITIALIZED);
 
@@ -225,7 +232,7 @@ void PoseInitializer::on_initialize(
         throw respose_status;
       }
       auto pose = req->pose_with_covariance.front().pose.pose;
-      set_user_defined_initial_pose(pose, false);
+      set_user_defined_initial_pose(pose);
       res->status.success = true;
 
     } else {

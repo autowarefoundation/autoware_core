@@ -48,6 +48,7 @@ private:
 
   autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_srv_;
+  rclcpp::TimerBase::SharedPtr user_defined_initial_pose_timer_;
   rclcpp::Publisher<PoseWithCovarianceStamped>::SharedPtr pub_reset_;
   autoware::component_interface_utils::Publisher<State>::SharedPtr pub_state_;
   autoware::component_interface_utils::Service<Initialize>::SharedPtr srv_initialize_;
@@ -65,9 +66,8 @@ private:
   std::unique_ptr<autoware_utils_diagnostics::DiagnosticsInterface> diagnostics_pose_reliable_;
   double stop_check_duration_;
 
-  void change_node_trigger(bool flag, bool need_spin = false);
-  void set_user_defined_initial_pose(
-    const geometry_msgs::msg::Pose initial_pose, bool need_spin = false);
+  void change_node_trigger(bool flag);
+  void set_user_defined_initial_pose(const geometry_msgs::msg::Pose initial_pose);
   void change_state(State::Message::_state_type state);
   void on_initialize(
     const Initialize::Service::Request::SharedPtr req,
