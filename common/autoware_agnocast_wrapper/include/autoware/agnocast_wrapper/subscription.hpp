@@ -138,24 +138,29 @@ public:
 
     rclcpp::SubscriptionOptions ros2_options;
     ros2_options.callback_group = options.callback_group;
-    subscription_ = node->create_subscription<MessageT>(
-      topic_name, qos,
-      [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
-        if constexpr (is_std_shared_ptr_subscription_callback_v<Func, MessageT>) {
-          callback(std::shared_ptr<const MessageT>(std::move(msg)));
-        } else if constexpr (!is_message_ptr_subscription_callback_v<Func, MessageT>) {
-          // as_const keeps this fallback consistent with the Agnocast path: generic
-          // callbacks must not observe a mutable reference on either path.
-          callback(std::as_const(*msg));
-        } else if constexpr (ownership == OwnershipType::Unique) {
+    if constexpr (ownership == OwnershipType::Unique) {
+      subscription_ = node->create_subscription<MessageT>(
+        topic_name, qos,
+        [callback = std::forward<Func>(callback)](std::unique_ptr<MessageT> msg) {
           callback(message_ptr<MessageT, ownership>(std::move(msg)));
-        } else {
-          callback(
-            message_ptr<const MessageT, ownership>(
-              std::shared_ptr<const MessageT>(std::move(msg))));
-        }
-      },
-      ros2_options);
+        },
+        ros2_options);
+    } else {
+      // Shared-const rather than unique_ptr: nothing below needs ownership, and rclcpp copies the
+      // message to satisfy a unique_ptr callback.
+      subscription_ = node->create_subscription<MessageT>(
+        topic_name, qos,
+        [callback = std::forward<Func>(callback)](std::shared_ptr<const MessageT> msg) {
+          if constexpr (is_std_shared_ptr_subscription_callback_v<Func, MessageT>) {
+            callback(std::move(msg));
+          } else if constexpr (!is_message_ptr_subscription_callback_v<Func, MessageT>) {
+            callback(*msg);
+          } else {
+            callback(message_ptr<const MessageT, ownership>(std::move(msg)));
+          }
+        },
+        ros2_options);
+    }
   }
 };
 
