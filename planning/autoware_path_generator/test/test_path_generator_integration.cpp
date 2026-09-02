@@ -256,12 +256,12 @@ protected:
     route.header.frame_id = "map";
 
     // Set deterministic poses within 100m map
-    // Here start at X = 10.0 to satisfy edge boundary check
-    route.start_pose.position.x = 10.0;
+    // Here start at X = 10.5 to satisfy edge boundary check
+    route.start_pose.position.x = 10.5;
     route.start_pose.position.y = 0.0;
     route.start_pose.orientation.w = 1.0;
 
-    route.goal_pose.position.x = 90.0;
+    route.goal_pose.position.x = 89.5;
     route.goal_pose.position.y = 0.0;
     route.goal_pose.orientation.w = 1.0;
 
@@ -376,7 +376,8 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
 
   auto odom = set_start_odom(route);
 
-  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(500));
 
   ASSERT_NE(latest_turn_, nullptr);
 
@@ -386,7 +387,7 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   EXPECT_GE(latest_turn_->command, 0);
 
   // Simulate advancing odom to trigger section
-  odom.pose.pose.position.x = 80.0;
+  odom.pose.pose.position.x = 50.5;
   retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
 
   ASSERT_NE(latest_turn_, nullptr);
@@ -431,7 +432,8 @@ TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
 
   auto odom = set_start_odom(route);
 
-  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(500));
 
   ASSERT_NE(latest_path_, nullptr)
     << "Failed to output path for path_cut_route (self-intersection truncation failed)";
@@ -449,14 +451,15 @@ TEST_F(PathGeneratorIntegrationHarness, GoalConnectionScenario)
   pub_map_->publish(map_msg);
 
   auto route = create_mock_route();
-  route.goal_pose.position.x = 45.0;
+  route.goal_pose.position.x = 45.5;
   // Offset goal laterally to force smoothing algorithm to engage
   // Common map has lateral range [-1.75, 1.75] so just set goal within it
   route.goal_pose.position.y = 1.0;
 
   auto odom = set_start_odom(route);
 
-  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(500));
 
   ASSERT_NE(latest_path_, nullptr) << "Failed to output path for dense_centerline_route";
   ASSERT_GT(latest_path_->points.size(), 0u);
