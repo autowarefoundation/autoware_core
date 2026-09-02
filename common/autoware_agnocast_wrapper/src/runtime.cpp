@@ -16,6 +16,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
+#include <atomic>
 #include <string>
 #include <vector>
 
@@ -44,7 +45,8 @@ int get_ENABLE_AGNOCAST()
 }
 
 // Set by init() so that shutdown() cannot disagree about which context is up.
-bool g_agnocast_only_context = false;
+std::atomic<bool> g_agnocast_only_context{false};
+std::atomic<bool> g_shutdown_done{false};
 
 }  // namespace
 
@@ -56,8 +58,9 @@ bool use_agnocast()
 
 std::vector<std::string> init(int argc, char const * const * argv, const bool agnocast_only)
 {
-  g_agnocast_only_context = use_agnocast() && agnocast_only;
-  if (g_agnocast_only_context) {
+  g_agnocast_only_context.store(use_agnocast() && agnocast_only);
+  g_shutdown_done.store(false);
+  if (g_agnocast_only_context.load()) {
     agnocast::init(argc, argv);
     return {};
   }
@@ -66,7 +69,10 @@ std::vector<std::string> init(int argc, char const * const * argv, const bool ag
 
 void shutdown()
 {
-  if (g_agnocast_only_context) {
+  if (g_shutdown_done.exchange(true)) {
+    return;
+  }
+  if (g_agnocast_only_context.load()) {
     agnocast::shutdown();
     return;
   }
