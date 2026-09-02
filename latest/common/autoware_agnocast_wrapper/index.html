@@ -8303,6 +8303,12 @@ same source compiles in both builds:</p>
 </tr>
 </tbody>
 </table>
+<p>A subscription callback may also take the plain <code>MessageT::ConstSharedPtr</code>; it needs no macro because it is spelled the same in both builds.</p>
+<p><strong>On the Agnocast path an owning handle must not outlive the subscription that delivered it.</strong> This covers <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code>, a callback taking <code>MessageT::ConstSharedPtr</code>, and the pointer returned by <code>polling::take_data()</code>. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription <strong>before</strong> any member that caches a message:</p>
+<div class="highlight"><pre><span></span><code><span class="n">AUTOWARE_SUBSCRIPTION_PTR</span><span class="p">(</span><span class="n">PointCloud2</span><span class="p">)</span><span class="w"> </span><span class="n">sub_</span><span class="p">;</span><span class="w">   </span><span class="c1">// declared first -&gt; destroyed last</span>
+<span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">PointCloud2</span><span class="o">&gt;</span><span class="w"> </span><span class="n">latest_</span><span class="p">;</span><span class="w">    </span><span class="c1">// destroyed first -&gt; safe</span>
+</code></pre></div>
+<p>The DDS path lets the same pointer be held indefinitely, so a node validated only with <code>ENABLE_AGNOCAST=0</code> will not show the problem.</p>
 <p><code>AUTOWARE_CLIENT_PTR(S)</code> / <code>AUTOWARE_SERVICE_PTR(S)</code> and the <code>AUTOWARE_CLIENT_*FUTURE*</code> macros resolve to
 the wrapper's own <code>Client&lt;S&gt;</code> / <code>Service&lt;S&gt;</code> types in <strong>both</strong> builds, so client and service code needs no
 per-build spelling. See <a href="docs/review_guide/#3-key-macros">Key Macros</a> for the full macro list.</p>
@@ -8644,6 +8650,12 @@ both contexts.</p>
 <span class="p">}</span>
 </code></pre></div>
 <p>Zero-copy is preserved on the Agnocast path: the subscription dereferences the received pointer before invoking the callback, so the reference points directly into shared memory. The referenced entry is kept alive only while the callback runs: the reference is valid for the duration of the callback and must not be stored or used after the callback returns. Use <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> instead when the callback needs to keep the message alive beyond the callback without a copy.</p>
+<p>A callback may also take the plain rclcpp <code>MessageT::ConstSharedPtr</code>:</p>
+<div class="highlight"><pre><span></span><code><span class="kt">void</span><span class="w"> </span><span class="nf">onPointCloud</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">PointCloud2</span><span class="o">::</span><span class="n">ConstSharedPtr</span><span class="w"> </span><span class="n">input_msg</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="p">...</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>The payload is not copied here either, and the pointer may be kept alive beyond the callback, at the same cost as <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> — one heap allocation per message, and copies of the pointer are free.</p>
 <p>To use the macros provided by this package in your own package, include the following lines in your <code>CMakeLists.txt</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_agnocast_wrapper</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
 <span class="nb">ament_target_dependencies</span><span class="p">(</span><span class="s">target</span><span class="w"> </span><span class="s">autoware_agnocast_wrapper</span><span class="p">)</span>
@@ -8857,7 +8869,7 @@ both contexts.</p>
 </ul>
 </li>
 <li><code>polling_policy::All</code> is rejected at compile time (<code>take_data()</code> returns a single message, not a vector).</li>
-<li>The returned <code>std::shared_ptr</code> has the same lifetime semantics in both modes.</li>
+<li>The returned <code>std::shared_ptr</code> may be held across cycles, but in agnocast mode it must not outlive the polling subscriber (see <a href="#type-spellings">Type spellings</a>).</li>
 </ul>
 <h3 id="usage-example_3">Usage example<a class="headerlink" href="#usage-example_3" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/agnocast_wrapper/polling_subscriber.hpp&gt;</span>
