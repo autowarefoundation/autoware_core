@@ -32,7 +32,8 @@ bool use_agnocast();
 /// @param agnocast_only True if and only if this executable spins one of agnocast's AgnocastOnly*
 ///   executors. autoware_agnocast_wrapper_register_node() fills it in for the mains it generates.
 /// @return The arguments left once the ROS ones are removed, to hand to
-///   rclcpp::NodeOptions::arguments(). May be empty.
+///   rclcpp::NodeOptions::arguments(). Empty when the agnocast context is the one brought up, which
+///   parses the command line itself and carries no arguments over.
 std::vector<std::string> init(int argc, char const * const * argv, bool agnocast_only = false);
 
 /// @brief Mode-agnostic replacement for rclcpp::shutdown(). Tears down whichever context init()
