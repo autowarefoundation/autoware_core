@@ -545,4 +545,40 @@ TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
   EXPECT_GT(diag.mahalanobis_distance, 0.0);
 }
 
+// ---------------------------------------------------------------------------
+// Per-tick diagnostics initialization
+// ---------------------------------------------------------------------------
+TEST(TestEKFLocalizer, EmptyMeasurementQueueDoesNotReportGateFailure)
+{
+  const auto params = make_params();
+  auto ekf_localizer = make_ekf_localizer(params);
+  ekf_localizer->activate(true);
+
+  const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t0), identity_transform());
+
+  // Tick with nothing queued. This is the ordinary case whenever the measurement rate is
+  // lower than the predict rate, and during warm-up. No measurement is examined, so neither
+  // gate has run and neither may be reported as failed.
+  const rclcpp::Time t1(100, 20000000, RCL_ROS_TIME);  // t0 + one 50 Hz step
+  const auto result = ekf_localizer->update_step(t1);
+
+  EXPECT_TRUE(result.pose_diag_info.is_passed_delay_gate);
+  EXPECT_TRUE(result.pose_diag_info.is_passed_mahalanobis_gate);
+  EXPECT_TRUE(result.twist_diag_info.is_passed_delay_gate);
+  EXPECT_TRUE(result.twist_diag_info.is_passed_mahalanobis_gate);
+
+  // The value fields are stringified into /diagnostics, so they must stay finite.
+  EXPECT_TRUE(std::isfinite(result.pose_diag_info.delay_time));
+  EXPECT_TRUE(std::isfinite(result.pose_diag_info.delay_time_threshold));
+  EXPECT_TRUE(std::isfinite(result.pose_diag_info.mahalanobis_distance));
+  EXPECT_TRUE(std::isfinite(result.twist_diag_info.delay_time));
+  EXPECT_TRUE(std::isfinite(result.twist_diag_info.delay_time_threshold));
+  EXPECT_TRUE(std::isfinite(result.twist_diag_info.mahalanobis_distance));
+
+  // "No measurement arrived" is still observable, through a different diagnostic.
+  EXPECT_EQ(result.pose_diag_info.no_update_count, 1U);
+  EXPECT_EQ(result.twist_diag_info.no_update_count, 1U);
+}
+
 }  // namespace autoware::ekf_localizer
