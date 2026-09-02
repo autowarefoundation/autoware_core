@@ -194,8 +194,7 @@ int main(int argc, char * argv[])
   }
 
   // === Cleanup ===
-  // Ordered: agnocast's teardown finalizes rcl logging and uninstalls the signal handler, which
-  // the node's own destructor still uses (a clock executor thread under use_sim_time).
+  // Destroy the node before the context, as rclcpp_components' own node_main.cpp.in does.
   node_instance = rclcpp_components::NodeInstanceWrapper(nullptr, nullptr);
 
   autoware::agnocast_wrapper::shutdown();
