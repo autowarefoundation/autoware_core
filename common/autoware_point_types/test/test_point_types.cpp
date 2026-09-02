@@ -14,9 +14,12 @@
 
 #include "autoware/point_types/types.hpp"
 
+#include <point_cloud_msg_wrapper/point_cloud_msg_wrapper.hpp>
+
 #include <gtest/gtest.h>
 
 #include <cmath>
+#include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <stdexcept>
@@ -29,6 +32,19 @@ TEST(PointEquality, PointXYZI)
   PointXYZI pt1{0, 1, 2, 3};
   EXPECT_EQ(pt0, pt1);
   EXPECT_TRUE(pt0 == pt1);
+}
+
+TEST(PointEquality, PointXYZIRCT)
+{
+  using autoware::point_types::PointXYZIRCT;
+
+  PointXYZIRCT pt0{0, 1, 2, 3, 4, 5, 6};
+  PointXYZIRCT pt1{0, 1, 2, 3, 4, 5, 6};
+  EXPECT_EQ(pt0, pt1);
+  EXPECT_TRUE(pt0 == pt1);
+
+  pt1.time_stamp = 7;
+  EXPECT_FALSE(pt0 == pt1);
 }
 
 TEST(PointEquality, PointXYZIRADRT)
@@ -175,4 +191,44 @@ TEST(PointEquality, FloatEq)
 
   // expect same value if epsilon is larger than difference
   EXPECT_TRUE(autoware::point_types::float_eq<float>(2, 2 + 10e-6, 10e-5));
+}
+
+TEST(PointLayout, PointXYZIRCT)
+{
+  using autoware::point_types::PointXYZIRC;
+  using autoware::point_types::PointXYZIRCT;
+
+  // PointXYZIRCT is wire-compatible with PointXYZIRC in its first six fields, so that consumers
+  // reading only those fields keep working. Pinning the layout here makes an accidental
+  // reordering or padding change a test failure rather than a silent misread.
+  EXPECT_EQ(sizeof(PointXYZIRCT), 20U);
+  EXPECT_EQ(offsetof(PointXYZIRCT, x), offsetof(PointXYZIRC, x));
+  EXPECT_EQ(offsetof(PointXYZIRCT, y), offsetof(PointXYZIRC, y));
+  EXPECT_EQ(offsetof(PointXYZIRCT, z), offsetof(PointXYZIRC, z));
+  EXPECT_EQ(offsetof(PointXYZIRCT, intensity), offsetof(PointXYZIRC, intensity));
+  EXPECT_EQ(offsetof(PointXYZIRCT, return_type), offsetof(PointXYZIRC, return_type));
+  EXPECT_EQ(offsetof(PointXYZIRCT, channel), offsetof(PointXYZIRC, channel));
+  EXPECT_EQ(offsetof(PointXYZIRCT, time_stamp), sizeof(PointXYZIRC));
+}
+
+TEST(PointCloudModifier, PointXYZIRCT)
+{
+  using autoware::point_types::PointXYZIRCT;
+  using autoware::point_types::PointXYZIRCTGenerator;
+  using point_cloud_msg_wrapper::PointCloud2Modifier;
+  using point_cloud_msg_wrapper::PointCloud2View;
+
+  sensor_msgs::msg::PointCloud2 msg;
+  PointCloud2Modifier<PointXYZIRCT, PointXYZIRCTGenerator> modifier{msg, "base_link"};
+
+  const PointXYZIRCT point{1.0F, 2.0F, 3.0F, 4U, 5U, 6U, 7U};
+  modifier.push_back(point);
+
+  ASSERT_EQ(msg.fields.size(), 7U);
+  EXPECT_EQ(msg.fields.back().name, "time_stamp");
+  EXPECT_EQ(msg.point_step, sizeof(PointXYZIRCT));
+
+  PointCloud2View<PointXYZIRCT, PointXYZIRCTGenerator> view{msg};
+  ASSERT_EQ(view.size(), 1U);
+  EXPECT_EQ(view[0], point);
 }
