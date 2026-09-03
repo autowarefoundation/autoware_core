@@ -485,6 +485,7 @@ Review points:
 - [ ] The receiving variable is `std::shared_ptr<const MessageT>`, not a `message_ptr` or `AUTOWARE_MESSAGE_CONST_SHARED_PTR`.
 - [ ] The **policy tag** is preserved from the original code. `polling_policy::Latest` (the default) re-delivers the cached message every call; `polling_policy::Newest` returns `nullptr` until a new message arrives.
 - [ ] `polling_policy::All` is rejected at compile time — `take_data()` returns a single message, not a vector.
+- [ ] `take_data()` is called from a single thread, or from callbacks in one mutually exclusive callback group — it is not synchronized, the same as `autoware_utils_rclcpp`.
 
 &nbsp;
 
