@@ -15,7 +15,7 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
-  <depend condition="$ENABLE_AGNOCAST == 1">agnocastlib</depend>
+  <depend condition="$ENABLE_AGNOCAST == 1" version_gte="2.4.0">agnocastlib</depend>
   <depend>autoware_utils_rclcpp</depend>
   <depend>class_loader</depend>
   <depend>diagnostic_updater</depend>
