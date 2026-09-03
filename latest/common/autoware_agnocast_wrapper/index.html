@@ -8240,7 +8240,7 @@ is in Agnocast mode — see the <a href="#build-modes-agnocast-disabled-vs-agnoc
 </tr>
 <tr>
 <td>Context</td>
-<td>free <code>ok()</code> — mode-agnostic replacement for <code>rclcpp::ok()</code> (see <a href="#context-notes">Context notes</a>)</td>
+<td>free <code>init()</code>, <code>shutdown()</code> and <code>ok()</code> — mode-agnostic replacements for the rclcpp equivalents (see <a href="#context-notes">Context notes</a>)</td>
 </tr>
 </tbody>
 </table>
@@ -8388,9 +8388,46 @@ utility via <code>get_node_base_interface()</code> (e.g. <code>executor.add_node
 <div class="highlight"><pre><span></span><code><span class="n">autoware</span><span class="o">::</span><span class="n">agnocast_wrapper</span><span class="o">::</span><span class="n">set_period</span><span class="p">(</span><span class="n">timer_</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">chrono</span><span class="o">::</span><span class="n">milliseconds</span><span class="p">(</span><span class="mi">200</span><span class="p">));</span>
 </code></pre></div>
 <h4 id="context-notes">Context notes<a class="headerlink" href="#context-notes" title="Permanent link">#</a></h4>
-<p>Use <code>autoware::agnocast_wrapper::ok()</code> instead of <code>rclcpp::ok()</code>. An AgnocastOnly executable never calls
-<code>rclcpp::init()</code>, so <code>rclcpp::ok()</code> reports <code>false</code> there even while the process is healthy; <code>ok()</code> checks
-both contexts.</p>
+<p>An AgnocastOnly executable brings up the agnocast context; every other executable brings up the rclcpp
+one. <code>ok()</code> reports whichever is alive.</p>
+<p>Use <code>init()</code> / <code>shutdown()</code> / <code>ok()</code> from this namespace rather than the <code>rclcpp</code> equivalents. <code>ok()</code>
+matters even if you never call <code>init()</code> yourself: in an AgnocastOnly executable <code>rclcpp::ok()</code> reports
+<code>false</code> while the process is healthy. <code>shutdown()</code> takes no argument — it tears down whatever <code>init()</code>
+brought up.</p>
+<p><code>init()</code>'s <code>agnocast_only</code> flag is a property of the executable, not of the environment. Pass <code>true</code> if
+and only if the main spins one of agnocast's <code>AgnocastOnly*</code> executors:</p>
+<table>
+<thead>
+<tr>
+<th>Your <code>main()</code></th>
+<th><code>agnocast_only</code></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>No Agnocast executor at all (a test main, a tool, an rclcpp-only node)</td>
+<td>omit it</td>
+</tr>
+<tr>
+<td>A non-AgnocastOnly Agnocast executor (<code>SingleThreadedAgnocastExecutor</code>, …)</td>
+<td>omit it</td>
+</tr>
+<tr>
+<td>An <code>AgnocastOnly*</code> executor</td>
+<td><code>true</code></td>
+</tr>
+</tbody>
+</table>
+<p><code>true</code> selects the agnocast context only when <code>ENABLE_AGNOCAST</code> is 1, so a main that passes it needs
+an rclcpp executor to fall back to when Agnocast is off.
+<code>autoware_agnocast_wrapper_register_node()</code> fills the flag in and generates that fallback; a main that
+has to serve both modes belongs to that macro rather than being hand-written.</p>
+<p>At <code>ENABLE_AGNOCAST=1</code> a node deriving from <code>agnocast_wrapper::Node</code> needs the agnocast context even
+when the executable does not bring it up, because it spins agnocast-only executors internally — for the
+<code>use_sim_time</code> clock thread, and for a tf listener with <code>spin_thread</code>. Until
+<a href="https://github.com/autowarefoundation/agnocast/pull/1517">agnocast#1517</a> brings that context up
+lazily, such a node aborts at construction unless the executable is registered with an <code>AgnocastOnly*</code>
+executor.</p>
 <h4 id="publisher-api">Publisher API<a class="headerlink" href="#publisher-api" title="Permanent link">#</a></h4>
 <p>A wrapper publisher exposes three <code>publish()</code> overloads, all supported in both builds:</p>
 <table>
