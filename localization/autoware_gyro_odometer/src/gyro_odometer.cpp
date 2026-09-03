@@ -63,6 +63,7 @@ GyroOdometer::Status GyroOdometer::take_status() const
   Status status;
   status.vehicle_twist_arrived = vehicle_twist_arrived_;
   status.imu_arrived = imu_arrived_;
+  status.is_frame_id_consistent = is_frame_id_consistent_;
   status.latest_vehicle_twist_dt = latest_vehicle_twist_dt_;
   status.latest_imu_dt = latest_imu_dt_;
   status.latest_vehicle_twist_ros_time = latest_vehicle_twist_ros_time_;
@@ -110,6 +111,14 @@ GyroOdometer::concat_gyro_and_odometer(rclcpp::Time reference_time)
   }
   if (gyro_queue_.empty()) {
     // wait for the imu side; the queued vehicle twists are kept for the next attempt
+    return std::nullopt;
+  }
+
+  is_frame_id_consistent_ =
+    vehicle_twist_queue_.front().header.frame_id == gyro_queue_.front().header.frame_id;
+  if (!is_frame_id_consistent_) {
+    vehicle_twist_queue_.clear();
+    gyro_queue_.clear();
     return std::nullopt;
   }
 

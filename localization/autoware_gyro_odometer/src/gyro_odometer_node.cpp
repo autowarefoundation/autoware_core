@@ -153,11 +153,13 @@ void GyroOdometerNode::publish_diagnostics()
   diagnostics_->add_key_value("vehicle_twist_queue_size", status.vehicle_twist_queue_size);
   diagnostics_->add_key_value("imu_queue_size", status.imu_queue_size);
   diagnostics_->add_key_value("is_succeed_transform_imu", is_succeed_transform_imu_);
+  diagnostics_->add_key_value("is_frame_id_consistent", status.is_frame_id_consistent);
 
   DiagnosticsState state;
   state.vehicle_twist_arrived = status.vehicle_twist_arrived;
   state.imu_arrived = status.imu_arrived;
   state.is_succeed_transform_imu = is_succeed_transform_imu_;
+  state.is_frame_id_consistent = status.is_frame_id_consistent;
   state.latest_vehicle_twist_dt = status.latest_vehicle_twist_dt;
   state.latest_imu_dt = status.latest_imu_dt;
   state.message_timeout_sec = message_timeout_sec_;

@@ -63,6 +63,7 @@ public:
   {
     bool vehicle_twist_arrived{false};
     bool imu_arrived{false};
+    bool is_frame_id_consistent{true};
     double latest_vehicle_twist_dt{0.0};
     double latest_imu_dt{0.0};
     rclcpp::Time latest_vehicle_twist_ros_time;
@@ -94,6 +95,7 @@ private:
   double message_timeout_sec_;
   bool vehicle_twist_arrived_{false};
   bool imu_arrived_{false};
+  bool is_frame_id_consistent_{true};
   rclcpp::Time latest_vehicle_twist_ros_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time latest_imu_ros_time_{0, 0, RCL_ROS_TIME};
   double latest_vehicle_twist_dt_{0.0};

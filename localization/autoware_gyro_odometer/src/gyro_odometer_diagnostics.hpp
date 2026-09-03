@@ -37,6 +37,7 @@ struct DiagnosticsState
   bool vehicle_twist_arrived{false};
   bool imu_arrived{false};
   bool is_succeed_transform_imu{false};
+  bool is_frame_id_consistent{true};
   double latest_vehicle_twist_dt{0.0};
   double latest_imu_dt{0.0};
   double message_timeout_sec{0.0};
