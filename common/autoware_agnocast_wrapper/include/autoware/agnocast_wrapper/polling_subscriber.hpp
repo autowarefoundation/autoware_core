@@ -61,10 +61,7 @@ public:
 
   /// @note Not synchronized, like autoware_utils_rclcpp's polling subscriber: call it from a
   /// single thread, or from callbacks in one mutually exclusive callback group.
-  std::shared_ptr<const MessageT> take_data() { return take_data_impl(); }
-
-protected:
-  virtual std::shared_ptr<const MessageT> take_data_impl() = 0;
+  virtual std::shared_ptr<const MessageT> take_data() = 0;
 };
 
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
@@ -82,7 +79,7 @@ public:
   {
   }
 
-  std::shared_ptr<const MessageT> take_data_impl() override { return subscriber_->take_data(); }
+  std::shared_ptr<const MessageT> take_data() override { return subscriber_->take_data(); }
 };
 
 #ifdef USE_AGNOCAST_ENABLED
@@ -150,10 +147,7 @@ public:
     subscriber_ = std::make_shared<agnocast::TakeSubscription<MessageT>>(node, topic_name, qos);
   }
 
-  std::shared_ptr<const MessageT> take_data_impl() override
-  {
-    return policy_.take_data(*subscriber_);
-  }
+  std::shared_ptr<const MessageT> take_data() override { return policy_.take_data(*subscriber_); }
 };
 
 /// @note The returned subscriber references the node's backend by raw pointer, so it must not
