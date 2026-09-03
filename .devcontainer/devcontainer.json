@@ -3,6 +3,9 @@
   "image": "ghcr.io/autowarefoundation/autoware:core-devel-jazzy",
   "runArgs": ["--net=host", "--privileged"],
   "remoteUser": "ubuntu",
+  "remoteEnv": {
+    "SSH_AUTH_SOCK": "/ssh-agent"
+  },
 
   "mounts": [
     {
@@ -13,7 +16,7 @@
     { "type": "volume", "source": "autoware-core-cache", "target": "/home/ubuntu/.cache" },
     { "type": "volume", "source": "autoware-core-config", "target": "/home/ubuntu/.config" },
     { "type": "volume", "source": "autoware-core-ccache", "target": "/home/ubuntu/.ccache" },
-    { "type": "bind", "source": "${localEnv:HOME}/.ssh", "target": "/home/ubuntu/.ssh" }
+    { "type": "bind", "source": "${localEnv:SSH_AUTH_SOCK}", "target": "/ssh-agent" }
   ],
 
   "features": {
