@@ -83,10 +83,9 @@ struct PointXYZIRC
   }
 };
 
-/// @brief PointXYZIRC extended by a per-point time stamp, in nanoseconds relative to the
-/// containing point cloud's header stamp. Intended for point clouds whose points no longer share
-/// a common sensor origin (e.g. the concatenation of several LiDARs), where the polar fields of
-/// PointXYZIRCAEDT have lost their meaning but the acquisition time has not.
+/// @brief PointXYZIRC extended by a per-point time stamp. Intended for point clouds whose points
+/// no longer share a common sensor origin (e.g. the concatenation of several LiDARs), where the
+/// polar fields of PointXYZIRCAEDT have lost their meaning but the acquisition time has not.
 struct PointXYZIRCT
 {
   float x{0.0F};
@@ -95,6 +94,8 @@ struct PointXYZIRCT
   std::uint8_t intensity{0U};
   std::uint8_t return_type{0U};
   std::uint16_t channel{0U};
+  /// Acquisition time of this point, as a non-negative offset in nanoseconds from the
+  /// containing point cloud's `header.stamp`.
   std::uint32_t time_stamp{0U};
 
   friend bool operator==(const PointXYZIRCT & p1, const PointXYZIRCT & p2) noexcept
@@ -138,6 +139,8 @@ struct PointXYZIRCAEDT
   float azimuth{0.0F};
   float elevation{0.0F};
   float distance{0.0F};
+  /// Acquisition time of this point, as a non-negative offset in nanoseconds from the
+  /// containing point cloud's `header.stamp`.
   std::uint32_t time_stamp{0U};
 
   friend bool operator==(const PointXYZIRCAEDT & p1, const PointXYZIRCAEDT & p2) noexcept
