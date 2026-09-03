@@ -20,11 +20,15 @@
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
+  <depend>autoware_internal_debug_msgs</depend>
   <depend>autoware_point_types</depend>
   <depend>autoware_utils_debug</depend>
   <depend>autoware_utils_system</depend>
   <depend>autoware_utils_tf</depend>
+  <depend>builtin_interfaces</depend>
+  <depend>eigen</depend>
   <depend>geometry_msgs</depend>
+  <depend>rcl_interfaces</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>
@@ -32,6 +36,7 @@
 
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>tf2_ros</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

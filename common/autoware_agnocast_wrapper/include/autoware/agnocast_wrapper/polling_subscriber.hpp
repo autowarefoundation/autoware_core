@@ -25,6 +25,8 @@
 #include <utility>
 
 #ifdef USE_AGNOCAST_ENABLED
+#include "autoware/agnocast_wrapper/message_ptr.hpp"
+
 #include <agnocast/agnocast.hpp>
 #endif
 
@@ -107,15 +109,9 @@ public:
 
   std::shared_ptr<const MessageT> take_data_impl(bool allow_same_message) override
   {
-    agnocast::ipc_shared_ptr<const MessageT> data = subscriber_->take(allow_same_message);
-    if (!data) {
-      return nullptr;
-    }
-    // Zero-copy: alias the shared-memory message into the returned std::shared_ptr. `holder` keeps
-    // the ipc_shared_ptr alive for the returned pointer's lifetime, so lifetime/refcount match the
-    // rclcpp heap path. While any copy is alive it pins one agnocast shared-memory entry.
-    auto holder = std::make_shared<agnocast::ipc_shared_ptr<const MessageT>>(std::move(data));
-    return std::shared_ptr<const MessageT>(holder, holder->get());
+    // Zero-copy: the returned pointer aliases the shared-memory message, so lifetime and
+    // refcount match the rclcpp heap path.
+    return detail::to_std_shared_ptr(subscriber_->take(allow_same_message));
   }
 };
 

@@ -149,7 +149,7 @@ Once identified, proceed to the corresponding review procedure below.
 
 - [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc.
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -304,7 +304,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -390,7 +390,7 @@ autoware_agnocast_wrapper behaves differently depending on the `ENABLE_AGNOCAST`
 
 ## 3. Key Macros
 
-All macros below are defined in [`autoware_agnocast_wrapper.hpp`](https://github.com/autowarefoundation/autoware_core/blob/main/common/autoware_agnocast_wrapper/include/autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp).
+All macros below are defined in [`macros.hpp`](../include/autoware/agnocast_wrapper/macros.hpp).
 
 &nbsp;
 
@@ -840,7 +840,7 @@ ros2 launch autoware_launch ...
 
 - [agnocast::Node and rclcpp::Node Interface Comparison](https://github.com/autowarefoundation/agnocast/blob/main/docs/agnocast_node_interface_comparison.md) - API differences between `agnocast::Node` and `rclcpp::Node`
 
-- [Agnocast Autoware Integration Guide](https://github.com/autowarefoundation/agnocast/blob/main/docs/autoware_integration.md) - Detailed documentation on integrating Agnocast into Autoware
+- [Agnocast Migration Guide](https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/) - Step-by-step guide for migrating ROS 2 nodes to Agnocast
 
 - [Agnocast message_filters Migration Guide](https://autowarefoundation.github.io/agnocast_doc/main/migration-guide/message-filters/) - How to use Agnocast's message_filters
 
