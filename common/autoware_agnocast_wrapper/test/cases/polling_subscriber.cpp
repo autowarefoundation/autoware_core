@@ -43,8 +43,7 @@ using autoware::agnocast_wrapper::Node;
 using std_msgs::msg::String;
 
 constexpr auto discovery_timeout = std::chrono::seconds(10);
-constexpr auto publish_interval = std::chrono::milliseconds(50);
-constexpr auto settle_delay = std::chrono::milliseconds(200);
+constexpr auto poll_interval = std::chrono::milliseconds(10);
 
 /// agnocast exits the process from inside the subscription constructor when LD_PRELOAD lacks the
 /// heaphook (validate_ld_preload() in agnocast_utils.cpp), which would take the whole test binary
@@ -67,32 +66,46 @@ protected:
     }
   }
 
-  /// Republish until the first message lands: a message sent before the subscriber is matched is
-  /// dropped, and the publisher's subscription count is no help because the agnocast backend
-  /// counts only subscribers in other processes.
-  // TODO(Koichi98): wait on get_subscription_count() once agnocast counts same-process subscribers.
-  template <typename PublisherT, typename SubscriberT>
-  static std::shared_ptr<const String> publish_until_delivered(
-    const PublisherT & publisher, const SubscriberT & subscriber, const String & message)
+  /// A message published before the subscriber is matched is dropped, so wait for the publisher
+  /// to see it. Both counts are needed: a same-process subscriber shows up in the intra-process
+  /// count on the agnocast backend and in the other one on the ROS 2 backend.
+  template <typename PublisherT>
+  static bool wait_for_subscriber(const PublisherT & publisher)
   {
     const auto deadline = std::chrono::steady_clock::now() + discovery_timeout;
     while (std::chrono::steady_clock::now() < deadline) {
-      publisher->publish(message);
-      std::this_thread::sleep_for(publish_interval);
+      if (
+        publisher->get_subscription_count() + publisher->get_intra_process_subscription_count() >
+        0) {
+        return true;
+      }
+      std::this_thread::sleep_for(poll_interval);
+    }
+    return false;
+  }
+
+  template <typename SubscriberT>
+  static std::shared_ptr<const String> take_until_delivered(const SubscriberT & subscriber)
+  {
+    const auto deadline = std::chrono::steady_clock::now() + discovery_timeout;
+    while (std::chrono::steady_clock::now() < deadline) {
       if (const auto taken = subscriber->take_data()) {
         return taken;
       }
+      std::this_thread::sleep_for(poll_interval);
     }
     return nullptr;
   }
 
-  /// Republishing can leave one more message in flight, so let it land and take it before
-  /// asserting on what the next take returns.
-  template <typename SubscriberT>
-  static std::shared_ptr<const String> settle(const SubscriberT & subscriber)
+  template <typename PublisherT, typename SubscriberT>
+  static std::shared_ptr<const String> publish_and_take(
+    const PublisherT & publisher, const SubscriberT & subscriber, const String & message)
   {
-    std::this_thread::sleep_for(settle_delay);
-    return subscriber->take_data();
+    if (!wait_for_subscriber(publisher)) {
+      return nullptr;
+    }
+    publisher->publish(message);
+    return take_until_delivered(subscriber);
   }
 };
 
@@ -146,7 +159,7 @@ TEST_F(PollingSubscriberTest, PubSub)
   String pub_msg;
   pub_msg.data = "foo-bar";
 
-  const auto sub_msg = publish_until_delivered(pub, sub, pub_msg);
+  const auto sub_msg = publish_and_take(pub, sub, pub_msg);
   ASSERT_NE(sub_msg, nullptr);
   EXPECT_EQ(sub_msg->data, pub_msg.data);
 }
@@ -162,13 +175,10 @@ TEST_F(PollingSubscriberTest, LatestRedeliversUntilANewerMessageArrives)
 
   String pub_msg;
   pub_msg.data = "test-message";
-  ASSERT_NE(publish_until_delivered(pub, sub, pub_msg), nullptr);
-
-  const auto msg1 = settle(sub);
+  const auto msg1 = publish_and_take(pub, sub, pub_msg);
   ASSERT_NE(msg1, nullptr);
 
-  const auto msg2 = sub->take_data();
-  EXPECT_EQ(msg2, msg1);
+  EXPECT_EQ(sub->take_data(), msg1);
 }
 
 TEST_F(PollingSubscriberTest, NewestReturnsNullWithoutNewMessage)
@@ -182,9 +192,7 @@ TEST_F(PollingSubscriberTest, NewestReturnsNullWithoutNewMessage)
 
   String pub_msg;
   pub_msg.data = "test-message";
-  ASSERT_NE(publish_until_delivered(pub, sub, pub_msg), nullptr);
-
-  settle(sub);
+  ASSERT_NE(publish_and_take(pub, sub, pub_msg), nullptr);
 
   EXPECT_EQ(sub->take_data(), nullptr);
 }
