@@ -84,7 +84,7 @@ The DDS path lets the same pointer be held indefinitely, so a node validated onl
 the wrapper's own `Client<S>` / `Service<S>` types in **both** builds, so client and service code needs no
 per-build spelling. See [Key Macros](docs/review_guide.md#3-key-macros) for the full macro list.
 
-Publisher, subscription, client and service handles carry the same read-back accessors in both builds: `get_topic_name()` and `get_actual_qos()` on a publisher or a subscription, `get_service_name()` on a client or a service. The polling subscriber has neither. `get_actual_qos()` is the one whose meaning differs: on the Agnocast path it reports the QoS as requested, not RMW-resolved.
+Publisher, subscription, client and service handles carry the same read-back accessors in both builds: `get_topic_name()` and `get_actual_qos()` on a publisher or a subscription, `get_service_name()` on a client or a service. The polling subscriber carries `get_topic_name()` but not `get_actual_qos()`. `get_actual_qos()` is the one whose meaning differs: on the Agnocast path it reports the QoS as requested, not RMW-resolved.
 
 #### Build modes: agnocast-disabled vs agnocast-enabled
 
