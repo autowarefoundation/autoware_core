@@ -64,8 +64,13 @@ GyroOdometer::Status GyroOdometer::take_status() const
   status.vehicle_twist_arrived = vehicle_twist_arrived_;
   status.imu_arrived = imu_arrived_;
   status.is_frame_id_consistent = is_frame_id_consistent_;
-  status.latest_vehicle_twist_dt = latest_vehicle_twist_dt_;
-  status.latest_imu_dt = latest_imu_dt_;
+  if (vehicle_twist_arrived_ && imu_arrived_) {
+    const rclcpp::Time reference_time =
+      std::max(latest_vehicle_twist_ros_time_, latest_imu_ros_time_);
+    status.latest_vehicle_twist_dt =
+      std::abs((reference_time - latest_vehicle_twist_ros_time_).seconds());
+    status.latest_imu_dt = std::abs((reference_time - latest_imu_ros_time_).seconds());
+  }
   status.latest_vehicle_twist_ros_time = latest_vehicle_twist_ros_time_;
   status.latest_imu_ros_time = latest_imu_ros_time_;
   status.vehicle_twist_queue_size = latest_vehicle_twist_queue_size_;
@@ -89,14 +94,15 @@ GyroOdometer::concat_gyro_and_odometer(rclcpp::Time reference_time)
   }
 
   // check timeout
-  latest_vehicle_twist_dt_ = std::abs((reference_time - latest_vehicle_twist_ros_time_).seconds());
-  latest_imu_dt_ = std::abs((reference_time - latest_imu_ros_time_).seconds());
-  if (latest_vehicle_twist_dt_ > message_timeout_sec_) {
+  const double latest_vehicle_twist_dt =
+    std::abs((reference_time - latest_vehicle_twist_ros_time_).seconds());
+  const double latest_imu_dt = std::abs((reference_time - latest_imu_ros_time_).seconds());
+  if (latest_vehicle_twist_dt > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return std::nullopt;
   }
-  if (latest_imu_dt_ > message_timeout_sec_) {
+  if (latest_imu_dt > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return std::nullopt;

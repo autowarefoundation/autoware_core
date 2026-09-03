@@ -98,8 +98,6 @@ private:
   bool is_frame_id_consistent_{true};
   rclcpp::Time latest_vehicle_twist_ros_time_{0, 0, RCL_ROS_TIME};
   rclcpp::Time latest_imu_ros_time_{0, 0, RCL_ROS_TIME};
-  double latest_vehicle_twist_dt_{0.0};
-  double latest_imu_dt_{0.0};
   int32_t latest_vehicle_twist_queue_size_{0};
   int32_t latest_imu_queue_size_{0};
   std::deque<geometry_msgs::msg::TwistWithCovarianceStamped> vehicle_twist_queue_;
