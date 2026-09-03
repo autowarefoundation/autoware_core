@@ -88,8 +88,19 @@ public:
 #ifdef USE_AGNOCAST_ENABLED
 
 /// @brief Agnocast-side counterpart of an autoware_utils_rclcpp polling policy.
+/// Defined rather than left declared so that a policy without a counterpart is rejected here
+/// instead of by an incomplete-type error on AgnocastPollingSubscriber::policy_.
 template <typename MessageT, template <typename> class PollingPolicy>
-class AgnocastPollingPolicy;
+class AgnocastPollingPolicy
+{
+  static_assert(
+    polling_policy_supported_v<MessageT, PollingPolicy>,
+    "This polling policy has no agnocast counterpart. Use polling_policy::Latest or "
+    "polling_policy::Newest.");
+
+public:
+  std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> &) { return {}; }
+};
 
 /// @brief Counterpart of autoware_utils_rclcpp::polling_policy::Latest<MessageT>::take_data().
 /// Where the ROS 2 policy holds a heap copy, this holds the shared-memory message itself, so one
