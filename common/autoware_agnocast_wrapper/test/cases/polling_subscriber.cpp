@@ -97,6 +97,22 @@ protected:
     return nullptr;
   }
 
+  /// Latest keeps handing back the cached message, so poll for the pointer to change rather than
+  /// for a non-null result.
+  template <typename SubscriberT>
+  static std::shared_ptr<const String> take_until_replaced(
+    const SubscriberT & subscriber, const std::shared_ptr<const String> & previous)
+  {
+    const auto deadline = std::chrono::steady_clock::now() + discovery_timeout;
+    while (std::chrono::steady_clock::now() < deadline) {
+      if (const auto taken = subscriber->take_data(); taken != previous) {
+        return taken;
+      }
+      std::this_thread::sleep_for(poll_interval);
+    }
+    return nullptr;
+  }
+
   template <typename PublisherT, typename SubscriberT>
   static std::shared_ptr<const String> publish_and_take(
     const PublisherT & publisher, const SubscriberT & subscriber, const String & message)
@@ -179,6 +195,16 @@ TEST_F(PollingSubscriberTest, LatestRedeliversUntilANewerMessageArrives)
   ASSERT_NE(msg1, nullptr);
 
   EXPECT_EQ(sub->take_data(), msg1);
+
+  String newer_msg;
+  newer_msg.data = "newer-message";
+  pub->publish(newer_msg);
+
+  const auto msg2 = take_until_replaced(sub, msg1);
+  ASSERT_NE(msg2, nullptr);
+  EXPECT_EQ(msg2->data, newer_msg.data);
+
+  EXPECT_EQ(sub->take_data(), msg2);
 }
 
 TEST_F(PollingSubscriberTest, NewestReturnsNullWithoutNewMessage)
