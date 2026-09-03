@@ -8312,6 +8312,7 @@ same source compiles in both builds:</p>
 <p><code>AUTOWARE_CLIENT_PTR(S)</code> / <code>AUTOWARE_SERVICE_PTR(S)</code> and the <code>AUTOWARE_CLIENT_*FUTURE*</code> macros resolve to
 the wrapper's own <code>Client&lt;S&gt;</code> / <code>Service&lt;S&gt;</code> types in <strong>both</strong> builds, so client and service code needs no
 per-build spelling. See <a href="docs/review_guide/#3-key-macros">Key Macros</a> for the full macro list.</p>
+<p>Publisher, subscription, client and service handles carry the same read-back accessors in both builds: <code>get_topic_name()</code> and <code>get_actual_qos()</code> on a publisher or a subscription, <code>get_service_name()</code> on a client or a service. The polling subscriber has neither. <code>get_actual_qos()</code> is the one whose meaning differs: on the Agnocast path it reports the QoS as requested, not RMW-resolved.</p>
 <h4 id="build-modes-agnocast-disabled-vs-agnocast-enabled">Build modes: agnocast-disabled vs agnocast-enabled<a class="headerlink" href="#build-modes-agnocast-disabled-vs-agnocast-enabled" title="Permanent link">#</a></h4>
 <p>Which of the two <code>Node</code> <strong>class definitions</strong> is compiled is a <strong>build-time</strong> choice, selected by the
 <code>USE_AGNOCAST_ENABLED</code> preprocessor macro. The API surface above is identical in both, so this choice
