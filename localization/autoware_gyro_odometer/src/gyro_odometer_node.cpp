@@ -23,6 +23,8 @@
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <memory>
@@ -30,6 +32,20 @@
 
 namespace autoware::gyro_odometer
 {
+
+std::array<double, 9> transform_covariance(const std::array<double, 9> & cov)
+{
+  using COV_IDX = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
+
+  double max_cov = std::max({cov[COV_IDX::X_X], cov[COV_IDX::Y_Y], cov[COV_IDX::Z_Z]});
+
+  std::array<double, 9> cov_transformed = {};
+  cov_transformed.fill(0.);
+  cov_transformed[COV_IDX::X_X] = max_cov;
+  cov_transformed[COV_IDX::Y_Y] = max_cov;
+  cov_transformed[COV_IDX::Z_Z] = max_cov;
+  return cov_transformed;
+}
 
 std::optional<sensor_msgs::msg::Imu> transform_imu(
   const sensor_msgs::msg::Imu & imu_msg, TransformListener & transform_listener,
