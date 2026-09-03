@@ -154,6 +154,7 @@ public:
 
     rclcpp::SubscriptionOptions ros2_options;
     ros2_options.callback_group = options.callback_group;
+    ros2_options.qos_overriding_options = options.qos_overriding_options;
     if constexpr (ownership == OwnershipType::Unique) {
       subscription_ = node->create_subscription<MessageT>(
         topic_name, qos,
