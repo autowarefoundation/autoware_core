@@ -25,7 +25,6 @@
 #include <cstdint>
 #include <deque>
 #include <optional>
-#include <tuple>
 
 namespace autoware::gyro_odometer
 {
@@ -46,11 +45,14 @@ public:
   explicit GyroOdometer(double message_timeout_sec);
 
   /// \brief The four twist messages a successful fusion produces: raw fused twist, raw fused twist
-  /// with covariance, stop-compensated twist, and stop-compensated twist with covariance,
-  /// respectively.
-  using OutputData = std::tuple<
-    geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped,
-    geometry_msgs::msg::TwistStamped, geometry_msgs::msg::TwistWithCovarianceStamped>;
+  /// with covariance, stop-compensated twist, and stop-compensated twist with covariance.
+  struct OutputData
+  {
+    geometry_msgs::msg::TwistStamped twist_raw;
+    geometry_msgs::msg::TwistWithCovarianceStamped twist_with_covariance_raw;
+    geometry_msgs::msg::TwistStamped twist;
+    geometry_msgs::msg::TwistWithCovarianceStamped twist_with_covariance;
+  };
 
   /// \brief Snapshot of the internal state that the caller reports as diagnostics.
   ///
