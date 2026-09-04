@@ -27,6 +27,7 @@
 
 #include <cstddef>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -47,6 +48,16 @@ inline rclcpp::SubscriptionOptions to_rclcpp_subscription_options(
   return result;
 }
 
+/// Mixing callback delivery and take() on one subscription is not intended in either backend:
+/// Agnocast splits them by type, and rclcpp's take() would steal the callback's message.
+[[noreturn]] inline void throw_not_pollable(const std::string & topic_name)
+{
+  throw std::runtime_error(
+    "subscription on '" + topic_name +
+    "' was created with a callback, so it cannot be polled: the delivery mode is fixed at "
+    "construction. Create it without a callback to use take().");
+}
+
 template <typename MessageT>
 class Subscription
 {
@@ -62,6 +73,12 @@ public:
 
   /// Topic name after remapping.
   virtual const char * get_topic_name() const = 0;
+
+  /// Polling retrieval, mirroring rclcpp::Subscription::take(). The Agnocast path copies out of
+  /// shared memory to satisfy the caller-owned @p out.
+  /// @return true if a new message was written to @p out.
+  /// @throw std::runtime_error when the subscription was created with a callback.
+  virtual bool take(MessageT & out, rclcpp::MessageInfo & info) = 0;
 };
 
 template <typename Func, typename MessageT>
@@ -84,13 +101,36 @@ inline constexpr bool is_std_shared_ptr_subscription_callback_v =
 template <typename MessageT>
 class AgnocastSubscription : public Subscription<MessageT>
 {
-  typename agnocast::Subscription<MessageT>::SharedPtr subscription_;
+  // Exactly one of these holds the subscription.
+  typename agnocast::Subscription<MessageT>::SharedPtr callback_subscription_;
+  typename agnocast::TakeSubscription<MessageT>::SharedPtr take_subscription_;
+  // As passed to the constructor, for the error message below. Not remap-resolved.
+  std::string topic_name_;
+
+  agnocast::TakeSubscription<MessageT> & polling_handle()
+  {
+    if (!take_subscription_) {
+      throw_not_pollable(topic_name_);
+    }
+    return *take_subscription_;
+  }
+
+  /// Both accessors below are on agnocast::SubscriptionBase, so neither cares which delivery
+  /// mode is in use.
+  const agnocast::SubscriptionBase & handle() const
+  {
+    if (callback_subscription_) {
+      return *callback_subscription_;
+    }
+    return *take_subscription_;
+  }
 
 public:
   template <typename NodeT, typename Func>
   explicit AgnocastSubscription(
     NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options)
+  : topic_name_(topic_name)
   {
     // TODO(Koichi98): AUTOWARE_MESSAGE_UNIQUE_PTR should be disallowed for Agnocast subscriptions.
     // Agnocast uses shared memory, so mutable exclusive ownership is semantically incorrect and
@@ -109,7 +149,7 @@ public:
         ? OwnershipType::Unique
         : OwnershipType::Shared;
 
-    subscription_ = agnocast::create_subscription<MessageT>(
+    callback_subscription_ = agnocast::create_subscription<MessageT>(
       node, topic_name, qos,
       [callback = std::forward<Func>(callback)](agnocast::ipc_shared_ptr<MessageT> && msg) {
         if constexpr (is_std_shared_ptr_subscription_callback_v<Func, MessageT>) {
@@ -134,9 +174,30 @@ public:
       options);
   }
 
-  rclcpp::QoS get_actual_qos() const override { return subscription_->get_actual_qos(); }
+  /// Callback-less construction, for polling via take().
+  template <typename NodeT>
+  explicit AgnocastSubscription(
+    NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos,
+    const agnocast::SubscriptionOptions & options)
+  : take_subscription_(
+      std::make_shared<agnocast::TakeSubscription<MessageT>>(node, topic_name, qos, options)),
+    topic_name_(topic_name)
+  {
+  }
 
-  const char * get_topic_name() const override { return subscription_->get_topic_name(); }
+  bool take(MessageT & out, rclcpp::MessageInfo & /*info*/) override
+  {
+    agnocast::ipc_shared_ptr<const MessageT> data = polling_handle().take(false);
+    if (!data) {
+      return false;
+    }
+    out = *data;
+    return true;
+  }
+
+  rclcpp::QoS get_actual_qos() const override { return handle().get_actual_qos(); }
+
+  const char * get_topic_name() const override { return handle().get_topic_name(); }
 };
 
 /// DDS path of the Agnocast build, selected when use_agnocast() is false. The ENABLE_AGNOCAST=0
@@ -145,12 +206,24 @@ template <typename MessageT>
 class ROS2Subscription : public Subscription<MessageT>
 {
   typename rclcpp::Subscription<MessageT>::SharedPtr subscription_;
+  bool pollable_ = false;
+  // As passed to the constructor, for the error message. Not remap-resolved.
+  std::string topic_name_;
+
+  rclcpp::Subscription<MessageT> & polling_handle()
+  {
+    if (!pollable_) {
+      throw_not_pollable(topic_name_);
+    }
+    return *subscription_;
+  }
 
 public:
   template <typename Func>
   explicit ROS2Subscription(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options)
+  : topic_name_(topic_name)
   {
     static_assert(
       is_message_ptr_subscription_callback_v<Func, MessageT> ||
@@ -189,6 +262,26 @@ public:
         },
         ros2_options);
     }
+  }
+
+  /// Callback-less construction, for polling via take().
+  explicit ROS2Subscription(
+    rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos,
+    const agnocast::SubscriptionOptions & options)
+  : pollable_(true), topic_name_(topic_name)
+  {
+    rclcpp::SubscriptionOptions ros2_options = to_rclcpp_subscription_options(options);
+    if (!ros2_options.callback_group) {
+      ros2_options.callback_group =
+        node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+    }
+    subscription_ = node->create_subscription<MessageT>(
+      topic_name, qos, [](std::unique_ptr<MessageT>) {}, ros2_options);
+  }
+
+  bool take(MessageT & out, rclcpp::MessageInfo & info) override
+  {
+    return polling_handle().take(out, info);
   }
 
   rclcpp::QoS get_actual_qos() const override { return subscription_->get_actual_qos(); }
