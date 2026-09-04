@@ -54,6 +54,10 @@ Polling subscribers are **not** a `Node` member. Use the free function
 `polling::create_polling_subscriber<MessageT>(node, topic, qos)` — see
 [Polling Subscriber](#polling-subscriber-polling-namespace).
 
+Reading **another node's** parameters is not a `Node` member either. Use
+`autoware::agnocast_wrapper::AsyncParametersClient` — see
+[Async Parameters Client](#async-parameters-client).
+
 #### Type spellings
 
 The member _names_ and argument lists above are the same in both builds, but the handle, options and
@@ -551,6 +555,54 @@ private:
   autoware::agnocast_wrapper::polling::PollingSubscriber<nav_msgs::msg::Odometry>::SharedPtr sub_;
 };
 ```
+
+## Async Parameters Client
+
+`autoware::agnocast_wrapper::AsyncParametersClient` reads another node's parameters and transparently switches between `rclcpp::AsyncParametersClient` and `agnocast::AsyncParametersClient` at runtime, depending on whether the given node is running in Agnocast mode.
+
+Unlike the other wrappers here, this one is not a convenience: `rclcpp::AsyncParametersClient` **cannot** be built on an Agnocast node at all. It reaches the remote node's parameter services through `NodeServicesInterface::add_client()`, which Agnocast does not support because its services do not pass through rcl. The constructor therefore takes a Method 2 node (`autoware::agnocast_wrapper::Node`).
+
+The QoS argument is `rclcpp::QoS` in both builds; the wrapper normalizes the Humble vs. Jazzy QoS-argument difference of `rclcpp::AsyncParametersClient`, the same way `create_client()` does.
+
+### Current limitations
+
+- Only the read path is exposed: `get_parameters()` and `wait_for_service()`. Both backends also provide the setter, descriptor and listing calls; extend the wrapper when a caller needs one.
+- `on_parameter_event()` has no Agnocast counterpart and is not exposed.
+- The wrapper is non-copyable and non-movable (the backend is chosen at construction), so hold it by value or in a `unique_ptr`, and do not let it outlive the node it was built on.
+
+### Usage example
+
+```cpp
+#include <autoware/agnocast_wrapper/parameter_client.hpp>
+
+class MyNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit MyNode(const rclcpp::NodeOptions & options)
+  : Node("my_node", options),
+    params_(std::make_unique<autoware::agnocast_wrapper::AsyncParametersClient>(
+      this, "pointcloud_map_loader"))
+  {
+    params_->wait_for_service();
+    params_->get_parameters(
+      {"enable_partial_load"},
+      [this](std::shared_future<std::vector<rclcpp::Parameter>> future) {
+        RCLCPP_INFO(get_logger(), "partial load: %d", future.get().front().as_bool());
+      });
+  }
+
+private:
+  std::unique_ptr<autoware::agnocast_wrapper::AsyncParametersClient> params_;
+};
+```
+
+### Migration guide (from `rclcpp::AsyncParametersClient`)
+
+| Before                                                   | After                                                                             |
+| -------------------------------------------------------- | --------------------------------------------------------------------------------- |
+| `#include <rclcpp/parameter_client.hpp>`                 | `#include <autoware/agnocast_wrapper/parameter_client.hpp>`                       |
+| `rclcpp::AsyncParametersClient`                          | `autoware::agnocast_wrapper::AsyncParametersClient`                               |
+| `rclcpp::AsyncParametersClient::make_shared(node, name)` | `std::make_unique<autoware::agnocast_wrapper::AsyncParametersClient>(node, name)` |
 
 ## How to Enable/Disable Agnocast on Build
 
