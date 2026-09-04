@@ -22,7 +22,16 @@
 
 #include <rclcpp/version.h>
 
+// ROS 2 Iron (rclcpp 21) introduced service introspection. Humble (rclcpp 16) ships no
+// rcl/service_introspection.h, and neither rclcpp nor agnocast declares
+// configure_introspection() there, so the whole feature is gated on the same threshold agnocast
+// uses for AGNOCAST_HAS_SERVICE_INTROSPECTION.
+#if RCLCPP_VERSION_MAJOR >= 21
+#include <rcl/service_introspection.h>
+#endif
+
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -47,6 +56,33 @@ public:
 
   /// Service name after remapping.
   virtual const char * get_service_name() const = 0;
+
+#if RCLCPP_VERSION_MAJOR >= 21
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ServiceBase::configure_introspection(). The Agnocast backend publishes the same
+  /// events through its own event publisher.
+  /// @throws std::invalid_argument if @p clock is null. rcl needs a clock even to turn
+  /// introspection off, and the two backends disagree on what happens without one -- Agnocast
+  /// rejects it, rclcpp dereferences it -- so the handle rejects it before either sees it.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    if (clock == nullptr) {
+      throw std::invalid_argument(
+        std::string("configure_introspection(") + get_service_name() +
+        "): a clock is required, including when turning introspection off");
+    }
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+
+protected:
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+
+public:
+#endif
 };
 
 // True when Callback takes the preferred AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr)
@@ -93,6 +129,15 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
+
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 };
 
 template <typename ServiceT>
@@ -128,6 +173,15 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
+
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 };
 
 template <typename ServiceT, typename Func>
@@ -167,6 +221,33 @@ public:
 
   /// Service name after remapping.
   virtual const char * get_service_name() const = 0;
+
+#if RCLCPP_VERSION_MAJOR >= 21
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ServiceBase::configure_introspection(). The Agnocast backend publishes the same
+  /// events through its own event publisher.
+  /// @throws std::invalid_argument if @p clock is null. rcl needs a clock even to turn
+  /// introspection off, and the two backends disagree on what happens without one -- Agnocast
+  /// rejects it, rclcpp dereferences it -- so the handle rejects it before either sees it.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    if (clock == nullptr) {
+      throw std::invalid_argument(
+        std::string("configure_introspection(") + get_service_name() +
+        "): a clock is required, including when turning introspection off");
+    }
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+
+protected:
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+
+public:
+#endif
 };
 
 // True when Callback takes the preferred AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR pair, i.e. it
@@ -216,6 +297,15 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
+
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 };
 
 template <typename ServiceT, typename Func>
