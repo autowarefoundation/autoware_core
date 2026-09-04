@@ -237,7 +237,15 @@ public:
   }
 
   // ===== Subscription =====
-  template <typename MessageT, typename Func>
+  // create_subscription(topic, qos, options) must select the callback-less overload below.
+  // Without this guard, Func deduces to SubscriptionOptions and the callback overload wins,
+  // because a forwarding reference beats a const reference.
+  template <typename Func>
+  static constexpr bool is_subscription_callback_v =
+    !std::is_same_v<std::decay_t<Func>, agnocast::SubscriptionOptions>;
+
+  template <
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
@@ -254,7 +262,8 @@ public:
     });
   }
 
-  template <typename MessageT, typename Func>
+  template <
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, size_t qos_history_depth, Func && callback,
     const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
@@ -262,6 +271,22 @@ public:
     return create_subscription<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
       options);
+  }
+
+  /// Create a subscription without a callback, for polling via take().
+  template <typename MessageT>
+  typename Subscription<MessageT>::SharedPtr create_subscription(
+    const std::string & topic_name, const rclcpp::QoS & qos,
+    const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
+  {
+    return visit_node([&](auto & n) -> typename Subscription<MessageT>::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastSubscription<MessageT>>(n.get(), topic_name, qos, options);
+      } else {
+        return std::make_shared<ROS2Subscription<MessageT>>(n.get(), topic_name, qos, options);
+      }
+    });
   }
 
   // ===== Client / Service =====
@@ -695,7 +720,15 @@ public:
   }
 
   // ===== Subscription =====
-  template <typename MessageT, typename Func>
+  // create_subscription(topic, qos, options) must select the callback-less overload below.
+  // Without this guard, Func deduces to SubscriptionOptions and the callback overload wins,
+  // because a forwarding reference beats a const reference.
+  template <typename Func>
+  static constexpr bool is_subscription_callback_v =
+    !std::is_same_v<std::decay_t<Func>, rclcpp::SubscriptionOptions>;
+
+  template <
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename rclcpp::Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
@@ -704,7 +737,8 @@ public:
       topic_name, qos, std::forward<Func>(callback), options);
   }
 
-  template <typename MessageT, typename Func>
+  template <
+    typename MessageT, typename Func, std::enable_if_t<is_subscription_callback_v<Func>, int> = 0>
   typename rclcpp::Subscription<MessageT>::SharedPtr create_subscription(
     const std::string & topic_name, size_t qos_history_depth, Func && callback,
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
@@ -712,6 +746,21 @@ public:
     return node_->create_subscription<MessageT>(
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::forward<Func>(callback),
       options);
+  }
+
+  /// Create a subscription without a callback, for polling via take().
+  template <typename MessageT>
+  typename rclcpp::Subscription<MessageT>::SharedPtr create_subscription(
+    const std::string & topic_name, const rclcpp::QoS & qos,
+    const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
+  {
+    rclcpp::SubscriptionOptions polling_options = options;
+    if (!polling_options.callback_group) {
+      polling_options.callback_group =
+        node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+    }
+    return node_->create_subscription<MessageT>(
+      topic_name, qos, [](std::unique_ptr<MessageT>) {}, polling_options);
   }
 
   // ===== Client =====
