@@ -26,6 +26,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -44,6 +45,13 @@ class Client
 {
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
+
+  static void throw_if_null(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    if (!request) {
+      throw std::invalid_argument("async_send_request() was given a null request");
+    }
+  }
 
   virtual AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
     to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) = 0;
@@ -89,12 +97,14 @@ public:
     std::function<void(SharedFuture)> callback) = 0;
 
   /// For callers that hold the request as a plain std::shared_ptr lvalue and cannot change its
-  /// type.
+  /// type. A null request is rejected before any backend allocates for it, where rclcpp::Client
+  /// would dereference it.
   ///
   /// By const reference rather than by value so that async_send_request(std::move(req)) still
   /// binds to the rvalue-reference overloads.
   FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
   {
+    throw_if_null(request);
     return async_send_request(to_owned_request(request));
   }
 
@@ -102,6 +112,7 @@ public:
     const std::shared_ptr<typename ServiceT::Request> & request,
     std::function<void(SharedFuture)> callback)
   {
+    throw_if_null(request);
     return async_send_request(to_owned_request(request), std::move(callback));
   }
 };
@@ -346,6 +357,13 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
+  static void throw_if_null(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    if (!request) {
+      throw std::invalid_argument("async_send_request() was given a null request");
+    }
+  }
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
@@ -387,12 +405,14 @@ public:
     std::function<void(SharedFuture)> callback) = 0;
 
   /// For callers that hold the request as a plain std::shared_ptr lvalue and cannot change its
-  /// type.
+  /// type. A null request is rejected before any backend allocates for it, where rclcpp::Client
+  /// would dereference it.
   ///
   /// By const reference rather than by value so that async_send_request(std::move(req)) still
   /// binds to the rvalue-reference overloads.
   FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
   {
+    throw_if_null(request);
     return async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){request});
   }
 
@@ -400,6 +420,7 @@ public:
     const std::shared_ptr<typename ServiceT::Request> & request,
     std::function<void(SharedFuture)> callback)
   {
+    throw_if_null(request);
     return async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){request}, std::move(callback));
   }
 };
