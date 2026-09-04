@@ -439,6 +439,11 @@ Request/response pointer types **do** differ per build:
 | `AUTOWARE_CLIENT_REQUEST_PTR(SrvT)`  | `message_ptr<Request, …>`        | `std::shared_ptr<SrvT::Request>`        |
 | `AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)` | `message_ptr<const Response, …>` | `std::shared_ptr<const SrvT::Response>` |
 
+`to_shared_ptr(handle)` converts a received message handle (subscription message or client response) into
+`std::shared_ptr<const MessageT>` for interfaces that require one. It aliases on the Agnocast path (no copy) and is a
+pass-through on the ROS 2 path. Review point: **the result must not outlive the subscription or client that produced it**,
+because that endpoint owns the kernel-side reference.
+
 &nbsp;
 
 ### Publisher/Subscriber Creation
