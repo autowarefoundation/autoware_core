@@ -23,6 +23,7 @@
 
 #include <chrono>
 #include <cstdlib>
+#include <future>
 #include <memory>
 #include <string>
 #include <thread>
@@ -57,7 +58,8 @@ protected:
   }
 };
 
-TEST_F(AsyncParametersClientTest, NeitherCopyableNorMovable)
+/// Off the fixture: these hold at compile time, so its runtime skip would only suggest otherwise.
+TEST(AsyncParametersClientTraits, NeitherCopyableNorMovable)
 {
   static_assert(!std::is_copy_constructible_v<AsyncParametersClient>);
   static_assert(!std::is_copy_assignable_v<AsyncParametersClient>);
@@ -76,8 +78,8 @@ TEST_F(AsyncParametersClientTest, WaitForServiceTimesOutForAnAbsentRemoteNode)
 TEST_F(AsyncParametersClientTest, GetParametersReadsARemoteNode)
 {
   if (autoware::agnocast_wrapper::use_agnocast()) {
-    GTEST_SKIP() << "the agnocast backend is served by an agnocast executor, and "
-                    "get_rclcpp_node() throws in agnocast mode.";
+    GTEST_SKIP() << "the agnocast backend is served by an agnocast executor, which this test "
+                    "does not spin.";
   }
 
   const auto server = std::make_shared<Node>("parameter_client_server");
@@ -93,16 +95,20 @@ TEST_F(AsyncParametersClientTest, GetParametersReadsARemoteNode)
 
   ASSERT_TRUE(client.wait_for_service(std::chrono::seconds(10)));
 
-  bool callback_ran = false;
+  // Both backends satisfy the promise before they invoke the callback, so a resolved future says
+  // nothing about whether the callback has run yet.
+  std::promise<void> callback_done;
+  const auto callback_ran = callback_done.get_future();
   const auto future = client.get_parameters(
-    {"enable_partial_load"},
-    [&callback_ran](std::shared_future<std::vector<rclcpp::Parameter>>) { callback_ran = true; });
+    {"enable_partial_load"}, [&callback_done](std::shared_future<std::vector<rclcpp::Parameter>>) {
+      callback_done.set_value();
+    });
   ASSERT_EQ(future.wait_for(std::chrono::seconds(10)), std::future_status::ready);
 
   const auto parameters = future.get();
   ASSERT_EQ(parameters.size(), 1u);
   EXPECT_TRUE(parameters.front().as_bool());
-  EXPECT_TRUE(callback_ran);
+  EXPECT_EQ(callback_ran.wait_for(std::chrono::seconds(10)), std::future_status::ready);
 
   executor.cancel();
   spin_thread.join();

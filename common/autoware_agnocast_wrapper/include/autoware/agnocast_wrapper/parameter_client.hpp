@@ -99,21 +99,24 @@ public:
     const rclcpp::QoS & qos = rclcpp::ParametersQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   : impl_(
-      // unique_ptr indirection is required because std::variant alternatives must be at least
-      // move-constructible, which neither upstream client is. Holding each impl through
-      // unique_ptr satisfies that while keeping the underlying impl's address stable.
-      //
       // Only the selected branch of the conditional is evaluated, which matters: in an
       // agnocast-enabled build get_rclcpp_node() throws when the node is in agnocast mode, and
       // get_agnocast_node() throws when it is not.
       use_agnocast()
         ? decltype(impl_)(
-            std::in_place_type<AgnocastImpl>,
-            std::make_unique<::agnocast::AsyncParametersClient>(
-              node->get_agnocast_node().get(), remote_node_name, qos, group))
+            std::in_place_type<AgnocastImpl>, node->get_agnocast_node().get(), remote_node_name,
+            qos, group)
         : decltype(impl_)(
-            std::in_place_type<RclcppImpl>,
-            make_rclcpp_impl(node->get_rclcpp_node().get(), remote_node_name, qos, group)))
+            std::in_place_type<RclcppImpl>, node->get_rclcpp_node().get(), remote_node_name,
+// rclcpp 28+ (Jazzy) takes the QoS as rclcpp::QoS; Humble uses rclcpp 16.x, whose
+// AsyncParametersClient still takes an rmw_qos_profile_t. Same normalization as ROS2Client's
+// constructor in client.hpp.
+#if RCLCPP_VERSION_MAJOR >= 28
+            qos,
+#else
+            qos.get_rmw_qos_profile(),
+#endif
+            group))
   {
   }
 
@@ -126,7 +129,7 @@ public:
     const std::vector<std::string> & names,
     std::function<void(std::shared_future<std::vector<rclcpp::Parameter>>)> callback = nullptr)
   {
-    return std::visit([&](auto & impl) { return impl->get_parameters(names, callback); }, impl_);
+    return std::visit([&](auto & impl) { return impl.get_parameters(names, callback); }, impl_);
   }
 
   /// @brief Block until the remote node's parameter services are available, or the timeout
@@ -141,7 +144,7 @@ public:
   bool wait_for_service(
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::duration<RepT, RatioT>(-1))
   {
-    return std::visit([&](auto & impl) { return impl->wait_for_service(timeout); }, impl_);
+    return std::visit([&](auto & impl) { return impl.wait_for_service(timeout); }, impl_);
   }
 
   // Non-copyable and non-movable: the backend is chosen at construction and the underlying
@@ -152,29 +155,14 @@ public:
   AsyncParametersClient & operator=(AsyncParametersClient &&) = delete;
 
 private:
-  /// @brief Heap-allocated rclcpp-backed implementation held inside impl_.
-  using RclcppImpl = std::unique_ptr<::rclcpp::AsyncParametersClient>;
+  /// @brief rclcpp-backed implementation held inside impl_.
+  using RclcppImpl = ::rclcpp::AsyncParametersClient;
 
-  /// @brief Heap-allocated agnocast-backed implementation held inside impl_.
-  using AgnocastImpl = std::unique_ptr<::agnocast::AsyncParametersClient>;
+  /// @brief Agnocast-backed implementation held inside impl_.
+  using AgnocastImpl = ::agnocast::AsyncParametersClient;
 
-  /// rclcpp 28+ (Jazzy) takes the QoS as rclcpp::QoS; Humble uses rclcpp 16.x, whose
-  /// AsyncParametersClient still takes an rmw_qos_profile_t. Same normalization as ROS2Client's
-  /// constructor in client.hpp, kept out of the member-initializer so the version gate reads.
-  static RclcppImpl make_rclcpp_impl(
-    rclcpp::Node * node, const std::string & remote_node_name, const rclcpp::QoS & qos,
-    const rclcpp::CallbackGroup::SharedPtr & group)
-  {
-    return std::make_unique<::rclcpp::AsyncParametersClient>(
-      node, remote_node_name,
-#if RCLCPP_VERSION_MAJOR >= 28
-      qos,
-#else
-      qos.get_rmw_qos_profile(),
-#endif
-      group);
-  }
-
+  /// Held by value: neither client captures `this`, so nothing needs the address of the active
+  /// alternative to stay put.
   std::variant<RclcppImpl, AgnocastImpl> impl_;
 };
 
