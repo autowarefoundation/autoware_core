@@ -9636,6 +9636,8 @@ pointer):</p>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> The receiving variable is <code>std::shared_ptr&lt;const MessageT&gt;</code>, not a <code>message_ptr</code> or <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code>.</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> The <strong>policy tag</strong> is preserved from the original code. <code>polling_policy::Latest</code> (the default) re-delivers the cached message every call; <code>polling_policy::Newest</code> returns <code>nullptr</code> until a new message arrives.</li>
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>polling_policy::All</code> is rejected at compile time — <code>take_data()</code> returns a single message, not a vector.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> The QoS history depth is 1 — any other depth throws <code>std::invalid_argument</code> at construction.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>take_data()</code> is called from a single thread, or from callbacks in one mutually exclusive callback group — it is not synchronized, the same as <code>autoware_utils_rclcpp</code>.</li>
 </ul>
 <p> </p>
 <h3 id="message-allocation">Message Allocation<a class="headerlink" href="#message-allocation" title="Permanent link">#</a></h3>
