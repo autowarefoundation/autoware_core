@@ -34,6 +34,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -81,9 +82,27 @@ public:
   /// Turn ROS 2 service introspection on or off, mirroring
   /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
   /// events through its own event publisher.
-  virtual void configure_introspection(
+  /// @throws std::invalid_argument if @p clock is null. rcl needs a clock even to turn
+  /// introspection off, and the two backends disagree on what happens without one -- Agnocast
+  /// rejects it, rclcpp dereferences it -- so the handle rejects it before either sees it.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    if (clock == nullptr) {
+      throw std::invalid_argument(
+        std::string("configure_introspection(") + get_service_name() +
+        "): a clock is required, including when turning introspection off");
+    }
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+
+protected:
+  virtual void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) = 0;
+
+public:
 #endif
 
   template <typename RepT, typename RatioT>
@@ -130,11 +149,11 @@ public:
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
 #if RCLCPP_VERSION_MAJOR >= 21
-  void configure_introspection(
+  void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override
   {
-    client_->configure_introspection(clock, qos_service_event_pub, introspection_state);
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
   }
 #endif
 
@@ -235,11 +254,11 @@ public:
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
 #if RCLCPP_VERSION_MAJOR >= 21
-  void configure_introspection(
+  void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override
   {
-    client_->configure_introspection(clock, qos_service_event_pub, introspection_state);
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
   }
 #endif
 
@@ -365,9 +384,27 @@ public:
   /// Turn ROS 2 service introspection on or off, mirroring
   /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
   /// events through its own event publisher.
-  virtual void configure_introspection(
+  /// @throws std::invalid_argument if @p clock is null. rcl needs a clock even to turn
+  /// introspection off, and the two backends disagree on what happens without one -- Agnocast
+  /// rejects it, rclcpp dereferences it -- so the handle rejects it before either sees it.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    if (clock == nullptr) {
+      throw std::invalid_argument(
+        std::string("configure_introspection(") + get_service_name() +
+        "): a clock is required, including when turning introspection off");
+    }
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+
+protected:
+  virtual void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) = 0;
+
+public:
 #endif
 
   template <typename RepT, typename RatioT>
@@ -417,11 +454,11 @@ public:
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
 #if RCLCPP_VERSION_MAJOR >= 21
-  void configure_introspection(
+  void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override
   {
-    client_->configure_introspection(clock, qos_service_event_pub, introspection_state);
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
   }
 #endif
 

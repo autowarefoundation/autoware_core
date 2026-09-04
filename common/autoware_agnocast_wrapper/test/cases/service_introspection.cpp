@@ -29,6 +29,7 @@
 
 #include <cstdlib>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 namespace
@@ -100,6 +101,43 @@ TEST_F(ServiceIntrospectionTest, ServiceAcceptsEveryState)
     node->get_clock(), rclcpp::QoS(1), RCL_SERVICE_INTROSPECTION_CONTENTS));
   EXPECT_NO_THROW(service->configure_introspection(
     node->get_clock(), rclcpp::QoS(1), RCL_SERVICE_INTROSPECTION_OFF));
+#endif
+}
+
+// A null clock is the one argument the two backends used to disagree on -- Agnocast threw,
+// rclcpp dereferenced it -- so pin the shared rejection. This is also the only assertion in this
+// file that a forwarding override cannot satisfy by doing nothing.
+TEST_F(ServiceIntrospectionTest, ClientRejectsNullClock)
+{
+#if RCLCPP_VERSION_MAJOR >= 21
+  const auto node = std::make_shared<Node>("null_clock_client");
+  AUTOWARE_CLIENT_PTR(ListParameters) client = node->create_client<ListParameters>("~/introspect");
+
+  EXPECT_THROW(
+    client->configure_introspection(nullptr, rclcpp::QoS(1), RCL_SERVICE_INTROSPECTION_CONTENTS),
+    std::invalid_argument);
+  EXPECT_THROW(
+    client->configure_introspection(nullptr, rclcpp::QoS(1), RCL_SERVICE_INTROSPECTION_OFF),
+    std::invalid_argument);
+#endif
+}
+
+TEST_F(ServiceIntrospectionTest, ServiceRejectsNullClock)
+{
+#if RCLCPP_VERSION_MAJOR >= 21
+  const auto node = std::make_shared<Node>("null_clock_service");
+  AUTOWARE_SERVICE_PTR(ListParameters)
+  service = node->create_service<ListParameters>(
+    "~/introspect", [](
+                      AUTOWARE_SERVER_REQUEST_PTR(ListParameters) &&,
+                      AUTOWARE_SERVER_RESPONSE_PTR(ListParameters) &&) {});
+
+  EXPECT_THROW(
+    service->configure_introspection(nullptr, rclcpp::QoS(1), RCL_SERVICE_INTROSPECTION_CONTENTS),
+    std::invalid_argument);
+  EXPECT_THROW(
+    service->configure_introspection(nullptr, rclcpp::QoS(1), RCL_SERVICE_INTROSPECTION_OFF),
+    std::invalid_argument);
 #endif
 }
 
