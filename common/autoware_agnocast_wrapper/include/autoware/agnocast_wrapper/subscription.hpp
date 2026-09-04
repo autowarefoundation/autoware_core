@@ -34,6 +34,19 @@
 namespace autoware::agnocast_wrapper
 {
 
+/// Translate Agnocast subscription options into the rclcpp ones, for the DDS path of an
+/// agnocast-enabled build. agnocast::SubscriptionOptions has exactly these three fields, so
+/// nothing is dropped.
+inline rclcpp::SubscriptionOptions to_rclcpp_subscription_options(
+  const agnocast::SubscriptionOptions & options)
+{
+  rclcpp::SubscriptionOptions result;
+  result.callback_group = options.callback_group;
+  result.ignore_local_publications = options.ignore_local_publications;
+  result.qos_overriding_options = options.qos_overriding_options;
+  return result;
+}
+
 template <typename MessageT>
 class Subscription
 {
@@ -152,9 +165,7 @@ public:
         ? OwnershipType::Unique
         : OwnershipType::Shared;
 
-    rclcpp::SubscriptionOptions ros2_options;
-    ros2_options.callback_group = options.callback_group;
-    ros2_options.qos_overriding_options = options.qos_overriding_options;
+    const rclcpp::SubscriptionOptions ros2_options = to_rclcpp_subscription_options(options);
     if constexpr (ownership == OwnershipType::Unique) {
       subscription_ = node->create_subscription<MessageT>(
         topic_name, qos,
