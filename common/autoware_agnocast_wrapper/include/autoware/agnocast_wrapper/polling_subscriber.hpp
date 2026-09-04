@@ -147,6 +147,8 @@ template <typename MessageT, template <typename> class PollingPolicy = polling_p
 class AgnocastPollingSubscriber : public PollingSubscriber<MessageT, PollingPolicy>
 {
   typename agnocast::TakeSubscription<MessageT>::SharedPtr subscriber_;
+  /// Declared after subscriber_ so the cached message is released before the subscription that
+  /// pins it; the reverse order aborts the process.
   AgnocastPollingPolicy<MessageT, PollingPolicy> policy_;
 
 public:
