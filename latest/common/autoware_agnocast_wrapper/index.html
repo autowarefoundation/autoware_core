@@ -8907,6 +8907,7 @@ executor.</p>
 </ul>
 </li>
 <li><code>polling_policy::All</code> is rejected at compile time (<code>take_data()</code> returns a single message, not a vector).</li>
+<li>The QoS history depth must be 1; <code>create_polling_subscriber()</code> throws <code>std::invalid_argument</code> otherwise. A deeper queue makes <code>take_data()</code> lag behind the newest message, and depth 0 is not delivered at all in agnocast mode.</li>
 <li>The returned <code>std::shared_ptr</code> may be held across cycles, but in agnocast mode it must not outlive the polling subscriber (see <a href="#type-spellings">Type spellings</a>).</li>
 </ul>
 <h3 id="usage-example_3">Usage example<a class="headerlink" href="#usage-example_3" title="Permanent link">#</a></h3>
