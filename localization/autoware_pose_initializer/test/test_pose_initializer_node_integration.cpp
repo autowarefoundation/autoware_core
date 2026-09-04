@@ -12,13 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "../src/gnss_module.hpp"
+#include "../src/localization_module.hpp"
+#include "../src/localization_trigger_module.hpp"
+#include "../src/pose_error_check_module.hpp"
 #include "../src/pose_initializer_core.hpp"
+#include "../src/stop_check_module.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/localization_initialization_state.hpp>
-#include <autoware_internal_localization_msgs/srv/initialize_localization.hpp>
 #include <autoware_internal_localization_msgs/srv/pose_with_covariance_stamped.hpp>
+#include <autoware_localization_msgs/srv/initialize_localization.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <std_srvs/srv/set_bool.hpp>
@@ -31,8 +36,7 @@
 #include <vector>
 
 using autoware::pose_initializer::PoseInitializer;
-using InitializeLocalization =
-  autoware_internal_localization_msgs::srv::InitializeLocalization;  // Legacy type handling
+using InitializeLocalization = autoware_localization_msgs::srv::InitializeLocalization;
 using RequestPoseAlignment = autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped;
 using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 using TwistWithCovarianceStamped = geometry_msgs::msg::TwistWithCovarianceStamped;
@@ -57,6 +61,9 @@ protected:
     options.append_parameter_override("pose_error_check_enabled", true);
     options.append_parameter_override("pose_error_threshold", 5.0);
     options.append_parameter_override("user_defined_initial_pose.enable", false);
+    options.append_parameter_override("map_height_fitter.target", "pointcloud_map");
+    options.append_parameter_override(
+      "map_height_fitter.map_loader_name", "/map/pointcloud_map_loader");
     options.append_parameter_override(
       "user_defined_initial_pose.pose", std::vector<double>{0, 0, 0, 0, 0, 0, 1});
 
@@ -88,29 +95,33 @@ protected:
         res->pose_with_covariance.pose.pose.position.x += 1.0;  // Simulate an alignment shift
       });
 
-    auto trigger_callback =
-      [this](const std::shared_ptr<SetBool::Request> req, std::shared_ptr<SetBool::Response> res) {
-        trigger_calls_++;
-        res->success = mock_trigger_success_;
-      };
+    auto trigger_callback = [this](
+                              const std::shared_ptr<SetBool::Request> /*req*/,
+                              std::shared_ptr<SetBool::Response> res) {
+      trigger_calls_++;
+      res->success = mock_trigger_success_;
+    };
     srv_ekf_trigger_ = harness_->create_service<SetBool>("ekf_trigger_node", trigger_callback);
     srv_ndt_trigger_ = harness_->create_service<SetBool>("ndt_trigger_node", trigger_callback);
 
-    // Background executor to spin both node and harness
-    // Prevents deadlocks
-    exec_ = std::make_shared<rclcpp::executors::MultiThreadedExecutor>();
+    // Force executor to use 8 threads to prevent future.get() deadlocks
+    exec_ =
+      std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(), 8);
     exec_->add_node(node_);
     exec_->add_node(harness_);
     exec_thread_ = std::thread([this]() { exec_->spin(); });
+
+    // Allow DDS discovery to fully register mock services
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
   }
 
   void TearDown() override
   {
+    rclcpp::shutdown();
     exec_->cancel();
     if (exec_thread_.joinable()) {
       exec_thread_.join();
     }
-    rclcpp::shutdown();
   }
 
   // Helper to publish stopped twist data for a while
