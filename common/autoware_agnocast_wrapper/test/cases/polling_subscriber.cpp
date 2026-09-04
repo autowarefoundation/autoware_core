@@ -139,6 +139,20 @@ TEST_F(PollingSubscriberTest, CheckQosDepthGreaterThanOneThrows)
     std::invalid_argument);
 }
 
+TEST_F(PollingSubscriberTest, CheckQosDepthZeroThrows)
+{
+  const auto node = std::make_shared<Node>("test_check_qos_zero_throw");
+
+  EXPECT_THROW(
+    polling::create_polling_subscriber<String>(node.get(), "/test/latest_zero", 0),
+    std::invalid_argument);
+
+  EXPECT_THROW(
+    polling::create_polling_subscriber<String>(
+      node.get(), "/test/latest_keep_all", rclcpp::QoS(rclcpp::KeepAll())),
+    std::invalid_argument);
+}
+
 TEST_F(PollingSubscriberTest, CheckQosDepthOneDoesNotThrow)
 {
   const auto node = std::make_shared<Node>("test_check_qos_no_throw");

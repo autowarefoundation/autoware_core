@@ -40,6 +40,21 @@ template <typename MessageT, template <typename> class PollingPolicy>
 inline constexpr bool polling_policy_supported_v =
   !std::is_same_v<PollingPolicy<MessageT>, polling_policy::All<MessageT>>;
 
+/// @brief Reject a QoS a polling subscriber cannot serve.
+/// @throws std::invalid_argument if the history depth is not 1. A deeper queue makes take_data()
+/// lag behind the newest message, which is why autoware_utils_rclcpp's policies reject it; depth 0
+/// (KeepAll, or KeepLast(0)) is rejected here as well because the agnocast backend then never
+/// delivers while the ROS 2 backend does.
+inline void check_polling_qos(const rclcpp::QoS & qos, const std::string & topic_name)
+{
+  const auto depth = qos.get_rmw_qos_profile().depth;
+  if (depth != 1) {
+    throw std::invalid_argument(
+      "polling::create_polling_subscriber(" + topic_name + "): history depth " +
+      std::to_string(depth) + " is not supported, take_data() needs a single-depth queue");
+  }
+}
+
 /// @brief Backend-agnostic polling subscriber. take_data() returns a plain
 /// std::shared_ptr<const MessageT> regardless of ENABLE_AGNOCAST, and is the only policy method
 /// exposed: the agnocast take path carries no source timestamp, so there is no
@@ -137,14 +152,8 @@ class AgnocastPollingSubscriber : public PollingSubscriber<MessageT, PollingPoli
 public:
   explicit AgnocastPollingSubscriber(
     agnocast::Node * node, const std::string & topic_name, const rclcpp::QoS & qos)
+  : subscriber_(std::make_shared<agnocast::TakeSubscription<MessageT>>(node, topic_name, qos))
   {
-    // Same rejection autoware_utils_rclcpp's policies apply.
-    if (qos.get_rmw_qos_profile().depth > 1) {
-      throw std::invalid_argument(
-        "polling::create_polling_subscriber will be used with depth > 1, which makes take_data() "
-        "lag behind the newest message");
-    }
-    subscriber_ = std::make_shared<agnocast::TakeSubscription<MessageT>>(node, topic_name, qos);
   }
 
   std::shared_ptr<const MessageT> take_data() override { return policy_.take_data(*subscriber_); }
@@ -157,6 +166,8 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
   autoware::agnocast_wrapper::Node * node, const std::string & topic_name,
   const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
+  check_polling_qos(qos, topic_name);
+
   if (use_agnocast()) {
     return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
       node->get_agnocast_node().get(), topic_name, qos);
@@ -174,6 +185,8 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
   autoware::agnocast_wrapper::Node * node, const std::string & topic_name,
   const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
+  check_polling_qos(qos, topic_name);
+
   return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
     node->get_rclcpp_node().get(), topic_name, qos);
 }

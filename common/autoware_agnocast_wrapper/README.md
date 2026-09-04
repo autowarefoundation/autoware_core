@@ -521,6 +521,7 @@ The `add()` / `removeByName()` / `setHardwareID()` / `setHardwareIDf()` / `broad
   - `polling_policy::Latest` (default): re-delivers the cached message.
   - `polling_policy::Newest`: returns `nullptr` until a new message arrives.
 - `polling_policy::All` is rejected at compile time (`take_data()` returns a single message, not a vector).
+- The QoS history depth must be 1; `create_polling_subscriber()` throws `std::invalid_argument` otherwise. A deeper queue makes `take_data()` lag behind the newest message, and depth 0 is not delivered at all in agnocast mode.
 - The returned `std::shared_ptr` may be held across cycles, but in agnocast mode it must not outlive the polling subscriber (see [Type spellings](#type-spellings)).
 
 ### Usage example
