@@ -42,6 +42,9 @@ using OnSetParametersCallbackType =
   rclcpp::node_interfaces::NodeParametersInterface::OnParametersSetCallbackType;
 #endif
 
+namespace detail
+{
+
 /// QoS cannot be built from a bare profile; it needs a QoSInitialization to carry the history and
 /// depth. Take those from the profile itself rather than through QoSInitialization::from_rmw(),
 /// which reports a SYSTEM_DEFAULT or UNKNOWN history as KEEP_LAST and drops the depth of a
@@ -52,6 +55,8 @@ inline rclcpp::QoS to_qos(const rmw_qos_profile_t & qos_profile)
   return rclcpp::QoS(
     rclcpp::QoSInitialization(qos_profile.history, qos_profile.depth), qos_profile);
 }
+
+}  // namespace detail
 }  // namespace autoware::agnocast_wrapper
 
 #ifdef USE_AGNOCAST_ENABLED
@@ -287,7 +292,7 @@ public:
     const std::string & service_name, const rmw_qos_profile_t & qos_profile,
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
-    return create_client<ServiceT>(service_name, to_qos(qos_profile), group);
+    return create_client<ServiceT>(service_name, detail::to_qos(qos_profile), group);
   }
 
   // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr).
@@ -369,7 +374,7 @@ public:
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
     return create_service<ServiceT>(
-      service_name, std::forward<Func>(callback), to_qos(qos_profile), group);
+      service_name, std::forward<Func>(callback), detail::to_qos(qos_profile), group);
   }
 
   // ===== Timer =====
@@ -731,7 +736,7 @@ public:
     const std::string & service_name, const rmw_qos_profile_t & qos_profile,
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
-    return create_client<ServiceT>(service_name, to_qos(qos_profile), group);
+    return create_client<ServiceT>(service_name, detail::to_qos(qos_profile), group);
   }
 
   // ===== Service =====
@@ -806,7 +811,7 @@ public:
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   {
     return create_service<ServiceT>(
-      service_name, std::forward<Func>(callback), to_qos(qos_profile), group);
+      service_name, std::forward<Func>(callback), detail::to_qos(qos_profile), group);
   }
 
   // ===== Timer =====
