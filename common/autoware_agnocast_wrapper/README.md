@@ -41,8 +41,8 @@ The following members / free functions are provided. Unless noted, signatures mi
 | Parameters      | `declare_parameter()` (typed + `ParameterValue`/`ParameterType` overloads), `has_parameter()`, `undeclare_parameter()`, `get_parameter()` / `get_parameters()` (typed + prefix overloads), `set_parameter()` / `set_parameters()` / `set_parameters_atomically()`, `describe_parameter(s)()`, `get_parameter_types()`, `list_parameters()`, `add_on_set_parameters_callback()`, `remove_on_set_parameters_callback()` |
 | Publisher       | `create_publisher<MessageT>()` (`QoS` and depth overloads) — see [Publisher API](#publisher-api)                                                                                                                                                                                                                                                                                                                      |
 | Subscription    | `create_subscription<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                         |
-| Client          | `create_client<ServiceT>()` — takes `rclcpp::QoS` (the wrapper normalizes the Humble vs. Jazzy QoS-argument difference)                                                                                                                                                                                                                                                                                               |
-| Service         | `create_service<ServiceT>()` — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                                             |
+| Client          | `create_client<ServiceT>()` (`rclcpp::QoS`); `async_send_request()` takes `allocate_output_service_request()`'s result, or a plain `std::shared_ptr<S::Request>` that the Agnocast backend copies                                                                                                                                                                                                                     |
+| Service         | `create_service<ServiceT>()` (`rclcpp::QoS`) — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                             |
 | Timer           | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
 | Underlying node | `get_rclcpp_node()`; `get_agnocast_node()` (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free `to_rclcpp_node(node)`                                                                                                                                                                                                                            |
 | Context         | free `init()`, `shutdown()` and `ok()` — mode-agnostic replacements for the rclcpp equivalents (see [Context notes](#context-notes))                                                                                                                                                                                                                                                                                  |
@@ -54,24 +54,30 @@ Polling subscribers are **not** a `Node` member. Use the free function
 `polling::create_polling_subscriber<MessageT>(node, topic, qos)` — see
 [Polling Subscriber](#polling-subscriber-polling-namespace).
 
+> `create_client()` and `create_service()` also accept an `rmw_qos_profile_t`. This is not part of the
+> supported surface: it exists so that Humble-era call sites passing `rmw_qos_profile_services_default`
+> keep compiling, and it will be removed. Pass an `rclcpp::QoS`.
+
 #### Type spellings
 
 The member _names_ and argument lists above are the same in both builds, but the handle, options and
 message types they use are not the same C++ types. Always spell them with the `AUTOWARE_*` macros so the
 same source compiles in both builds:
 
-| What                             | Spell it as                            | `ENABLE_AGNOCAST=0`                  | `ENABLE_AGNOCAST=1`                            |
-| -------------------------------- | -------------------------------------- | ------------------------------------ | ---------------------------------------------- |
-| `create_publisher` result        | `AUTOWARE_PUBLISHER_PTR(M)`            | `rclcpp::Publisher<M>::SharedPtr`    | `agnocast_wrapper::Publisher<M>::SharedPtr`    |
-| `create_subscription` result     | `AUTOWARE_SUBSCRIPTION_PTR(M)`         | `rclcpp::Subscription<M>::SharedPtr` | `agnocast_wrapper::Subscription<M>::SharedPtr` |
-| `create_wall_timer` result       | `AUTOWARE_TIMER_PTR`                   | `rclcpp::TimerBase::SharedPtr`       | `agnocast_wrapper::Timer::SharedPtr`           |
-| `create_publisher` options arg   | `AUTOWARE_PUBLISHER_OPTIONS`           | `rclcpp::PublisherOptions`           | `agnocast::PublisherOptions`                   |
-| `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`        | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
-| Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)` | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
+| What                             | Spell it as                                                                      | `ENABLE_AGNOCAST=0`                  | `ENABLE_AGNOCAST=1`                            |
+| -------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------- |
+| `create_publisher` result        | `AUTOWARE_PUBLISHER_PTR(M)`                                                      | `rclcpp::Publisher<M>::SharedPtr`    | `agnocast_wrapper::Publisher<M>::SharedPtr`    |
+| `create_subscription` result     | `AUTOWARE_SUBSCRIPTION_PTR(M)`                                                   | `rclcpp::Subscription<M>::SharedPtr` | `agnocast_wrapper::Subscription<M>::SharedPtr` |
+| `create_wall_timer` result       | `AUTOWARE_TIMER_PTR`                                                             | `rclcpp::TimerBase::SharedPtr`       | `agnocast_wrapper::Timer::SharedPtr`           |
+| `create_publisher` options arg   | `AUTOWARE_PUBLISHER_OPTIONS`                                                     | `rclcpp::PublisherOptions`           | `agnocast::PublisherOptions`                   |
+| `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`                                                  | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
+| Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)`                                           | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
+| `async_send_request` request arg | `AUTOWARE_CLIENT_REQUEST_PTR(S)`                                                 | `std::shared_ptr<S::Request>`        | `message_ptr<S::Request, Shared>`              |
+| Client response                  | `AUTOWARE_CLIENT_RESPONSE_PTR(S)`, or `Client<S>::SharedResponse` off the client | `std::shared_ptr<const S::Response>` | `message_ptr<const S::Response, Shared>`       |
 
 A subscription callback may also take the plain `MessageT::ConstSharedPtr`; it needs no macro because it is spelled the same in both builds.
 
-**On the Agnocast path an owning handle must not outlive the subscription that delivered it.** This covers `AUTOWARE_MESSAGE_CONST_SHARED_PTR`, a callback taking `MessageT::ConstSharedPtr`, and the pointer returned by `polling::take_data()`. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription **before** any member that caches a message:
+**On the Agnocast path an owning handle must not outlive the subscription that delivered it.** This covers `AUTOWARE_MESSAGE_CONST_SHARED_PTR`, a callback taking `MessageT::ConstSharedPtr`, the pointer returned by `polling::take_data()`, and `AUTOWARE_CLIENT_RESPONSE_PTR`, which the client delivers through a response subscription of its own and which therefore must not outlive the client. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription **before** any member that caches a message:
 
 ```cpp
 AUTOWARE_SUBSCRIPTION_PTR(PointCloud2) sub_;   // declared first -> destroyed last
