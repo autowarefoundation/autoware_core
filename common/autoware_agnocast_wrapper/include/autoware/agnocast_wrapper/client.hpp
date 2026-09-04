@@ -107,6 +107,12 @@ public:
   ///
   /// By const reference rather than by value so that async_send_request(std::move(req)) still
   /// binds to the rvalue-reference overloads.
+  ///
+  /// The two builds do not accept the same forms here. At ENABLE_AGNOCAST=0
+  /// AUTOWARE_CLIENT_REQUEST_PTR(S) is std::shared_ptr<S::Request>, so an owned request passed as
+  /// an lvalue -- async_send_request(req), where req came from allocate_output_service_request() --
+  /// binds to this overload and compiles. At =1 that same call does not compile: the owned request
+  /// is a message_ptr, which matches neither overload. Always std::move an owned request.
   FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
   {
     throw_if_null(request);
@@ -415,6 +421,12 @@ public:
   ///
   /// By const reference rather than by value so that async_send_request(std::move(req)) still
   /// binds to the rvalue-reference overloads.
+  ///
+  /// The two builds do not accept the same forms here. At ENABLE_AGNOCAST=0
+  /// AUTOWARE_CLIENT_REQUEST_PTR(S) is std::shared_ptr<S::Request>, so an owned request passed as
+  /// an lvalue -- async_send_request(req), where req came from allocate_output_service_request() --
+  /// binds to this overload and compiles. At =1 that same call does not compile: the owned request
+  /// is a message_ptr, which matches neither overload. Always std::move an owned request.
   FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
   {
     throw_if_null(request);
