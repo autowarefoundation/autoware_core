@@ -34,7 +34,6 @@ template <typename MessageT>
 std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT> && ptr);
 }  // namespace detail
 
-
 template <typename MessageT, OwnershipType Ownership>
 class message_interface;
 
@@ -186,7 +185,10 @@ public:
     return agnocast::ipc_shared_ptr<MessageT>{};
   }
 
-  std::shared_ptr<const MessageT> into_std_shared_ptr() && noexcept override { return std::move(ptr_); }
+  std::shared_ptr<const MessageT> into_std_shared_ptr() && noexcept override
+  {
+    return std::move(ptr_);
+  }
 
   std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const override
   {
