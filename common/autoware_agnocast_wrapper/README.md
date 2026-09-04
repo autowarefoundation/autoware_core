@@ -564,10 +564,13 @@ Unlike the other wrappers here, this one is not a convenience: `rclcpp::AsyncPar
 
 The QoS argument is `rclcpp::QoS` in both builds; the wrapper normalizes the Humble vs. Jazzy QoS-argument difference of `rclcpp::AsyncParametersClient`, the same way `create_client()` does.
 
+A `remote_node_name` that cannot form a service name is rejected by the constructor with `rclcpp::exceptions::InvalidServiceNameError`. The wrapper resolves the name itself so that this is the same exception in both builds and in both runtime modes; the two backends reach rcl through different entry points and would otherwise throw different types.
+
 ### Current limitations
 
 - Only the read path is exposed: `get_parameters()` and `wait_for_service()`. Both backends also provide the setter, descriptor and listing calls; extend the wrapper when a caller needs one.
 - `on_parameter_event()` has no Agnocast counterpart and is not exposed.
+- On the Agnocast backend, `wait_for_service()` gives up as soon as the Agnocast context is not the one the executable brought up, which is the case for anything but an AgnocastOnly executable. It then returns `false` without waiting out the timeout, so read a `false` as "not ready yet" rather than "never coming up". The rclcpp backend waits out the timeout in both builds.
 - The wrapper is non-copyable and non-movable (the backend is chosen at construction), so hold it by value or in a `unique_ptr`, and do not let it outlive the node it was built on.
 
 ### Usage example
