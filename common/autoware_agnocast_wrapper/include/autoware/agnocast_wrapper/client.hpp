@@ -102,8 +102,8 @@ public:
     std::function<void(SharedFuture)> callback) = 0;
 
   /// For callers that hold the request as a plain std::shared_ptr lvalue and cannot change its
-  /// type. A null request is rejected before any backend allocates for it, where rclcpp::Client
-  /// would dereference it.
+  /// type. The Agnocast backend copies the payload into a shared-memory request. A null request is
+  /// rejected before any backend allocates for it, where rclcpp::Client would dereference it.
   ///
   /// By const reference rather than by value so that async_send_request(std::move(req)) still
   /// binds to the rvalue-reference overloads.
