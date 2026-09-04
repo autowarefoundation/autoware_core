@@ -17,6 +17,7 @@
 #include "autoware/agnocast_wrapper/node.hpp"
 
 #include <rclcpp/callback_group.hpp>
+#include <rclcpp/expand_topic_or_service_name.hpp>
 #include <rclcpp/parameter.hpp>
 #include <rclcpp/parameter_client.hpp>
 #include <rclcpp/qos.hpp>
@@ -31,6 +32,29 @@
 #include <string>
 #include <variant>
 #include <vector>
+
+namespace autoware::agnocast_wrapper::detail
+{
+
+/// @brief Resolve remote_node_name as a service name, throwing if it cannot be one.
+///
+/// Both backends reject an unusable name, but through different rcl entry points and therefore
+/// with different exception types (rcl_client_init vs. resolve_service_name). Rejecting here
+/// first makes the wrapper throw rclcpp::exceptions::InvalidServiceNameError in every build and
+/// runtime mode. An empty name means "this node" and is always resolvable.
+///
+/// @return remote_node_name unchanged, so this can wrap the argument at the call site.
+inline const std::string & checked_remote_node_name(
+  const std::string & remote_node_name, const char * node_name, const char * node_namespace)
+{
+  if (!remote_node_name.empty()) {
+    (void)rclcpp::expand_topic_or_service_name(
+      remote_node_name + "/get_parameters", node_name, node_namespace, true);
+  }
+  return remote_node_name;
+}
+
+}  // namespace autoware::agnocast_wrapper::detail
 
 #ifdef USE_AGNOCAST_ENABLED
 
@@ -89,6 +113,9 @@ public:
   /// @pre The given Node must outlive this client. Both backends build their service clients
   ///      from the node and keep them bound to it.
   ///
+  /// @throws rclcpp::exceptions::InvalidServiceNameError if remote_node_name cannot form a
+  ///         service name.
+  ///
   /// @param node             Wrapper node providing access to either an agnocast::Node or an
   ///                         rclcpp::Node.
   /// @param remote_node_name Name of the node whose parameters are read. Empty means this node.
@@ -102,21 +129,24 @@ public:
       // Only the selected branch of the conditional is evaluated, which matters: in an
       // agnocast-enabled build get_rclcpp_node() throws when the node is in agnocast mode, and
       // get_agnocast_node() throws when it is not.
-      use_agnocast()
-        ? decltype(impl_)(
-            std::in_place_type<AgnocastImpl>, node->get_agnocast_node().get(), remote_node_name,
-            qos, group)
-        : decltype(impl_)(
-            std::in_place_type<RclcppImpl>, node->get_rclcpp_node().get(), remote_node_name,
+      use_agnocast() ? decltype(impl_)(
+                         std::in_place_type<AgnocastImpl>, node->get_agnocast_node().get(),
+                         detail::checked_remote_node_name(
+                           remote_node_name, node->get_name(), node->get_namespace()),
+                         qos, group)
+                     : decltype(impl_)(
+                         std::in_place_type<RclcppImpl>, node->get_rclcpp_node().get(),
+                         detail::checked_remote_node_name(
+                           remote_node_name, node->get_name(), node->get_namespace()),
 // rclcpp 28+ (Jazzy) takes the QoS as rclcpp::QoS; Humble uses rclcpp 16.x, whose
 // AsyncParametersClient still takes an rmw_qos_profile_t. Same normalization as ROS2Client's
 // constructor in client.hpp.
 #if RCLCPP_VERSION_MAJOR >= 28
-            qos,
+                         qos,
 #else
-            qos.get_rmw_qos_profile(),
+                         qos.get_rmw_qos_profile(),
 #endif
-            group))
+                         group))
   {
   }
 
@@ -190,6 +220,9 @@ public:
   ///
   /// @pre The given Node must outlive this client.
   ///
+  /// @throws rclcpp::exceptions::InvalidServiceNameError if remote_node_name cannot form a
+  ///         service name.
+  ///
   /// @param node             Wrapper node providing the underlying rclcpp::Node.
   /// @param remote_node_name Name of the node whose parameters are read. Empty means this node.
   /// @param qos              QoS of the underlying service clients.
@@ -199,7 +232,8 @@ public:
     const rclcpp::QoS & qos = rclcpp::ParametersQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   : impl_(
-      node->get_rclcpp_node().get(), remote_node_name,
+      node->get_rclcpp_node().get(),
+      detail::checked_remote_node_name(remote_node_name, node->get_name(), node->get_namespace()),
 // See the Agnocast-build constructor above for why the QoS argument is version-gated.
 #if RCLCPP_VERSION_MAJOR >= 28
       qos,

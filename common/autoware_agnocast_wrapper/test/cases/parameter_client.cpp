@@ -75,6 +75,14 @@ TEST_F(AsyncParametersClientTest, WaitForServiceTimesOutForAnAbsentRemoteNode)
   EXPECT_FALSE(client.wait_for_service(std::chrono::milliseconds(200)));
 }
 
+TEST_F(AsyncParametersClientTest, RejectsARemoteNameThatCannotFormAServiceName)
+{
+  const auto node = std::make_shared<Node>("parameter_client_bad_name");
+
+  EXPECT_THROW(
+    AsyncParametersClient(node.get(), "bad name!"), rclcpp::exceptions::InvalidServiceNameError);
+}
+
 TEST_F(AsyncParametersClientTest, GetParametersReadsARemoteNode)
 {
   if (autoware::agnocast_wrapper::use_agnocast()) {
