@@ -53,6 +53,11 @@ protected:
     }
   }
 
+  /// Hands back a request this client can send. A hook rather than
+  /// allocate_output_service_request() plus a copy in the caller, because only the Agnocast
+  /// backend has to copy the payload, to get it into shared memory; the DDS backend shares the
+  /// caller's pointer, so a node built with ENABLE_AGNOCAST=1 but running on DDS pays what
+  /// rclcpp::Client pays.
   virtual AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
     to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) = 0;
 
