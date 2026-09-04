@@ -34,9 +34,11 @@
   <exec_depend>launch_ros</exec_depend>
   <exec_depend condition="$ENABLE_AGNOCAST == 1">ros2agnocast_discovery_agent</exec_depend>
 
+  <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
+  <test_depend>std_msgs</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
