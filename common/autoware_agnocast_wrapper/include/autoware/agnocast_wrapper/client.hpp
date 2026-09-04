@@ -22,6 +22,14 @@
 
 #include <rclcpp/version.h>
 
+// ROS 2 Iron (rclcpp 21) introduced service introspection. Humble (rclcpp 16) ships no
+// rcl/service_introspection.h, and neither rclcpp nor agnocast declares
+// configure_introspection() there, so the whole feature is gated on the same threshold agnocast
+// uses for AGNOCAST_HAS_SERVICE_INTROSPECTION.
+#if RCLCPP_VERSION_MAJOR >= 21
+#include <rcl/service_introspection.h>
+#endif
+
 #include <chrono>
 #include <functional>
 #include <future>
@@ -69,6 +77,15 @@ public:
 
   virtual bool service_is_ready() const = 0;
 
+#if RCLCPP_VERSION_MAJOR >= 21
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
+  /// events through its own event publisher.
+  virtual void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
   template <typename RepT, typename RatioT>
   bool wait_for_service(
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::nanoseconds(-1)) const
@@ -111,6 +128,15 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
+
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(clock, qos_service_event_pub, introspection_state);
+  }
+#endif
 
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
@@ -207,6 +233,15 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
+
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(clock, qos_service_event_pub, introspection_state);
+  }
+#endif
 
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
@@ -326,6 +361,15 @@ public:
 
   virtual bool service_is_ready() const = 0;
 
+#if RCLCPP_VERSION_MAJOR >= 21
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
+  /// events through its own event publisher.
+  virtual void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
   template <typename RepT, typename RatioT>
   bool wait_for_service(
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::nanoseconds(-1)) const
@@ -371,6 +415,15 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
+
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(clock, qos_service_event_pub, introspection_state);
+  }
+#endif
 
   // rclcpp::Client<ServiceT>::Future (std::future<std::shared_ptr<Response>>) and
   // AUTOWARE_CLIENT_FUTURE(ServiceT) (std::future<std::shared_ptr<const Response>>) are different
