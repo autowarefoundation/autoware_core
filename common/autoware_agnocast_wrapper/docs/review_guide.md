@@ -149,7 +149,7 @@ Once identified, proceed to the corresponding review procedure below.
 
 - [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc.
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -304,7 +304,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
-- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged)
+- [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
 - [ ] Message allocation (if publisher exists): `std::make_unique<M>()` → `ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_)`
 
@@ -485,6 +485,8 @@ Review points:
 - [ ] The receiving variable is `std::shared_ptr<const MessageT>`, not a `message_ptr` or `AUTOWARE_MESSAGE_CONST_SHARED_PTR`.
 - [ ] The **policy tag** is preserved from the original code. `polling_policy::Latest` (the default) re-delivers the cached message every call; `polling_policy::Newest` returns `nullptr` until a new message arrives.
 - [ ] `polling_policy::All` is rejected at compile time — `take_data()` returns a single message, not a vector.
+- [ ] The QoS history depth is 1 — any other depth throws `std::invalid_argument` at construction.
+- [ ] `take_data()` is called from a single thread, or from callbacks in one mutually exclusive callback group — it is not synchronized, the same as `autoware_utils_rclcpp`.
 
 &nbsp;
 

@@ -1,0 +1,79 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: NdtScanMatcher.node
+
+description: Estimates the ego pose by NDT scan matching of the LiDAR pointcloud against the pointcloud map, and estimates the initial pose on request with a Monte Carlo search.
+
+package:
+  name: autoware_ndt_scan_matcher
+  provider: autoware
+
+launch:
+  plugin: autoware::ndt_scan_matcher::NDTScanMatcher
+  executable: autoware_ndt_scan_matcher_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: pointcloud
+    message_type: sensor_msgs/msg/PointCloud2
+    description: Sensor pointcloud.
+    remap_target: points_raw
+  - name: initial_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Initial pose for scan matching, interpolated to the pointcloud time.
+    remap_target: ekf_pose_with_covariance
+  - name: regularization_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Base position for the regularization term; used only when regularization is enabled.
+    remap_target: regularization_pose_with_covariance
+
+publishers:
+  - name: pose
+    message_type: geometry_msgs/msg/PoseStamped
+    description: Estimated pose.
+    remap_target: ndt_pose
+  - name: pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Estimated pose with covariance.
+    remap_target: ndt_pose_with_covariance
+  - name: diagnostics
+    message_type: diagnostic_msgs/msg/DiagnosticArray
+    description: Scan matching status, including score, iteration count and map availability.
+    global: /diagnostics
+
+servers:
+  - name: trigger_node
+    message_type: std_srvs/srv/SetBool
+    description: Activates or deactivates scan matching; used by the pose initializer during initialization.
+    remap_target: trigger_node_srv
+  - name: ndt_align
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    description: Estimates the initial pose around the given pose with the Monte Carlo method.
+    remap_target: ndt_align_srv
+
+clients:
+  - name: map_loader
+    message_type: autoware_map_msgs/srv/GetDifferentialPointCloudMap
+    description: Loads the pointcloud map tiles around the ego position.
+    remap_target: pcd_loader_service
+
+# parameters
+param_files:
+  - name: param_file
+    default: config/ndt_scan_matcher.param.yaml
+    description: NDT, validation, covariance, regularization and dynamic map loading parameters.
+
+param_values: []
+
+# processes
+processes:
+  - name: scan_match
+    description: Aligns the pointcloud to the map starting from the interpolated initial pose and publishes the converged pose.
+    trigger_conditions:
+      - on_input: pointcloud
+    outcomes:
+      - to_output: pose
+      - to_output: pose_with_covariance
+      - to_output: diagnostics

@@ -61,6 +61,11 @@ public:
   virtual uint32_t get_intra_process_subscription_count() const = 0;
   virtual const rmw_gid_t & get_gid() const = 0;
   virtual const char * get_topic_name() const = 0;
+
+  /// Effective QoS. On the Agnocast path this is the requested QoS with any
+  /// qos_overriding_options applied, not the RMW-resolved profile
+  /// rclcpp::PublisherBase::get_actual_qos() reports: Agnocast has no DDS entity to query.
+  virtual rclcpp::QoS get_actual_qos() const = 0;
 };
 
 template <typename MessageT>
@@ -112,6 +117,7 @@ public:
   }
   const rmw_gid_t & get_gid() const override { return publisher_->get_gid(); }
   const char * get_topic_name() const override { return publisher_->get_topic_name(); }
+  rclcpp::QoS get_actual_qos() const override { return publisher_->get_actual_qos(); }
 };
 
 template <typename MessageT>
@@ -159,6 +165,7 @@ public:
   }
   const rmw_gid_t & get_gid() const override { return publisher_->get_gid(); }
   const char * get_topic_name() const override { return publisher_->get_topic_name(); }
+  rclcpp::QoS get_actual_qos() const override { return publisher_->get_actual_qos(); }
 };
 
 template <typename MessageT>

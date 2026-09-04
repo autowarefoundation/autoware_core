@@ -1,0 +1,104 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: EkfLocalizer.node
+
+description: Estimates a smooth, low-noise ego pose and twist by fusing the input pose and twist measurements with a 2D vehicle dynamics model in an extended Kalman filter, compensating input delays and estimating the yaw bias.
+
+package:
+  name: autoware_ekf_localizer
+  provider: autoware
+
+launch:
+  plugin: autoware::ekf_localizer::EKFLocalizerNode
+  executable: autoware_ekf_localizer_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Input pose source with the measurement covariance matrix.
+    remap_target: in_pose_with_covariance
+  - name: twist_with_covariance
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    description: Input twist source with the measurement covariance matrix.
+    remap_target: in_twist_with_covariance
+  - name: initialpose
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Initial pose for the EKF. The estimated state is reset to this pose whenever published.
+    remap_target: initialpose
+
+publishers:
+  - name: odom
+    message_type: nav_msgs/msg/Odometry
+    description: Estimated odometry.
+    remap_target: ekf_odom
+  - name: pose
+    message_type: geometry_msgs/msg/PoseStamped
+    description: Estimated pose.
+    remap_target: ekf_pose
+  - name: pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Estimated pose with covariance.
+    remap_target: ekf_pose_with_covariance
+  - name: biased_pose
+    message_type: geometry_msgs/msg/PoseStamped
+    description: Estimated pose including the yaw bias.
+    remap_target: ekf_biased_pose
+  - name: biased_pose_with_covariance
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Estimated pose with covariance including the yaw bias.
+    remap_target: ekf_biased_pose_with_covariance
+  - name: twist
+    message_type: geometry_msgs/msg/TwistStamped
+    description: Estimated twist.
+    remap_target: ekf_twist
+  - name: twist_with_covariance
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    description: Estimated twist with covariance.
+    remap_target: ekf_twist_with_covariance
+  - name: processing_time_ms
+    message_type: autoware_internal_debug_msgs/msg/Float64Stamped
+    description: Processing time of one filter cycle [ms].
+    remap_target: debug/processing_time_ms
+  - name: tf
+    message_type: tf2_msgs/msg/TFMessage
+    description: Transform from the map frame to the estimated base_link pose.
+    global: /tf
+  - name: diagnostics
+    message_type: diagnostic_msgs/msg/DiagnosticArray
+    description: Filter health, including measurement delay, Mahalanobis gate and covariance ellipse checks.
+    global: /diagnostics
+
+servers:
+  - name: trigger_node
+    message_type: std_srvs/srv/SetBool
+    description: Activates or deactivates the filter; used by the pose initializer during initialization.
+    remap_target: trigger_node_srv
+
+# parameters
+param_files:
+  - name: param_file
+    default: config/ekf_localizer.param.yaml
+    description: Filter node, pose measurement and twist measurement parameters.
+
+param_values: []
+
+# processes
+processes:
+  - name: fuse
+    description: Predicts the state with the vehicle model at a constant rate and applies the measurement updates of the delay-compensated pose and twist inputs.
+    trigger_conditions:
+      - periodic: 50 # Hz (predict_frequency)
+    outcomes:
+      - to_output: odom
+      - to_output: pose
+      - to_output: pose_with_covariance
+      - to_output: biased_pose
+      - to_output: biased_pose_with_covariance
+      - to_output: twist
+      - to_output: twist_with_covariance
+      - to_output: processing_time_ms
+      - to_output: tf
+      - to_output: diagnostics

@@ -156,5 +156,5 @@ stop
 
 In addition, the following parameters should be provided to the node:
 
-- [nearest search parameters](https://github.com/autowarefoundation/autoware_launch/blob/main/autoware_launch/config/planning/scenario_planning/common/nearest_search.param.yaml)
+- [nearest search parameters](https://github.com/autowarefoundation/autoware_launch/blob/main/autoware_universe_launch/autoware_planning_config/config/scenario_planning/common/nearest_search.param.yaml)
 - [vehicle info parameters](https://github.com/autowarefoundation/autoware_core/blob/main/description/autoware_sample_vehicle_description/config/vehicle_info.param.yaml)

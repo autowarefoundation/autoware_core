@@ -14,7 +14,7 @@ find_package(tf2_ros REQUIRED)
 find_package(glog REQUIRED)
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
-  find_package(agnocastlib REQUIRED)
+  find_package(agnocastlib 2.4.0 REQUIRED)
 endif()
 
 include_directories(
@@ -23,6 +23,7 @@ include_directories(
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/node.cpp
+  src/runtime.cpp
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
@@ -111,6 +112,12 @@ if(BUILD_TESTING)
   ament_add_pytest_test(test_discovery_agent_launch
     test/test_discovery_agent_launch.py
   )
+
+  find_package(std_msgs REQUIRED)
+  file(GLOB_RECURSE test_files test/main.cpp test/cases/*.cpp)
+  ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})
+  target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})
+  ament_target_dependencies(test_${PROJECT_NAME} std_msgs)
 endif()
 
 autoware_ament_auto_package()
