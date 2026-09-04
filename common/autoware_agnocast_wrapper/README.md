@@ -64,16 +64,16 @@ The member _names_ and argument lists above are the same in both builds, but the
 message types they use are not the same C++ types. Always spell them with the `AUTOWARE_*` macros so the
 same source compiles in both builds:
 
-| What                             | Spell it as                                                                      | `ENABLE_AGNOCAST=0`                  | `ENABLE_AGNOCAST=1`                            |
-| -------------------------------- | -------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------- |
-| `create_publisher` result        | `AUTOWARE_PUBLISHER_PTR(M)`                                                      | `rclcpp::Publisher<M>::SharedPtr`    | `agnocast_wrapper::Publisher<M>::SharedPtr`    |
-| `create_subscription` result     | `AUTOWARE_SUBSCRIPTION_PTR(M)`                                                   | `rclcpp::Subscription<M>::SharedPtr` | `agnocast_wrapper::Subscription<M>::SharedPtr` |
-| `create_wall_timer` result       | `AUTOWARE_TIMER_PTR`                                                             | `rclcpp::TimerBase::SharedPtr`       | `agnocast_wrapper::Timer::SharedPtr`           |
-| `create_publisher` options arg   | `AUTOWARE_PUBLISHER_OPTIONS`                                                     | `rclcpp::PublisherOptions`           | `agnocast::PublisherOptions`                   |
-| `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`                                                  | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
-| Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)`                                           | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
-| `async_send_request` request arg | `AUTOWARE_CLIENT_REQUEST_PTR(S)`                                                 | `std::shared_ptr<S::Request>`        | `message_ptr<S::Request, Shared>`              |
-| Client response                  | `AUTOWARE_CLIENT_RESPONSE_PTR(S)`, or `Client<S>::SharedResponse` off the client | `std::shared_ptr<const S::Response>` | `message_ptr<const S::Response, Shared>`       |
+| What                             | Spell it as                                                                                                                            | `ENABLE_AGNOCAST=0`                  | `ENABLE_AGNOCAST=1`                            |
+| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------- |
+| `create_publisher` result        | `AUTOWARE_PUBLISHER_PTR(M)`                                                                                                            | `rclcpp::Publisher<M>::SharedPtr`    | `agnocast_wrapper::Publisher<M>::SharedPtr`    |
+| `create_subscription` result     | `AUTOWARE_SUBSCRIPTION_PTR(M)`                                                                                                         | `rclcpp::Subscription<M>::SharedPtr` | `agnocast_wrapper::Subscription<M>::SharedPtr` |
+| `create_wall_timer` result       | `AUTOWARE_TIMER_PTR`                                                                                                                   | `rclcpp::TimerBase::SharedPtr`       | `agnocast_wrapper::Timer::SharedPtr`           |
+| `create_publisher` options arg   | `AUTOWARE_PUBLISHER_OPTIONS`                                                                                                           | `rclcpp::PublisherOptions`           | `agnocast::PublisherOptions`                   |
+| `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`                                                                                                        | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
+| Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)`                                                                                                 | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
+| `async_send_request` request arg | `AUTOWARE_CLIENT_REQUEST_PTR(S)`                                                                                                       | `std::shared_ptr<S::Request>`        | `message_ptr<S::Request, Shared>`              |
+| Client response                  | `AUTOWARE_CLIENT_RESPONSE_PTR(S)`, or `Client<S>::SharedResponse` off the client (const, unlike the same-named `rclcpp::Client` alias) | `std::shared_ptr<const S::Response>` | `message_ptr<const S::Response, Shared>`       |
 
 A subscription callback may also take the plain `MessageT::ConstSharedPtr`; it needs no macro because it is spelled the same in both builds.
 
