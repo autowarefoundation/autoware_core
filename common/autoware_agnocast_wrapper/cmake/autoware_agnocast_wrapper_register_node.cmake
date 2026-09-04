@@ -121,7 +121,7 @@ macro(autoware_agnocast_wrapper_register_node target)
   if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     # ===== Agnocast mode: create component + switchable executable =====
 
-    find_package(agnocastlib REQUIRED)
+    find_package(agnocastlib 2.4.0 REQUIRED)
 
     # --- Map AGNOCAST_EXECUTOR to actual type, include, and add_node expression ---
     if("${ARGS_AGNOCAST_EXECUTOR}" STREQUAL "SingleThreadedAgnocastExecutor")

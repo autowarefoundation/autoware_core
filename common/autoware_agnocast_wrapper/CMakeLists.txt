@@ -14,7 +14,7 @@ find_package(tf2_ros REQUIRED)
 find_package(glog REQUIRED)
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
-  find_package(agnocastlib REQUIRED)
+  find_package(agnocastlib 2.4.0 REQUIRED)
 endif()
 
 include_directories(
@@ -23,6 +23,7 @@ include_directories(
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/node.cpp
+  src/runtime.cpp
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
