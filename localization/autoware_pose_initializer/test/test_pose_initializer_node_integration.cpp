@@ -150,3 +150,34 @@ protected:
   std::atomic<bool> mock_trigger_success_{true};
   std::atomic<int> trigger_calls_{0};
 };
+
+TEST_F(PoseInitializerNodeIntegrationTest, DirectInitBypassAligners)
+{
+  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
+  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
+
+  auto req = std::make_shared<InitializeLocalization::Request>();
+  req->method = InitializeLocalization::Request::DIRECT;
+
+  PoseWithCovarianceStamped initial_pose;
+  initial_pose.header.frame_id = "map";
+  initial_pose.pose.pose.position.x = 100.0;
+  initial_pose.pose.pose.orientation.w = 1.0;
+  req->pose_with_covariance.push_back(initial_pose);
+
+  auto future = cli_init->async_send_request(req);
+  ASSERT_EQ(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
+  auto res = future.get();
+
+  EXPECT_TRUE(res->status.success);
+
+  // Wait for pub to register output
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  ASSERT_NE(last_reset_pose_, nullptr) << "Failed to publish reset pose!";
+  EXPECT_DOUBLE_EQ(last_reset_pose_->pose.pose.position.x, 100.0);
+
+  // Expect trigger calls
+  // (deactivate + activate) x 2 for both EKF and NDT = 4 calls
+  EXPECT_EQ(trigger_calls_.load(), 4);
+}
