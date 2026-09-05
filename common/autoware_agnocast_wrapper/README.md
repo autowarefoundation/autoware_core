@@ -572,11 +572,14 @@ The QoS argument is `rclcpp::QoS` in both builds; the wrapper normalizes the Hum
 
 A `remote_node_name` that cannot form a service name is rejected by the constructor with `rclcpp::exceptions::InvalidServiceNameError`. The wrapper resolves the name itself so that this is the same exception in both builds and in both runtime modes; the two backends reach rcl through different entry points and would otherwise throw different types.
 
+`wait_for_service()` is normalized the same way. `agnocast::AsyncParametersClient::wait_for_service()` stops as soon as `agnocast::ok()` is false, which it is in anything but an AgnocastOnly executable, so there it returns `false` after one non-blocking probe instead of waiting. A caller cannot tell that `false` from a real timeout, so the wrapper polls `service_is_ready()` — which carries no such context check — and honours the timeout on both backends: negative waits forever, zero probes once, positive bounds the wait.
+
 ### Current limitations
 
 - Only the read path is exposed: `get_parameters()`, `wait_for_service()` and `service_is_ready()`. Both backends also provide the setter, descriptor and listing calls; extend the wrapper when a caller needs one.
 - `on_parameter_event()` has no Agnocast counterpart and is not exposed.
-- On the Agnocast backend, `wait_for_service()` only keeps waiting while the Agnocast context is the one the executable brought up, which is not the case for anything but an AgnocastOnly executable. Elsewhere it degenerates to the single non-blocking readiness probe it starts with and returns `false` without consuming the timeout, so read that `false` as "not ready yet" rather than "never coming up" — or poll `service_is_ready()`, which is non-blocking and behaves the same on both backends. The rclcpp backend waits out the timeout in both builds.
+- `get_parameters()` resolves its future and runs its callback from the executor. On the Agnocast backend the response arrives over an Agnocast subscription the client owns, so **an Agnocast executor has to be spinning the node**; under a plain rclcpp executor the future never resolves, whatever `wait_for_service()` said.
+- `service_is_ready()` and `wait_for_service()` cover slightly different endpoint sets: the Agnocast backend checks all six parameter services, the rclcpp one checks five (it leaves out `set_parameters_atomically`). A node brings all six up together, so the two only disagree inside that window, with Agnocast the stricter of the pair.
 - The wrapper is non-copyable and non-movable (the backend is chosen at construction), so hold it by value or in a `unique_ptr`, and do not let it outlive the node it was built on.
 
 ### Usage example
