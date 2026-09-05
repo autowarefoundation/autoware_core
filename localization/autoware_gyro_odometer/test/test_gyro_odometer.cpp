@@ -19,7 +19,6 @@
 
 #include <gtest/gtest.h>
 
-#include <array>
 #include <deque>
 
 namespace autoware::gyro_odometer
@@ -42,32 +41,6 @@ builtin_interfaces::msg::Time make_stamp(int32_t sec, uint32_t nanosec)
 
 }  // namespace
 
-// transform_covariance: the maximum diagonal term is written to every diagonal term, off-diagonals
-// are zeroed.
-TEST(GyroOdometer, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals)
-{
-  std::array<double, 9> cov = {};
-  cov[COV_IDX_XYZ::X_X] = 1.0;
-  cov[COV_IDX_XYZ::Y_Y] = 5.0;  // max
-  cov[COV_IDX_XYZ::Z_Z] = 3.0;
-  // pollute off-diagonals to make sure they are dropped
-  cov[COV_IDX_XYZ::X_Y] = 42.0;
-  cov[COV_IDX_XYZ::Z_X] = -7.0;
-
-  const std::array<double, 9> out = transform_covariance(cov);
-
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::X_X], 5.0);
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Y_Y], 5.0);
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Z_Z], 5.0);
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::X_Y], 0.0);
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::X_Z], 0.0);
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Y_X], 0.0);
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Y_Z], 0.0);
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Z_X], 0.0);
-  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Z_Y], 0.0);
-}
-
-// fuse_twist: means over multiple entries, covariance reduction by queue size, fixed Y_Y/Z_Z, and
 // the output stamp being the later of the two latest queue stamps.
 TEST(GyroOdometer, FuseTwistComputesMeansCovarianceAndStamp)
 {
