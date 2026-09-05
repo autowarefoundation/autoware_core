@@ -8224,11 +8224,11 @@ is in Agnocast mode — see the <a href="#build-modes-agnocast-disabled-vs-agnoc
 </tr>
 <tr>
 <td>Client</td>
-<td><code>create_client&lt;ServiceT&gt;()</code> — takes <code>rclcpp::QoS</code> (the wrapper normalizes the Humble vs. Jazzy QoS-argument difference)</td>
+<td><code>create_client&lt;ServiceT&gt;()</code> (<code>rclcpp::QoS</code>); <code>async_send_request()</code> takes <code>allocate_output_service_request()</code>'s result, or a plain <code>std::shared_ptr&lt;S::Request&gt;</code> that the Agnocast backend copies</td>
 </tr>
 <tr>
 <td>Service</td>
-<td><code>create_service&lt;ServiceT&gt;()</code> — <code>message_ptr</code> callback form and an rclcpp-style <code>shared_ptr</code> callback form</td>
+<td><code>create_service&lt;ServiceT&gt;()</code> (<code>rclcpp::QoS</code>) — <code>message_ptr</code> callback form and an rclcpp-style <code>shared_ptr</code> callback form</td>
 </tr>
 <tr>
 <td>Timer</td>
@@ -8251,6 +8251,11 @@ for both Humble (rclcpp 16.x) and Jazzy (rclcpp 28+).</p>
 <p>Polling subscribers are <strong>not</strong> a <code>Node</code> member. Use the free function
 <code>polling::create_polling_subscriber&lt;MessageT&gt;(node, topic, qos)</code> — see
 <a href="#polling-subscriber-polling-namespace">Polling Subscriber</a>.</p>
+<blockquote>
+<p><code>create_client()</code> and <code>create_service()</code> also accept an <code>rmw_qos_profile_t</code>. This is not part of the
+supported surface: it exists so that Humble-era call sites passing <code>rmw_qos_profile_services_default</code>
+keep compiling, and it will be removed. Pass an <code>rclcpp::QoS</code>.</p>
+</blockquote>
 <h4 id="type-spellings">Type spellings<a class="headerlink" href="#type-spellings" title="Permanent link">#</a></h4>
 <p>The member <em>names</em> and argument lists above are the same in both builds, but the handle, options and
 message types they use are not the same C++ types. Always spell them with the <code>AUTOWARE_*</code> macros so the
@@ -8301,10 +8306,22 @@ same source compiles in both builds:</p>
 <td><code>std::shared_ptr&lt;const M&gt;</code></td>
 <td><code>message_ptr&lt;const M, Shared&gt;</code></td>
 </tr>
+<tr>
+<td><code>async_send_request</code> request arg</td>
+<td><code>AUTOWARE_CLIENT_REQUEST_PTR(S)</code></td>
+<td><code>std::shared_ptr&lt;S::Request&gt;</code></td>
+<td><code>message_ptr&lt;S::Request, Shared&gt;</code></td>
+</tr>
+<tr>
+<td>Client response</td>
+<td><code>AUTOWARE_CLIENT_RESPONSE_PTR(S)</code>, or <code>Client&lt;S&gt;::SharedResponse</code> off the client (const, unlike the same-named <code>rclcpp::Client</code> alias)</td>
+<td><code>std::shared_ptr&lt;const S::Response&gt;</code></td>
+<td><code>message_ptr&lt;const S::Response, Shared&gt;</code></td>
+</tr>
 </tbody>
 </table>
 <p>A subscription callback may also take the plain <code>MessageT::ConstSharedPtr</code>; it needs no macro because it is spelled the same in both builds.</p>
-<p><strong>On the Agnocast path an owning handle must not outlive the subscription that delivered it.</strong> This covers <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code>, a callback taking <code>MessageT::ConstSharedPtr</code>, and the pointer returned by <code>polling::take_data()</code>. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription <strong>before</strong> any member that caches a message:</p>
+<p><strong>On the Agnocast path an owning handle must not outlive the subscription that delivered it.</strong> This covers <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code>, a callback taking <code>MessageT::ConstSharedPtr</code>, the pointer returned by <code>polling::take_data()</code>, and <code>AUTOWARE_CLIENT_RESPONSE_PTR</code>, which the client delivers through a response subscription of its own and which therefore must not outlive the client. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription <strong>before</strong> any member that caches a message:</p>
 <div class="highlight"><pre><span></span><code><span class="n">AUTOWARE_SUBSCRIPTION_PTR</span><span class="p">(</span><span class="n">PointCloud2</span><span class="p">)</span><span class="w"> </span><span class="n">sub_</span><span class="p">;</span><span class="w">   </span><span class="c1">// declared first -&gt; destroyed last</span>
 <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">PointCloud2</span><span class="o">&gt;</span><span class="w"> </span><span class="n">latest_</span><span class="p">;</span><span class="w">    </span><span class="c1">// destroyed first -&gt; safe</span>
 </code></pre></div>
