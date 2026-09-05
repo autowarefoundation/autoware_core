@@ -44,6 +44,12 @@ using TwistWithCovarianceStamped = geometry_msgs::msg::TwistWithCovarianceStampe
 using InitializationState = autoware_adapi_v1_msgs::msg::LocalizationInitializationState;
 using SetBool = std_srvs::srv::SetBool;
 
+namespace
+{
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-2F;
+}  // namespace
+
 class PoseInitializerNodeIntegrationTest : public ::testing::Test
 {
 protected:
@@ -327,4 +333,44 @@ TEST_F(PoseInitializerNodeIntegrationTest, AutoInitTriggerFailsReturnsEstError)
 
   EXPECT_FALSE(res->status.success);
   EXPECT_TRUE(res->status.message.find("failed") != std::string::npos);
+}
+
+TEST_F(PoseInitializerNodeIntegrationTest, AutoInitLargePoseErrSucceedsWithWarn)
+{
+  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
+  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
+
+  simulate_vehicle_stopped(0.5);
+
+  // 1. Publish GNSS at X = 0
+  PoseWithCovarianceStamped gnss_pose;
+  gnss_pose.header.stamp = harness_->now();
+  gnss_pose.pose.pose.position.x = 0.0;
+  pub_gnss_->publish(gnss_pose);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  auto req = std::make_shared<InitializeLocalization::Request>();
+  req->method = InitializeLocalization::Request::AUTO;
+
+  // 2. Pass request pose at X = 10.
+  // Node gonna use this instead of GNSS for alignment.
+  // Mock aligns it to X = 11.
+  // Error check compares X = 11 against GNSS(X = 0).
+  // Distance 11.0 > 5.0m threshold.
+  // Issues warn, still returns success.
+  PoseWithCovarianceStamped req_pose;
+  req_pose.header.frame_id = "map";
+  req_pose.pose.pose.position.x = 10.0;
+  req->pose_with_covariance.push_back(req_pose);
+
+  auto future = cli_init->async_send_request(req);
+  auto res = future.get();
+
+  // Still succeed but there will be warning
+  EXPECT_TRUE(res->status.success);
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  // Reset pose is now aligned pose (X = 11.0)
+  ASSERT_NE(last_reset_pose_, nullptr);
+  EXPECT_NEAR(last_reset_pose_->pose.pose.position.x, 11.0, near_tol);
 }
