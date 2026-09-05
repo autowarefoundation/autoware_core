@@ -206,7 +206,7 @@ protected:
 // TEST 1. Confirms that sending DIRECT req will:
 // - Bypass NDT and EKF aligners.
 // - Publish req pose directly to node.
-// - Toggles localizer trigger (4 callshots).
+// - Toggles localizer trigger (4 calls).
 TEST_F(PoseInitializerNodeIntegrationTest, DirectInitBypassAligners)
 {
   auto req = std::make_shared<InitializeLocalization::Request>();
