@@ -238,3 +238,21 @@ TEST_F(PoseInitializerNodeIntegrationTest, UnknownMethodFailsFast)
   EXPECT_FALSE(res->status.success);
   EXPECT_TRUE(res->status.message.find("Unknown method type") != std::string::npos);
 }
+
+TEST_F(PoseInitializerNodeIntegrationTest, AutoInitNoGnssFailsFast)
+{
+  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
+  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
+
+  simulate_vehicle_stopped(0.5);
+
+  // No GNSS published prior to request + empty request pose
+  auto req = std::make_shared<InitializeLocalization::Request>();
+  req->method = InitializeLocalization::Request::AUTO;
+
+  auto future = cli_init->async_send_request(req);
+  auto res = future.get();
+
+  EXPECT_FALSE(res->status.success);
+  EXPECT_EQ(res->status.message, "The GNSS pose has not arrived.");
+}
