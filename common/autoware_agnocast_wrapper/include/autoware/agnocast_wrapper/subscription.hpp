@@ -78,6 +78,8 @@ public:
   /// Polling retrieval, mirroring rclcpp::Subscription::take(). The Agnocast path copies out of
   /// shared memory to satisfy the caller-owned @p out.
   /// @return true if a new message was written to @p out.
+  /// @note Agnocast provides none of the fields @p info carries, so that path zeroes it and
+  /// reports the sequence numbers as unsupported.
   /// @throw std::runtime_error when the subscription was created with a callback.
   virtual bool take(MessageT & out, rclcpp::MessageInfo & info) = 0;
 };
@@ -183,13 +185,21 @@ public:
   {
   }
 
-  bool take(MessageT & out, rclcpp::MessageInfo & /*info*/) override
+  bool take(MessageT & out, rclcpp::MessageInfo & info) override
   {
     agnocast::ipc_shared_ptr<const MessageT> data = polling_handle().take(false);
     if (!data) {
       return false;
     }
     out = *data;
+    // Left alone, a caller's rclcpp::MessageInfo stays as default-constructed, which is an
+    // uninitialized rmw_message_info_t. Zero is a valid sequence number, so those two say
+    // "unsupported" instead.
+    info = rclcpp::MessageInfo{};
+    info.get_rmw_message_info().publication_sequence_number =
+      RMW_MESSAGE_INFO_SEQUENCE_NUMBER_UNSUPPORTED;
+    info.get_rmw_message_info().reception_sequence_number =
+      RMW_MESSAGE_INFO_SEQUENCE_NUMBER_UNSUPPORTED;
     return true;
   }
 
