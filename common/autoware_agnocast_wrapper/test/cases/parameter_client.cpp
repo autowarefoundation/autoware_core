@@ -91,6 +91,38 @@ protected:
   }
 };
 
+/// The constructor's name check, exercised directly. Going through the constructor would not pin
+/// it: the rclcpp backend rejects the same names on its own, and with the same exception type, so
+/// only the agnocast backend can tell a missing check from a working one -- and that backend needs
+/// the kernel module to run at all. These cases hold in every build.
+TEST(AsyncParametersClientNameCheck, RejectsAMalformedRemoteName)
+{
+  EXPECT_THROW(
+    autoware::agnocast_wrapper::detail::checked_remote_node_name("bad name!", "n", "/"),
+    rclcpp::exceptions::InvalidServiceNameError);
+}
+
+TEST(AsyncParametersClientNameCheck, RejectsARemoteNameTooLongForEveryParameterService)
+{
+  // rmw_validate_full_topic_name() rejects a name longer than RMW_TOPIC_MAX_NAME_LENGTH (247).
+  // This one measures 246 with "/get_parameters" -- the shortest of the six parameter services --
+  // and 257 with the longest, "/set_parameters_atomically". Checking anything but the longest
+  // leaves the rejection to the backend, which does not throw the same type on both.
+  const std::string remote_node_name = "/" + std::string(230, 'a');
+
+  EXPECT_THROW(
+    autoware::agnocast_wrapper::detail::checked_remote_node_name(remote_node_name, "n", "/"),
+    rclcpp::exceptions::InvalidServiceNameError);
+}
+
+TEST(AsyncParametersClientNameCheck, AcceptsANameThatFitsEveryParameterService)
+{
+  const std::string remote_node_name = "/" + std::string(200, 'a');
+
+  EXPECT_NO_THROW(
+    autoware::agnocast_wrapper::detail::checked_remote_node_name(remote_node_name, "n", "/"));
+}
+
 TEST_F(AsyncParametersClientTest, WaitForServiceTimesOutForAnAbsentRemoteNode)
 {
   const auto node = std::make_shared<Node>("parameter_client_timeout");
@@ -99,17 +131,24 @@ TEST_F(AsyncParametersClientTest, WaitForServiceTimesOutForAnAbsentRemoteNode)
   constexpr auto timeout = std::chrono::milliseconds(200);
   const auto start = std::chrono::steady_clock::now();
   EXPECT_FALSE(client.wait_for_service(timeout));
-  const auto elapsed = std::chrono::steady_clock::now() - start;
 
-  // Half the timeout only has to separate "waited" from "did not wait", which is the whole of the
-  // documented divergence; it does not pin how the backends account for the budget.
-  if (autoware::agnocast_wrapper::use_agnocast()) {
-    // test/main.cpp brings up an rclcpp context, not an AgnocastOnly one, so agnocast::ok() is
-    // false and the agnocast backend returns after one non-blocking readiness probe.
-    EXPECT_LT(elapsed, timeout / 2);
-  } else {
-    EXPECT_GE(elapsed, timeout / 2);
-  }
+  // Both backends have to spend the timeout. Only the agnocast one can fail this: without the
+  // wrapper's polling wait it returns after a single probe, because test/main.cpp brings up an
+  // rclcpp context and not an AgnocastOnly one, so `agnocast::ok()` is false. Half the timeout
+  // separates "waited" from "did not wait" without pinning how a backend accounts for the budget.
+  EXPECT_GE(std::chrono::steady_clock::now() - start, timeout / 2);
+}
+
+TEST_F(AsyncParametersClientTest, WaitForServiceWithAZeroTimeoutDoesNotBlock)
+{
+  const auto node = std::make_shared<Node>("parameter_client_zero_timeout");
+  AsyncParametersClient client(node.get(), "no_such_node");
+
+  constexpr auto budget = std::chrono::milliseconds(100);
+  const auto start = std::chrono::steady_clock::now();
+  EXPECT_FALSE(client.wait_for_service(std::chrono::nanoseconds::zero()));
+
+  EXPECT_LT(std::chrono::steady_clock::now() - start, budget);
 }
 
 TEST_F(AsyncParametersClientTest, ServiceIsNotReadyForAnAbsentRemoteNode)
@@ -132,8 +171,9 @@ TEST_F(AsyncParametersClientTest, AcceptsAnEmptyRemoteNameAsThisNode)
 {
   const auto node = std::make_shared<Node>("parameter_client_self");
 
-  // The empty default skips the constructor's name check; the backends fill it in with the node's
-  // own fully qualified name.
+  // The empty default is the "this node" case: the backends fill it in with the node's own fully
+  // qualified name. (The constructor's early-out for it is only a shortcut -- the bare suffix is a
+  // valid service name on its own -- so this pins the contract, not that branch.)
   EXPECT_NO_THROW(AsyncParametersClient(node.get()));
 }
 
