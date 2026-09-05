@@ -105,13 +105,12 @@ class AgnocastSubscription : public Subscription<MessageT>
   // Exactly one of these holds the subscription.
   typename agnocast::Subscription<MessageT>::SharedPtr callback_subscription_;
   typename agnocast::TakeSubscription<MessageT>::SharedPtr take_subscription_;
-  // As passed to the constructor, for the error message below. Not remap-resolved.
-  std::string topic_name_;
 
   agnocast::TakeSubscription<MessageT> & polling_handle()
   {
     if (!take_subscription_) {
-      throw_not_pollable(topic_name_);
+      // take_subscription_ is null only when the callback one is not, so handle() is safe here.
+      throw_not_pollable(handle().get_topic_name());
     }
     return *take_subscription_;
   }
@@ -131,7 +130,6 @@ public:
   explicit AgnocastSubscription(
     NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options)
-  : topic_name_(topic_name)
   {
     // TODO(Koichi98): AUTOWARE_MESSAGE_UNIQUE_PTR should be disallowed for Agnocast subscriptions.
     // Agnocast uses shared memory, so mutable exclusive ownership is semantically incorrect and
@@ -181,8 +179,7 @@ public:
     NodeT * node, const std::string & topic_name, const rclcpp::QoS & qos,
     const agnocast::SubscriptionOptions & options)
   : take_subscription_(
-      std::make_shared<agnocast::TakeSubscription<MessageT>>(node, topic_name, qos, options)),
-    topic_name_(topic_name)
+      std::make_shared<agnocast::TakeSubscription<MessageT>>(node, topic_name, qos, options))
   {
   }
 
@@ -208,13 +205,11 @@ class ROS2Subscription : public Subscription<MessageT>
 {
   typename rclcpp::Subscription<MessageT>::SharedPtr subscription_;
   bool pollable_ = false;
-  // As passed to the constructor, for the error message. Not remap-resolved.
-  std::string topic_name_;
 
   rclcpp::Subscription<MessageT> & polling_handle()
   {
     if (!pollable_) {
-      throw_not_pollable(topic_name_);
+      throw_not_pollable(subscription_->get_topic_name());
     }
     return *subscription_;
   }
@@ -224,7 +219,6 @@ public:
   explicit ROS2Subscription(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos, Func && callback,
     const agnocast::SubscriptionOptions & options)
-  : topic_name_(topic_name)
   {
     static_assert(
       is_message_ptr_subscription_callback_v<Func, MessageT> ||
@@ -269,7 +263,7 @@ public:
   explicit ROS2Subscription(
     rclcpp::Node * node, const std::string & topic_name, const rclcpp::QoS & qos,
     const agnocast::SubscriptionOptions & options)
-  : pollable_(true), topic_name_(topic_name)
+  : pollable_(true)
   {
     // A callback group the executor spins would dispatch the no-op callback and consume every
     // message, leaving take() to return false forever. take() likewise drops a sample matched
