@@ -24,9 +24,10 @@
 
 // ROS 2 Iron (rclcpp 21) introduced service introspection. Humble (rclcpp 16) ships no
 // rcl/service_introspection.h, and neither rclcpp nor agnocast declares
-// configure_introspection() there, so the whole feature is gated on the same threshold agnocast
-// uses for AGNOCAST_HAS_SERVICE_INTROSPECTION.
-#if RCLCPP_VERSION_MAJOR >= 21
+// configure_introspection() there, so the whole feature is gated on the rclcpp version. The
+// spelling is the one autoware_component_interface_utils uses to gate its call site; agreement
+// with agnocast's own gate is asserted in the agnocast half below.
+#if RCLCPP_VERSION_GTE(21, 0, 0)
 #include <rcl/service_introspection.h>
 #endif
 
@@ -45,6 +46,14 @@
 
 #include <agnocast/agnocast.hpp>
 
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+// The gate used throughout this header must agree with agnocast's own, or the forwarding below
+// calls a method that is not declared there.
+static_assert(
+  AGNOCAST_HAS_SERVICE_INTROSPECTION,
+  "agnocast gates service introspection differently from this header");
+#endif
+
 namespace autoware::agnocast_wrapper
 {
 
@@ -54,7 +63,7 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   /// Backend hook for configure_introspection(), which does the null-clock check the two
   /// backends disagree on before dispatching here. Protected, like wait_for_service_impl(), so
   /// that the check cannot be reached around.
@@ -87,7 +96,7 @@ public:
 
   virtual bool service_is_ready() const = 0;
 
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   /// Turn ROS 2 service introspection on or off, mirroring
   /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
   /// events through its own event publisher.
@@ -132,7 +141,7 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override
@@ -234,7 +243,7 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override
@@ -358,7 +367,7 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   /// Backend hook for configure_introspection(), which does the null-clock check the two
   /// backends disagree on before dispatching here. Protected, like wait_for_service_impl(), so
   /// that the check cannot be reached around.
@@ -391,7 +400,7 @@ public:
 
   virtual bool service_is_ready() const = 0;
 
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   /// Turn ROS 2 service introspection on or off, mirroring
   /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
   /// events through its own event publisher.
@@ -436,7 +445,7 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override

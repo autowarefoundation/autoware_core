@@ -51,17 +51,19 @@ bool agnocast_heaphook_loaded()
 class ServiceIntrospectionTest : public testing::Test
 {
 protected:
+  /// The distro gate is checked first: it holds whatever ENABLE_AGNOCAST is, so it is the reason
+  /// to report when both it and the missing heaphook apply.
   void SetUp() override
   {
-    if (autoware::agnocast_wrapper::use_agnocast() && !agnocast_heaphook_loaded()) {
-      GTEST_SKIP() << "ENABLE_AGNOCAST=1 without the agnocast heaphook: the agnocast backend "
-                      "cannot be exercised in this environment.";
-    }
-#if RCLCPP_VERSION_MAJOR < 21
+#if !RCLCPP_VERSION_GTE(21, 0, 0)
     GTEST_SKIP() << "rclcpp " << RCLCPP_VERSION_MAJOR
                  << " has no service introspection, so configure_introspection() is not declared "
                     "on the wrapper handles either.";
 #endif
+    if (autoware::agnocast_wrapper::use_agnocast() && !agnocast_heaphook_loaded()) {
+      GTEST_SKIP() << "ENABLE_AGNOCAST=1 without the agnocast heaphook: the agnocast backend "
+                      "cannot be exercised in this environment.";
+    }
   }
 };
 
@@ -72,7 +74,7 @@ protected:
 // create_service().
 TEST_F(ServiceIntrospectionTest, ClientAcceptsEveryState)
 {
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   const auto node = std::make_shared<Node>("introspected_client");
   AUTOWARE_CLIENT_PTR(ListParameters) client = node->create_client<ListParameters>("~/introspect");
 
@@ -87,7 +89,7 @@ TEST_F(ServiceIntrospectionTest, ClientAcceptsEveryState)
 
 TEST_F(ServiceIntrospectionTest, ServiceAcceptsEveryState)
 {
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   const auto node = std::make_shared<Node>("introspected_service");
   AUTOWARE_SERVICE_PTR(ListParameters)
   service = node->create_service<ListParameters>(
@@ -105,11 +107,12 @@ TEST_F(ServiceIntrospectionTest, ServiceAcceptsEveryState)
 }
 
 // A null clock is the one argument the two backends used to disagree on -- Agnocast threw,
-// rclcpp dereferenced it -- so pin the shared rejection. This is also the only assertion in this
-// file that a forwarding override cannot satisfy by doing nothing.
+// rclcpp dereferenced it -- so pin the shared rejection. The rejection happens on the handle,
+// before it dispatches to the backend, so this pins the check rather than the forwarding; no case
+// in this file distinguishes a live forward from an override that does nothing.
 TEST_F(ServiceIntrospectionTest, ClientRejectsNullClock)
 {
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   const auto node = std::make_shared<Node>("null_clock_client");
   AUTOWARE_CLIENT_PTR(ListParameters) client = node->create_client<ListParameters>("~/introspect");
 
@@ -124,7 +127,7 @@ TEST_F(ServiceIntrospectionTest, ClientRejectsNullClock)
 
 TEST_F(ServiceIntrospectionTest, ServiceRejectsNullClock)
 {
-#if RCLCPP_VERSION_MAJOR >= 21
+#if RCLCPP_VERSION_GTE(21, 0, 0)
   const auto node = std::make_shared<Node>("null_clock_service");
   AUTOWARE_SERVICE_PTR(ListParameters)
   service = node->create_service<ListParameters>(
