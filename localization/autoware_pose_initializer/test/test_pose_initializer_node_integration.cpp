@@ -173,6 +173,8 @@ TEST_F(PoseInitializerNodeIntegrationTest, DirectInitBypassAligners)
   auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
   ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
 
+  simulate_vehicle_stopped(0.5);
+
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = InitializeLocalization::Request::DIRECT;
 
