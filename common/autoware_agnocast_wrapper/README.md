@@ -352,6 +352,27 @@ void onPointCloud(const PointCloud2::ConstSharedPtr input_msg) {
 
 The payload is not copied here either, and the pointer may be kept alive beyond the callback, at the same cost as `AUTOWARE_MESSAGE_CONST_SHARED_PTR` — one heap allocation per message, and copies of the pointer are free.
 
+#### Handing a message to an interface that requires `std::shared_ptr`
+
+Some interfaces (for example a plain `std::function` extracted from a node during a refactoring) insist on
+`std::shared_ptr<const MessageT>`. `to_shared_ptr()` converts a received message handle — a subscription message or a
+client response — into one without copying the payload:
+
+```cpp
+#include <autoware/agnocast_wrapper/message_ptr.hpp>
+
+auto result = client_->async_send_request(std::move(request));
+...
+// AUTOWARE_CLIENT_RESPONSE_PTR(SrvT) -> std::shared_ptr<const SrvT::Response>
+std::shared_ptr<const SrvT::Response> response =
+  autoware::agnocast_wrapper::to_shared_ptr(result.get());
+```
+
+On the Agnocast path the returned pointer aliases the received handle, so nothing is copied; on the ROS 2 path it is a
+pass-through. **The returned pointer and every copy of it must be destroyed before the endpoint that produced the message**
+(the subscription, or the client that received the response): destroying that endpoint drops the kernel-side reference, so a
+later publish can recycle the entry the copies still point at.
+
 To use the macros provided by this package in your own package, include the following lines in your `CMakeLists.txt`:
 
 ```cmake
