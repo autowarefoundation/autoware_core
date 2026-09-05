@@ -280,3 +280,51 @@ TEST_F(PoseInitializerNodeIntegrationTest, AutoInitStaleGnssFailsFast)
   EXPECT_FALSE(res->status.success);
   EXPECT_EQ(res->status.message, "The GNSS pose is out of date.");
 }
+
+TEST_F(PoseInitializerNodeIntegrationTest, AutoInitNdtAlignFailsReturnsEstError)
+{
+  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
+  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
+
+  simulate_vehicle_stopped(0.5);
+
+  mock_align_success_ = false;  // Force mock NDT server to fail
+
+  PoseWithCovarianceStamped gnss_pose;
+  gnss_pose.header.stamp = harness_->now();
+  pub_gnss_->publish(gnss_pose);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  auto req = std::make_shared<InitializeLocalization::Request>();
+  req->method = InitializeLocalization::Request::AUTO;
+
+  auto future = cli_init->async_send_request(req);
+  auto res = future.get();
+
+  EXPECT_FALSE(res->status.success);
+  EXPECT_EQ(res->status.message, "align server failed.");
+}
+
+TEST_F(PoseInitializerNodeIntegrationTest, AutoInitTriggerFailsReturnsEstError)
+{
+  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
+  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
+
+  simulate_vehicle_stopped(0.5);
+
+  mock_trigger_success_ = false;  // Force mock trigger to fail
+
+  PoseWithCovarianceStamped gnss_pose;
+  gnss_pose.header.stamp = harness_->now();
+  pub_gnss_->publish(gnss_pose);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  auto req = std::make_shared<InitializeLocalization::Request>();
+  req->method = InitializeLocalization::Request::AUTO;
+
+  auto future = cli_init->async_send_request(req);
+  auto res = future.get();
+
+  EXPECT_FALSE(res->status.success);
+  EXPECT_TRUE(res->status.message.find("failed") != std::string::npos);
+}
