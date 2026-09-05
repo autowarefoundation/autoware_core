@@ -43,13 +43,18 @@ namespace autoware::agnocast_wrapper::detail
 /// first makes the wrapper throw rclcpp::exceptions::InvalidServiceNameError in every build and
 /// runtime mode. An empty name means "this node" and is always resolvable.
 ///
+/// The check runs on the longest of the six parameter service names a backend goes on to build.
+/// Length is the one validation rule whose answer the suffix can change (the limit is
+/// RMW_TOPIC_MAX_NAME_LENGTH), so checking a shorter suffix would let a name through here only
+/// for the backend to reject it with its own exception type.
+///
 /// @return remote_node_name unchanged, so this can wrap the argument at the call site.
 inline const std::string & checked_remote_node_name(
   const std::string & remote_node_name, const char * node_name, const char * node_namespace)
 {
   if (!remote_node_name.empty()) {
     (void)rclcpp::expand_topic_or_service_name(
-      remote_node_name + "/get_parameters", node_name, node_namespace, true);
+      remote_node_name + "/set_parameters_atomically", node_name, node_namespace, true);
   }
   return remote_node_name;
 }
@@ -73,8 +78,9 @@ namespace autoware::agnocast_wrapper
 /// does not support because its services do not pass through rcl. That is why this is a wrapper
 /// type rather than something a caller can spell directly.
 ///
-/// Only the read path is exposed, because that is what the wrapper's callers use. Both backends
-/// also provide the setter and descriptor calls; add them here when a caller needs one.
+/// Only the read path is exposed, because that is what the wrapper's callers use:
+/// get_parameters(), wait_for_service() and service_is_ready(). Both backends also provide the
+/// setter and descriptor calls; add them here when a caller needs one.
 ///
 /// @invariant The backend variant is selected from use_agnocast() at construction and never
 ///            changes.
@@ -90,11 +96,17 @@ namespace autoware::agnocast_wrapper
 ///     params_(std::make_unique<autoware::agnocast_wrapper::AsyncParametersClient>(
 ///       this, "pointcloud_map_loader"))
 ///   {
-///     params_->wait_for_service();
+///     if (!params_->wait_for_service(std::chrono::seconds(5))) {
+///       RCLCPP_WARN(get_logger(), "pointcloud_map_loader parameters are not up yet");
+///       return;
+///     }
 ///     params_->get_parameters(
 ///       {"enable_partial_load"},
 ///       [this](std::shared_future<std::vector<rclcpp::Parameter>> future) {
-///         RCLCPP_INFO(get_logger(), "partial load: %d", future.get().front().as_bool());
+///         const auto parameters = future.get();
+///         if (!parameters.empty()) {
+///           RCLCPP_INFO(get_logger(), "partial load: %d", parameters.front().as_bool());
+///         }
 ///       });
 ///   }
 ///
@@ -168,6 +180,12 @@ public:
   /// Templated on the duration because both upstream clients are, so callers keep passing the
   /// std::chrono literal they already use.
   ///
+  /// @note The Agnocast backend only keeps waiting while agnocast::ok() holds, which is false in
+  ///       anything but an AgnocastOnly executable. There it degenerates to the single
+  ///       non-blocking readiness probe it starts with and returns false without consuming the
+  ///       timeout, so read that false as "not ready yet" rather than "never coming up", or poll
+  ///       service_is_ready() instead. The rclcpp backend waits the timeout out.
+  ///
   /// @param timeout Maximum duration to wait; a negative duration waits forever.
   /// @return true if the services became available, false on timeout.
   template <typename RepT = int64_t, typename RatioT = std::milli>
@@ -175,6 +193,17 @@ public:
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::duration<RepT, RatioT>(-1))
   {
     return std::visit([&](auto & impl) { return impl.wait_for_service(timeout); }, impl_);
+  }
+
+  /// @brief Report whether the remote node's parameter services are available right now.
+  ///
+  /// Non-blocking, and unaffected by the wait_for_service() divergence noted above: this is the
+  /// call to poll from a timer when the executable is not AgnocastOnly.
+  ///
+  /// @return true if every parameter service endpoint of the remote node is available.
+  bool service_is_ready() const
+  {
+    return std::visit([](const auto & impl) { return impl.service_is_ready(); }, impl_);
   }
 
   // Non-copyable and non-movable: the backend is chosen at construction and the underlying
@@ -259,6 +288,9 @@ public:
   /// @brief Block until the remote node's parameter services are available, or the timeout
   ///        expires.
   ///
+  /// This build has only the rclcpp backend, so the timeout is always waited out. See the
+  /// Agnocast-build class for the divergence a caller has to tolerate under ENABLE_AGNOCAST=1.
+  ///
   /// @param timeout Maximum duration to wait; a negative duration waits forever.
   /// @return true if the services became available, false on timeout.
   template <typename RepT = int64_t, typename RatioT = std::milli>
@@ -267,6 +299,11 @@ public:
   {
     return impl_.wait_for_service(timeout);
   }
+
+  /// @brief Report whether the remote node's parameter services are available right now.
+  ///
+  /// @return true if every parameter service endpoint of the remote node is available.
+  bool service_is_ready() const { return impl_.service_is_ready(); }
 
   // Non-copyable and non-movable: matches the Agnocast-build client.
   AsyncParametersClient(const AsyncParametersClient &) = delete;

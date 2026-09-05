@@ -574,9 +574,9 @@ A `remote_node_name` that cannot form a service name is rejected by the construc
 
 ### Current limitations
 
-- Only the read path is exposed: `get_parameters()` and `wait_for_service()`. Both backends also provide the setter, descriptor and listing calls; extend the wrapper when a caller needs one.
+- Only the read path is exposed: `get_parameters()`, `wait_for_service()` and `service_is_ready()`. Both backends also provide the setter, descriptor and listing calls; extend the wrapper when a caller needs one.
 - `on_parameter_event()` has no Agnocast counterpart and is not exposed.
-- On the Agnocast backend, `wait_for_service()` gives up as soon as the Agnocast context is not the one the executable brought up, which is the case for anything but an AgnocastOnly executable. It then returns `false` without waiting out the timeout, so read a `false` as "not ready yet" rather than "never coming up". The rclcpp backend waits out the timeout in both builds.
+- On the Agnocast backend, `wait_for_service()` only keeps waiting while the Agnocast context is the one the executable brought up, which is not the case for anything but an AgnocastOnly executable. Elsewhere it degenerates to the single non-blocking readiness probe it starts with and returns `false` without consuming the timeout, so read that `false` as "not ready yet" rather than "never coming up" — or poll `service_is_ready()`, which is non-blocking and behaves the same on both backends. The rclcpp backend waits out the timeout in both builds.
 - The wrapper is non-copyable and non-movable (the backend is chosen at construction), so hold it by value or in a `unique_ptr`, and do not let it outlive the node it was built on.
 
 ### Usage example
@@ -592,11 +592,17 @@ public:
     params_(std::make_unique<autoware::agnocast_wrapper::AsyncParametersClient>(
       this, "pointcloud_map_loader"))
   {
-    params_->wait_for_service();
+    if (!params_->wait_for_service(std::chrono::seconds(5))) {
+      RCLCPP_WARN(get_logger(), "pointcloud_map_loader parameters are not up yet");
+      return;
+    }
     params_->get_parameters(
       {"enable_partial_load"},
       [this](std::shared_future<std::vector<rclcpp::Parameter>> future) {
-        RCLCPP_INFO(get_logger(), "partial load: %d", future.get().front().as_bool());
+        const auto parameters = future.get();
+        if (!parameters.empty()) {
+          RCLCPP_INFO(get_logger(), "partial load: %d", parameters.front().as_bool());
+        }
       });
   }
 
