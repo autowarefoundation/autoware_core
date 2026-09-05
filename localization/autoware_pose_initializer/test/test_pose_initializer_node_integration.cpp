@@ -221,3 +221,20 @@ TEST_F(PoseInitializerNodeIntegrationTest, DirectInitEmptyPoseFailsFast)
   EXPECT_FALSE(res->status.success);
   EXPECT_TRUE(res->status.message.find("No input pose_with_covariance") != std::string::npos);
 }
+
+TEST_F(PoseInitializerNodeIntegrationTest, UnknownMethodFailsFast)
+{
+  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
+  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
+
+  simulate_vehicle_stopped(0.5);
+
+  auto req = std::make_shared<InitializeLocalization::Request>();
+  req->method = 99;  // Invalid method ID
+
+  auto future = cli_init->async_send_request(req);
+  auto res = future.get();
+
+  EXPECT_FALSE(res->status.success);
+  EXPECT_TRUE(res->status.message.find("Unknown method type") != std::string::npos);
+}
