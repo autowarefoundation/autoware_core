@@ -40,7 +40,7 @@ The following members / free functions are provided. Unless noted, signatures mi
 | Callback groups | `create_callback_group()`                                                                                                                                                                                                                                                                                                                                                                                             |
 | Parameters      | `declare_parameter()` (typed + `ParameterValue`/`ParameterType` overloads), `has_parameter()`, `undeclare_parameter()`, `get_parameter()` / `get_parameters()` (typed + prefix overloads), `set_parameter()` / `set_parameters()` / `set_parameters_atomically()`, `describe_parameter(s)()`, `get_parameter_types()`, `list_parameters()`, `add_on_set_parameters_callback()`, `remove_on_set_parameters_callback()` |
 | Publisher       | `create_publisher<MessageT>()` (`QoS` and depth overloads) — see [Publisher API](#publisher-api)                                                                                                                                                                                                                                                                                                                      |
-| Subscription    | `create_subscription<MessageT>()` (`QoS` and depth overloads)                                                                                                                                                                                                                                                                                                                                                         |
+| Subscription    | `create_subscription<MessageT>()` (`QoS` and depth overloads, plus a callback-less form read with `take()`) — see [Subscription API](#subscription-api)                                                                                                                                                                                                                                                               |
 | Client          | `create_client<ServiceT>()` (`rclcpp::QoS`); `async_send_request()` takes `allocate_output_service_request()`'s result, or a plain `std::shared_ptr<S::Request>` that the Agnocast backend copies                                                                                                                                                                                                                     |
 | Service         | `create_service<ServiceT>()` (`rclcpp::QoS`) — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                             |
 | Timer           | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
@@ -198,6 +198,24 @@ A wrapper publisher exposes three `publish()` overloads, all supported in both b
 
 Prefer the allocate-then-move form when you are constructing the outgoing message anyway; the
 `const MessageT &` overload suits a message you already hold and must keep.
+
+#### Subscription API
+
+Passing no callback creates a subscription that is read with `take()` rather than delivered:
+
+```cpp
+auto sub = node->create_subscription<std_msgs::msg::String>("/topic", rclcpp::QoS{1});
+
+std_msgs::msg::String msg;
+rclcpp::MessageInfo info;
+if (sub->take(msg, info)) {
+  // msg holds the next message this subscription has not taken yet
+}
+```
+
+Prefer [`polling::create_polling_subscriber()`](#polling-subscriber-polling-namespace) for polling: it keeps Agnocast's zero copy and offers a re-delivery policy, where `take()` copies out of shared memory and returns each message once. This form is for callers that need an `rclcpp::Subscription`-shaped handle, as `component_interface_utils` does.
+
+`take()` throws `std::runtime_error` on a subscription created **with** a callback: the delivery mode is fixed at construction. Agnocast fills none of the fields `info` carries, so that path zeroes it and reports the sequence numbers as unsupported. `SubscriptionOptions::callback_group` is ignored with a warning, and intra-process delivery is disabled, because either would let something else consume the messages `take()` is there to read.
 
 #### CMake setup
 
