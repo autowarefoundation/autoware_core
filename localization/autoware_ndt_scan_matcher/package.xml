@@ -48,11 +48,13 @@
   <build_depend>libpcl-all-dev</build_depend>
 
   <test_depend>ament_cmake_cppcheck</test_depend>
+  <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>launch_testing_ament_cmake</test_depend>
   <test_depend>rcl_yaml_param_parser</test_depend>
   <test_depend>ros_testing</test_depend>
+  <test_depend>tf2_msgs</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>
