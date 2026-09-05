@@ -174,15 +174,41 @@ protected:
   std::atomic<bool> mock_align_success_{true};
   std::atomic<bool> mock_trigger_success_{true};
   std::atomic<int> trigger_calls_{0};
+
+  // Helper to publish GNSS and handle DDS delay
+  void publish_gnss_pose(double time_offset_sec = 0.0, double x_pos = 0.0)
+  {
+    PoseWithCovarianceStamped msg;
+    msg.header.stamp = harness_->now() + rclcpp::Duration::from_seconds(time_offset_sec);
+    msg.header.frame_id = "map";
+    msg.pose.pose.position.x = x_pos;
+    pub_gnss_->publish(msg);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  }
+
+  // Helper to do lots of stuffs one shot
+  InitializeLocalization::Response::SharedPtr call_init_service(
+    InitializeLocalization::Request::SharedPtr req)
+  {
+    auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
+    EXPECT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
+
+    simulate_vehicle_stopped(0.5);
+
+    auto future = cli_init->async_send_request(req);
+    EXPECT_EQ(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
+    return future.get();
+  }
 };
 
+// ================================ TESTING AREA HERE ================================
+
+// TEST 1. Confirms that sending DIRECT req will:
+// - Bypass NDT and EKF aligners.
+// - Publish req pose directly to node.
+// - Toggles localizer trigger (4 callshots).
 TEST_F(PoseInitializerNodeIntegrationTest, DirectInitBypassAligners)
 {
-  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
-  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
-
-  simulate_vehicle_stopped(0.5);
-
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = InitializeLocalization::Request::DIRECT;
 
@@ -192,9 +218,7 @@ TEST_F(PoseInitializerNodeIntegrationTest, DirectInitBypassAligners)
   initial_pose.pose.pose.orientation.w = 1.0;
   req->pose_with_covariance.push_back(initial_pose);
 
-  auto future = cli_init->async_send_request(req);
-  ASSERT_EQ(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
-  auto res = future.get();
+  auto res = call_init_service(req);
 
   EXPECT_TRUE(res->status.success);
 
@@ -209,145 +233,96 @@ TEST_F(PoseInitializerNodeIntegrationTest, DirectInitBypassAligners)
   EXPECT_EQ(trigger_calls_.load(), 4);
 }
 
+// TEST 2. Confirms missing pose arrays will fail fast with error message.
 TEST_F(PoseInitializerNodeIntegrationTest, DirectInitEmptyPoseFailsFast)
 {
-  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
-  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
-
-  simulate_vehicle_stopped(0.5);
-
-  // Intentionally leaving req->pose_with_covariance empty
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = InitializeLocalization::Request::DIRECT;
 
-  auto future = cli_init->async_send_request(req);
-  ASSERT_EQ(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
-  auto res = future.get();
+  auto res = call_init_service(req);
 
   EXPECT_FALSE(res->status.success);
   EXPECT_TRUE(res->status.message.find("No input pose_with_covariance") != std::string::npos);
 }
 
+// TEST 3. Confirms unknown method ID will fail fast with error message.
 TEST_F(PoseInitializerNodeIntegrationTest, UnknownMethodFailsFast)
 {
-  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
-  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
-
-  simulate_vehicle_stopped(0.5);
-
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = 99;  // Invalid method ID
 
-  auto future = cli_init->async_send_request(req);
-  auto res = future.get();
+  auto res = call_init_service(req);
 
   EXPECT_FALSE(res->status.success);
   EXPECT_TRUE(res->status.message.find("Unknown method type") != std::string::npos);
 }
 
+// TEST 4. Confirms AUTO init without GNSS will fail fast with error message.
 TEST_F(PoseInitializerNodeIntegrationTest, AutoInitNoGnssFailsFast)
 {
-  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
-  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
-
-  simulate_vehicle_stopped(0.5);
-
-  // No GNSS published prior to request + empty request pose
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = InitializeLocalization::Request::AUTO;
 
-  auto future = cli_init->async_send_request(req);
-  auto res = future.get();
+  auto res = call_init_service(req);
 
   EXPECT_FALSE(res->status.success);
   EXPECT_EQ(res->status.message, "The GNSS pose has not arrived.");
 }
 
+// TEST 5. Confirms AUTO init with stale GNSS (lagged 5 sec > 3 sec) will fail fast with error
+// message.
 TEST_F(PoseInitializerNodeIntegrationTest, AutoInitStaleGnssFailsFast)
 {
-  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
-  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
-
-  simulate_vehicle_stopped(0.5);
-
   // Publish GNSS pose with 5 sec old (timeout = 3 sec)
-  PoseWithCovarianceStamped gnss_pose;
-  gnss_pose.header.stamp = harness_->now() - rclcpp::Duration::from_seconds(5.0);
-  gnss_pose.header.frame_id = "map";
-  pub_gnss_->publish(gnss_pose);
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  publish_gnss_pose(-5.0);
 
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = InitializeLocalization::Request::AUTO;
 
-  auto future = cli_init->async_send_request(req);
-  auto res = future.get();
+  auto res = call_init_service(req);
 
   EXPECT_FALSE(res->status.success);
   EXPECT_EQ(res->status.message, "The GNSS pose is out of date.");
 }
 
+// TEST 6. Confirms AUTO init with NDT alignment failure will return error.
 TEST_F(PoseInitializerNodeIntegrationTest, AutoInitNdtAlignFailsReturnsEstError)
 {
-  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
-  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
-
-  simulate_vehicle_stopped(0.5);
-
   mock_align_success_ = false;  // Force mock NDT server to fail
 
-  PoseWithCovarianceStamped gnss_pose;
-  gnss_pose.header.stamp = harness_->now();
-  pub_gnss_->publish(gnss_pose);
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  publish_gnss_pose();
 
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = InitializeLocalization::Request::AUTO;
 
-  auto future = cli_init->async_send_request(req);
-  auto res = future.get();
+  auto res = call_init_service(req);
 
   EXPECT_FALSE(res->status.success);
   EXPECT_EQ(res->status.message, "align server failed.");
 }
 
+// TEST 7. Confirms AUTO init with trigger failure will return error.
 TEST_F(PoseInitializerNodeIntegrationTest, AutoInitTriggerFailsReturnsEstError)
 {
-  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
-  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
-
-  simulate_vehicle_stopped(0.5);
-
   mock_trigger_success_ = false;  // Force mock trigger to fail
 
-  PoseWithCovarianceStamped gnss_pose;
-  gnss_pose.header.stamp = harness_->now();
-  pub_gnss_->publish(gnss_pose);
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  publish_gnss_pose();
 
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = InitializeLocalization::Request::AUTO;
 
-  auto future = cli_init->async_send_request(req);
-  auto res = future.get();
+  auto res = call_init_service(req);
 
   EXPECT_FALSE(res->status.success);
   EXPECT_TRUE(res->status.message.find("failed") != std::string::npos);
 }
 
+// TEST 8. Confirms AUTO init with large pose error will still succeed but issue a warning.
+// For details please see comments inside this func.
 TEST_F(PoseInitializerNodeIntegrationTest, AutoInitLargePoseErrSucceedsWithWarn)
 {
-  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
-  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
-
-  simulate_vehicle_stopped(0.5);
-
   // 1. Publish GNSS at X = 0
-  PoseWithCovarianceStamped gnss_pose;
-  gnss_pose.header.stamp = harness_->now();
-  gnss_pose.pose.pose.position.x = 0.0;
-  pub_gnss_->publish(gnss_pose);
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  publish_gnss_pose();
 
   auto req = std::make_shared<InitializeLocalization::Request>();
   req->method = InitializeLocalization::Request::AUTO;
@@ -363,8 +338,7 @@ TEST_F(PoseInitializerNodeIntegrationTest, AutoInitLargePoseErrSucceedsWithWarn)
   req_pose.pose.pose.position.x = 10.0;
   req->pose_with_covariance.push_back(req_pose);
 
-  auto future = cli_init->async_send_request(req);
-  auto res = future.get();
+  auto res = call_init_service(req);
 
   // Still succeed but there will be warning
   EXPECT_TRUE(res->status.success);
