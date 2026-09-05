@@ -22,14 +22,13 @@
 #include "map_update_module.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware/localization_util/smart_pose_buffer.hpp>
 #include <autoware_utils_diagnostics/diagnostics_interface.hpp>
 #include <autoware_utils_logging/logger_level_configure.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/transform_datatypes.hpp>
-#include <tf2_ros/buffer.hpp>
-#include <tf2_ros/transform_broadcaster.hpp>
-#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_internal_debug_msgs/msg/float32_stamped.hpp>
 #include <autoware_internal_debug_msgs/msg/int32_stamped.hpp>
@@ -66,9 +65,10 @@
 
 namespace autoware::ndt_scan_matcher
 {
-using DiagnosticsInterface = autoware_utils_diagnostics::DiagnosticsInterface;
+using DiagnosticsInterface =
+  autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>;
 
-class NDTScanMatcher : public rclcpp::Node
+class NDTScanMatcher : public autoware::agnocast_wrapper::Node
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
@@ -88,17 +88,22 @@ private:
   void callback_timer();
 
   void callback_initial_pose(
-    geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
+    initial_pose_msg_ptr);
   void callback_initial_pose_main(
-    const geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr initial_pose_msg_ptr);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
+    initial_pose_msg_ptr);
 
   void callback_regularization_pose(
-    geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr pose_conv_msg_ptr);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) &
+    pose_conv_msg_ptr);
 
   void callback_sensor_points(
-    sensor_msgs::msg::PointCloud2::ConstSharedPtr sensor_points_msg_in_sensor_frame);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::PointCloud2) &
+    sensor_points_msg_in_sensor_frame);
   bool callback_sensor_points_main(
-    sensor_msgs::msg::PointCloud2::ConstSharedPtr sensor_points_msg_in_sensor_frame);
+    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::PointCloud2) &
+    sensor_points_msg_in_sensor_frame);
 
   void service_trigger_node(
     const std_srvs::srv::SetBool::Request::SharedPtr req,
@@ -155,7 +160,7 @@ private:
     const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
 
   // Performs the pcd_loader service call for MapUpdateModule, returning nullptr on failure.
-  MapUpdateModule::GetDifferentialPointCloudMap::Response::SharedPtr
+  MapUpdateModule::GetDifferentialPointCloudMap::Response::ConstSharedPtr
   get_differential_point_cloud_map(
     const MapUpdateModule::GetDifferentialPointCloudMap::Request::SharedPtr & request);
 
@@ -163,55 +168,53 @@ private:
   static void apply_diagnostics_update(
     DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsReport & report);
 
-  rclcpp::TimerBase::SharedPtr map_update_timer_;
-  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_sub_;
-  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sensor_points_sub_;
-  rclcpp::Subscription<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
-    regularization_pose_sub_;
+  AUTOWARE_TIMER_PTR map_update_timer_;
+  AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) initial_pose_sub_;
+  AUTOWARE_SUBSCRIPTION_PTR(sensor_msgs::msg::PointCloud2) sensor_points_sub_;
+  AUTOWARE_SUBSCRIPTION_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) regularization_pose_sub_;
 
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr sensor_aligned_pose_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr no_ground_points_aligned_pose_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr ndt_pose_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
-    ndt_pose_with_covariance_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
-    initial_pose_with_covariance_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr multi_ndt_pose_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PoseArray>::SharedPtr multi_initial_pose_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr exe_time_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr
-    transform_probability_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr
-    nearest_voxel_transformation_likelihood_pub_;
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr voxel_score_points_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr
-    no_ground_transform_probability_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr
-    no_ground_nearest_voxel_transformation_likelihood_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Int32Stamped>::SharedPtr iteration_num_pub_;
-  rclcpp::Publisher<geometry_msgs::msg::PoseStamped>::SharedPtr
-    initial_to_result_relative_pose_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr
-    initial_to_result_distance_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr
-    initial_to_result_distance_old_pub_;
-  rclcpp::Publisher<autoware_internal_debug_msgs::msg::Float32Stamped>::SharedPtr
-    initial_to_result_distance_new_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr ndt_marker_pub_;
-  rclcpp::Publisher<visualization_msgs::msg::MarkerArray>::SharedPtr
-    ndt_monte_carlo_initial_pose_marker_pub_;
+  AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) sensor_aligned_pose_pub_;
+  AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) no_ground_points_aligned_pose_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) ndt_pose_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped)
+  ndt_pose_with_covariance_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped)
+  initial_pose_with_covariance_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseArray) multi_ndt_pose_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseArray) multi_initial_pose_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped) exe_time_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
+  transform_probability_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
+  nearest_voxel_transformation_likelihood_pub_;
+  AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) voxel_score_points_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
+  no_ground_transform_probability_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
+  no_ground_nearest_voxel_transformation_likelihood_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Int32Stamped) iteration_num_pub_;
+  AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) initial_to_result_relative_pose_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
+  initial_to_result_distance_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
+  initial_to_result_distance_old_pub_;
+  AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::Float32Stamped)
+  initial_to_result_distance_new_pub_;
+  AUTOWARE_PUBLISHER_PTR(visualization_msgs::msg::MarkerArray) ndt_marker_pub_;
+  AUTOWARE_PUBLISHER_PTR(visualization_msgs::msg::MarkerArray)
+  ndt_monte_carlo_initial_pose_marker_pub_;
 
   // Debug publisher and pcd loader client used by MapUpdateModule (kept on the ROS node side).
-  rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr loaded_pcd_pub_;
-  rclcpp::Client<MapUpdateModule::GetDifferentialPointCloudMap>::SharedPtr pcd_loader_client_;
+  AUTOWARE_PUBLISHER_PTR(sensor_msgs::msg::PointCloud2) loaded_pcd_pub_;
+  AUTOWARE_CLIENT_PTR(MapUpdateModule::GetDifferentialPointCloudMap) pcd_loader_client_;
 
-  rclcpp::Service<autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped>::SharedPtr
-    service_;
-  rclcpp::Service<std_srvs::srv::SetBool>::SharedPtr service_trigger_node_;
+  AUTOWARE_SERVICE_PTR(autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped)
+  service_;
+  AUTOWARE_SERVICE_PTR(std_srvs::srv::SetBool) service_trigger_node_;
 
-  tf2_ros::TransformBroadcaster tf2_broadcaster_;
-  tf2_ros::Buffer tf2_buffer_;
-  tf2_ros::TransformListener tf2_listener_;
+  autoware::agnocast_wrapper::TransformBroadcaster tf2_broadcaster_;
+  autoware::agnocast_wrapper::Buffer tf2_buffer_;
+  autoware::agnocast_wrapper::TransformListener tf2_listener_;
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 
@@ -235,7 +238,9 @@ private:
   std::unique_ptr<DiagnosticsInterface> diagnostics_ndt_align_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_trigger_node_;
   std::unique_ptr<MapUpdateModule> map_update_module_;
-  std::unique_ptr<autoware_utils_logging::LoggerLevelConfigure> logger_configure_;
+  std::unique_ptr<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
+    logger_configure_;
 
   HyperParameters param_;
 };
