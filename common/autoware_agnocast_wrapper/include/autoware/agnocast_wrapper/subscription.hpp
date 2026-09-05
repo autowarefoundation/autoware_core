@@ -277,7 +277,7 @@ public:
   {
     // A callback group the executor spins would dispatch the no-op callback and consume every
     // message, leaving take() to return false forever. take() likewise drops a sample matched
-    // intra-process, expecting the waitable in that same unspun group to deliver it.
+    // intra-process, expecting the intra-process waitable in that same group to deliver it.
     if (options.callback_group) {
       RCLCPP_WARN(
         node->get_logger(),
