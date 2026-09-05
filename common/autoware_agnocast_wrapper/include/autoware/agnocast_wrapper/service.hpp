@@ -77,11 +77,12 @@ public:
   }
 
 protected:
+  /// Backend hook for configure_introspection(), which does the null-clock check the two
+  /// backends disagree on before dispatching here. Protected so that the check cannot be
+  /// reached around.
   virtual void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) = 0;
-
-public:
 #endif
 };
 
@@ -131,6 +132,7 @@ public:
   const char * get_service_name() const override { return srv_->get_service_name(); }
 
 #if RCLCPP_VERSION_MAJOR >= 21
+protected:
   void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override
@@ -175,6 +177,7 @@ public:
   const char * get_service_name() const override { return srv_->get_service_name(); }
 
 #if RCLCPP_VERSION_MAJOR >= 21
+protected:
   void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override
@@ -242,11 +245,12 @@ public:
   }
 
 protected:
+  /// Backend hook for configure_introspection(), which does the null-clock check the two
+  /// backends disagree on before dispatching here. Protected so that the check cannot be
+  /// reached around.
   virtual void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) = 0;
-
-public:
 #endif
 };
 
@@ -299,6 +303,7 @@ public:
   const char * get_service_name() const override { return srv_->get_service_name(); }
 
 #if RCLCPP_VERSION_MAJOR >= 21
+protected:
   void configure_introspection_impl(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state) override

@@ -54,6 +54,15 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
+#if RCLCPP_VERSION_MAJOR >= 21
+  /// Backend hook for configure_introspection(), which does the null-clock check the two
+  /// backends disagree on before dispatching here. Protected, like wait_for_service_impl(), so
+  /// that the check cannot be reached around.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
@@ -96,13 +105,6 @@ public:
     }
     configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
   }
-
-protected:
-  virtual void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) = 0;
-
-public:
 #endif
 
   template <typename RepT, typename RatioT>
@@ -130,6 +132,15 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
+
 public:
   template <typename NodeT>
   explicit AgnocastClient(
@@ -147,15 +158,6 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
-
-#if RCLCPP_VERSION_MAJOR >= 21
-  void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) override
-  {
-    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
-  }
-#endif
 
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
@@ -232,6 +234,15 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
+
 public:
   explicit ROS2Client(
     rclcpp::Node * node, const std::string & service_name, const rclcpp::QoS & qos,
@@ -252,15 +263,6 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
-
-#if RCLCPP_VERSION_MAJOR >= 21
-  void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) override
-  {
-    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
-  }
-#endif
 
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
@@ -356,6 +358,15 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
+#if RCLCPP_VERSION_MAJOR >= 21
+  /// Backend hook for configure_introspection(), which does the null-clock check the two
+  /// backends disagree on before dispatching here. Protected, like wait_for_service_impl(), so
+  /// that the check cannot be reached around.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
@@ -398,13 +409,6 @@ public:
     }
     configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
   }
-
-protected:
-  virtual void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) = 0;
-
-public:
 #endif
 
   template <typename RepT, typename RatioT>
@@ -432,6 +436,15 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
+#if RCLCPP_VERSION_MAJOR >= 21
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
+
 public:
   explicit ROS2Client(
     rclcpp::Node * node, const std::string & service_name, const rclcpp::QoS & qos,
@@ -452,15 +465,6 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
-
-#if RCLCPP_VERSION_MAJOR >= 21
-  void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) override
-  {
-    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
-  }
-#endif
 
   // rclcpp::Client<ServiceT>::Future (std::future<std::shared_ptr<Response>>) and
   // AUTOWARE_CLIENT_FUTURE(ServiceT) (std::future<std::shared_ptr<const Response>>) are different
