@@ -272,7 +272,8 @@ public:
   : pollable_(true), topic_name_(topic_name)
   {
     // A callback group the executor spins would dispatch the no-op callback and consume every
-    // message, leaving take() to return false forever.
+    // message, leaving take() to return false forever. take() likewise drops a sample matched
+    // intra-process, expecting the waitable in that same unspun group to deliver it.
     if (options.callback_group) {
       RCLCPP_WARN(
         node->get_logger(),
@@ -283,6 +284,7 @@ public:
     rclcpp::SubscriptionOptions ros2_options = to_rclcpp_subscription_options(options);
     ros2_options.callback_group =
       node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+    ros2_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
     subscription_ = node->create_subscription<MessageT>(
       topic_name, qos, [](std::unique_ptr<MessageT>) { assert(false); }, ros2_options);
   }
