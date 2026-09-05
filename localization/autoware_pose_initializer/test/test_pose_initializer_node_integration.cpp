@@ -32,6 +32,7 @@
 
 #include <atomic>
 #include <memory>
+#include <string>
 #include <thread>
 #include <vector>
 
@@ -62,7 +63,8 @@ protected:
     options.append_parameter_override("pose_error_threshold", 5.0);
     options.append_parameter_override("user_defined_initial_pose.enable", false);
     options.append_parameter_override("map_height_fitter.target", "vector_map");
-    options.append_parameter_override("map_height_fitter.map_loader_name", "/map/vector_map_loader");
+    options.append_parameter_override(
+      "map_height_fitter.map_loader_name", "/map/vector_map_loader");
     options.append_parameter_override(
       "user_defined_initial_pose.pose", std::vector<double>{0, 0, 0, 0, 0, 0, 1});
 
@@ -199,4 +201,23 @@ TEST_F(PoseInitializerNodeIntegrationTest, DirectInitBypassAligners)
   // Expect trigger calls
   // (deactivate + activate) x 2 for both EKF and NDT = 4 calls
   EXPECT_EQ(trigger_calls_.load(), 4);
+}
+
+TEST_F(PoseInitializerNodeIntegrationTest, DirectInitEmptyPoseFailsFast)
+{
+  auto cli_init = harness_->create_client<InitializeLocalization>("/localization/initialize");
+  ASSERT_TRUE(cli_init->wait_for_service(std::chrono::seconds(2)));
+
+  simulate_vehicle_stopped(0.5);
+
+  // Intentionally leaving req->pose_with_covariance empty
+  auto req = std::make_shared<InitializeLocalization::Request>();
+  req->method = InitializeLocalization::Request::DIRECT;
+
+  auto future = cli_init->async_send_request(req);
+  ASSERT_EQ(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
+  auto res = future.get();
+
+  EXPECT_FALSE(res->status.success);
+  EXPECT_TRUE(res->status.message.find("No input pose_with_covariance") != std::string::npos);
 }
