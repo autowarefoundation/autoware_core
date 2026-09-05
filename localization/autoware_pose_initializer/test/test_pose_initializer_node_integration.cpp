@@ -61,9 +61,8 @@ protected:
     options.append_parameter_override("pose_error_check_enabled", true);
     options.append_parameter_override("pose_error_threshold", 5.0);
     options.append_parameter_override("user_defined_initial_pose.enable", false);
-    options.append_parameter_override("map_height_fitter.target", "pointcloud_map");
-    options.append_parameter_override(
-      "map_height_fitter.map_loader_name", "/map/pointcloud_map_loader");
+    options.append_parameter_override("map_height_fitter.target", "vector_map");
+    options.append_parameter_override("map_height_fitter.map_loader_name", "/map/vector_map_loader");
     options.append_parameter_override(
       "user_defined_initial_pose.pose", std::vector<double>{0, 0, 0, 0, 0, 0, 1});
 
@@ -113,6 +112,13 @@ protected:
 
     // Allow DDS discovery to fully register mock services
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
+
+    // Ensure the trigger services are discoverable to avoid races where the node
+    // blocks waiting for them inside its service callback. Wait up to 2s.
+    auto cli_ekf = harness_->create_client<SetBool>("ekf_trigger_node");
+    auto cli_ndt = harness_->create_client<SetBool>("ndt_trigger_node");
+    ASSERT_TRUE(cli_ekf->wait_for_service(std::chrono::seconds(2)));
+    ASSERT_TRUE(cli_ndt->wait_for_service(std::chrono::seconds(2)));
   }
 
   void TearDown() override
