@@ -20,6 +20,7 @@
 
 #include <rclcpp/version.h>
 
+#include <cassert>
 #include <chrono>
 #include <map>
 #include <memory>
@@ -754,13 +755,20 @@ public:
     const std::string & topic_name, const rclcpp::QoS & qos,
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
   {
-    rclcpp::SubscriptionOptions polling_options = options;
-    if (!polling_options.callback_group) {
-      polling_options.callback_group =
-        node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+    // A callback group the executor spins would dispatch the no-op callback and consume every
+    // message, leaving take() to return false forever.
+    if (options.callback_group) {
+      RCLCPP_WARN(
+        node_->get_logger(),
+        "SubscriptionOptions::callback_group is ignored for the polling subscription on topic "
+        "'%s': it has no callback to dispatch.",
+        topic_name.c_str());
     }
+    rclcpp::SubscriptionOptions polling_options = options;
+    polling_options.callback_group =
+      node_->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
     return node_->create_subscription<MessageT>(
-      topic_name, qos, [](std::unique_ptr<MessageT>) {}, polling_options);
+      topic_name, qos, [](std::unique_ptr<MessageT>) { assert(false); }, polling_options);
   }
 
   // ===== Client =====
