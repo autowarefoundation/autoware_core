@@ -41,6 +41,22 @@ using OnSetParametersCallbackType =
 using OnSetParametersCallbackType =
   rclcpp::node_interfaces::NodeParametersInterface::OnParametersSetCallbackType;
 #endif
+
+namespace detail
+{
+
+/// QoS cannot be built from a bare profile; it needs a QoSInitialization to carry the history and
+/// depth. Take those from the profile itself rather than through QoSInitialization::from_rmw(),
+/// which reports a SYSTEM_DEFAULT or UNKNOWN history as KEEP_LAST and drops the depth of a
+/// KEEP_ALL profile. Nothing is normalized here: rclcpp and the Agnocast backend see what the
+/// caller passed, and complain about it themselves if it makes no sense.
+inline rclcpp::QoS to_qos(const rmw_qos_profile_t & qos_profile)
+{
+  return rclcpp::QoS(
+    rclcpp::QoSInitialization(qos_profile.history, qos_profile.depth), qos_profile);
+}
+
+}  // namespace detail
 }  // namespace autoware::agnocast_wrapper
 
 #ifdef USE_AGNOCAST_ENABLED
@@ -265,6 +281,20 @@ public:
     });
   }
 
+  /// Transitional; to be removed. Choosing between rclcpp::QoS and rmw_qos_profile_t belongs
+  /// inside the wrapper, and already happens there where it calls rclcpp. This caller-facing
+  /// overload is only for code templated on the node type that also instantiates rclcpp::Node,
+  /// which on Humble (rclcpp 16) has no rclcpp::QoS overload of create_client()/create_service().
+  /// Drop it once no such caller is left.
+  template <typename ServiceT>
+  AUTOWARE_CLIENT_PTR(ServiceT)
+  create_client(
+    const std::string & service_name, const rmw_qos_profile_t & qos_profile,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_client<ServiceT>(service_name, detail::to_qos(qos_profile), group);
+  }
+
   // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr).
   template <
     typename ServiceT, typename Func,
@@ -334,6 +364,17 @@ public:
       "Service callback must be invocable with "
       "(AUTOWARE_SERVER_REQUEST_PTR(ServiceT), AUTOWARE_SERVER_RESPONSE_PTR(ServiceT)) or with "
       "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
+  }
+
+  /// See the create_client() counterpart above.
+  template <typename ServiceT, typename Func>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback, const rmw_qos_profile_t & qos_profile,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_service<ServiceT>(
+      service_name, std::forward<Func>(callback), detail::to_qos(qos_profile), group);
   }
 
   // ===== Timer =====
@@ -684,6 +725,20 @@ public:
       node_.get(), service_name, qos, group);
   }
 
+  /// Transitional; to be removed. Choosing between rclcpp::QoS and rmw_qos_profile_t belongs
+  /// inside the wrapper, and already happens there where it calls rclcpp. This caller-facing
+  /// overload is only for code templated on the node type that also instantiates rclcpp::Node,
+  /// which on Humble (rclcpp 16) has no rclcpp::QoS overload of create_client()/create_service().
+  /// Drop it once no such caller is left.
+  template <typename ServiceT>
+  AUTOWARE_CLIENT_PTR(ServiceT)
+  create_client(
+    const std::string & service_name, const rmw_qos_profile_t & qos_profile,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_client<ServiceT>(service_name, detail::to_qos(qos_profile), group);
+  }
+
   // ===== Service =====
   // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR.
   template <
@@ -746,6 +801,17 @@ public:
       "Service callback must be invocable with "
       "(AUTOWARE_SERVER_REQUEST_PTR(ServiceT), AUTOWARE_SERVER_RESPONSE_PTR(ServiceT)) or with "
       "(std::shared_ptr<ServiceT::Request>, std::shared_ptr<ServiceT::Response>).");
+  }
+
+  /// See the create_client() counterpart above.
+  template <typename ServiceT, typename Func>
+  AUTOWARE_SERVICE_PTR(ServiceT)
+  create_service(
+    const std::string & service_name, Func && callback, const rmw_qos_profile_t & qos_profile,
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return create_service<ServiceT>(
+      service_name, std::forward<Func>(callback), detail::to_qos(qos_profile), group);
   }
 
   // ===== Timer =====

@@ -26,6 +26,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -45,8 +46,26 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
+  static void throw_if_null(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    if (!request) {
+      throw std::invalid_argument("async_send_request() was given a null request");
+    }
+  }
+
+  /// Hands back a request this client can send. A hook rather than
+  /// allocate_output_service_request() plus a copy in the caller, because only the Agnocast
+  /// backend has to copy the payload, to get it into shared memory; the DDS backend shares the
+  /// caller's pointer, so a node built with ENABLE_AGNOCAST=1 but running on DDS pays what
+  /// rclcpp::Client pays.
+  virtual AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+    to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) = 0;
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
+
+  // For generic code that has to take this type off the client rather than spell it.
+  using SharedResponse = AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT);
 
   using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
   using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
@@ -81,6 +100,32 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
+
+  /// For callers that hold the request as a plain std::shared_ptr lvalue and cannot change its
+  /// type. The Agnocast backend copies the payload into a shared-memory request. A null request is
+  /// rejected before any backend allocates for it, where rclcpp::Client would dereference it.
+  ///
+  /// By const reference rather than by value so that async_send_request(std::move(req)) still
+  /// binds to the rvalue-reference overloads.
+  ///
+  /// The two builds do not accept the same forms here. At ENABLE_AGNOCAST=0
+  /// AUTOWARE_CLIENT_REQUEST_PTR(S) is std::shared_ptr<S::Request>, so an owned request passed as
+  /// an lvalue -- async_send_request(req), where req came from allocate_output_service_request() --
+  /// binds to this overload and compiles. At =1 that same call does not compile: the owned request
+  /// is a message_ptr, which matches neither overload. Always std::move an owned request.
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    throw_if_null(request);
+    return async_send_request(to_owned_request(request));
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    const std::shared_ptr<typename ServiceT::Request> & request,
+    std::function<void(SharedFuture)> callback)
+  {
+    throw_if_null(request);
+    return async_send_request(to_owned_request(request), std::move(callback));
+  }
 };
 
 template <typename ServiceT>
@@ -92,6 +137,14 @@ protected:
   bool wait_for_service_impl(std::chrono::nanoseconds timeout) const override
   {
     return client_->wait_for_service(timeout);
+  }
+
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+  to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) override
+  {
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) owned = allocate_output_service_request();
+    *owned = *request;
+    return owned;
   }
 
 public:
@@ -111,6 +164,9 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
+
+  // The overrides below would otherwise hide the base's std::shared_ptr overloads.
+  using Client<ServiceT>::async_send_request;
 
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
@@ -187,6 +243,13 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+  to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) override
+  {
+    return AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){
+      std::shared_ptr<typename ServiceT::Request>(request)};
+  }
+
 public:
   explicit ROS2Client(
     rclcpp::Node * node, const std::string & service_name, const rclcpp::QoS & qos,
@@ -207,6 +270,9 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
+
+  // The overrides below would otherwise hide the base's std::shared_ptr overloads.
+  using Client<ServiceT>::async_send_request;
 
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
@@ -302,8 +368,18 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
+  static void throw_if_null(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    if (!request) {
+      throw std::invalid_argument("async_send_request() was given a null request");
+    }
+  }
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
+
+  // For generic code that has to take this type off the client rather than spell it.
+  using SharedResponse = AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT);
 
   using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
   using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
@@ -338,6 +414,32 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
+
+  /// For callers that hold the request as a plain std::shared_ptr lvalue and cannot change its
+  /// type. A null request is rejected before any backend allocates for it, where rclcpp::Client
+  /// would dereference it.
+  ///
+  /// By const reference rather than by value so that async_send_request(std::move(req)) still
+  /// binds to the rvalue-reference overloads.
+  ///
+  /// The two builds do not accept the same forms here. At ENABLE_AGNOCAST=0
+  /// AUTOWARE_CLIENT_REQUEST_PTR(S) is std::shared_ptr<S::Request>, so an owned request passed as
+  /// an lvalue -- async_send_request(req), where req came from allocate_output_service_request() --
+  /// binds to this overload and compiles. At =1 that same call does not compile: the owned request
+  /// is a message_ptr, which matches neither overload. Always std::move an owned request.
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    throw_if_null(request);
+    return async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){request});
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    const std::shared_ptr<typename ServiceT::Request> & request,
+    std::function<void(SharedFuture)> callback)
+  {
+    throw_if_null(request);
+    return async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){request}, std::move(callback));
+  }
 };
 
 template <typename ServiceT>
@@ -371,6 +473,9 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
+
+  // The overrides below would otherwise hide the base's std::shared_ptr overloads.
+  using Client<ServiceT>::async_send_request;
 
   // rclcpp::Client<ServiceT>::Future (std::future<std::shared_ptr<Response>>) and
   // AUTOWARE_CLIENT_FUTURE(ServiceT) (std::future<std::shared_ptr<const Response>>) are different
