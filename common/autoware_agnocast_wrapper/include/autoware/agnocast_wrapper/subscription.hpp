@@ -25,6 +25,7 @@
 #include <agnocast/agnocast.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <cassert>
 #include <cstddef>
 #include <memory>
 #include <stdexcept>
@@ -270,13 +271,20 @@ public:
     const agnocast::SubscriptionOptions & options)
   : pollable_(true), topic_name_(topic_name)
   {
-    rclcpp::SubscriptionOptions ros2_options = to_rclcpp_subscription_options(options);
-    if (!ros2_options.callback_group) {
-      ros2_options.callback_group =
-        node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
+    // A callback group the executor spins would dispatch the no-op callback and consume every
+    // message, leaving take() to return false forever.
+    if (options.callback_group) {
+      RCLCPP_WARN(
+        node->get_logger(),
+        "SubscriptionOptions::callback_group is ignored for the polling subscription on topic "
+        "'%s': it has no callback to dispatch.",
+        topic_name.c_str());
     }
+    rclcpp::SubscriptionOptions ros2_options = to_rclcpp_subscription_options(options);
+    ros2_options.callback_group =
+      node->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive, false);
     subscription_ = node->create_subscription<MessageT>(
-      topic_name, qos, [](std::unique_ptr<MessageT>) {}, ros2_options);
+      topic_name, qos, [](std::unique_ptr<MessageT>) { assert(false); }, ros2_options);
   }
 
   bool take(MessageT & out, rclcpp::MessageInfo & info) override
