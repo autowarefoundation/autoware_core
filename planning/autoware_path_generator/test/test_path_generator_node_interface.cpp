@@ -27,7 +27,9 @@
 #include <string>
 #include <vector>
 
-TEST(PlanningModuleInterfaceTest, NodeTestWithExceptionTrajectory)
+namespace
+{
+void testPathGeneratorNodeInterface(const double planning_hz)
 {
   if (!rclcpp::ok()) {
     rclcpp::init(0, nullptr);
@@ -41,11 +43,12 @@ TEST(PlanningModuleInterfaceTest, NodeTestWithExceptionTrajectory)
   const auto path_generator_dir =
     ament_index_cpp::get_package_share_directory("autoware_path_generator");
 
-  const auto node_options = rclcpp::NodeOptions{}.arguments(
+  auto node_options = rclcpp::NodeOptions{}.arguments(
     {"--ros-args", "--params-file",
      autoware_test_utils_dir + "/config/test_vehicle_info.param.yaml", "--params-file",
      autoware_test_utils_dir + "/config/test_nearest_search.param.yaml", "--params-file",
      path_generator_dir + "/config/path_generator.param.yaml"});
+  node_options.append_parameter_override("planning_hz", planning_hz);
 
   auto test_target_node = std::make_shared<autoware::path_generator::PathGenerator>(node_options);
 
@@ -68,18 +71,30 @@ TEST(PlanningModuleInterfaceTest, NodeTestWithExceptionTrajectory)
   ASSERT_NO_THROW_WITH_ERROR_MSG(
     test_manager->testWithBehaviorNormalRoute(test_target_node, route_topic_name));
 
+  // Allow the normal route to produce a path before the next route replaces it.
+  test_manager->spinUntilReceived(test_target_node, 1, std::chrono::seconds(30));
+
   // test with the goal on left side
   ASSERT_NO_THROW_WITH_ERROR_MSG(
     test_manager->testWithBehaviorGoalOnLeftSide(test_target_node, route_topic_name));
 
-  // The node publishes paths from a timer callback; on a loaded CI host a single planning
-  // cycle can take several seconds, so wait for the first published path instead of
-  // assuming it arrived within the publishInput spin budget.
-  EXPECT_GE(test_manager->spinUntilReceived(test_target_node, 1, std::chrono::seconds(30)), 1u);
+  EXPECT_GE(test_manager->getReceivedTopicNum(), 1u);
 
   // test with trajectory with empty/one point/overlapping point
   ASSERT_NO_THROW_WITH_ERROR_MSG(
     test_manager->testWithAbnormalRoute(test_target_node, route_topic_name));
 
   rclcpp::shutdown();
+}
+}  // namespace
+
+TEST(PlanningModuleInterfaceTest, NodeTestWithExceptionTrajectory)
+{
+  testPathGeneratorNodeInterface(10.0);
+}
+
+TEST(PlanningModuleInterfaceTest, NodeTestWithDelayedPlanning)
+{
+  // The first timer callback must occur after the input publication spin budget.
+  testPathGeneratorNodeInterface(0.2);
 }

@@ -136,6 +136,8 @@ size_t PlanningInterfaceTestManager::spinUntilReceived(
   const auto deadline = std::chrono::steady_clock::now() + timeout;
   while (received_topic_num_ < min_count && std::chrono::steady_clock::now() < deadline) {
     autoware::test_utils::spinSomeNodes(test_node_, target_node, 1);
+    // A slow target timer can consume the joint spin budget before the receiver gets a turn.
+    rclcpp::spin_some(test_node_);
   }
   return received_topic_num_;
 }

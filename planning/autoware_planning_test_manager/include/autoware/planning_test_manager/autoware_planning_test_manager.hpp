@@ -116,12 +116,8 @@ public:
 
   size_t getReceivedTopicNum() const { return received_topic_num_; }
 
-  // Spin the test node together with `target_node` until at least `min_count` output
-  // messages have been received, or `timeout` elapses, then return the count received.
-  // The target node typically publishes from a timer callback, and on a heavily loaded
-  // CI host a single planning cycle can take several seconds. Waiting here (instead of
-  // relying on the fixed publishInput spin budget) keeps interface tests from racing a
-  // slow node.
+  // Spin both nodes until `min_count` messages arrive or `timeout` expires, then return the count.
+  // A running callback can exceed `timeout`.
   size_t spinUntilReceived(
     rclcpp::Node::SharedPtr target_node, size_t min_count = 1,
     std::chrono::nanoseconds timeout = std::chrono::seconds(30));
