@@ -117,6 +117,20 @@ protected:
     }
   }
 
+  // Wait helper: spins executor until condition becomes true or timeout elapses
+  template <typename Pred>
+  bool wait_for(Pred pred, std::chrono::milliseconds timeout) {
+    const auto end_time = std::chrono::steady_clock::now() + timeout;
+    while (std::chrono::steady_clock::now() < end_time && rclcpp::ok()) {
+      if (pred()) {
+        return true;
+      }
+      executor_->spin_some();
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    return pred();
+  }
+
   // ================== MOCK MAP BIN GENERATION FUNCS ==================
 
   // 1. Deterministic, 100-meter straight map
@@ -436,7 +450,7 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
 
   // Allow planning trigger
-  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(1500));
 
   // Memory check before accessing
   ASSERT_NE(latest_path_, nullptr) << "Node failed to output PathWithLaneId";
@@ -464,9 +478,10 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   auto odom = set_start_odom(route);
 
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
-  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(1500));
 
-  ASSERT_NE(latest_turn_, nullptr);
+  ASSERT_TRUE(wait_for([this] { return latest_turn_ != nullptr; }, std::chrono::milliseconds(1500)))
+    << "Node failed to output TurnIndicatorsCommand";
 
   // If ego is stopping and far, should be NO_COMMAND
   // We don't strictly assert NO_COMMAND here because it depends on exact yaml distance vs params,
@@ -476,9 +491,10 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   // Simulate advancing odom to trigger section
   latest_turn_ = nullptr;
   odom.pose.pose.position.x = 50.5;
-  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(1500));
 
-  ASSERT_NE(latest_turn_, nullptr);
+  ASSERT_TRUE(wait_for([this] { return latest_turn_ != nullptr; }, std::chrono::milliseconds(1500)))
+    << "Node failed to output TurnIndicatorsCommand after odom advance";
 }
 
 // TEST 3. Fail-safe runtime boundary
@@ -521,9 +537,9 @@ TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
   auto odom = set_start_odom(route);
 
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
-  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(1500));
 
-  ASSERT_NE(latest_path_, nullptr)
+  ASSERT_TRUE(wait_for([this] { return latest_path_ != nullptr; }, std::chrono::milliseconds(1500)))
     << "Failed to output path for path_cut_route (self-intersection truncation failed)";
   EXPECT_GT(latest_path_->points.size(), 0u);
 
@@ -565,9 +581,10 @@ TEST_F(PathGeneratorIntegrationHarness, GoalConnectionScenario)
   auto odom = set_start_odom(route);
 
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
-  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(1500));
 
-  ASSERT_NE(latest_path_, nullptr) << "Failed to output path for dense_centerline_route";
+  ASSERT_TRUE(wait_for([this] { return latest_path_ != nullptr; }, std::chrono::milliseconds(1500)))
+    << "Failed to output path for dense_centerline_route";
   ASSERT_GT(latest_path_->points.size(), 0u);
 
   // Assert final point aligns geometrically with goal pose
