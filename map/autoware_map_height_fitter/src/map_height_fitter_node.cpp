@@ -14,6 +14,9 @@
 
 #include "autoware/map_height_fitter/map_height_fitter.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
+
 #include <autoware_internal_localization_msgs/srv/pose_with_covariance_stamped.hpp>
 
 #include <memory>
@@ -22,11 +25,11 @@ namespace autoware::map_height_fitter
 {
 using autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped;
 
-class MapHeightFitterNode : public rclcpp::Node
+class MapHeightFitterNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit MapHeightFitterNode(const rclcpp::NodeOptions & options)
-  : rclcpp::Node("map_height_fitter", options), fitter_(this)
+  : autoware::agnocast_wrapper::Node("map_height_fitter", options), fitter_(this)
   {
     const auto on_service = [this](
                               const PoseWithCovarianceStamped::Request::SharedPtr req,
@@ -46,7 +49,7 @@ public:
 
 private:
   map_height_fitter::MapHeightFitter fitter_;
-  rclcpp::Service<PoseWithCovarianceStamped>::SharedPtr srv_;
+  AUTOWARE_SERVICE_PTR(PoseWithCovarianceStamped) srv_;
 };
 }  // namespace autoware::map_height_fitter
 

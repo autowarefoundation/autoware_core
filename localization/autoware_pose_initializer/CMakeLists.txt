@@ -3,6 +3,7 @@ project(autoware_pose_initializer)
 
 find_package(autoware_cmake REQUIRED)
 autoware_package()
+find_package(autoware_agnocast_wrapper REQUIRED)
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/pose_initializer_core.cpp
@@ -12,11 +13,16 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/pose_error_check_module.cpp
   src/localization_trigger_module.cpp
 )
+ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
+autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
-rclcpp_components_register_node(${PROJECT_NAME}
+# PoseInitializer derives from autoware::agnocast_wrapper::Node, which requires an AgnocastOnly
+# executor, so it runs as a standalone executable rather than inside a component container.
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::pose_initializer::PoseInitializer"
   EXECUTABLE ${PROJECT_NAME}_node
-  EXECUTOR MultiThreadedExecutor
+  ROS2_EXECUTOR MultiThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyMultiThreadedExecutor
 )
 
 if(BUILD_TESTING)
