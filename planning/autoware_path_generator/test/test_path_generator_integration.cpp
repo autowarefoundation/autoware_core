@@ -133,79 +133,91 @@ protected:
     return convert_ros_bin_map(map);
   }
 
-  /* 2. Map with a sequence of lanelets looping back to intersect itself
-   * (Looks like a digital "P" / snake)
-   * Like, L1 → , L2 ↖ , L3 ↓
+  /*
+   * 2. Map with 4 lanelets forming a square loop
    * Used in TEST 4
    *
    * y (m)
    *
-   *  20 ┤                 p5─────────p6
-   *     │                  │ \        │ \
-   *     │   (L2 Right)     │    \     │ L2 (To North West)
-   *     │                  │    L3    │    \
-   *     │                  │(to South)│      \
-   *     │                  │         \│        \
-   *     │                  │          │          \
-   *     │                  │          │   \        \
-   *   2 ┼ p1 ──────────────│──────────│────────────── p3
-   *     │                  │     X    │   L1 (to East)
-   *   0 ┼ S  ──────────────┼──────────┼─────────────▶ x (m) (East)
-   *     │                  │          │            \
-   *  -2 ┼ p2 ──────────────│──────────│────────────── p4
-   *     │                  │          │
-   *     │                  │          │
-   *     |                  |          |
-   *     |                  |          |
-   *     |                  |          |
-   * -20 ┤                 p8─────────p7
-   *                       18          22              40
+   *  40 ┤           p8 ─────────────── p6
+   *     │            │                  │
+   *     │            │   L3 (go West)   │
+   *  38 ┤           p7 ─────────────── p5
+   *     │            │                  │
+   *     │ L4         │                  │ L2
+   *     │ (go South) │                  │ (go North)
+   *     │            │                  │
+   *   2 ┼ p1 ────────│────────┼──────── p3
+   *     │            │   X    │         │
+   *   0 ┼ S  ────────┼────────┼──────── ┼──────▶ x (m)
+   *     │            │        │         │
+   *  -2 ┼ p2 ────────│────────┼──────── p4
+   *                  │   L1 (go East)   │
+   * -20 ┤           p10 ────────────── p9
+   *                  18      20        38      40      42
+   *
+   * Well if above comment is confusing (yes it's confusing lol), just look below
+   *
+       L3 (go West)
+       (X=20, Y=40) ◀━━━━━━━━━━━━━━━━━━━━━━━┓ (X=40, Y=40)
+                    ┃                       ┃
+                    ┃                       ┃
+       L4           ┃                       ┃  L2
+       (go          ┃                       ┃  (go
+       South)       ┃                       ┃  North)
+                    ┃                       ┃
+                    ┃    L1 (go East)       ┃
+     S ━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━➤┛ (X=40, Y=0)
+     (X=0, Y=0)     ┃  (Truncated here)
+                    ┃  (X=20, Y=0)
+                    ┃
+                    ▼ E (X=20, Y=-20)
    */
   static autoware_map_msgs::msg::LaneletMapBin create_mock_loop_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
 
-    // Use safe IDs to prevent collision
-    // L1: West to East (y = 0)
+    // L1 (East): start
     lanelet::Point3d p1(10001, 0.0, 2.0, 0.0);
     lanelet::Point3d p2(10002, 0.0, -2.0, 0.0);
-    lanelet::Point3d p3(10003, 40.0, 2.0, 0.0);
-    lanelet::Point3d p4(10004, 40.0, -2.0, 0.0);
+    // Corner 1: L1 => L2 (go North)
+    lanelet::Point3d p3(10003, 38.0, 2.0, 0.0);   // Inner
+    lanelet::Point3d p4(10004, 42.0, -2.0, 0.0);  // Outer
+    // Corner 2: L2 => L3 (go West)
+    lanelet::Point3d p5(10005, 38.0, 38.0, 0.0);  // Inner
+    lanelet::Point3d p6(10006, 42.0, 42.0, 0.0);  // Outer
+    // Corner 3: L3 => L4 (go South)
+    lanelet::Point3d p7(10007, 22.0, 38.0, 0.0);  // Inner
+    lanelet::Point3d p8(10008, 18.0, 42.0, 0.0);  // Outer
+    // L4: end
+    lanelet::Point3d p9(10009, 22.0, -20.0, 0.0);   // Left (East side)
+    lanelet::Point3d p10(10010, 18.0, -20.0, 0.0);  // Right (West side)
 
-    // L3: North to South (x = 20), crossing L1
-    // Later L2 will connects L1 ends (p3, p4) to L3 starts (p6, p5)
-    lanelet::Point3d p5(10005, 18.0, 20.0, 0.0);   // L3 Start Right (moving -Y, so right is -X)
-    lanelet::Point3d p6(10006, 22.0, 20.0, 0.0);   // L3 Start Left  (moving -Y, so left is +X)
-    lanelet::Point3d p7(10007, 22.0, -20.0, 0.0);  // L3 End Left
-    lanelet::Point3d p8(10008, 18.0, -20.0, 0.0);  // L3 End Right
-
-    // Linestrings
-
-    // L1
     lanelet::LineString3d ls_l1_left(10101, {p1, p3});
     lanelet::LineString3d ls_l1_right(10102, {p2, p4});
 
-    // L2
-    lanelet::LineString3d ls_l2_left(10103, {p3, p6});
-    lanelet::LineString3d ls_l2_right(10104, {p4, p5});
+    lanelet::LineString3d ls_l2_left(10103, {p3, p5});
+    lanelet::LineString3d ls_l2_right(10104, {p4, p6});
 
-    // L3
-    lanelet::LineString3d ls_l3_left(10105, {p6, p7});
-    lanelet::LineString3d ls_l3_right(10106, {p5, p8});
+    lanelet::LineString3d ls_l3_left(10105, {p5, p7});
+    lanelet::LineString3d ls_l3_right(10106, {p6, p8});
 
-    // Lanelets
+    lanelet::LineString3d ls_l4_left(10107, {p7, p9});
+    lanelet::LineString3d ls_l4_right(10108, {p8, p10});
+
     lanelet::Lanelet l1 = prep_lanelet(ls_l1_left, ls_l1_right);
     l1.setId(1001);
-
     lanelet::Lanelet l2 = prep_lanelet(ls_l2_left, ls_l2_right);
     l2.setId(1002);
-
     lanelet::Lanelet l3 = prep_lanelet(ls_l3_left, ls_l3_right);
     l3.setId(1003);
+    lanelet::Lanelet l4 = prep_lanelet(ls_l4_left, ls_l4_right);
+    l4.setId(1004);
 
     map->add(l1);
     map->add(l2);
     map->add(l3);
+    map->add(l4);
 
     return convert_ros_bin_map(map);
   }
@@ -336,8 +348,8 @@ protected:
     route.goal_pose.orientation.w = 0.707;
     route.goal_pose.orientation.z = -0.707;
 
-    // Add lanelet sequence: 1001 => 1002 => 1003
-    for (int id : {1001, 1002, 1003}) {
+    // Add lanelet sequences
+    for (int id : {1001, 1002, 1003, 1004}) {
       autoware_planning_msgs::msg::LaneletSegment segment;
       segment.preferred_primitive.id = id;
       segment.preferred_primitive.primitive_type = "lane";
@@ -513,10 +525,23 @@ TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
     << "Failed to output path for path_cut_route (self-intersection truncation failed)";
   EXPECT_GT(latest_path_->points.size(), 0u);
 
-  // Path should be truncated at intersection (20.0, 0.0)
+  // Theoretically, path should be truncated at around intersection (20.0, 2.0)
+  // (Y = 2.0 is L1 boundary)
   const auto & final_point = latest_path_->points.back().point.pose.position;
+
+  // X should be 20.0 (centerline of intersection)
   EXPECT_NEAR(final_point.x, 20.0, near_tol) << "Path cut failed to truncate at intersection X";
-  EXPECT_NEAR(final_point.y, 0.0, near_tol) << "Path cut failed to truncate at intersection Y";
+
+  // Y should be 5.79.
+  // L1 boundary at Y = 2.0
+  // In current `test_vehicle_info.param.yaml`:
+  // - wheel_base: 2.79
+  // - front_overhang: 1.0
+  // So now Y = 2.0 + 2.79 + 1.0 = 5.79
+  const double wheel_base = node_->get_parameter("wheel_base").as_double();
+  const double front_overhang = node_->get_parameter("front_overhang").as_double();
+  EXPECT_NEAR(final_point.y, 2.0 + wheel_base + front_overhang, near_tol)
+    << "Path cut failed to truncate at intersection Y";
 }
 
 // TEST 5: Goal connection scenario
