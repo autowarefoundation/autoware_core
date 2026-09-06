@@ -133,34 +133,34 @@ protected:
     return convert_ros_bin_map(map);
   }
 
-  // 2. Map with a sequence of lanelets looping back to intersect itself
-  // (Looks like a digital "P" / snake)
-  // Like, L1 → , L2 ↖ , L3 ↓
-  // Used in TEST 4
-  //
-  // y (m)
-  //
-  //  20 ┤                 p5─────────p6
-  //     │                  │ \        │ \
-  //     │   (L2 Right)     │    \     │ L2 (To North West)
-  //     │                  │    L3    │    \
-  //     │                  │(to South)│      \
-  //     │                  │         \│        \
-  //     │                  │          │          \
-  //     │                  │          │   \        \
-  //   2 ┼ p1 ──────────────│──────────│────────────── p3
-  //     │                  │     X    │   L1 (to East)
-  //   0 ┼ S  ──────────────┼──────────┼─────────────▶ x (m) (East)
-  //     │                  │          │            \
-  //  -2 ┼ p2 ──────────────│──────────│────────────── p4
-  //     │                  │          │
-  //     │                  │          │
-  //     |                  |          |
-  //     |                  |          |
-  //     |                  |          |
-  // -20 ┤                 p8─────────p7
-  //                       18          22              40
-  //
+  /* 2. Map with a sequence of lanelets looping back to intersect itself
+   * (Looks like a digital "P" / snake)
+   * Like, L1 → , L2 ↖ , L3 ↓
+   * Used in TEST 4
+   *
+   * y (m)
+   *
+   *  20 ┤                 p5─────────p6
+   *     │                  │ \        │ \
+   *     │   (L2 Right)     │    \     │ L2 (To North West)
+   *     │                  │    L3    │    \
+   *     │                  │(to South)│      \
+   *     │                  │         \│        \
+   *     │                  │          │          \
+   *     │                  │          │   \        \
+   *   2 ┼ p1 ──────────────│──────────│────────────── p3
+   *     │                  │     X    │   L1 (to East)
+   *   0 ┼ S  ──────────────┼──────────┼─────────────▶ x (m) (East)
+   *     │                  │          │            \
+   *  -2 ┼ p2 ──────────────│──────────│────────────── p4
+   *     │                  │          │
+   *     │                  │          │
+   *     |                  |          |
+   *     |                  |          |
+   *     |                  |          |
+   * -20 ┤                 p8─────────p7
+   *                       18          22              40
+   */
   static autoware_map_msgs::msg::LaneletMapBin create_mock_loop_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
@@ -499,10 +499,10 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
 // outputs a valid truncated path without crashing.
 TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
 {
-  auto map_msg = create_mock_x_map_bin();
+  auto map_msg = create_mock_loop_map_bin();
   pub_map_->publish(map_msg);
 
-  auto route = create_mock_route();
+  auto route = create_mock_loop_route();
 
   auto odom = set_start_odom(route);
 
@@ -512,6 +512,11 @@ TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
   ASSERT_NE(latest_path_, nullptr)
     << "Failed to output path for path_cut_route (self-intersection truncation failed)";
   EXPECT_GT(latest_path_->points.size(), 0u);
+
+  // Path should be truncated at intersection (20.0, 0.0)
+  const auto & final_point = latest_path_->points.back().point.pose.position;
+  EXPECT_NEAR(final_point.x, 20.0, near_tol) << "Path cut failed to truncate at intersection X";
+  EXPECT_NEAR(final_point.y, 0.0, near_tol) << "Path cut failed to truncate at intersection Y";
 }
 
 // TEST 5: Goal connection scenario
