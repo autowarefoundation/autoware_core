@@ -94,6 +94,18 @@ namespace autoware::agnocast_wrapper
 /// differently; here both backends already agree on rclcpp::Parameter, so nothing has to be
 /// erased and the variant keeps the backend choice a construction-time detail.
 ///
+/// Two differences survive the wrapper, because they are the backends' own policy:
+///
+/// - Failure reporting. rclcpp raises (rclcpp::exceptions::RCLError from a failed send,
+///   InvalidNodeError from wait_for_service() on a node that is already gone). Agnocast calls
+///   exit(EXIT_FAILURE) from its publisher and from the readiness ioctl, so a catch that recovers
+///   under ENABLE_AGNOCAST=0 recovers nothing under =1. Only the constructor's name check is
+///   normalized.
+/// - QoS durability. The Agnocast backend forces it to volatile, because it does not allow
+///   transient-local services; the rclcpp backend passes the profile through. The default
+///   rclcpp::ParametersQoS is volatile, so this only shows for a caller that asks for something
+///   else.
+///
 /// @invariant The backend variant is selected from use_agnocast() at construction and never
 ///            changes.
 ///
@@ -196,9 +208,8 @@ public:
   /// Templated on the duration because both upstream clients are, so callers keep passing the
   /// std::chrono literal they already use.
   ///
-  /// The timeout is honoured the same way on both backends. The Agnocast client does not do that
-  /// on its own -- it stops as soon as agnocast::ok() is false, which it is in anything but an
-  /// AgnocastOnly executable -- so the wrapper waits by polling service_is_ready() there.
+  /// The timeout is honoured the same way on both backends; the Agnocast client does not do that
+  /// on its own, so the wrapper waits by polling service_is_ready() there.
   ///
   /// @param timeout Maximum duration to wait; a negative duration waits forever, and a zero
   ///                duration is a non-blocking probe.
@@ -249,12 +260,9 @@ private:
   /// @brief Wait for the Agnocast backend by polling, so that it honours the timeout.
   ///
   /// agnocast::AsyncParametersClient::wait_for_service() stops as soon as agnocast::ok() is false,
-  /// and that is the case in anything but an AgnocastOnly executable -- an ordinary mixed-mode
-  /// node gets one non-blocking probe and an immediate false. That false is indistinguishable
-  /// from a real timeout, so a caller cannot retry on it any more sensibly than it could give up;
-  /// a caller that waits once during construction gets neither the wait nor a usable answer.
-  /// service_is_ready() carries no such context check, so poll that instead and keep one timeout
-  /// contract across every build and runtime mode.
+  /// and that is the case in anything but an AgnocastOnly executable, so there it returns after
+  /// one probe. A caller cannot tell that false from a real timeout. service_is_ready() carries no
+  /// such context check, so poll that instead.
   ///
   /// @param impl    Agnocast backend to poll.
   /// @param timeout Negative waits forever, zero probes once, positive bounds the wait.

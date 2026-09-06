@@ -36,7 +36,6 @@ namespace
 using autoware::agnocast_wrapper::AsyncParametersClient;
 using autoware::agnocast_wrapper::Node;
 
-// Compile-time contract, so there is nothing for a TEST body to check at run time.
 static_assert(!std::is_copy_constructible_v<AsyncParametersClient>);
 static_assert(!std::is_copy_assignable_v<AsyncParametersClient>);
 static_assert(!std::is_move_constructible_v<AsyncParametersClient>);
@@ -52,9 +51,8 @@ bool agnocast_heaphook_loaded()
          std::string(ld_preload).find("libagnocast_heaphook.so") != std::string::npos;
 }
 
-/// Stops the executor from the destructor, so an ASSERT_* that returns early out of a test does
-/// not leave a joinable std::thread behind — that would call std::terminate and take the whole
-/// test binary with it instead of failing the one case.
+/// Stops the executor from the destructor: an ASSERT_* that returns early must not leave a
+/// joinable std::thread behind, whose destructor calls std::terminate.
 class SpinThread
 {
 public:
@@ -91,10 +89,10 @@ protected:
   }
 };
 
-/// The constructor's name check, exercised directly. Going through the constructor would not pin
-/// it: the rclcpp backend rejects the same names on its own, and with the same exception type, so
-/// only the agnocast backend can tell a missing check from a working one -- and that backend needs
-/// the kernel module to run at all. These cases hold in every build.
+/// The constructor's name check, exercised directly rather than through the constructor: the
+/// rclcpp backend rejects the same names on its own and with the same exception type, so only the
+/// agnocast backend could tell a missing check from a working one, and that backend needs the
+/// kernel module to run at all.
 TEST(AsyncParametersClientNameCheck, RejectsAMalformedRemoteName)
 {
   EXPECT_THROW(
@@ -105,9 +103,8 @@ TEST(AsyncParametersClientNameCheck, RejectsAMalformedRemoteName)
 TEST(AsyncParametersClientNameCheck, RejectsARemoteNameTooLongForEveryParameterService)
 {
   // rmw_validate_full_topic_name() rejects a name longer than RMW_TOPIC_MAX_NAME_LENGTH (247).
-  // This one measures 246 with "/get_parameters" -- the shortest of the six parameter services --
-  // and 257 with the longest, "/set_parameters_atomically". Checking anything but the longest
-  // leaves the rejection to the backend, which does not throw the same type on both.
+  // This one measures 246 with the shortest of the six parameter services, "/get_parameters", and
+  // 257 with the longest, "/set_parameters_atomically".
   const std::string remote_node_name = "/" + std::string(230, 'a');
 
   EXPECT_THROW(
@@ -132,10 +129,9 @@ TEST_F(AsyncParametersClientTest, WaitForServiceTimesOutForAnAbsentRemoteNode)
   const auto start = std::chrono::steady_clock::now();
   EXPECT_FALSE(client.wait_for_service(timeout));
 
-  // Both backends have to spend the timeout. Only the agnocast one can fail this: without the
-  // wrapper's polling wait it returns after a single probe, because test/main.cpp brings up an
-  // rclcpp context and not an AgnocastOnly one, so `agnocast::ok()` is false. Half the timeout
-  // separates "waited" from "did not wait" without pinning how a backend accounts for the budget.
+  // Only the agnocast backend can fail this, and only in a binary like this one, whose context is
+  // an rclcpp one rather than an AgnocastOnly one. Half the timeout separates "waited" from "did
+  // not wait" without pinning how a backend accounts for the budget.
   EXPECT_GE(std::chrono::steady_clock::now() - start, timeout / 2);
 }
 
@@ -171,9 +167,8 @@ TEST_F(AsyncParametersClientTest, AcceptsAnEmptyRemoteNameAsThisNode)
 {
   const auto node = std::make_shared<Node>("parameter_client_self");
 
-  // The empty default is the "this node" case: the backends fill it in with the node's own fully
-  // qualified name. (The constructor's early-out for it is only a shortcut -- the bare suffix is a
-  // valid service name on its own -- so this pins the contract, not that branch.)
+  // The empty default is the "this node" case; the backends fill it in with the node's own fully
+  // qualified name.
   EXPECT_NO_THROW(AsyncParametersClient(node.get()));
 }
 

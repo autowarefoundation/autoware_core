@@ -580,6 +580,8 @@ A `remote_node_name` that cannot form a service name is rejected by the construc
 - `on_parameter_event()` has no Agnocast counterpart and is not exposed.
 - `get_parameters()` resolves its future and runs its callback from the executor. On the Agnocast backend the response arrives over an Agnocast subscription the client owns, so **an Agnocast executor has to be spinning the node**; under a plain rclcpp executor the future never resolves, whatever `wait_for_service()` said.
 - `service_is_ready()` and `wait_for_service()` cover slightly different endpoint sets: the Agnocast backend checks all six parameter services, the rclcpp one checks five (it leaves out `set_parameters_atomically`). A node brings all six up together, so the two only disagree inside that window, with Agnocast the stricter of the pair.
+- The two backends report failures differently, and the wrapper normalizes only the constructor's name check. rclcpp raises: `rclcpp::exceptions::RCLError` when the request cannot be sent or the readiness query fails, `InvalidNodeError` from `wait_for_service()` on a node that is already gone. Agnocast calls `exit(EXIT_FAILURE)` from its publisher and from the readiness ioctl, so a `try`/`catch` that recovers under `ENABLE_AGNOCAST=0` recovers nothing under `=1`.
+- The Agnocast backend forces the QoS durability to volatile, because it does not allow transient-local services; the rclcpp backend passes the profile through. The default `rclcpp::ParametersQoS` is volatile, so this only shows for a caller that asks for something else.
 - The wrapper is non-copyable and non-movable (the backend is chosen at construction), so hold it by value or in a `unique_ptr`, and do not let it outlive the node it was built on.
 
 ### Usage example
