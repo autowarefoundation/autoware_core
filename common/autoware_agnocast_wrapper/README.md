@@ -54,6 +54,14 @@ Polling subscribers are **not** a `Node` member. Use the free function
 `polling::create_polling_subscriber<MessageT>(node, topic, qos)` — see
 [Polling Subscriber](#polling-subscriber-polling-namespace).
 
+Reading **another node's** parameters is not a `Node` member either. Use
+`autoware::agnocast_wrapper::AsyncParametersClient`, which takes a Method 2 node. Of the parameter
+service calls it exposes only `get_parameters()`, alongside `wait_for_service()` and
+`service_is_ready()`; the setter, descriptor and listing calls are not wrapped yet, and
+`on_parameter_event()` has no Agnocast counterpart. On the Agnocast backend the response arrives
+over an Agnocast subscription, so `get_parameters()` resolves its future only while an Agnocast
+executor spins the node.
+
 > `create_client()` and `create_service()` also accept an `rmw_qos_profile_t`. This is not part of the
 > supported surface: it exists so that Humble-era call sites passing `rmw_qos_profile_services_default`
 > keep compiling, and it will be removed. Pass an `rclcpp::QoS`.
