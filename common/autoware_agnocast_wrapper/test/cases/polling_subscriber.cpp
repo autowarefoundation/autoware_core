@@ -23,16 +23,15 @@
 
 #include "autoware/agnocast_wrapper/node.hpp"
 #include "autoware/agnocast_wrapper/runtime.hpp"
+#include "heaphook_probe.hpp"
 
 #include <std_msgs/msg/string.hpp>
 
 #include <gtest/gtest.h>
 
 #include <chrono>
-#include <cstdlib>
 #include <memory>
 #include <stdexcept>
-#include <string>
 #include <thread>
 
 namespace
@@ -40,20 +39,11 @@ namespace
 
 namespace polling = autoware::agnocast_wrapper::polling;
 using autoware::agnocast_wrapper::Node;
+using autoware::agnocast_wrapper::test::agnocast_heaphook_loaded;
 using std_msgs::msg::String;
 
 constexpr auto discovery_timeout = std::chrono::seconds(10);
 constexpr auto poll_interval = std::chrono::milliseconds(10);
-
-/// agnocast exits the process from inside the subscription constructor when LD_PRELOAD lacks the
-/// heaphook (validate_ld_preload() in agnocast_utils.cpp), which would take the whole test binary
-/// down instead of failing one case. Probe the same condition so the test can skip instead.
-bool agnocast_heaphook_loaded()
-{
-  const char * ld_preload = std::getenv("LD_PRELOAD");
-  return ld_preload != nullptr &&
-         std::string(ld_preload).find("libagnocast_heaphook.so") != std::string::npos;
-}
 
 class PollingSubscriberTest : public testing::Test
 {
