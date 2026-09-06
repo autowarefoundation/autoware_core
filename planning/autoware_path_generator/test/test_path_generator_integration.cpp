@@ -451,7 +451,7 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
 
   // Allow planning trigger
-  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(1500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(100));
 
   // Memory check before accessing
   ASSERT_NE(latest_path_, nullptr) << "Node failed to output PathWithLaneId";
@@ -479,9 +479,9 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   auto odom = set_start_odom(route);
 
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
-  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(1500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(100));
 
-  ASSERT_TRUE(wait_for([this] { return latest_turn_ != nullptr; }, std::chrono::milliseconds(1500)))
+  ASSERT_TRUE(wait_for([this] { return latest_turn_ != nullptr; }, std::chrono::milliseconds(100)))
     << "Node failed to output TurnIndicatorsCommand";
 
   // If ego is stopping and far, should be NO_COMMAND
@@ -492,9 +492,9 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   // Simulate advancing odom to trigger section
   latest_turn_ = nullptr;
   odom.pose.pose.position.x = 50.5;
-  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(1500));
+  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(100));
 
-  ASSERT_TRUE(wait_for([this] { return latest_turn_ != nullptr; }, std::chrono::milliseconds(1500)))
+  ASSERT_TRUE(wait_for([this] { return latest_turn_ != nullptr; }, std::chrono::milliseconds(100)))
     << "Node failed to output TurnIndicatorsCommand after odom advance";
 }
 
@@ -519,7 +519,7 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnAbnormalRoute)
   latest_path_ = nullptr;
 
   // Publish empty route
-  retrigger_pubs_spin(std::nullopt, empty_route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(std::nullopt, empty_route, std::chrono::milliseconds(100));
 
   // Expects node should not crash
   EXPECT_EQ(latest_path_, nullptr) << "Node should fail-safe and not publish on empty route";
@@ -538,9 +538,9 @@ TEST_F(PathGeneratorIntegrationHarness, PathCutScenario)
   auto odom = set_start_odom(route);
 
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
-  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(1500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(100));
 
-  ASSERT_TRUE(wait_for([this] { return latest_path_ != nullptr; }, std::chrono::milliseconds(1500)))
+  ASSERT_TRUE(wait_for([this] { return latest_path_ != nullptr; }, std::chrono::milliseconds(100)))
     << "Failed to output path for path_cut_route (self-intersection truncation failed)";
   EXPECT_GT(latest_path_->points.size(), 0u);
 
@@ -582,9 +582,9 @@ TEST_F(PathGeneratorIntegrationHarness, GoalConnectionScenario)
   auto odom = set_start_odom(route);
 
   retrigger_pubs_spin(odom, std::nullopt, std::chrono::milliseconds(100));
-  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(1500));
+  retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(100));
 
-  ASSERT_TRUE(wait_for([this] { return latest_path_ != nullptr; }, std::chrono::milliseconds(1500)))
+  ASSERT_TRUE(wait_for([this] { return latest_path_ != nullptr; }, std::chrono::milliseconds(100)))
     << "Failed to output path for dense_centerline_route";
   ASSERT_GT(latest_path_->points.size(), 0u);
 
@@ -610,7 +610,7 @@ TEST_F(PathGeneratorIntegrationHarness, FailSafeOnMissingDependencies)
   latest_path_ = nullptr;
 
   // Trigger execution with only odom and route
-  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
+  retrigger_pubs_spin(odom, route, std::chrono::milliseconds(100));
 
   // Node must not crash, and must fail-safe by not publishing a path
   EXPECT_EQ(latest_path_, nullptr) << "Node published a path despite missing vector map dependency";
