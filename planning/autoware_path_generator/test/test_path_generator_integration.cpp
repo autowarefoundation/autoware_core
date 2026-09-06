@@ -285,7 +285,7 @@ protected:
 
   // ===================================================================
 
-  // Same mock route for above lanelets
+  // Mock route for straight maps, used in TEST 1, 3, 5
   static autoware_planning_msgs::msg::LaneletRoute create_mock_route()
   {
     autoware_planning_msgs::msg::LaneletRoute route;
@@ -316,6 +316,44 @@ protected:
 
     return route;
   }
+
+  // Mock route for loop map, used in TEST 4
+  static autoware_planning_msgs::msg::LaneletRoute create_mock_loop_route()
+  {
+    autoware_planning_msgs::msg::LaneletRoute route;
+    route.header.frame_id = "map";
+
+    // Start on L1
+    route.start_pose.position.x = 5.5;
+    route.start_pose.position.y = 0.0;
+    route.start_pose.orientation.w = 1.0;
+
+    // Goal on L3
+    route.goal_pose.position.x = 20.0;
+    route.goal_pose.position.y = -10.5;
+
+    // Facing South (-90 deg yaw => roughly w = 0.707, z = -0.707)
+    route.goal_pose.orientation.w = 0.707;
+    route.goal_pose.orientation.z = -0.707;
+
+    // Add lanelet sequence: 1001 => 1002 => 1003
+    for (int id : {1001, 1002, 1003}) {
+      autoware_planning_msgs::msg::LaneletSegment segment;
+      segment.preferred_primitive.id = id;
+      segment.preferred_primitive.primitive_type = "lane";
+
+      autoware_planning_msgs::msg::LaneletPrimitive primitive;
+      primitive.id = id;
+      primitive.primitive_type = "lane";
+
+      segment.primitives.push_back(primitive);
+      route.segments.push_back(segment);
+    }
+
+    return route;
+  }
+
+  // ===================================================================
 
   static nav_msgs::msg::Odometry set_start_odom(
     const std::optional<autoware_planning_msgs::msg::LaneletRoute> & route)
