@@ -173,20 +173,20 @@ protected:
    *
    * Well if above comment is confusing (yes it's confusing lol), just look below
    *
-       L3 (go West)
-       (X=20, Y=40) ◀━━━━━━━━━━━━━━━━━━━━━━━┓ (X=40, Y=40)
-                    ┃                       ┃
-                    ┃                       ┃
-       L4           ┃                       ┃  L2
-       (go          ┃                       ┃  (go
-       South)       ┃                       ┃  North)
-                    ┃                       ┃
-                    ┃    L1 (go East)       ┃
-     S ━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━➤┛ (X=40, Y=0)
-     (X=0, Y=0)     ┃  (Truncated here)
-                    ┃  (X=20, Y=0)
-                    ┃
-                    ▼ E (X=20, Y=-20)
+                              L3 (go West)
+       (X = 20, Y = 40) ◀━━━━━━━━━━━━━━━━━━━━━━━┓ (X = 40, Y = 40)
+                        ┃                       ┃
+                        ┃                       ┃
+                    L4  ┃                       ┃  L2
+            (go South)  ┃                       ┃  (go North)
+                        ┃                       ┃
+                        ┃                       ┃
+                        ┃      L1 (go East)     ┃
+     S ━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━➤┛ (X = 40, Y = 0)
+     (X = 0, Y = 0)     ┃  (Truncated here)
+                        ┃  (X = 20, Y = 0)
+                        ┃
+                        ▼ E (X = 20, Y = -20)
    */
   static autoware_map_msgs::msg::LaneletMapBin create_mock_loop_map_bin()
   {
@@ -454,8 +454,11 @@ TEST_F(PathGeneratorIntegrationHarness, NominalStandardRouteExecution)
   retrigger_pubs_spin(std::nullopt, route, std::chrono::milliseconds(100));
 
   // Memory check before accessing
-  ASSERT_NE(latest_path_, nullptr) << "Node failed to output PathWithLaneId";
-  ASSERT_NE(latest_hazard_, nullptr) << "Node failed to output HazardLightsCommand";
+  ASSERT_TRUE(wait_for([this] { return latest_path_ != nullptr; }, std::chrono::milliseconds(100)))
+    << "Node failed to output PathWithLaneId";
+  ASSERT_TRUE(
+    wait_for([this] { return latest_hazard_ != nullptr; }, std::chrono::milliseconds(100)))
+    << "Node failed to output HazardLightsCommand";
 
   // Expects headers not empty
   EXPECT_FALSE(latest_path_->header.frame_id.empty());
