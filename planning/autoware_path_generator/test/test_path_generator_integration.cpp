@@ -133,43 +133,79 @@ protected:
     return convert_ros_bin_map(map);
   }
 
-  // 2. Map with left/right bounds physically crossed
+  // 2. Map with a sequence of lanelets looping back to intersect itself
+  // (Looks like a digital "P" / snake)
+  // Like, L1 → , L2 ↖ , L3 ↓
   // Used in TEST 4
+  //
   // y (m)
-  // +1.75 ┤    L━━━━━━━━━━━━━━━━━━━━L            R
-  //       │     (left bound)          ╲         ╱
-  //       │                             ╲     ╱
-  //       │                               ╲ ╱
-  //   0  ┼     ········S·················· X ·····E
-  //       │                               ╱ ╲
-  //       │                             ╱     ╲
-  //       │     (right bound)         ╱         ╲
-  // -1.75 ┤    R━━━━━━━━━━━━━━━━━━━━R            L
-  //       └────┬───┬───┬──────┬──────┬──────┬────▶ x (m)
-  //            0   10  20     40     60     80 ←──────────┤
-  //                ↑                 ↑                    │
-  //                start pose        intersection       lanelet
-  //                (route.start)     of L/R bounds      ends here
-  //                                   (y=0, x≈60)
-  static autoware_map_msgs::msg::LaneletMapBin create_mock_x_map_bin()
+  //
+  //  20 ┤                 p5─────────p6
+  //     │                  │ \        │ \
+  //     │   (L2 Right)     │    \     │ L2 (To North West)
+  //     │                  │    L3    │    \
+  //     │                  │(to South)│      \
+  //     │                  │         \│        \
+  //     │                  │          │          \
+  //     │                  │          │   \        \
+  //   2 ┼ p1 ──────────────│──────────│────────────── p3
+  //     │                  │     X    │   L1 (to East)
+  //   0 ┼ S  ──────────────┼──────────┼─────────────▶ x (m) (East)
+  //     │                  │          │            \
+  //  -2 ┼ p2 ──────────────│──────────│────────────── p4
+  //     │                  │          │
+  //     │                  │          │
+  //     |                  |          |
+  //     |                  |          |
+  //     |                  |          |
+  // -20 ┤                 p8─────────p7
+  //                       18          22              40
+  //
+  static autoware_map_msgs::msg::LaneletMapBin create_mock_loop_map_bin()
   {
     auto map = std::make_shared<lanelet::LaneletMap>();
 
-    // Two bounds start as valid parallel section with x: [0, 40],
-    // then become gradually crossing with x: (40, 80]
+    // Use safe IDs to prevent collision
+    // L1: West to East (y = 0)
+    lanelet::Point3d p1(10001, 0.0, 2.0, 0.0);
+    lanelet::Point3d p2(10002, 0.0, -2.0, 0.0);
+    lanelet::Point3d p3(10003, 40.0, 2.0, 0.0);
+    lanelet::Point3d p4(10004, 40.0, -2.0, 0.0);
 
-    // Left bound: top-left => bottom-right
-    lanelet::LineString3d left_bound(
-      10, {lanelet::Point3d(1, 0.0, 1.75, 0.0), lanelet::Point3d(2, 40.0, 1.75, 0.0),
-           lanelet::Point3d(3, 80.0, -1.75, 0.0)});
-    // Right bound: bottom-left => top-right
-    lanelet::LineString3d right_bound(
-      11, {lanelet::Point3d(4, 0.0, -1.75, 0.0), lanelet::Point3d(5, 40.0, -1.75, 0.0),
-           lanelet::Point3d(6, 80.0, 1.75, 0.0)});
+    // L3: North to South (x = 20), crossing L1
+    // Later L2 will connects L1 ends (p3, p4) to L3 starts (p6, p5)
+    lanelet::Point3d p5(10005, 18.0, 20.0, 0.0);   // L3 Start Right (moving -Y, so right is -X)
+    lanelet::Point3d p6(10006, 22.0, 20.0, 0.0);   // L3 Start Left  (moving -Y, so left is +X)
+    lanelet::Point3d p7(10007, 22.0, -20.0, 0.0);  // L3 End Left
+    lanelet::Point3d p8(10008, 18.0, -20.0, 0.0);  // L3 End Right
 
-    lanelet::Lanelet cross_lanelet = prep_lanelet(left_bound, right_bound);
+    // Linestrings
 
-    map->add(cross_lanelet);
+    // L1
+    lanelet::LineString3d ls_l1_left(10101, {p1, p3});
+    lanelet::LineString3d ls_l1_right(10102, {p2, p4});
+
+    // L2
+    lanelet::LineString3d ls_l2_left(10103, {p3, p6});
+    lanelet::LineString3d ls_l2_right(10104, {p4, p5});
+
+    // L3
+    lanelet::LineString3d ls_l3_left(10105, {p6, p7});
+    lanelet::LineString3d ls_l3_right(10106, {p5, p8});
+
+    // Lanelets
+    lanelet::Lanelet l1 = prep_lanelet(ls_l1_left, ls_l1_right);
+    l1.setId(1001);
+
+    lanelet::Lanelet l2 = prep_lanelet(ls_l2_left, ls_l2_right);
+    l2.setId(1002);
+
+    lanelet::Lanelet l3 = prep_lanelet(ls_l3_left, ls_l3_right);
+    l3.setId(1003);
+
+    map->add(l1);
+    map->add(l2);
+    map->add(l3);
 
     return convert_ros_bin_map(map);
   }
