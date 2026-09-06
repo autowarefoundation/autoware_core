@@ -119,7 +119,8 @@ protected:
 
   // Wait helper: spins executor until condition becomes true or timeout elapses
   template <typename Pred>
-  bool wait_for(Pred pred, std::chrono::milliseconds timeout) {
+  bool wait_for(Pred pred, std::chrono::milliseconds timeout)
+  {
     const auto end_time = std::chrono::steady_clock::now() + timeout;
     while (std::chrono::steady_clock::now() < end_time && rclcpp::ok()) {
       if (pred()) {
