@@ -22,6 +22,13 @@
 
 #include <rclcpp/version.h>
 
+// ROS 2 Iron (rclcpp 21) introduced service introspection. Humble (rclcpp 16) ships no
+// rcl/service_introspection.h, and neither rclcpp nor agnocast declares
+// configure_introspection() there.
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+#include <rcl/service_introspection.h>
+#endif
+
 #include <chrono>
 #include <functional>
 #include <future>
@@ -36,6 +43,12 @@
 #include "autoware/agnocast_wrapper/runtime.hpp"
 
 #include <agnocast/agnocast.hpp>
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+static_assert(
+  AGNOCAST_HAS_SERVICE_INTROSPECTION,
+  "agnocast gates service introspection differently from this header");
+#endif
 
 namespace autoware::agnocast_wrapper
 {
@@ -60,6 +73,14 @@ protected:
   /// rclcpp::Client pays.
   virtual AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
     to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) = 0;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
 
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
@@ -87,6 +108,35 @@ public:
   virtual const char * get_service_name() const = 0;
 
   virtual bool service_is_ready() const = 0;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
+  /// events through its own event publisher.
+  /// @throws std::invalid_argument if @p clock is null, including when turning introspection
+  /// off (rcl requires one in every state), or if @p qos_service_event_pub uses KeepAll, which
+  /// degrades to depth 0 through agnocast's ioctl so that backend would retain nothing.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    if (clock == nullptr) {
+      throw std::invalid_argument(
+        std::string("configure_introspection(") + get_service_name() +
+        "): a clock is required, including when turning introspection off");
+    }
+    if (qos_service_event_pub.history() == rclcpp::HistoryPolicy::KeepAll) {
+      throw std::invalid_argument(
+        std::string("configure_introspection(") + get_service_name() +
+        "): KeepAll history is not supported, use KeepLast instead");
+    }
+    // Past here the backends differ in ways the wrapper cannot close: Agnocast ignores
+    // reliability, deadline and lifespan; it exit()s where rclcpp raises RCLError; it can fail to
+    // dlopen the event typesupport; and it swallows a failed event that rclcpp would surface as a
+    // failed service call. Only Agnocast serializes concurrent calls.
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
   template <typename RepT, typename RatioT>
   bool wait_for_service(
@@ -146,6 +196,15 @@ protected:
     *owned = *request;
     return owned;
   }
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   template <typename NodeT>
@@ -249,6 +308,15 @@ protected:
     return AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){
       std::shared_ptr<typename ServiceT::Request>(request)};
   }
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   explicit ROS2Client(
@@ -375,6 +443,14 @@ protected:
     }
   }
 
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
@@ -401,6 +477,35 @@ public:
   virtual const char * get_service_name() const = 0;
 
   virtual bool service_is_ready() const = 0;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
+  /// events through its own event publisher.
+  /// @throws std::invalid_argument if @p clock is null, including when turning introspection
+  /// off (rcl requires one in every state), or if @p qos_service_event_pub uses KeepAll, which
+  /// degrades to depth 0 through agnocast's ioctl so that backend would retain nothing.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    if (clock == nullptr) {
+      throw std::invalid_argument(
+        std::string("configure_introspection(") + get_service_name() +
+        "): a clock is required, including when turning introspection off");
+    }
+    if (qos_service_event_pub.history() == rclcpp::HistoryPolicy::KeepAll) {
+      throw std::invalid_argument(
+        std::string("configure_introspection(") + get_service_name() +
+        "): KeepAll history is not supported, use KeepLast instead");
+    }
+    // Past here the backends differ in ways the wrapper cannot close: Agnocast ignores
+    // reliability, deadline and lifespan; it exit()s where rclcpp raises RCLError; it can fail to
+    // dlopen the event typesupport; and it swallows a failed event that rclcpp would surface as a
+    // failed service call. Only Agnocast serializes concurrent calls.
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
   template <typename RepT, typename RatioT>
   bool wait_for_service(
@@ -452,6 +557,15 @@ protected:
   {
     return client_->wait_for_service(timeout);
   }
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   explicit ROS2Client(

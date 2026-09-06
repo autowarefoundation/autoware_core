@@ -92,6 +92,8 @@ per-build spelling. See [Key Macros](docs/review_guide.md#3-key-macros) for the 
 
 Publisher, subscription, client and service handles carry the same read-back accessors in both builds: `get_topic_name()` and `get_actual_qos()` on a publisher or a subscription, `get_service_name()` on a client or a service. The polling subscriber carries `get_topic_name()` but not `get_actual_qos()`. `get_actual_qos()` is the one whose meaning differs: on the Agnocast path it reports the QoS as requested, not RMW-resolved.
 
+On rclcpp 21 (Iron) and newer, a client or service handle also carries `configure_introspection(clock, qos, state)`, which forwards to the `rclcpp` or the Agnocast counterpart so that a utility written against `rclcpp::Node` can enable ROS 2 service introspection without knowing which backend is behind it. It is **not declared** on Humble (rclcpp 16), so gate any call on `RCLCPP_VERSION_GTE(21, 0, 0)`; the preconditions the handle enforces in both builds and the backend differences it does not are documented in `client.hpp` and `service.hpp`.
+
 #### Build modes: agnocast-disabled vs agnocast-enabled
 
 Which of the two `Node` **class definitions** is compiled is a **build-time** choice, selected by the
