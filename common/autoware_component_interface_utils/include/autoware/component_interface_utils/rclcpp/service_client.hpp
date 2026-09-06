@@ -46,8 +46,7 @@ auto create_client_handle(NodeT * node, rclcpp::CallbackGroup::SharedPtr group)
 
 /// The wrapper class of a service client. Service-call tracing is provided by ROS 2
 /// service introspection (enabled via NodeInterface::introspection_state), not a
-/// custom log topic. The request/response/future aliases are spelled from the spec rather than
-/// taken off the handle, so they do not depend on the node type.
+/// custom log topic.
 template <class SpecT, class NodeT = rclcpp::Node>
 class Client
 {
@@ -60,8 +59,12 @@ public:
   using WrapType = typename WrapSharedPtr::element_type;
 
   using SharedRequest = std::shared_ptr<typename SpecT::Service::Request>;
-  using SharedResponse = std::shared_ptr<typename SpecT::Service::Response>;
-  using SharedFuture = std::shared_future<SharedResponse>;
+  // Taken off the handle rather than spelled from the spec: a node type may hand back a response
+  // pointer that is not std::shared_ptr (Agnocast returns a shared-memory pointer), and both
+  // rclcpp::Client and the Agnocast wrapper expose these two names. SharedRequest stays a plain
+  // std::shared_ptr because every handle accepts one, so callers keep using std::make_shared.
+  using SharedResponse = typename WrapType::SharedResponse;
+  using SharedFuture = typename WrapType::SharedFuture;
 
   /// Constructor.
   Client(typename NodeInterface<NodeT>::SharedPtr interface, rclcpp::CallbackGroup::SharedPtr group)
