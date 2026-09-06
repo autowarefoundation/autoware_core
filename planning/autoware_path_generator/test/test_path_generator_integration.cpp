@@ -234,9 +234,10 @@ protected:
     lanelet::Points3d right_points;
 
     // Inject dense nodes every 1 meter to provide spline resolution
+    int pt_id = 10000;
     for (double x = 0.0; x <= 100.0; x += 1.0) {
-      left_points.emplace_back(lanelet::utils::getId(), x, 1.75, 0.0);
-      right_points.emplace_back(lanelet::utils::getId(), x, -1.75, 0.0);
+      left_points.emplace_back(++pt_id, x, 1.75, 0.0);
+      right_points.emplace_back(++pt_id, x, -1.75, 0.0);
     }
 
     lanelet::LineString3d left_bound(10, left_points);
@@ -473,6 +474,7 @@ TEST_F(PathGeneratorIntegrationHarness, TurnSignalStateTransition)
   EXPECT_GE(latest_turn_->command, 0);
 
   // Simulate advancing odom to trigger section
+  latest_turn_ = nullptr;
   odom.pose.pose.position.x = 50.5;
   retrigger_pubs_spin(odom, route, std::chrono::milliseconds(500));
 
