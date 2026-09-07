@@ -104,6 +104,11 @@ public:
   /// @brief Block until the remote node's parameter services are available, or the timeout
   ///        expires.
   ///
+  /// The Agnocast backend honours the timeout only where agnocast::init() ran, which
+  /// autoware_agnocast_wrapper_register_node() arranges for an AgnocastOnly executor. In a
+  /// component container agnocast::ok() is false and it returns false after one probe instead,
+  /// which a caller cannot tell from a timeout.
+  ///
   /// @param timeout Maximum duration to wait; a negative duration waits forever, and a zero
   ///                duration is a non-blocking probe.
   /// @return true if the services became available, false on timeout.
