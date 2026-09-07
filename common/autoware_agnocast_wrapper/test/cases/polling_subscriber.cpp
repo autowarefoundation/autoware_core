@@ -22,7 +22,6 @@
 #include "autoware/agnocast_wrapper/polling_subscriber.hpp"
 
 #include "autoware/agnocast_wrapper/node.hpp"
-#include "autoware/agnocast_wrapper/runtime.hpp"
 #include "heaphook_probe.hpp"
 
 #include <std_msgs/msg/string.hpp>
@@ -39,7 +38,6 @@ namespace
 
 namespace polling = autoware::agnocast_wrapper::polling;
 using autoware::agnocast_wrapper::Node;
-using autoware::agnocast_wrapper::test::agnocast_heaphook_loaded;
 using std_msgs::msg::String;
 
 constexpr auto discovery_timeout = std::chrono::seconds(10);
@@ -48,13 +46,7 @@ constexpr auto poll_interval = std::chrono::milliseconds(10);
 class PollingSubscriberTest : public testing::Test
 {
 protected:
-  void SetUp() override
-  {
-    if (autoware::agnocast_wrapper::use_agnocast() && !agnocast_heaphook_loaded()) {
-      GTEST_SKIP() << "ENABLE_AGNOCAST=1 without the agnocast heaphook: the agnocast backend "
-                      "cannot be exercised in this environment.";
-    }
-  }
+  void SetUp() override { AUTOWARE_SKIP_WITHOUT_AGNOCAST_HEAPHOOK(); }
 
   /// A message published before the subscriber is matched is dropped, so wait for the publisher
   /// to see it. Both counts are needed: a same-process subscriber shows up in the intra-process
