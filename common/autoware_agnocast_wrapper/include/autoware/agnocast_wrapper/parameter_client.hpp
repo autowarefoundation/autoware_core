@@ -25,13 +25,13 @@
 #include <rclcpp/version.h>
 
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <future>
 #include <memory>
 #include <ratio>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 #include <utility>
 #include <variant>
 #include <vector>
