@@ -85,6 +85,8 @@ namespace autoware::agnocast_wrapper
 ///        ::rclcpp::AsyncParametersClient (rclcpp mode) and ::agnocast::AsyncParametersClient
 ///        (agnocast mode) at runtime, depending on whether the given
 ///        autoware::agnocast_wrapper::Node is running in agnocast mode.
+///
+/// @invariant The backend is selected from use_agnocast() at construction and never changes.
 class AsyncParametersClient
 {
 public:
@@ -183,26 +185,13 @@ private:
 namespace autoware::agnocast_wrapper
 {
 
-/// @brief Curated AsyncParametersClient for the non-Agnocast build.
-///
-/// Holds a ::rclcpp::AsyncParametersClient by value and forwards only the members the Agnocast
-/// build also has, rather than deriving from it: deriving would leak the full upstream API into
-/// the =0 build and let =0-only code compile that breaks under =1.
+// Agnocast-disabled build: a thin composition wrapper over ::rclcpp::AsyncParametersClient rather
+// than a derived class, so the full upstream API cannot leak into the =0 build and let =0-only code
+// compile that breaks under =1. Signatures and semantics match the agnocast-enabled build above,
+// which carries the documentation.
 class AsyncParametersClient
 {
 public:
-  /// @brief Construct from a wrapper Node.
-  ///
-  /// @pre The given Node must outlive this client.
-  ///
-  /// @throws std::invalid_argument if the QoS is transient-local or best-effort; see
-  ///         detail::checked_parameters_qos(). Both backends also reject a remote_node_name that
-  ///         cannot form a service name, with a backend-dependent type.
-  ///
-  /// @param node             Wrapper node providing the underlying rclcpp::Node.
-  /// @param remote_node_name Name of the node whose parameters are read. Empty means this node.
-  /// @param qos              QoS of the underlying service clients.
-  /// @param group            Callback group the underlying service clients are added to.
   explicit AsyncParametersClient(
     autoware::agnocast_wrapper::Node * node, const std::string & remote_node_name = "",
     const rclcpp::QoS & qos = rclcpp::ParametersQoS(),
@@ -213,11 +202,6 @@ public:
   {
   }
 
-  /// @brief Read parameters from the remote node.
-  ///
-  /// @param names    Parameter names to read.
-  /// @param callback Invoked with the resolved future when the response arrives.
-  /// @return Shared future resolving to the parameters, in the order they were requested.
   std::shared_future<std::vector<rclcpp::Parameter>> get_parameters(
     const std::vector<std::string> & names,
     std::function<void(std::shared_future<std::vector<rclcpp::Parameter>>)> callback = nullptr)
@@ -225,12 +209,6 @@ public:
     return impl_.get_parameters(names, std::move(callback));
   }
 
-  /// @brief Block until the remote node's parameter services are available, or the timeout
-  ///        expires.
-  ///
-  /// @param timeout Maximum duration to wait; a negative duration waits forever, and a zero
-  ///                duration is a non-blocking probe.
-  /// @return true if the services became available, false on timeout.
   template <typename RepT = int64_t, typename RatioT = std::milli>
   bool wait_for_service(
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::duration<RepT, RatioT>(-1))
@@ -238,11 +216,6 @@ public:
     return impl_.wait_for_service(timeout);
   }
 
-  /// @brief Report whether the remote node's parameter services are available right now.
-  ///
-  /// Non-blocking, unlike wait_for_service().
-  ///
-  /// @return true if the remote node's parameter services are available.
   bool service_is_ready() const { return impl_.service_is_ready(); }
 
   AsyncParametersClient(const AsyncParametersClient &) = delete;
