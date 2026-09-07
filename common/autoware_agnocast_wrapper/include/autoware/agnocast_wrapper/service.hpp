@@ -41,6 +41,15 @@ namespace autoware::agnocast_wrapper
 template <typename ServiceT>
 class Service
 {
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+protected:
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Service<ServiceT>>;
 
@@ -62,13 +71,6 @@ public:
     detail::check_introspection_args(get_service_name(), clock, qos_service_event_pub);
     configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
   }
-
-protected:
-  /// Backend hook for configure_introspection(), kept out of the public interface so that its
-  /// argument check cannot be bypassed.
-  virtual void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) = 0;
 #endif
 };
 
@@ -91,6 +93,16 @@ template <typename ServiceT>
 class AgnocastService : public Service<ServiceT>
 {
   typename agnocast::Service<ServiceT>::SharedPtr srv_;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+protected:
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   template <typename NodeT, typename Func>
@@ -116,6 +128,12 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
+};
+
+template <typename ServiceT>
+class ROS2Service : public Service<ServiceT>
+{
+  typename rclcpp::Service<ServiceT>::SharedPtr srv_;
 
 #if RCLCPP_VERSION_GTE(21, 0, 0)
 protected:
@@ -126,12 +144,6 @@ protected:
     srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
   }
 #endif
-};
-
-template <typename ServiceT>
-class ROS2Service : public Service<ServiceT>
-{
-  typename rclcpp::Service<ServiceT>::SharedPtr srv_;
 
 public:
   template <typename Func>
@@ -161,16 +173,6 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
-
-#if RCLCPP_VERSION_GTE(21, 0, 0)
-protected:
-  void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) override
-  {
-    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
-  }
-#endif
 };
 
 template <typename ServiceT, typename Func>
@@ -203,6 +205,15 @@ namespace autoware::agnocast_wrapper
 template <typename ServiceT>
 class Service
 {
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+protected:
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Service<ServiceT>>;
 
@@ -224,13 +235,6 @@ public:
     detail::check_introspection_args(get_service_name(), clock, qos_service_event_pub);
     configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
   }
-
-protected:
-  /// Backend hook for configure_introspection(), kept out of the public interface so that its
-  /// argument check cannot be bypassed.
-  virtual void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) = 0;
 #endif
 };
 
@@ -252,6 +256,16 @@ template <typename ServiceT>
 class ROS2Service : public Service<ServiceT>
 {
   typename rclcpp::Service<ServiceT>::SharedPtr srv_;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+protected:
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   template <typename Func>
@@ -281,16 +295,6 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
-
-#if RCLCPP_VERSION_GTE(21, 0, 0)
-protected:
-  void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) override
-  {
-    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
-  }
-#endif
 };
 
 template <typename ServiceT, typename Func>
