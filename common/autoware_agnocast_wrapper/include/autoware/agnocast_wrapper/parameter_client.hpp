@@ -32,6 +32,7 @@
 #include <stdexcept>
 #include <string>
 #include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -111,10 +112,11 @@ public:
       use_agnocast()
         ? decltype(impl_)(
             std::in_place_type<AgnocastImpl>, node->get_agnocast_node().get(), remote_node_name,
-            detail::checked_parameters_qos(qos), group)
+            detail::checked_parameters_qos(qos), std::move(group))
         : decltype(impl_)(
             std::in_place_type<RclcppImpl>, node->get_rclcpp_node().get(), remote_node_name,
-            detail::to_rclcpp_parameters_qos(detail::checked_parameters_qos(qos)), group))
+            detail::to_rclcpp_parameters_qos(detail::checked_parameters_qos(qos)),
+            std::move(group)))
   {
   }
 
@@ -130,7 +132,8 @@ public:
     const std::vector<std::string> & names,
     std::function<void(std::shared_future<std::vector<rclcpp::Parameter>>)> callback = nullptr)
   {
-    return std::visit([&](auto & impl) { return impl.get_parameters(names, callback); }, impl_);
+    return std::visit(
+      [&](auto & impl) { return impl.get_parameters(names, std::move(callback)); }, impl_);
   }
 
   /// @brief Block until the remote node's parameter services are available, or the timeout
@@ -206,7 +209,7 @@ public:
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   : impl_(
       node->get_rclcpp_node().get(), remote_node_name,
-      detail::to_rclcpp_parameters_qos(detail::checked_parameters_qos(qos)), group)
+      detail::to_rclcpp_parameters_qos(detail::checked_parameters_qos(qos)), std::move(group))
   {
   }
 
@@ -219,7 +222,7 @@ public:
     const std::vector<std::string> & names,
     std::function<void(std::shared_future<std::vector<rclcpp::Parameter>>)> callback = nullptr)
   {
-    return impl_.get_parameters(names, callback);
+    return impl_.get_parameters(names, std::move(callback));
   }
 
   /// @brief Block until the remote node's parameter services are available, or the timeout
