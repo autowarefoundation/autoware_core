@@ -28,12 +28,6 @@ namespace autoware::agnocast_wrapper
 
 enum class OwnershipType { Unique, Shared };
 
-namespace detail
-{
-template <typename MessageT>
-std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT> && ptr);
-}  // namespace detail
-
 template <typename MessageT, OwnershipType Ownership>
 class message_interface;
 
@@ -69,9 +63,6 @@ public:
 
   virtual agnocast::ipc_shared_ptr<MessageT> move_agnocast_ptr() && noexcept = 0;
   virtual std::shared_ptr<MessageT> move_ros2_ptr() && noexcept = 0;
-
-  /// Hand the payload over as a std::shared_ptr, letting each backend pick the cheapest way.
-  virtual std::shared_ptr<const MessageT> into_std_shared_ptr() && = 0;
 
   virtual std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const = 0;
 };
@@ -128,11 +119,6 @@ public:
     return std::shared_ptr<MessageT>{};
   }
 
-  std::shared_ptr<const MessageT> into_std_shared_ptr() && override
-  {
-    return detail::to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT>(std::move(ptr_)));
-  }
-
   std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const override
   {
     return std::make_unique<agnocast_message<MessageT, OwnershipType::Shared>>(*this);
@@ -185,11 +171,6 @@ public:
     return agnocast::ipc_shared_ptr<MessageT>{};
   }
 
-  std::shared_ptr<const MessageT> into_std_shared_ptr() && noexcept override
-  {
-    return std::move(ptr_);
-  }
-
   std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const override
   {
     return std::make_unique<ros2_message<MessageT, OwnershipType::Shared>>(*this);
@@ -198,10 +179,6 @@ public:
 
 template <typename MessageT, OwnershipType Ownership>
 class message_ptr;
-
-template <typename MessageT>
-std::shared_ptr<const MessageT> to_shared_ptr(
-  message_ptr<const MessageT, OwnershipType::Shared> && message);
 
 template <typename MessageT>
 class message_ptr<MessageT, OwnershipType::Unique>
@@ -266,22 +243,11 @@ class message_ptr<MessageT, OwnershipType::Shared>
   friend class ROS2Client;
   template <typename U>
   friend class AgnocastClient;
-  template <typename U>
-  friend std::shared_ptr<const U> to_shared_ptr(
-    message_ptr<const U, OwnershipType::Shared> && message);
 
 private:
   agnocast::ipc_shared_ptr<MessageT> move_agnocast_ptr() && noexcept
   {
     return std::move(*(std::move(ptr_))).move_agnocast_ptr();
-  }
-
-  std::shared_ptr<const MessageT> into_std_shared_ptr() &&
-  {
-    if (!ptr_) {
-      return nullptr;
-    }
-    return std::move(*(std::move(ptr_))).into_std_shared_ptr();
   }
 
   auto move_ros2_ptr() && noexcept { return std::move(*(std::move(ptr_))).move_ros2_ptr(); }
@@ -348,40 +314,6 @@ std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const
 }
 
 }  // namespace detail
-
-/// Hands the payload of a received message over to an interface that insists on a plain
-/// `std::shared_ptr`, without copying it.
-///
-/// @warning The returned pointer and every copy of it must be destroyed before the endpoint that
-/// produced the message (the subscription, or the client that received the response). Destroying
-/// that endpoint drops the kernel-side reference, so a later publish can recycle the entry the
-/// copies still point at, and releasing the last copy afterwards aborts the process.
-template <typename MessageT>
-[[nodiscard]] std::shared_ptr<const MessageT> to_shared_ptr(
-  message_ptr<const MessageT, OwnershipType::Shared> && message)
-{
-  return std::move(message).into_std_shared_ptr();
-}
-
-}  // namespace autoware::agnocast_wrapper
-
-#else
-
-#include <memory>
-#include <utility>
-
-namespace autoware::agnocast_wrapper
-{
-
-/// Hands the payload of a received message over to an interface that insists on a plain
-/// `std::shared_ptr`. In this build the message is already one, so this is a pass-through kept for
-/// source compatibility with the Agnocast build.
-template <typename MessageT>
-[[nodiscard]] std::shared_ptr<const MessageT> to_shared_ptr(
-  std::shared_ptr<const MessageT> && message) noexcept
-{
-  return std::move(message);
-}
 
 }  // namespace autoware::agnocast_wrapper
 

@@ -437,12 +437,11 @@ Request/response pointer types **do** differ per build:
 | `AUTOWARE_SERVER_REQUEST_PTR(SrvT)`  | `message_ptr<const Request, …>`  | `std::shared_ptr<const SrvT::Request>`  |
 | `AUTOWARE_SERVER_RESPONSE_PTR(SrvT)` | `message_ptr<Response, …>`       | `std::shared_ptr<SrvT::Response>`       |
 | `AUTOWARE_CLIENT_REQUEST_PTR(SrvT)`  | `message_ptr<Request, …>`        | `std::shared_ptr<SrvT::Request>`        |
-| `AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)` | `message_ptr<const Response, …>` | `std::shared_ptr<const SrvT::Response>` |
+| `AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)` | `std::shared_ptr<const SrvT::Response>` | `std::shared_ptr<const SrvT::Response>` |
 
-`to_shared_ptr(handle)` converts a received message handle (subscription message or client response) into
-`std::shared_ptr<const MessageT>` for interfaces that require one. It aliases on the Agnocast path (no copy) and is a
-pass-through on the ROS 2 path. Review point: **the result must not outlive the subscription or client that produced it**,
-because that endpoint owns the kernel-side reference.
+The client response is a plain `std::shared_ptr<const Response>` in both builds — the agnocast
+backend aliases the received handle, so nothing is copied. Review point: **the response must not
+outlive the client that produced it**, because that client owns the kernel-side reference.
 
 &nbsp;
 

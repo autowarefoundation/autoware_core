@@ -131,8 +131,7 @@ public:
             try {
               typename agnocast::ipc_shared_ptr<const typename ServiceT::Response>
                 agnocast_response = agnocast_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+              promise_ptr->set_value(detail::to_std_shared_ptr(std::move(agnocast_response)));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
             }
@@ -161,8 +160,7 @@ public:
             try {
               typename agnocast::ipc_shared_ptr<const typename ServiceT::Response>
                 agnocast_response = agnocast_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+              promise_ptr->set_value(detail::to_std_shared_ptr(std::move(agnocast_response)));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;
@@ -223,8 +221,7 @@ public:
                             try {
                               std::shared_ptr<const typename ServiceT::Response> ros2_response =
                                 ros2_shared_future.get();
-                              promise_ptr->set_value(
-                                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+                              promise_ptr->set_value(std::move(ros2_response));
                             } catch (...) {
                               promise_ptr->set_exception(std::current_exception());
                             }
@@ -253,8 +250,7 @@ public:
             try {
               std::shared_ptr<const typename ServiceT::Response> ros2_response =
                 ros2_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+              promise_ptr->set_value(std::move(ros2_response));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;
