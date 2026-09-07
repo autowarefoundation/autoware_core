@@ -8220,7 +8220,7 @@ is in Agnocast mode — see the <a href="#build-modes-agnocast-disabled-vs-agnoc
 </tr>
 <tr>
 <td>Subscription</td>
-<td><code>create_subscription&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads)</td>
+<td><code>create_subscription&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads, plus a callback-less form read with <code>take()</code>) — see <a href="#subscription-api">Subscription API</a></td>
 </tr>
 <tr>
 <td>Client</td>
@@ -8471,6 +8471,18 @@ executor.</p>
 </table>
 <p>Prefer the allocate-then-move form when you are constructing the outgoing message anyway; the
 <code>const MessageT &amp;</code> overload suits a message you already hold and must keep.</p>
+<h4 id="subscription-api">Subscription API<a class="headerlink" href="#subscription-api" title="Permanent link">#</a></h4>
+<p>Passing no callback creates a subscription that is read with <code>take()</code> rather than delivered:</p>
+<div class="highlight"><pre><span></span><code><span class="k">auto</span><span class="w"> </span><span class="n">sub</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">create_subscription</span><span class="o">&lt;</span><span class="n">std_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">String</span><span class="o">&gt;</span><span class="p">(</span><span class="s">"/topic"</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">QoS</span><span class="p">{</span><span class="mi">1</span><span class="p">});</span>
+
+<span class="n">std_msgs</span><span class="o">::</span><span class="n">msg</span><span class="o">::</span><span class="n">String</span><span class="w"> </span><span class="n">msg</span><span class="p">;</span>
+<span class="n">rclcpp</span><span class="o">::</span><span class="n">MessageInfo</span><span class="w"> </span><span class="n">info</span><span class="p">;</span>
+<span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">sub</span><span class="o">-&gt;</span><span class="n">take</span><span class="p">(</span><span class="n">msg</span><span class="p">,</span><span class="w"> </span><span class="n">info</span><span class="p">))</span><span class="w"> </span><span class="p">{</span>
+<span class="w">  </span><span class="c1">// msg holds the next message this subscription has not taken yet</span>
+<span class="p">}</span>
+</code></pre></div>
+<p>Prefer <a href="#polling-subscriber-polling-namespace"><code>polling::create_polling_subscriber()</code></a> for polling: it keeps Agnocast's zero copy and offers a re-delivery policy, where <code>take()</code> copies out of shared memory and returns each message once. This form is for callers that need an <code>rclcpp::Subscription</code>-shaped handle, as <code>component_interface_utils</code> does.</p>
+<p><code>take()</code> throws <code>std::runtime_error</code> on a subscription created <strong>with</strong> a callback: the delivery mode is fixed at construction. Agnocast fills none of the fields <code>info</code> carries, so that path zeroes it and reports the sequence numbers as unsupported. <code>SubscriptionOptions::callback_group</code> is ignored with a warning, and intra-process delivery is disabled, because either would let something else consume the messages <code>take()</code> is there to read.</p>
 <h4 id="cmake-setup">CMake setup<a class="headerlink" href="#cmake-setup" title="Permanent link">#</a></h4>
 <p>To use the Node wrapper in your package, add the following to your <code>CMakeLists.txt</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_agnocast_wrapper</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
