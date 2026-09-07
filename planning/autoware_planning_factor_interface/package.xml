@@ -4,7 +4,6 @@
   <name>autoware_planning_factor_interface</name>
   <version>1.9.0</version>
   <description>The autoware_planning_factor_interface package</description>
-  <maintainer email="satoshi.ota@tier4.jp">Satoshi Ota</maintainer>
   <maintainer email="mamoru.sobue@tier4.jp">Mamoru Sobue</maintainer>
   <license>Apache License 2.0</license>
 
@@ -16,6 +15,7 @@
   <depend>autoware_internal_planning_msgs</depend>
   <depend>autoware_motion_utils</depend>
   <depend>autoware_planning_msgs</depend>
+  <depend>geometry_msgs</depend>
   <depend>rclcpp</depend>
 
   <test_depend>ament_cmake_ros</test_depend>

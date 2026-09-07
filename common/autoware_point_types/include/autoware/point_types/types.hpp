@@ -19,9 +19,13 @@
 
 #include <pcl/point_types.h>
 
+#include <algorithm>
+#include <array>
+#include <cctype>
 #include <cmath>
 #include <limits>
 #include <stdexcept>
+#include <string>
 #include <string_view>
 #include <tuple>
 
@@ -79,6 +83,30 @@ struct PointXYZIRC
   }
 };
 
+/// @brief PointXYZIRC extended by a per-point time stamp. Intended for point clouds whose points
+/// no longer share a common sensor origin (e.g. the concatenation of several LiDARs), where the
+/// polar fields of PointXYZIRCAEDT have lost their meaning but the acquisition time has not.
+struct PointXYZIRCT
+{
+  float x{0.0F};
+  float y{0.0F};
+  float z{0.0F};
+  std::uint8_t intensity{0U};
+  std::uint8_t return_type{0U};
+  std::uint16_t channel{0U};
+  /// Acquisition time of this point, as a non-negative offset in nanoseconds from the
+  /// containing point cloud's `header.stamp`.
+  std::uint32_t time_stamp{0U};
+
+  friend bool operator==(const PointXYZIRCT & p1, const PointXYZIRCT & p2) noexcept
+  {
+    return float_eq<float>(p1.x, p2.x) && float_eq<float>(p1.y, p2.y) &&
+           float_eq<float>(p1.z, p2.z) && p1.intensity == p2.intensity &&
+           p1.return_type == p2.return_type && p1.channel == p2.channel &&
+           p1.time_stamp == p2.time_stamp;
+  }
+};
+
 struct PointXYZIRADRT
 {
   float x{0.0F};
@@ -111,6 +139,8 @@ struct PointXYZIRCAEDT
   float azimuth{0.0F};
   float elevation{0.0F};
   float distance{0.0F};
+  /// Acquisition time of this point, as a non-negative offset in nanoseconds from the
+  /// containing point cloud's `header.stamp`.
   std::uint32_t time_stamp{0U};
 
   friend bool operator==(const PointXYZIRCAEDT & p1, const PointXYZIRCAEDT & p2) noexcept
@@ -125,6 +155,7 @@ struct PointXYZIRCAEDT
 
 enum class PointXYZIIndex { X, Y, Z, Intensity };
 enum class PointXYZIRCIndex { X, Y, Z, Intensity, ReturnType, Channel };
+enum class PointXYZIRCTIndex { X, Y, Z, Intensity, ReturnType, Channel, TimeStamp };
 enum class PointXYZIRADRTIndex {
   X,
   Y,
@@ -161,6 +192,11 @@ using PointXYZIRCGenerator = std::tuple<
   point_cloud_msg_wrapper::field_x_generator, point_cloud_msg_wrapper::field_y_generator,
   point_cloud_msg_wrapper::field_z_generator, point_cloud_msg_wrapper::field_intensity_generator,
   field_return_type_generator, field_channel_generator>;
+
+using PointXYZIRCTGenerator = std::tuple<
+  point_cloud_msg_wrapper::field_x_generator, point_cloud_msg_wrapper::field_y_generator,
+  point_cloud_msg_wrapper::field_z_generator, point_cloud_msg_wrapper::field_intensity_generator,
+  field_return_type_generator, field_channel_generator, field_time_stamp_generator>;
 
 using PointXYZIRADRTGenerator = std::tuple<
   point_cloud_msg_wrapper::field_x_generator, point_cloud_msg_wrapper::field_y_generator,
@@ -233,6 +269,41 @@ constexpr std::string_view to_string(PointCloudClassification classification)
   }
 }
 
+/**
+ * @brief Get the point cloud classification from its string representation.
+ * @details The name is normalized to uppercase first, so matching is case-insensitive for ASCII
+ * letters. Accepted names are exactly those produced by to_string(), including "INVALID".
+ * @param name Classification name, e.g. "CAR" or "flat_surface".
+ * @return Matching classification.
+ * @throws std::invalid_argument If the name does not correspond to any enumerator.
+ */
+inline PointCloudClassification to_pointcloud_classification(std::string_view name)
+{
+  std::string uppercase(name);
+  std::transform(uppercase.begin(), uppercase.end(), uppercase.begin(), [](unsigned char c) {
+    return static_cast<char>(std::toupper(c));
+  });
+
+  // Matching against to_string() keeps both directions in sync: a new enumerator only has to be
+  // added to to_string() and to this list.
+  constexpr std::array<PointCloudClassification, 13> classifications{
+    PointCloudClassification::CAR,          PointCloudClassification::TRUCK,
+    PointCloudClassification::BUS,          PointCloudClassification::MOTORCYCLE,
+    PointCloudClassification::BICYCLE,      PointCloudClassification::PEDESTRIAN,
+    PointCloudClassification::ANIMAL,       PointCloudClassification::HAZARD,
+    PointCloudClassification::FLAT_SURFACE, PointCloudClassification::STRUCTURE,
+    PointCloudClassification::VEGETATION,   PointCloudClassification::NOISE,
+    PointCloudClassification::INVALID};
+
+  for (const auto classification : classifications) {
+    if (uppercase == to_string(classification)) {
+      return classification;
+    }
+  }
+
+  throw std::invalid_argument("Unknown point cloud classification: '" + std::string(name) + "'");
+}
+
 struct PointXYZCPE
 {
   float x{0.0F};
@@ -269,6 +340,12 @@ POINT_CLOUD_REGISTER_POINT_STRUCT(
   autoware::point_types::PointXYZIRC,
   (float, x, x)(float, y, y)(float, z, z)(std::uint8_t, intensity, intensity)(
     std::uint8_t, return_type, return_type)(std::uint16_t, channel, channel))
+
+POINT_CLOUD_REGISTER_POINT_STRUCT(
+  autoware::point_types::PointXYZIRCT,
+  (float, x, x)(float, y, y)(float, z, z)(std::uint8_t, intensity, intensity)(
+    std::uint8_t, return_type,
+    return_type)(std::uint16_t, channel, channel)(std::uint32_t, time_stamp, time_stamp))
 
 POINT_CLOUD_REGISTER_POINT_STRUCT(
   autoware::point_types::PointXYZIRADRT,

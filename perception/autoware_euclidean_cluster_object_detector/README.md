@@ -59,6 +59,11 @@ This package has two clustering methods: `euclidean_cluster` and `voxel_grid_bas
 
 ## Assumptions / Known limits
 
+### Cluster size limits
+
+The two size parameters are assumed to satisfy `1 <= min_cluster_size <= max_cluster_size`. The
+nodes do not check this, and the behaviour is undefined otherwise.
+
 <!-- Write assumptions and limitations of your implementation.
 
 Example:

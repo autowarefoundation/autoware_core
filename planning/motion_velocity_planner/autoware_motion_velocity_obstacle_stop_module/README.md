@@ -117,7 +117,7 @@ Red wall which means a safe distance to stop if the ego's front meets the wall i
 ## Usage
 
 This module is activated if the launch parameter `launch_obstacle_stop_module` is set to true.
-e.g. launcher/autoware_launch/autoware_launch/config/planning/preset/default_preset.yaml
+e.g. launcher/autoware_launch/autoware_universe_launch/autoware_planning_config/config/preset/default_preset.yaml
 
 ```yaml
 # motion velocity planner modules

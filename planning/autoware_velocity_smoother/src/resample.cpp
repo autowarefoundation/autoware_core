@@ -19,6 +19,7 @@
 #include "autoware/motion_utils/trajectory/trajectory.hpp"
 #include "autoware/velocity_smoother/trajectory_utils.hpp"
 
+#include <autoware/agnocast_wrapper/runtime.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <algorithm>
@@ -199,7 +200,7 @@ TrajectoryPoints resampleTrajectory(
   double dist_i{0.0};
   bool is_zero_point_included{false};
   bool is_endpoint_included{false};
-  while (rclcpp::ok()) {
+  while (autoware::agnocast_wrapper::ok()) {
     double ds = nominal_ds;
     if (start_stop_arclength_value <= dist_i && dist_i <= stop_arclength_value) {
       // Dense sampling before the stop point

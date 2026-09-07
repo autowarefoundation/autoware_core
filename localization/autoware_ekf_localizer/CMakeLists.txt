@@ -36,7 +36,7 @@ target_include_directories(autoware_ekf_localizer
 ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::ekf_localizer::EKFLocalizer"
+  PLUGIN "autoware::ekf_localizer::EKFLocalizerNode"
   EXECUTABLE ${PROJECT_NAME}_node
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
@@ -59,11 +59,7 @@ endfunction()
 if(BUILD_TESTING)
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
     add_launch_test(
-      test/test_ekf_localizer_launch.py
-      TIMEOUT "30"
-    )
-    add_launch_test(
-      test/test_ekf_localizer_mahalanobis.py
+      test/utils/test_ekf_localizer_launch.py
       TIMEOUT "30"
     )
   endif()
@@ -72,7 +68,7 @@ if(BUILD_TESTING)
   file(GLOB_RECURSE TEST_FILES test/*.cpp)
 
   if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
-    list(FILTER TEST_FILES EXCLUDE REGEX "test_diagnostics(_topic)?\\.cpp$|test_ekf_localizer_integration\\.cpp$")
+    list(FILTER TEST_FILES EXCLUDE REGEX "test_diagnostics(_topic)?\\.cpp$|test_ekf_localizer_node_integration\\.cpp$")
   endif()
 
   foreach(filepath ${TEST_FILES})

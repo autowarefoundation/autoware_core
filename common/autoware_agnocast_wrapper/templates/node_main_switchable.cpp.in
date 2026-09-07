@@ -20,7 +20,6 @@
 #include <vector>
 #include <glog/logging.h>
 
-#include "agnocast/agnocast.hpp"
 #include "@_AWR_agnocast_executor_include@"
 #include "autoware/agnocast_wrapper/node.hpp"
 #include "class_loader/class_loader.hpp"
@@ -37,7 +36,6 @@ int main(int argc, char * argv[])
 
   constexpr bool agnocast_only = @_AWR_agnocast_only@;
   const bool use_agnocast = autoware::agnocast_wrapper::use_agnocast();
-  const bool is_agnocast_only_mode = use_agnocast && agnocast_only;
 
   // NOTE: rclcpp::get_logger() works without rclcpp::init() — it only requires the rclcpp
   // library to be linked, not the ROS 2 context to be initialized.
@@ -47,17 +45,8 @@ int main(int argc, char * argv[])
     use_agnocast ? "agnocast" : "rclcpp");
 
   // === Initialization ===
-  // When agnocast-only mode is active (agnocast_only=true AND use_agnocast=true at runtime),
-  // only agnocast::init() is called and rclcpp::init() is skipped. In this mode:
-  // - rclcpp::NodeOptions is default-constructed (arguments are not set)
-  // - The agnocast executor handles all communication without the ROS 2 middleware
-  // - rclcpp::shutdown() is NOT called at cleanup
-  std::vector<std::string> args;
-  if (is_agnocast_only_mode) {
-    agnocast::init(argc, argv);
-  } else {
-    args = rclcpp::init_and_remove_ros_arguments(argc, argv);
-  }
+  const std::vector<std::string> args =
+    autoware::agnocast_wrapper::init(argc, argv, agnocast_only);
 
   rclcpp::NodeOptions options;
   if (!args.empty()) {
@@ -90,15 +79,11 @@ int main(int argc, char * argv[])
       node_found = true;
     } catch (const std::exception & ex) {
       RCLCPP_ERROR(logger, "Failed to load node class: %s", ex.what());
-      if (!is_agnocast_only_mode) {
-        rclcpp::shutdown();
-      }
+      autoware::agnocast_wrapper::shutdown();
       return 1;
     } catch (...) {
       RCLCPP_ERROR(logger, "Failed to load node class (unknown exception)");
-      if (!is_agnocast_only_mode) {
-        rclcpp::shutdown();
-      }
+      autoware::agnocast_wrapper::shutdown();
       return 1;
     }
     break;
@@ -116,9 +101,7 @@ int main(int argc, char * argv[])
         RCLCPP_ERROR(logger, "  - %s", c.c_str());
       }
     }
-    if (!is_agnocast_only_mode) {
-      rclcpp::shutdown();
-    }
+    autoware::agnocast_wrapper::shutdown();
     return 1;
   }
 
@@ -211,9 +194,10 @@ int main(int argc, char * argv[])
   }
 
   // === Cleanup ===
-  if (!is_agnocast_only_mode) {
-    rclcpp::shutdown();
-  }
+  // Destroy the node before the context, as rclcpp_components' own node_main.cpp.in does.
+  node_instance = rclcpp_components::NodeInstanceWrapper(nullptr, nullptr);
+
+  autoware::agnocast_wrapper::shutdown();
 
   return ret;
 }

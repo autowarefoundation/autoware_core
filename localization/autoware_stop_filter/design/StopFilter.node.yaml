@@ -1,0 +1,50 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: StopFilter.node
+
+description: Applies a uniform stopping criterion to the localization odometry, overwriting the longitudinal and yaw velocity with zero while the vehicle is stopped.
+
+package:
+  name: autoware_stop_filter
+  provider: autoware
+
+launch:
+  plugin: autoware::stop_filter::StopFilterNode
+  executable: autoware_stop_filter_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: odom
+    message_type: nav_msgs/msg/Odometry
+    description: Localization odometry.
+    remap_target: input/odom
+
+publishers:
+  - name: odom
+    message_type: nav_msgs/msg/Odometry
+    description: Odometry with suppressed longitudinal and yaw twist.
+    remap_target: output/odom
+  - name: stop_flag
+    message_type: autoware_internal_debug_msgs/msg/BoolStamped
+    description: Flag representing whether the vehicle is stopping.
+    remap_target: debug/stop_flag
+
+# parameters
+param_files:
+  - name: param_path
+    default: config/stop_filter.param.yaml
+    description: Velocity thresholds of the stopping decision.
+
+param_values: []
+
+# processes
+processes:
+  - name: filter
+    description: Judges the stop state from the input velocities and republishes the odometry with the stopped components zeroed.
+    trigger_conditions:
+      - on_input: odom
+    outcomes:
+      - to_output: odom
+      - to_output: stop_flag

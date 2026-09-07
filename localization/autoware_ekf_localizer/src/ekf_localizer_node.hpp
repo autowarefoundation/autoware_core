@@ -16,9 +16,7 @@
 #define EKF_LOCALIZER_NODE_HPP_
 
 #include "ekf_localizer.hpp"
-#include "utils/aged_object_queue.hpp"
 #include "utils/hyper_parameters.hpp"
-#include "utils/warning.hpp"
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
@@ -53,10 +51,10 @@
 namespace autoware::ekf_localizer
 {
 
-class EKFLocalizer : public autoware::agnocast_wrapper::Node
+class EKFLocalizerNode : public autoware::agnocast_wrapper::Node
 {
 public:
-  explicit EKFLocalizer(const rclcpp::NodeOptions & node_options);
+  explicit EKFLocalizerNode(const rclcpp::NodeOptions & node_options);
 
   // This function is only used in static tools to know when timer callbacks are triggered.
   std::chrono::nanoseconds time_until_trigger() const
@@ -65,8 +63,6 @@ public:
   }
 
 private:
-  const std::shared_ptr<Warning> warning_;
-
   //!< @brief ekf estimated pose publisher
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) pub_pose_;
   //!< @brief estimated ekf pose with covariance publisher
@@ -98,8 +94,6 @@ private:
   AUTOWARE_TIMER_PTR timer_control_;
   //!< @brief calls publish_diagnostics() at diagnostics_publish_period
   AUTOWARE_TIMER_PTR diagnostics_publish_timer_;
-  //!< @brief last predict time
-  std::shared_ptr<const rclcpp::Time> last_predict_time_;
   //!< @brief trigger_node service
   AUTOWARE_SERVICE_PTR(std_srvs::srv::SetBool) service_trigger_node_;
 
@@ -116,25 +110,9 @@ private:
     logger_configure_;
 
   //!< @brief  extended kalman filter instance.
-  std::unique_ptr<EKFModule> ekf_module_;
+  std::unique_ptr<EKFLocalizer> ekf_localizer_;
 
   const HyperParameters params_;
-
-  double ekf_dt_;
-
-  std::atomic<bool> is_activated_{false};
-  std::atomic<bool> is_set_initialpose_{false};
-
-  EKFDiagnosticInfo pose_diag_info_;
-  EKFDiagnosticInfo twist_diag_info_;
-
-  AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_;
-  AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_;
-  //!< @brief temporary queues written by subscription callbacks; drained into main queues by timer
-  std::queue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> pose_queue_tmp_;
-  std::queue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> twist_queue_tmp_;
-  std::mutex pose_mtx_;
-  std::mutex twist_mtx_;
 
   //!< @brief callback groups for parallel execution
   rclcpp::CallbackGroup::SharedPtr cb_group_pose_;
@@ -174,11 +152,6 @@ private:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) msg);
 
   /**
-   * @brief update predict frequency
-   */
-  void update_predict_frequency(const rclcpp::Time & current_time);
-
-  /**
    * @brief get transform from frame_id
    */
   bool get_transform_from_tf(
@@ -188,10 +161,7 @@ private:
   /**
    * @brief publish current EKF estimation result
    */
-  void publish_estimate_result(
-    const geometry_msgs::msg::PoseStamped & current_ekf_pose,
-    const geometry_msgs::msg::PoseStamped & current_biased_ekf_pose,
-    const geometry_msgs::msg::TwistStamped & current_ekf_twist);
+  void publish_estimate_result(const EKFUpdateResult & result);
 
   /**
    * @brief Overwrite merged_diagnostic_status_ from merged diagnostics each tick;
@@ -214,13 +184,6 @@ private:
 
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_timer_cb_;
-
-  void initialize_diagnostic_info(
-    EKFDiagnosticInfo & pose_diag_info, EKFDiagnosticInfo & twist_diag_info,
-    const AgedObjectQueue<geometry_msgs::msg::PoseWithCovarianceStamped::SharedPtr> & pose_queue,
-    const AgedObjectQueue<geometry_msgs::msg::TwistWithCovarianceStamped::SharedPtr> & twist_queue);
-
-  friend class EKFLocalizerDiagnosticsTest;  // for test code
 };
 
 }  // namespace autoware::ekf_localizer

@@ -109,7 +109,7 @@ repos:
         additional_dependencies: [prettier@2.7.1, "@prettier/plugin-xml@2.2.0"]
 
   - repo: https://github.com/autowarefoundation/autoware_system_designer
-    rev: v0.4.1
+    rev: v0.4.2
     hooks:
       - id: lint-system-design-format
         args: [--format=github-actions]
@@ -123,8 +123,8 @@ repos:
   - repo: local
     hooks:
       - id: interface-spec-lint
-        name: interface-spec-lint (WARN)
-        entry: python3 common/autoware_interface_spec_lint/scripts/run_lint.py --warn-only
+        name: interface-spec-lint
+        entry: python3 common/autoware_interface_spec_lint/scripts/run_lint.py
         language: system
         files: ^.*/autoware_component_interface_specs/include/.*\.hpp$
         pass_filenames: false

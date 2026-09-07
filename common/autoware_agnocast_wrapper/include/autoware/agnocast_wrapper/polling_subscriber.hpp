@@ -20,11 +20,14 @@
 #include <rclcpp/rclcpp.hpp>
 
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
 
 #ifdef USE_AGNOCAST_ENABLED
+#include "autoware/agnocast_wrapper/message_ptr.hpp"
+
 #include <agnocast/agnocast.hpp>
 #endif
 
@@ -34,15 +37,28 @@ namespace autoware::agnocast_wrapper::polling
 namespace polling_policy = autoware_utils_rclcpp::polling_policy;
 
 template <typename MessageT, template <typename> class PollingPolicy>
-inline constexpr bool polling_default_allow_same_message_v =
-  !std::is_same_v<PollingPolicy<MessageT>, polling_policy::Newest<MessageT>>;
-
-template <typename MessageT, template <typename> class PollingPolicy>
 inline constexpr bool polling_policy_supported_v =
   !std::is_same_v<PollingPolicy<MessageT>, polling_policy::All<MessageT>>;
 
+/// @brief Reject a QoS a polling subscriber cannot serve.
+/// @throws std::invalid_argument if the history depth is not 1. A deeper queue makes take_data()
+/// lag behind the newest message, which is why autoware_utils_rclcpp's policies reject it; depth 0
+/// (KeepAll, or KeepLast(0)) is rejected here as well because the agnocast backend then never
+/// delivers while the ROS 2 backend does.
+inline void check_polling_qos(const rclcpp::QoS & qos, const std::string & topic_name)
+{
+  const auto depth = qos.get_rmw_qos_profile().depth;
+  if (depth != 1) {
+    throw std::invalid_argument(
+      "polling::create_polling_subscriber(" + topic_name + "): history depth " +
+      std::to_string(depth) + " is not supported, take_data() needs a single-depth queue");
+  }
+}
+
 /// @brief Backend-agnostic polling subscriber. take_data() returns a plain
-/// std::shared_ptr<const MessageT> regardless of ENABLE_AGNOCAST.
+/// std::shared_ptr<const MessageT> regardless of ENABLE_AGNOCAST, and is the only policy method
+/// exposed: the agnocast take path carries no source timestamp, so there is no
+/// last_taken_data_timestamp().
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
 class PollingSubscriber
 {
@@ -58,13 +74,12 @@ public:
 
   virtual ~PollingSubscriber() = default;
 
-  std::shared_ptr<const MessageT> take_data()
-  {
-    return take_data_impl(polling_default_allow_same_message_v<MessageT, PollingPolicy>);
-  }
+  /// @note Not synchronized, like autoware_utils_rclcpp's polling subscriber: call it from a
+  /// single thread, or from callbacks in one mutually exclusive callback group.
+  virtual std::shared_ptr<const MessageT> take_data() = 0;
 
-protected:
-  virtual std::shared_ptr<const MessageT> take_data_impl(bool allow_same_message) = 0;
+  /// Topic name after remapping.
+  virtual const char * get_topic_name() const = 0;
 };
 
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
@@ -82,21 +97,67 @@ public:
   {
   }
 
-  // allow_same_message is unused: upstream autoware_utils_rclcpp has no take_data(bool);
-  // re-delivery is already governed by the PollingPolicy tag (Latest re-delivers, Newest only new).
-  std::shared_ptr<const MessageT> take_data_impl(bool allow_same_message) override
+  std::shared_ptr<const MessageT> take_data() override { return subscriber_->take_data(); }
+
+  const char * get_topic_name() const override
   {
-    (void)allow_same_message;
-    return subscriber_->take_data();
+    return subscriber_->subscriber()->get_topic_name();
   }
 };
 
 #ifdef USE_AGNOCAST_ENABLED
 
+/// @brief Agnocast-side counterpart of an autoware_utils_rclcpp polling policy.
+/// Defined rather than left declared so that a policy without a counterpart is rejected here
+/// instead of by an incomplete-type error on AgnocastPollingSubscriber::policy_.
+template <typename MessageT, template <typename> class PollingPolicy>
+class AgnocastPollingPolicy
+{
+  static_assert(
+    polling_policy_supported_v<MessageT, PollingPolicy>,
+    "This polling policy has no agnocast counterpart. Use polling_policy::Latest or "
+    "polling_policy::Newest.");
+
+public:
+  std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> &) { return {}; }
+};
+
+/// @brief Counterpart of autoware_utils_rclcpp::polling_policy::Latest<MessageT>::take_data().
+/// Where the ROS 2 policy holds a heap copy, this holds the shared-memory message itself, so one
+/// agnocast entry stays pinned for as long as the subscriber lives.
+template <typename MessageT>
+class AgnocastPollingPolicy<MessageT, polling_policy::Latest>
+{
+  std::shared_ptr<const MessageT> data_;
+
+public:
+  std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> & subscriber)
+  {
+    if (auto new_data = detail::to_std_shared_ptr(subscriber.take(false))) {
+      data_ = std::move(new_data);
+    }
+    return data_;
+  }
+};
+
+/// @brief Counterpart of autoware_utils_rclcpp::polling_policy::Newest<MessageT>::take_data().
+template <typename MessageT>
+class AgnocastPollingPolicy<MessageT, polling_policy::Newest>
+{
+public:
+  std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> & subscriber)
+  {
+    return detail::to_std_shared_ptr(subscriber.take(false));
+  }
+};
+
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
 class AgnocastPollingSubscriber : public PollingSubscriber<MessageT, PollingPolicy>
 {
   typename agnocast::TakeSubscription<MessageT>::SharedPtr subscriber_;
+  /// Declared after subscriber_ so the cached message is released before the subscription that
+  /// pins it; the reverse order aborts the process.
+  AgnocastPollingPolicy<MessageT, PollingPolicy> policy_;
 
 public:
   explicit AgnocastPollingSubscriber(
@@ -105,18 +166,9 @@ public:
   {
   }
 
-  std::shared_ptr<const MessageT> take_data_impl(bool allow_same_message) override
-  {
-    agnocast::ipc_shared_ptr<const MessageT> data = subscriber_->take(allow_same_message);
-    if (!data) {
-      return nullptr;
-    }
-    // Zero-copy: alias the shared-memory message into the returned std::shared_ptr. `holder` keeps
-    // the ipc_shared_ptr alive for the returned pointer's lifetime, so lifetime/refcount match the
-    // rclcpp heap path. While any copy is alive it pins one agnocast shared-memory entry.
-    auto holder = std::make_shared<agnocast::ipc_shared_ptr<const MessageT>>(std::move(data));
-    return std::shared_ptr<const MessageT>(holder, holder->get());
-  }
+  std::shared_ptr<const MessageT> take_data() override { return policy_.take_data(*subscriber_); }
+
+  const char * get_topic_name() const override { return subscriber_->get_topic_name(); }
 };
 
 /// @note The returned subscriber references the node's backend by raw pointer, so it must not
@@ -126,6 +178,8 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
   autoware::agnocast_wrapper::Node * node, const std::string & topic_name,
   const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
+  check_polling_qos(qos, topic_name);
+
   if (use_agnocast()) {
     return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
       node->get_agnocast_node().get(), topic_name, qos);
@@ -143,6 +197,8 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
   autoware::agnocast_wrapper::Node * node, const std::string & topic_name,
   const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
+  check_polling_qos(qos, topic_name);
+
   return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
     node->get_rclcpp_node().get(), topic_name, qos);
 }
