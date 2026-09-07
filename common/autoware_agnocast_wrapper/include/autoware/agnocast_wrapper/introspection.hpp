@@ -35,10 +35,9 @@
 
 #include <agnocast/agnocast_service_event_publisher.hpp>
 
-#if RCLCPP_VERSION_GTE(21, 0, 0)
-static_assert(
-  AGNOCAST_HAS_SERVICE_INTROSPECTION,
-  "agnocast gates service introspection differently from this header");
+#if RCLCPP_VERSION_GTE(21, 0, 0) && !AGNOCAST_HAS_SERVICE_INTROSPECTION
+#error AGNOCAST_HAS_SERVICE_INTROSPECTION (agnocast_service_event_publisher.hpp) no longer agrees \
+  with RCLCPP_VERSION_GTE(21, 0, 0); align the two gates
 #endif
 
 #endif
