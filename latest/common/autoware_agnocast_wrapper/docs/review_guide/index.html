@@ -9355,7 +9355,7 @@ sudo<span class="w"> </span>modprobe<span class="w"> </span>agnocast
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Polling subscribers use the <code>polling::</code> free-function API (see Part 2 Section 3.1)</li>
 </ul>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> If the node also uses message_filters, timers, tf2, or diagnostic_updater, they have been migrated to the corresponding <code>autoware::agnocast_wrapper::*</code> wrappers (see the <a href="../../">README</a> for usage and current limitations)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> If the node also uses message_filters, timers, tf2, diagnostic_updater, or an async parameters client, they have been migrated to the corresponding <code>autoware::agnocast_wrapper::*</code> wrappers (see the <a href="../../">README</a> for usage and current limitations)</li>
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> If the original CMakeLists.txt used <code>rclcpp_components_register_node()</code>, it has been replaced with <code>autoware_agnocast_wrapper_register_node()</code> (see Part 2 Section 5)</li>
