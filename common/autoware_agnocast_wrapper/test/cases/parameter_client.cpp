@@ -13,8 +13,8 @@
 // limitations under the License.
 
 // What each backend does with a request is covered by that backend's own tests, so what is left
-// here is the wrapper's own: the surface it presents in both builds, and the argument it rejects
-// itself.
+// here is the wrapper's own: the surface it presents in both builds, the arguments it rejects
+// itself, and that each member reaches its backend at all.
 
 #include "autoware/agnocast_wrapper/parameter_client.hpp"
 
@@ -25,6 +25,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <cstdlib>
 #include <memory>
 #include <stdexcept>
@@ -75,14 +76,39 @@ TEST_F(AsyncParametersClientTest, RejectsATransientLocalQos)
     std::invalid_argument);
 }
 
-TEST_F(AsyncParametersClientTest, AcceptsAVolatileQos)
+TEST_F(AsyncParametersClientTest, RejectsABestEffortQos)
+{
+  // Arrange
+  const auto node = std::make_shared<Node>("parameter_client_best_effort");
+
+  // Act & Assert
+  EXPECT_THROW(
+    AsyncParametersClient(node.get(), "no_such_node", rclcpp::ParametersQoS().best_effort()),
+    std::invalid_argument);
+}
+
+TEST_F(AsyncParametersClientTest, AcceptsAVolatileReliableQos)
 {
   // Arrange
   const auto node = std::make_shared<Node>("parameter_client_volatile");
 
   // Act & Assert
   EXPECT_NO_THROW(AsyncParametersClient(
-    node.get(), "no_such_node", rclcpp::ParametersQoS().durability_volatile()));
+    node.get(), "no_such_node", rclcpp::ParametersQoS().durability_volatile().reliable()));
+}
+
+// wait_for_service() is a member template, so without a call nothing instantiates it and a typo in
+// either build's forwarding would still compile. An absent remote node answers both readiness
+// queries the same way on either backend.
+TEST_F(AsyncParametersClientTest, ReachesTheBackendForAnAbsentRemoteNode)
+{
+  // Arrange
+  const auto node = std::make_shared<Node>("parameter_client_absent_remote");
+  AsyncParametersClient client(node.get(), "no_such_node");
+
+  // Act & Assert
+  EXPECT_FALSE(client.service_is_ready());
+  EXPECT_FALSE(client.wait_for_service(std::chrono::milliseconds(0)));
 }
 
 }  // namespace
