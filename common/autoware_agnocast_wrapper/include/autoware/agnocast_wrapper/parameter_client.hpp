@@ -103,7 +103,10 @@ public:
   ///                         rclcpp::Node.
   /// @param remote_node_name Name of the node whose parameters are read. Empty means this node.
   /// @param qos              QoS of the underlying service clients.
-  /// @param group            Callback group the underlying service clients are added to.
+  /// @param group            Callback group the underlying service clients are added to. Left
+  ///                         null, they land in the node's default MutuallyExclusive group, which
+  ///                         at ENABLE_AGNOCAST=1 aborts the process if that group also holds
+  ///                         rclcpp entities. Pass a group of their own, or a Reentrant one.
   explicit AsyncParametersClient(
     autoware::agnocast_wrapper::Node * node, const std::string & remote_node_name = "",
     const rclcpp::QoS & qos = rclcpp::ParametersQoS(),
@@ -126,6 +129,8 @@ public:
   ///
   /// @note The Agnocast backend answers over an Agnocast subscription, so the future resolves only
   ///       while an Agnocast executor spins the node, whatever wait_for_service() said.
+  /// @note Do not block on the future from inside a callback, on either backend: the executor
+  ///       that would deliver the response is the one being blocked.
   ///
   /// @param names    Parameter names to read.
   /// @param callback Invoked with the resolved future when the response arrives.
