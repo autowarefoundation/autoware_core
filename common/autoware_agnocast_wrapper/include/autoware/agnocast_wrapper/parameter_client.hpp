@@ -87,13 +87,17 @@ namespace autoware::agnocast_wrapper
 ///        autoware::agnocast_wrapper::Node is running in agnocast mode.
 ///
 /// @invariant The backend is selected from use_agnocast() at construction and never changes.
+///
+/// On the Agnocast backend, do not destroy this client while a request is outstanding or while an
+/// executor may still spin the node: a queued response is not withdrawn by the destruction.
 class AsyncParametersClient
 {
 public:
   /// @brief Construct a parameters client bound to a wrapper Node.
   ///
-  /// @pre The given Node must outlive this client: both backends keep their service clients
-  ///      bound to it.
+  /// @pre The given Node must outlive this client. It dangles in both modes, but only rclcpp
+  ///      keeps the node alive through its interface shared_ptrs; ::agnocast::ClientBase stores a
+  ///      raw pointer and dereferences it on the response error path.
   ///
   /// @throws std::invalid_argument if the QoS is transient-local or best-effort; see
   ///         detail::checked_parameters_qos(). Both backends also reject a remote_node_name that
