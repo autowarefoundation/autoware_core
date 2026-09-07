@@ -8251,6 +8251,13 @@ for both Humble (rclcpp 16.x) and Jazzy (rclcpp 28+).</p>
 <p>Polling subscribers are <strong>not</strong> a <code>Node</code> member. Use the free function
 <code>polling::create_polling_subscriber&lt;MessageT&gt;(node, topic, qos)</code> — see
 <a href="#polling-subscriber-polling-namespace">Polling Subscriber</a>.</p>
+<p>Reading <strong>another node's</strong> parameters is not a <code>Node</code> member either. Use
+<code>autoware::agnocast_wrapper::AsyncParametersClient</code>, which takes a Method 2 node. Of the parameter
+service calls it exposes only <code>get_parameters()</code>, alongside <code>wait_for_service()</code> and
+<code>service_is_ready()</code>; the setter, descriptor and listing calls are not wrapped yet, and
+<code>on_parameter_event()</code> has no Agnocast counterpart. On the Agnocast backend the response arrives
+over an Agnocast subscription, so <code>get_parameters()</code> resolves its future only while an Agnocast
+executor spins the node.</p>
 <blockquote>
 <p><code>create_client()</code> and <code>create_service()</code> also accept an <code>rmw_qos_profile_t</code>. This is not part of the
 supported surface: it exists so that Humble-era call sites passing <code>rmw_qos_profile_services_default</code>
