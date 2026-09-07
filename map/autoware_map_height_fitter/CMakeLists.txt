@@ -33,12 +33,14 @@ if(BUILD_TESTING)
   # map_height_fitter_kernel.hpp is an internal (non-installed) header under src/.
   target_include_directories(test_${PROJECT_NAME}_kernel PRIVATE src)
 
-  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_fit
-    test/test_map_height_fitter_fit.cpp
-  )
-  target_link_libraries(test_${PROJECT_NAME}_fit ${PROJECT_NAME} ${PCL_LIBRARIES})
-  ament_target_dependencies(test_${PROJECT_NAME}_fit autoware_agnocast_wrapper)
-  autoware_agnocast_wrapper_setup(test_${PROJECT_NAME}_fit)
+  if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_fit
+      test/test_map_height_fitter_fit.cpp
+    )
+    target_link_libraries(test_${PROJECT_NAME}_fit ${PROJECT_NAME} ${PCL_LIBRARIES})
+    ament_target_dependencies(test_${PROJECT_NAME}_fit autoware_agnocast_wrapper)
+    autoware_agnocast_wrapper_setup(test_${PROJECT_NAME}_fit)
+  endif()
 endif()
 
 autoware_ament_auto_package(
