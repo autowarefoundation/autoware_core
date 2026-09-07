@@ -40,16 +40,20 @@ namespace autoware::agnocast_wrapper
 namespace detail
 {
 
-/// @brief Return qos unchanged, rejecting a durability that cannot work.
+/// @brief Return qos unchanged, rejecting the policies the two backends do not agree on.
 ///
-/// @throws std::invalid_argument if the durability is not volatile. Parameter services are
-///         always volatile -- rclcpp offers no way to change them -- so a transient-local client
-///         never matches one, and neither backend says so on its own.
+/// @throws std::invalid_argument if the durability is transient-local or the reliability is
+///         best-effort. rclcpp lets both through and then never matches the service, while
+///         Agnocast coerces them away, so rejecting is what makes the two builds agree.
 inline const rclcpp::QoS & checked_parameters_qos(const rclcpp::QoS & qos)
 {
-  if (qos.durability() != rclcpp::DurabilityPolicy::Volatile) {
+  if (qos.durability() == rclcpp::DurabilityPolicy::TransientLocal) {
     throw std::invalid_argument(
       "AsyncParametersClient: transient-local durability is not supported, use volatile instead");
+  }
+  if (qos.reliability() == rclcpp::ReliabilityPolicy::BestEffort) {
+    throw std::invalid_argument(
+      "AsyncParametersClient: best-effort reliability is not supported, use reliable instead");
   }
   return qos;
 }
@@ -88,8 +92,9 @@ public:
   /// @pre The given Node must outlive this client: both backends keep their service clients
   ///      bound to it.
   ///
-  /// @throws std::invalid_argument if qos is not volatile. Both backends also reject a
-  ///         remote_node_name that cannot form a service name, with a backend-dependent type.
+  /// @throws std::invalid_argument if the QoS is transient-local or best-effort; see
+  ///         detail::checked_parameters_qos(). Both backends also reject a remote_node_name that
+  ///         cannot form a service name, with a backend-dependent type.
   ///
   /// @param node             Wrapper node providing access to either an agnocast::Node or an
   ///                         rclcpp::Node.
@@ -187,8 +192,9 @@ public:
   ///
   /// @pre The given Node must outlive this client.
   ///
-  /// @throws std::invalid_argument if qos is not volatile. Both backends also reject a
-  ///         remote_node_name that cannot form a service name, with a backend-dependent type.
+  /// @throws std::invalid_argument if the QoS is transient-local or best-effort; see
+  ///         detail::checked_parameters_qos(). Both backends also reject a remote_node_name that
+  ///         cannot form a service name, with a backend-dependent type.
   ///
   /// @param node             Wrapper node providing the underlying rclcpp::Node.
   /// @param remote_node_name Name of the node whose parameters are read. Empty means this node.
