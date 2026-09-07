@@ -42,6 +42,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <exception>
 #include <functional>
 #include <memory>
 #include <stdexcept>
@@ -67,15 +68,15 @@ using std::chrono_literals::operator""s;
 // ---------------------------------------------------------------------------------------
 // Reference input used throughout (same point as autoware_geography_utils' own tests).
 // ---------------------------------------------------------------------------------------
-constexpr double kLat = 35.62426;
-constexpr double kLon = 139.74252;
-constexpr double kAlt = 10.0;
-constexpr const char * kMgrsGrid = "54SUE";
+constexpr double reference_latitude = 35.62426;
+constexpr double reference_longitude = 139.74252;
+constexpr double reference_altitude = 10.0;
+constexpr const char * reference_mgrs_grid = "54SUE";
 
 // A deterministic, clearly artificial header stamp so that "stamp copied from input" and
 // "stamp taken from the node clock" can be told apart.
-constexpr int32_t kFixStampSec = 1700000000;
-constexpr uint32_t kFixStampNanosec = 123456789U;
+constexpr int32_t fix_stamp_sec = 1700000000;
+constexpr uint32_t fix_stamp_nanosec = 123456789U;
 
 // Wall-clock budget for the loopback delivery of one published message. The test thread pumps the
 // executor itself and only ever one input is in flight, so this only has to cover the delivery.
@@ -98,10 +99,10 @@ struct NodeParams
   // The six parameters the node declares, in declaration order.
   static const std::vector<std::string> & names()
   {
-    static const std::vector<std::string> kNames = {
+    static const std::vector<std::string> parameter_names = {
       "base_frame",           "gnss_base_frame", "map_frame", "use_gnss_ins_orientation",
       "gnss_pose_pub_method", "buff_epoch"};
-    return kNames;
+    return parameter_names;
   }
 
   // Parameter overrides for the node under test. `skip` leaves that one parameter unset.
@@ -133,7 +134,7 @@ builtin_interfaces::msg::Time make_stamp(int32_t sec, uint32_t nanosec)
 
 builtin_interfaces::msg::Time fix_stamp()
 {
-  return make_stamp(kFixStampSec, kFixStampNanosec);
+  return make_stamp(fix_stamp_sec, fix_stamp_nanosec);
 }
 
 NavSatFix make_fix(
@@ -158,11 +159,11 @@ NavSatFix make_reference_fix(
   NavSatStatus::_status_type status = NavSatStatus::STATUS_FIX,
   const std::string & frame_id = "gnss")
 {
-  return make_fix(kLat, kLon, kAlt, status, frame_id);
+  return make_fix(reference_latitude, reference_longitude, reference_altitude, status, frame_id);
 }
 
 MapProjectorInfo make_mgrs_projector_info(
-  const std::string & grid = kMgrsGrid,
+  const std::string & grid = reference_mgrs_grid,
   const std::string & vertical_datum = MapProjectorInfo::WGS84)
 {
   MapProjectorInfo msg;
@@ -381,26 +382,25 @@ TEST_F(GnssPoserCharacterization, Construct_WithAllParameters_DeclaresThemAndIsN
   EXPECT_EQ(node_->get_parameter("buff_epoch").as_int(), 7);
 }
 
-// None of the six parameters has a built-in default: leaving any one of them unset aborts
-// construction.
-//
-// The observed exception is `rclcpp::ParameterTypeException` ("expected [<type>] got [not set]"),
-// raised when the declared-but-unset value is read back with the requested type; that type is what
-// is pinned.
-TEST_F(GnssPoserCharacterization, Construct_MissingAnyRequiredParameter_Throws)
+// The node declares all six parameters without a built-in default: a configuration that lacks any
+// of them makes the node fail to start (constructing the component throws) instead of running with
+// a default. The values README.md lists as defaults live in config/gnss_poser.param.yaml, which the
+// next case pins. Only "fails to start" is pinned; which exception rclcpp throws is not part of the
+// contract.
+TEST_F(GnssPoserCharacterization, Construct_MissingAnyRequiredParameter_FailsToStart)
 {
   const NodeParams params;
   for (const auto & missing : NodeParams::names()) {
     EXPECT_THROW(
-      std::make_shared<autoware::gnss_poser::GNSSPoser>(params.to_options(missing)),
-      rclcpp::ParameterTypeException)
+      std::make_shared<autoware::gnss_poser::GNSSPoser>(params.to_options(missing)), std::exception)
       << "missing parameter: " << missing;
   }
 }
 
-// An override of the wrong type aborts construction for every one of the six parameters: an
-// integer for the strings, a string for the boolean and for the integers.
-TEST_F(GnssPoserCharacterization, Construct_WrongParameterType_Throws)
+// The node declares each parameter with a type: an override of the wrong type (an integer for the
+// strings, a string for the boolean and for the integers) makes the node fail to start. As above,
+// only "fails to start" is pinned, not the exception rclcpp throws.
+TEST_F(GnssPoserCharacterization, Construct_WrongParameterType_FailsToStart)
 {
   const std::vector<std::pair<std::string, rclcpp::ParameterValue>> wrong_typed = {
     {"base_frame", rclcpp::ParameterValue(123)},
@@ -413,9 +413,7 @@ TEST_F(GnssPoserCharacterization, Construct_WrongParameterType_Throws)
   for (const auto & [name, value] : wrong_typed) {
     rclcpp::NodeOptions options = NodeParams{}.to_options(name);
     options.append_parameter_override(name, value);
-    EXPECT_THROW(
-      std::make_shared<autoware::gnss_poser::GNSSPoser>(options),
-      rclcpp::exceptions::InvalidParameterTypeException)
+    EXPECT_THROW(std::make_shared<autoware::gnss_poser::GNSSPoser>(options), std::exception)
       << "parameter: " << name;
   }
 }
