@@ -34,6 +34,8 @@
 #include <memory>
 #include <string>
 #include <thread>
+#include <mutex>
+#include <condition_variable>
 #include <vector>
 
 using autoware::pose_initializer::PoseInitializer;
@@ -55,7 +57,7 @@ class PoseInitializerNodeIntegrationTest : public ::testing::Test
 protected:
   void SetUp() override
   {
-    rclcpp::init(0, nullptr);
+    // rclcpp init once for whole test binary via RosEnv below.
 
     rclcpp::NodeOptions options;
     options.append_parameter_override("ekf_enabled", true);
@@ -87,7 +89,14 @@ protected:
 
     sub_reset_ = harness_->create_subscription<PoseWithCovarianceStamped>(
       "pose_reset", 1,
-      [this](PoseWithCovarianceStamped::ConstSharedPtr msg) { last_reset_pose_ = msg; });
+      [this](PoseWithCovarianceStamped::ConstSharedPtr msg) {
+        {
+          std::lock_guard<std::mutex> lk(reset_mtx_);
+          last_reset_pose_ = msg;
+          got_reset_ = true;
+        }
+        reset_cv_.notify_one();
+      });
     sub_state_ = harness_->create_subscription<InitializationState>(
       "/localization/initialization_state", 10,
       [this](InitializationState::ConstSharedPtr msg) { last_state_ = msg; });
@@ -121,18 +130,28 @@ protected:
     // Allow DDS discovery to fully register mock services
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
 
-    // Ensure the trigger services are discoverable to avoid races where the node
+    // Ensure trigger services are discoverable to avoid races where node
     // blocks waiting for them inside its service callback. Wait up to 2s.
     auto cli_ekf = harness_->create_client<SetBool>("ekf_trigger_node");
     auto cli_ndt = harness_->create_client<SetBool>("ndt_trigger_node");
     ASSERT_TRUE(cli_ekf->wait_for_service(std::chrono::seconds(2)));
     ASSERT_TRUE(cli_ndt->wait_for_service(std::chrono::seconds(2)));
+
+    // Reset notification state
+    {
+      std::lock_guard<std::mutex> lk(reset_mtx_);
+      got_reset_ = false;
+      last_reset_pose_ = nullptr;
+    }
   }
 
   void TearDown() override
   {
-    rclcpp::shutdown();
-    exec_->cancel();
+    // Cancel and join executor thread before shutdown. Global RosEnv handles
+    // rclcpp::shutdown() at process exit.
+    if (exec_) {
+      exec_->cancel();
+    }
     if (exec_thread_.joinable()) {
       exec_thread_.join();
     }
@@ -175,6 +194,11 @@ protected:
   std::atomic<bool> mock_trigger_success_{true};
   std::atomic<int> trigger_calls_{0};
 
+  // Synchronization for receiving reset poses deterministically in tests
+  std::mutex reset_mtx_;
+  std::condition_variable reset_cv_;
+  bool got_reset_{false};
+
   // Helper to publish GNSS and handle DDS delay
   void publish_gnss_pose(double time_offset_sec = 0.0, double x_pos = 0.0)
   {
@@ -198,6 +222,13 @@ protected:
     auto future = cli_init->async_send_request(req);
     EXPECT_EQ(future.wait_for(std::chrono::seconds(2)), std::future_status::ready);
     return future.get();
+  }
+
+  // Wait for a reset pose to arrive (published to `pose_reset`) within timeout.
+  bool wait_for_reset(std::chrono::milliseconds timeout = std::chrono::milliseconds(100))
+  {
+    std::unique_lock<std::mutex> lk(reset_mtx_);
+    return reset_cv_.wait_for(lk, timeout, [this]() { return got_reset_; });
   }
 };
 
@@ -223,8 +254,7 @@ TEST_F(PoseInitializerNodeIntegrationTest, DirectInitBypassAligners)
   EXPECT_TRUE(res->status.success);
 
   // Wait for pub to register output
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
+  ASSERT_TRUE(wait_for_reset(std::chrono::milliseconds(500))) << "Timed out waiting for reset pose";
   ASSERT_NE(last_reset_pose_, nullptr) << "Failed to publish reset pose!";
   EXPECT_DOUBLE_EQ(last_reset_pose_->pose.pose.position.x, 100.0);
 
@@ -343,8 +373,25 @@ TEST_F(PoseInitializerNodeIntegrationTest, AutoInitLargePoseErrSucceedsWithWarn)
   // Still succeed but there will be warning
   EXPECT_TRUE(res->status.success);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  // Wait for reset pose to be published and received
+  ASSERT_TRUE(wait_for_reset(std::chrono::milliseconds(500))) << "Timed out waiting for reset pose";
   // Reset pose is now aligned pose (X = 11.0)
   ASSERT_NE(last_reset_pose_, nullptr);
   EXPECT_NEAR(last_reset_pose_->pose.pose.position.x, 11.0, near_tol);
+}
+
+// Initialize/shutdown rclcpp once for entire test binary to avoid repeated
+// init/shutdown races across tests.
+class RosEnv : public ::testing::Environment
+{
+public:
+  void SetUp() override { rclcpp::init(0, nullptr); }
+  void TearDown() override { if (rclcpp::ok()) rclcpp::shutdown(); }
+};
+
+int main(int argc, char ** argv)
+{
+  ::testing::InitGoogleTest(&argc, argv);
+  ::testing::AddGlobalTestEnvironment(new RosEnv());
+  return RUN_ALL_TESTS();
 }
