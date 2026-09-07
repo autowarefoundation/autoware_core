@@ -432,11 +432,11 @@ surface), so client and service code needs no per-build spelling:
 
 Request/response pointer types **do** differ per build:
 
-| Macro                                | ENABLE_AGNOCAST=1                | ENABLE_AGNOCAST=0                       |
-| ------------------------------------ | -------------------------------- | --------------------------------------- |
-| `AUTOWARE_SERVER_REQUEST_PTR(SrvT)`  | `message_ptr<const Request, …>`  | `std::shared_ptr<const SrvT::Request>`  |
-| `AUTOWARE_SERVER_RESPONSE_PTR(SrvT)` | `message_ptr<Response, …>`       | `std::shared_ptr<SrvT::Response>`       |
-| `AUTOWARE_CLIENT_REQUEST_PTR(SrvT)`  | `message_ptr<Request, …>`        | `std::shared_ptr<SrvT::Request>`        |
+| Macro                                | ENABLE_AGNOCAST=1                       | ENABLE_AGNOCAST=0                       |
+| ------------------------------------ | --------------------------------------- | --------------------------------------- |
+| `AUTOWARE_SERVER_REQUEST_PTR(SrvT)`  | `message_ptr<const Request, …>`         | `std::shared_ptr<const SrvT::Request>`  |
+| `AUTOWARE_SERVER_RESPONSE_PTR(SrvT)` | `message_ptr<Response, …>`              | `std::shared_ptr<SrvT::Response>`       |
+| `AUTOWARE_CLIENT_REQUEST_PTR(SrvT)`  | `message_ptr<Request, …>`               | `std::shared_ptr<SrvT::Request>`        |
 | `AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)` | `std::shared_ptr<const SrvT::Response>` | `std::shared_ptr<const SrvT::Response>` |
 
 The client response is a plain `std::shared_ptr<const Response>` in both builds — the agnocast
