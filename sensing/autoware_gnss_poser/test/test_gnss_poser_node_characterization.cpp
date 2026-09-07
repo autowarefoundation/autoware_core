@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// cspell:ignore SBAS GBAS
+
 // =====================================================================================
 // Characterization tests for autoware::gnss_poser::GNSSPoser.
 //
@@ -201,7 +203,9 @@ public:
       [this](const PoseStamped::ConstSharedPtr msg) { poses.push_back(*msg); });
     pose_cov_sub_ = create_subscription<PoseWithCovarianceStamped>(
       "gnss_pose_cov", rclcpp::QoS{100},
-      [this](const PoseWithCovarianceStamped::ConstSharedPtr msg) { pose_covs.push_back(*msg); });
+      [this](const PoseWithCovarianceStamped::ConstSharedPtr msg) {
+        pose_cov_msgs.push_back(*msg);
+      });
     fixed_sub_ = create_subscription<BoolStamped>(
       "gnss_fixed", rclcpp::QoS{100},
       [this](const BoolStamped::ConstSharedPtr msg) { fixed_flags.push_back(*msg); });
@@ -231,7 +235,7 @@ public:
   rclcpp::Subscription<TFMessage>::SharedPtr tf_sub_;
 
   std::vector<PoseStamped> poses;
-  std::vector<PoseWithCovarianceStamped> pose_covs;
+  std::vector<PoseWithCovarianceStamped> pose_cov_msgs;
   std::vector<BoolStamped> fixed_flags;
   std::vector<TransformStamped> broadcast_tfs;
 };
@@ -327,10 +331,10 @@ protected:
   {
     ASSERT_TRUE(pump_until([this, count] {
       return peer_->fixed_flags.size() >= count && peer_->poses.size() >= count &&
-             peer_->pose_covs.size() >= count && peer_->broadcast_tfs.size() >= count;
+             peer_->pose_cov_msgs.size() >= count && peer_->broadcast_tfs.size() >= count;
     }))
       << "expected " << count << " of each output, got gnss_fixed=" << peer_->fixed_flags.size()
-      << " gnss_pose=" << peer_->poses.size() << " gnss_pose_cov=" << peer_->pose_covs.size()
+      << " gnss_pose=" << peer_->poses.size() << " gnss_pose_cov=" << peer_->pose_cov_msgs.size()
       << " tf=" << peer_->broadcast_tfs.size();
   }
 
@@ -340,7 +344,7 @@ protected:
   {
     EXPECT_EQ(peer_->fixed_flags.size(), fixed) << "gnss_fixed";
     EXPECT_EQ(peer_->poses.size(), pose) << "gnss_pose";
-    EXPECT_EQ(peer_->pose_covs.size(), pose_cov) << "gnss_pose_cov";
+    EXPECT_EQ(peer_->pose_cov_msgs.size(), pose_cov) << "gnss_pose_cov";
     EXPECT_EQ(peer_->broadcast_tfs.size(), tf) << "/tf";
   }
 
