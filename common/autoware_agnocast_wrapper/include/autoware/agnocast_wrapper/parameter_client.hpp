@@ -35,6 +35,40 @@
 #include <variant>
 #include <vector>
 
+namespace autoware::agnocast_wrapper
+{
+namespace detail
+{
+
+/// @brief Return qos unchanged, rejecting a durability that cannot work.
+///
+/// @throws std::invalid_argument if the durability is not volatile. Parameter services are
+///         always volatile -- rclcpp offers no way to change them -- so a transient-local client
+///         never matches one, and neither backend says so on its own.
+inline const rclcpp::QoS & checked_parameters_qos(const rclcpp::QoS & qos)
+{
+  if (qos.durability() != rclcpp::DurabilityPolicy::Volatile) {
+    throw std::invalid_argument(
+      "AsyncParametersClient: transient-local durability is not supported, use volatile instead");
+  }
+  return qos;
+}
+
+/// @brief Spell a QoS the way this rclcpp's AsyncParametersClient takes it: rclcpp::QoS from Jazzy
+///        (28+), rmw_qos_profile_t on Humble (16.x). Same gate as ROS2Client's constructor in
+///        client.hpp.
+inline auto to_rclcpp_parameters_qos(const rclcpp::QoS & qos)
+{
+#if RCLCPP_VERSION_MAJOR >= 28
+  return qos;
+#else
+  return qos.get_rmw_qos_profile();
+#endif
+}
+
+}  // namespace detail
+}  // namespace autoware::agnocast_wrapper
+
 #ifdef USE_AGNOCAST_ENABLED
 
 #include <agnocast/node/agnocast_parameter_client.hpp>
@@ -72,17 +106,10 @@ public:
       use_agnocast()
         ? decltype(impl_)(
             std::in_place_type<AgnocastImpl>, node->get_agnocast_node().get(), remote_node_name,
-            checked_qos(qos), group)
+            detail::checked_parameters_qos(qos), group)
         : decltype(impl_)(
             std::in_place_type<RclcppImpl>, node->get_rclcpp_node().get(), remote_node_name,
-// Jazzy (rclcpp 28+) takes rclcpp::QoS, Humble (16.x) an rmw_qos_profile_t. Same normalization
-// as ROS2Client's constructor in client.hpp.
-#if RCLCPP_VERSION_MAJOR >= 28
-            checked_qos(qos),
-#else
-            checked_qos(qos).get_rmw_qos_profile(),
-#endif
-            group))
+            detail::to_rclcpp_parameters_qos(detail::checked_parameters_qos(qos)), group))
   {
   }
 
@@ -135,20 +162,6 @@ public:
   AsyncParametersClient & operator=(AsyncParametersClient &&) = delete;
 
 private:
-  /// @brief Return qos unchanged, rejecting a durability that cannot work.
-  ///
-  /// @throws std::invalid_argument if the durability is not volatile. Parameter services are
-  /// always volatile -- rclcpp offers no way to change them -- so a transient-local client never
-  /// matches one, and neither backend says so on its own.
-  static const rclcpp::QoS & checked_qos(const rclcpp::QoS & qos)
-  {
-    if (qos.durability() != rclcpp::DurabilityPolicy::Volatile) {
-      throw std::invalid_argument(
-        "AsyncParametersClient: transient-local durability is not supported, use volatile instead");
-    }
-    return qos;
-  }
-
   using RclcppImpl = ::rclcpp::AsyncParametersClient;
   using AgnocastImpl = ::agnocast::AsyncParametersClient;
 
@@ -187,13 +200,7 @@ public:
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   : impl_(
       node->get_rclcpp_node().get(), remote_node_name,
-// See the Agnocast-build constructor above for why the QoS argument is version-gated.
-#if RCLCPP_VERSION_MAJOR >= 28
-      checked_qos(qos),
-#else
-      checked_qos(qos).get_rmw_qos_profile(),
-#endif
-      group)
+      detail::to_rclcpp_parameters_qos(detail::checked_parameters_qos(qos)), group)
   {
   }
 
@@ -235,20 +242,6 @@ public:
   AsyncParametersClient & operator=(AsyncParametersClient &&) = delete;
 
 private:
-  /// @brief Return qos unchanged, rejecting a durability that cannot work.
-  ///
-  /// @throws std::invalid_argument if the durability is not volatile. Parameter services are
-  /// always volatile -- rclcpp offers no way to change them -- so a transient-local client never
-  /// matches one, and neither backend says so on its own.
-  static const rclcpp::QoS & checked_qos(const rclcpp::QoS & qos)
-  {
-    if (qos.durability() != rclcpp::DurabilityPolicy::Volatile) {
-      throw std::invalid_argument(
-        "AsyncParametersClient: transient-local durability is not supported, use volatile instead");
-    }
-    return qos;
-  }
-
   ::rclcpp::AsyncParametersClient impl_;
 };
 
