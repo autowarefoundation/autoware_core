@@ -34,7 +34,6 @@ template <typename MessageT>
 std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT> && ptr);
 }  // namespace detail
 
-
 template <typename MessageT, OwnershipType Ownership>
 class message_interface;
 
@@ -186,7 +185,10 @@ public:
     return agnocast::ipc_shared_ptr<MessageT>{};
   }
 
-  std::shared_ptr<const MessageT> into_std_shared_ptr() && noexcept override { return std::move(ptr_); }
+  std::shared_ptr<const MessageT> into_std_shared_ptr() && noexcept override
+  {
+    return std::move(ptr_);
+  }
 
   std::unique_ptr<message_interface<MessageT, OwnershipType::Shared>> clone() const override
   {
@@ -196,6 +198,10 @@ public:
 
 template <typename MessageT, OwnershipType Ownership>
 class message_ptr;
+
+template <typename MessageT>
+std::shared_ptr<const MessageT> to_shared_ptr(
+  message_ptr<const MessageT, OwnershipType::Shared> && message);
 
 template <typename MessageT>
 class message_ptr<MessageT, OwnershipType::Unique>
@@ -260,11 +266,22 @@ class message_ptr<MessageT, OwnershipType::Shared>
   friend class ROS2Client;
   template <typename U>
   friend class AgnocastClient;
+  template <typename U>
+  friend std::shared_ptr<const U> to_shared_ptr(
+    message_ptr<const U, OwnershipType::Shared> && message);
 
 private:
   agnocast::ipc_shared_ptr<MessageT> move_agnocast_ptr() && noexcept
   {
     return std::move(*(std::move(ptr_))).move_agnocast_ptr();
+  }
+
+  std::shared_ptr<const MessageT> into_std_shared_ptr() &&
+  {
+    if (!ptr_) {
+      return nullptr;
+    }
+    return std::move(*(std::move(ptr_))).into_std_shared_ptr();
   }
 
   auto move_ros2_ptr() && noexcept { return std::move(*(std::move(ptr_))).move_ros2_ptr(); }
@@ -310,15 +327,6 @@ public:
   explicit operator bool() const noexcept { return ptr_ && static_cast<bool>(ptr_->as_ptr()); }
 
   MessageT * get() const noexcept { return ptr_ ? ptr_->as_ptr() : nullptr; }
-
-  /// @copydoc autoware::agnocast_wrapper::to_shared_ptr
-  [[nodiscard]] std::shared_ptr<const MessageT> into_std_shared_ptr() &&
-  {
-    if (!ptr_) {
-      return nullptr;
-    }
-    return std::move(*(std::move(ptr_))).into_std_shared_ptr();
-  }
 };
 
 namespace detail
@@ -350,7 +358,7 @@ std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const
 /// copies still point at, and releasing the last copy afterwards aborts the process.
 template <typename MessageT>
 [[nodiscard]] std::shared_ptr<const MessageT> to_shared_ptr(
-  message_ptr<MessageT, OwnershipType::Shared> && message)
+  message_ptr<const MessageT, OwnershipType::Shared> && message)
 {
   return std::move(message).into_std_shared_ptr();
 }
