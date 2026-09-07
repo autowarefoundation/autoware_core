@@ -31,11 +31,11 @@
 #include <gtest/gtest.h>
 
 #include <atomic>
+#include <condition_variable>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <thread>
-#include <mutex>
-#include <condition_variable>
 #include <vector>
 
 using autoware::pose_initializer::PoseInitializer;
@@ -88,8 +88,7 @@ protected:
     pub_twist_ = harness_->create_publisher<TwistWithCovarianceStamped>("stop_check_twist", 1);
 
     sub_reset_ = harness_->create_subscription<PoseWithCovarianceStamped>(
-      "pose_reset", 1,
-      [this](PoseWithCovarianceStamped::ConstSharedPtr msg) {
+      "pose_reset", 1, [this](PoseWithCovarianceStamped::ConstSharedPtr msg) {
         {
           std::lock_guard<std::mutex> lk(reset_mtx_);
           last_reset_pose_ = msg;
@@ -386,7 +385,10 @@ class RosEnv : public ::testing::Environment
 {
 public:
   void SetUp() override { rclcpp::init(0, nullptr); }
-  void TearDown() override { if (rclcpp::ok()) rclcpp::shutdown(); }
+  void TearDown() override
+  {
+    if (rclcpp::ok()) rclcpp::shutdown();
+  }
 };
 
 int main(int argc, char ** argv)
