@@ -44,15 +44,13 @@ using ListParameters = rcl_interfaces::srv::ListParameters;
 class ServiceIntrospectionTest : public testing::Test
 {
 protected:
-  /// The distro gate holds whatever ENABLE_AGNOCAST is, so it is the skip reason to report when
-  /// it and the missing heaphook both apply.
   void SetUp() override
   {
 #if !RCLCPP_VERSION_GTE(21, 0, 0)
     GTEST_SKIP() << "rclcpp " << RCLCPP_VERSION_MAJOR
                  << " has no service introspection, so configure_introspection() is not declared "
                     "on the wrapper handles either.";
-#endif
+#else
     if (autoware::agnocast_wrapper::use_agnocast() && !agnocast_heaphook_loaded()) {
       GTEST_SKIP() << "ENABLE_AGNOCAST=1 without the agnocast heaphook: the agnocast backend "
                       "cannot be exercised in this environment.";
@@ -63,6 +61,7 @@ protected:
       "~/introspected_service", [](
                                   AUTOWARE_SERVER_REQUEST_PTR(ListParameters) &&,
                                   AUTOWARE_SERVER_RESPONSE_PTR(ListParameters) &&) {});
+#endif
   }
 
   std::shared_ptr<Node> node_;
