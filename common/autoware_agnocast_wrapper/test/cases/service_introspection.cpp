@@ -111,9 +111,8 @@ TEST_F(ServiceIntrospectionTest, RejectsNullClock)
 #endif
 }
 
-// KeepAll degrades to depth 0 through agnocast's ioctl, so that backend would retain nothing.
-// The handle rejects it in every state, which is stricter than agnocast, whose own check only
-// runs where it creates the event publisher.
+// Agnocast rejects KeepAll where it creates the event publisher and rclcpp accepts it, so the
+// handle rejects it in every state -- stricter than either backend, but the same in both.
 TEST_F(ServiceIntrospectionTest, RejectsKeepAll)
 {
 #if RCLCPP_VERSION_GTE(21, 0, 0)

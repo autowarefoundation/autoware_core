@@ -50,9 +50,10 @@ namespace autoware::agnocast_wrapper::detail
 /// @brief Reject the arguments the two backends do not handle alike, so that a handle behaves the
 /// same whichever one is behind it.
 ///
-/// @throws std::invalid_argument if @p clock is null, including when turning introspection off,
-/// or if @p qos uses KeepAll, which degrades to depth 0 through agnocast's ioctl so that backend
-/// would retain nothing.
+/// @throws std::invalid_argument if @p clock is null, including when turning introspection off.
+/// @throws std::invalid_argument if @p qos uses KeepAll, which Agnocast rejects when it creates
+/// the event publisher and rclcpp accepts; rejected here in every state so both backends behave
+/// alike.
 inline void check_introspection_args(
   const char * service_name, const rclcpp::Clock::SharedPtr & clock, const rclcpp::QoS & qos)
 {
