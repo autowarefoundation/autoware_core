@@ -155,8 +155,10 @@ public:
   /// component container agnocast::ok() is false and it returns false after one probe instead,
   /// which a caller cannot tell from a timeout.
   ///
-  /// @param timeout Maximum duration to wait; a negative duration waits forever, and a zero
-  ///                duration is a non-blocking probe.
+  /// @param timeout Maximum duration to wait; zero is a non-blocking probe. A negative duration
+  ///                -- the default -- waits forever, and in an AgnocastOnly process only
+  ///                agnocast::shutdown() leaves it: SIGINT and SIGTERM reach it, and so does this
+  ///                package's shutdown() from another thread, but rclcpp::shutdown() does not.
   /// @return true if the services became available, false on timeout.
   template <typename RepT = int64_t, typename RatioT = std::milli>
   bool wait_for_service(
