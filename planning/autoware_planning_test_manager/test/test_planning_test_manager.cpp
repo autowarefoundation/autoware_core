@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <memory>
 #include <string>
 
@@ -147,4 +148,40 @@ TEST_F(PlanningTestManagerTest, CallbackSubscriptionTestWithMsgValidation)
   test_manager->publishInput(test_target_node, off_track_odometry_topic, msg);
   ASSERT_TRUE(off_track_odometry.has_value());
   EXPECT_DOUBLE_EQ(off_track_odometry->pose.pose.position.x, 10.0);
+}
+
+TEST_F(PlanningTestManagerTest, SpinUntilReceivedWaitsForOutput)
+{
+  using nav_msgs::msg::Odometry;
+  using std::chrono::milliseconds;
+  using std::chrono::seconds;
+
+  autoware::planning_test_manager::PlanningInterfaceTestManager test_manager;
+  const auto target_node = std::make_shared<rclcpp::Node>("slow_target_node");
+  const std::string output_topic = "slow_target_output";
+  test_manager.subscribeOutput<Odometry>(output_topic);
+
+  const auto start = std::chrono::steady_clock::now();
+  EXPECT_EQ(test_manager.spinUntilReceived(target_node, 1, milliseconds(200)), 0u);
+  EXPECT_GE(std::chrono::steady_clock::now() - start, milliseconds(200));
+
+  const auto publisher = target_node->create_publisher<Odometry>(output_topic, 10);
+  const auto discovery_deadline = std::chrono::steady_clock::now() + seconds(5);
+  while (publisher->get_subscription_count() == 0 &&
+         std::chrono::steady_clock::now() < discovery_deadline) {
+    rclcpp::sleep_for(milliseconds(10));
+  }
+  ASSERT_GT(publisher->get_subscription_count(), 0u);
+
+  size_t published_count = 0;
+  const auto timer = target_node->create_wall_timer(milliseconds(10), [&]() {
+    publisher->publish(Odometry{});
+    ++published_count;
+    // Exceed the joint spin's 100 ms budget while the timer remains ready for its next pass.
+    rclcpp::sleep_for(milliseconds(200));
+  });
+  rclcpp::sleep_for(milliseconds(20));
+
+  EXPECT_GE(test_manager.spinUntilReceived(target_node, 2, seconds(5)), 2u);
+  EXPECT_GE(published_count, 2u);
 }

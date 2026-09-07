@@ -16,21 +16,14 @@
 
 // Service<ServiceT> abstraction and the callback-shape traits.
 
+#include "autoware/agnocast_wrapper/introspection.hpp"
 #include "autoware/agnocast_wrapper/macros.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <rclcpp/version.h>
 
-// ROS 2 Iron (rclcpp 21) introduced service introspection. Humble (rclcpp 16) ships no
-// rcl/service_introspection.h, and neither rclcpp nor agnocast declares
-// configure_introspection() there.
-#if RCLCPP_VERSION_GTE(21, 0, 0)
-#include <rcl/service_introspection.h>
-#endif
-
 #include <memory>
-#include <stdexcept>
 #include <string>
 #include <type_traits>
 #include <utility>
@@ -42,18 +35,21 @@
 
 #include <agnocast/agnocast.hpp>
 
-#if RCLCPP_VERSION_GTE(21, 0, 0)
-static_assert(
-  AGNOCAST_HAS_SERVICE_INTROSPECTION,
-  "agnocast gates service introspection differently from this header");
-#endif
-
 namespace autoware::agnocast_wrapper
 {
 
 template <typename ServiceT>
 class Service
 {
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+protected:
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Service<ServiceT>>;
 
@@ -66,36 +62,25 @@ public:
   /// Turn ROS 2 service introspection on or off, mirroring
   /// rclcpp::ServiceBase::configure_introspection(). The Agnocast backend publishes the same
   /// events through its own event publisher.
-  /// @throws std::invalid_argument if @p clock is null, including when turning introspection
-  /// off (rcl requires one in every state), or if @p qos_service_event_pub uses KeepAll, which
-  /// degrades to depth 0 through agnocast's ioctl so that backend would retain nothing.
+  /// @throws std::invalid_argument for a null clock or a KeepAll QoS; see
+  /// detail::check_introspection_args().
+  /// @throws std::runtime_error on the Agnocast backend, when the event typesupport cannot be
+  /// loaded. The rclcpp backend links it in and cannot fail this way.
+  /// @throws rclcpp::exceptions::RCLError on the rclcpp backend, when rcl rejects the call.
+  /// @note The Agnocast backend terminates the process, rather than throwing, when the kernel
+  /// module refuses the event publisher.
+  /// @note Not thread-safe: rcl documents its own side as such, and the backend is chosen at run
+  /// time, so call this before the node spins or from the spinning thread.
+  /// @note The Agnocast backend ignores the reliability, deadline and lifespan policies the RMW
+  /// applies on the rclcpp path, and logs a failed event where rclcpp lets the rcl error fail the
+  /// service call itself.
   void configure_introspection(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state)
   {
-    if (clock == nullptr) {
-      throw std::invalid_argument(
-        std::string("configure_introspection(") + get_service_name() +
-        "): a clock is required, including when turning introspection off");
-    }
-    if (qos_service_event_pub.history() == rclcpp::HistoryPolicy::KeepAll) {
-      throw std::invalid_argument(
-        std::string("configure_introspection(") + get_service_name() +
-        "): KeepAll history is not supported, use KeepLast instead");
-    }
-    // Past here the backends differ in ways the wrapper cannot close: Agnocast ignores
-    // reliability, deadline and lifespan; it exit()s where rclcpp raises RCLError; it can fail to
-    // dlopen the event typesupport; and it swallows a failed event that rclcpp would surface as a
-    // failed service call. Only Agnocast serializes concurrent calls.
+    detail::check_introspection_args(get_service_name(), clock, qos_service_event_pub);
     configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
   }
-
-protected:
-  /// Backend hook for configure_introspection(), kept out of the public interface so that its
-  /// argument check cannot be bypassed.
-  virtual void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) = 0;
 #endif
 };
 
@@ -118,6 +103,16 @@ template <typename ServiceT>
 class AgnocastService : public Service<ServiceT>
 {
   typename agnocast::Service<ServiceT>::SharedPtr srv_;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+protected:
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   template <typename NodeT, typename Func>
@@ -143,6 +138,12 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
+};
+
+template <typename ServiceT>
+class ROS2Service : public Service<ServiceT>
+{
+  typename rclcpp::Service<ServiceT>::SharedPtr srv_;
 
 #if RCLCPP_VERSION_GTE(21, 0, 0)
 protected:
@@ -153,12 +154,6 @@ protected:
     srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
   }
 #endif
-};
-
-template <typename ServiceT>
-class ROS2Service : public Service<ServiceT>
-{
-  typename rclcpp::Service<ServiceT>::SharedPtr srv_;
 
 public:
   template <typename Func>
@@ -188,16 +183,6 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
-
-#if RCLCPP_VERSION_GTE(21, 0, 0)
-protected:
-  void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) override
-  {
-    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
-  }
-#endif
 };
 
 template <typename ServiceT, typename Func>
@@ -230,6 +215,15 @@ namespace autoware::agnocast_wrapper
 template <typename ServiceT>
 class Service
 {
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+protected:
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Service<ServiceT>>;
 
@@ -240,38 +234,19 @@ public:
 
 #if RCLCPP_VERSION_GTE(21, 0, 0)
   /// Turn ROS 2 service introspection on or off, mirroring
-  /// rclcpp::ServiceBase::configure_introspection(). The Agnocast backend publishes the same
-  /// events through its own event publisher.
-  /// @throws std::invalid_argument if @p clock is null, including when turning introspection
-  /// off (rcl requires one in every state), or if @p qos_service_event_pub uses KeepAll, which
-  /// degrades to depth 0 through agnocast's ioctl so that backend would retain nothing.
+  /// rclcpp::ServiceBase::configure_introspection().
+  /// @throws std::invalid_argument for a null clock or a KeepAll QoS; see
+  /// detail::check_introspection_args().
+  /// @throws rclcpp::exceptions::RCLError when rcl rejects the call.
+  /// @note Not thread-safe: rcl documents its own side as such, so call this before the node
+  /// spins or from the spinning thread.
   void configure_introspection(
     rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
     rcl_service_introspection_state_t introspection_state)
   {
-    if (clock == nullptr) {
-      throw std::invalid_argument(
-        std::string("configure_introspection(") + get_service_name() +
-        "): a clock is required, including when turning introspection off");
-    }
-    if (qos_service_event_pub.history() == rclcpp::HistoryPolicy::KeepAll) {
-      throw std::invalid_argument(
-        std::string("configure_introspection(") + get_service_name() +
-        "): KeepAll history is not supported, use KeepLast instead");
-    }
-    // Past here the backends differ in ways the wrapper cannot close: Agnocast ignores
-    // reliability, deadline and lifespan; it exit()s where rclcpp raises RCLError; it can fail to
-    // dlopen the event typesupport; and it swallows a failed event that rclcpp would surface as a
-    // failed service call. Only Agnocast serializes concurrent calls.
+    detail::check_introspection_args(get_service_name(), clock, qos_service_event_pub);
     configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
   }
-
-protected:
-  /// Backend hook for configure_introspection(), kept out of the public interface so that its
-  /// argument check cannot be bypassed.
-  virtual void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) = 0;
 #endif
 };
 
@@ -293,6 +268,16 @@ template <typename ServiceT>
 class ROS2Service : public Service<ServiceT>
 {
   typename rclcpp::Service<ServiceT>::SharedPtr srv_;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+protected:
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   template <typename Func>
@@ -322,16 +307,6 @@ public:
   }
 
   const char * get_service_name() const override { return srv_->get_service_name(); }
-
-#if RCLCPP_VERSION_GTE(21, 0, 0)
-protected:
-  void configure_introspection_impl(
-    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
-    rcl_service_introspection_state_t introspection_state) override
-  {
-    srv_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
-  }
-#endif
 };
 
 template <typename ServiceT, typename Func>

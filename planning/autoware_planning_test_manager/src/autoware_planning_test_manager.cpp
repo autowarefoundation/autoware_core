@@ -128,4 +128,17 @@ void PlanningInterfaceTestManager::testWithOffTrackOdometry(
     publishInput(target_node, topic_name, autoware::test_utils::makeOdometry(deviation), 5);
   }
 }
+
+size_t PlanningInterfaceTestManager::spinUntilReceived(
+  const rclcpp::Node::SharedPtr target_node, const size_t min_count,
+  const std::chrono::nanoseconds timeout)
+{
+  const auto deadline = std::chrono::steady_clock::now() + timeout;
+  while (received_topic_num_ < min_count && std::chrono::steady_clock::now() < deadline) {
+    autoware::test_utils::spinSomeNodes(test_node_, target_node, 1);
+    // A slow target timer can consume the joint spin budget before the receiver gets a turn.
+    rclcpp::spin_some(test_node_);
+  }
+  return received_topic_num_;
+}
 }  // namespace autoware::planning_test_manager

@@ -18,53 +18,61 @@
 #include "autoware/agnocast_wrapper/runtime.hpp"
 
 #include <rclcpp/callback_group.hpp>
-#include <rclcpp/expand_topic_or_service_name.hpp>
 #include <rclcpp/parameter.hpp>
 #include <rclcpp/parameter_client.hpp>
 #include <rclcpp/qos.hpp>
 
 #include <rclcpp/version.h>
 
-#include <algorithm>
 #include <chrono>
+#include <cstdint>
 #include <functional>
 #include <future>
 #include <memory>
 #include <ratio>
+#include <stdexcept>
 #include <string>
-#include <thread>
-#include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
-namespace autoware::agnocast_wrapper::detail
+namespace autoware::agnocast_wrapper
+{
+namespace detail
 {
 
-/// @brief Resolve remote_node_name as a service name, throwing if it cannot be one.
+/// @brief Return qos unchanged, rejecting the policies the two backends do not agree on.
 ///
-/// Both backends reject an unusable name, but through different rcl entry points and therefore
-/// with different exception types (rcl_client_init vs. resolve_service_name). Rejecting here
-/// first makes the wrapper throw rclcpp::exceptions::InvalidServiceNameError in every build and
-/// runtime mode. An empty name means "this node"; the guard below only skips an rcl round trip,
-/// because the bare suffix is a valid absolute service name on its own.
-///
-/// The check runs on the longest of the six parameter service names a backend goes on to build.
-/// Length is the one validation rule whose answer the suffix can change (the limit is
-/// RMW_TOPIC_MAX_NAME_LENGTH), so checking a shorter suffix would let a name through here only
-/// for the backend to reject it with its own exception type.
-///
-/// @return remote_node_name unchanged, so this can wrap the argument at the call site.
-inline const std::string & checked_remote_node_name(
-  const std::string & remote_node_name, const char * node_name, const char * node_namespace)
+/// @throws std::invalid_argument if the durability is transient-local or the reliability is
+///         best-effort. rclcpp lets both through and then never matches the service, while
+///         Agnocast coerces them away, so rejecting is what makes the two builds agree.
+inline const rclcpp::QoS & checked_parameters_qos(const rclcpp::QoS & qos)
 {
-  if (!remote_node_name.empty()) {
-    (void)rclcpp::expand_topic_or_service_name(
-      remote_node_name + "/set_parameters_atomically", node_name, node_namespace, true);
+  if (qos.durability() == rclcpp::DurabilityPolicy::TransientLocal) {
+    throw std::invalid_argument(
+      "AsyncParametersClient: transient-local durability is not supported, use volatile instead");
   }
-  return remote_node_name;
+  if (qos.reliability() == rclcpp::ReliabilityPolicy::BestEffort) {
+    throw std::invalid_argument(
+      "AsyncParametersClient: best-effort reliability is not supported, use reliable instead");
+  }
+  return qos;
 }
 
-}  // namespace autoware::agnocast_wrapper::detail
+/// @brief Spell a QoS the way this rclcpp's AsyncParametersClient takes it: rclcpp::QoS from Jazzy
+///        (28+), rmw_qos_profile_t on Humble (16.x). Same gate as ROS2Client's constructor in
+///        client.hpp.
+inline auto to_rclcpp_parameters_qos(const rclcpp::QoS & qos)
+{
+#if RCLCPP_VERSION_MAJOR >= 28
+  return qos;
+#else
+  return qos.get_rmw_qos_profile();
+#endif
+}
+
+}  // namespace detail
+}  // namespace autoware::agnocast_wrapper
 
 #ifdef USE_AGNOCAST_ENABLED
 
@@ -78,119 +86,55 @@ namespace autoware::agnocast_wrapper
 ///        (agnocast mode) at runtime, depending on whether the given
 ///        autoware::agnocast_wrapper::Node is running in agnocast mode.
 ///
-/// ::rclcpp::AsyncParametersClient cannot be built on an agnocast node at all: it reaches the
-/// remote node's parameter services through NodeServicesInterface::add_client(), which agnocast
-/// does not support because its services do not pass through rcl. That is why this is a wrapper
-/// type rather than something a caller can spell directly.
+/// @invariant The backend is selected from use_agnocast() at construction and never changes.
 ///
-/// Only the read path is exposed, because that is what the wrapper's callers use:
-/// get_parameters(), wait_for_service() and service_is_ready(). Both backends also provide the
-/// setter and descriptor calls; add them here when a caller needs one.
-///
-/// Shaped like tf2.hpp and diagnostic_updater.hpp (one concrete class over a std::variant) rather
-/// than like client.hpp (an abstract base plus a create_ function), even though a parameters
-/// client is the nearer relative of a service client. client.hpp needs the virtual boundary
-/// because Client<ServiceT> is a template whose two backends spell the request and response types
-/// differently; here both backends already agree on rclcpp::Parameter, so nothing has to be
-/// erased and the variant keeps the backend choice a construction-time detail.
-///
-/// Two differences survive the wrapper, because they are the backends' own policy:
-///
-/// - Failure reporting. rclcpp raises (rclcpp::exceptions::RCLError from a failed send,
-///   InvalidNodeError from wait_for_service() on a node that is already gone). Agnocast calls
-///   exit(EXIT_FAILURE) from its publisher and from the readiness ioctl, so a catch that recovers
-///   under ENABLE_AGNOCAST=0 recovers nothing under =1. Only the constructor's name check is
-///   normalized.
-/// - QoS durability. The Agnocast backend forces it to volatile, because it does not allow
-///   transient-local services; the rclcpp backend passes the profile through. The default
-///   rclcpp::ParametersQoS is volatile, so this only shows for a caller that asks for something
-///   else.
-///
-/// @invariant The backend variant is selected from use_agnocast() at construction and never
-///            changes.
-///
-/// @code
-/// #include <autoware/agnocast_wrapper/parameter_client.hpp>
-///
-/// class MyNode : public autoware::agnocast_wrapper::Node
-/// {
-/// public:
-///   explicit MyNode(const rclcpp::NodeOptions & options)
-///   : Node("my_node", options),
-///     params_(std::make_unique<autoware::agnocast_wrapper::AsyncParametersClient>(
-///       this, "pointcloud_map_loader"))
-///   {
-///     if (!params_->wait_for_service(std::chrono::seconds(5))) {
-///       RCLCPP_WARN(get_logger(), "pointcloud_map_loader parameters are not up yet");
-///       return;
-///     }
-///     params_->get_parameters(
-///       {"enable_partial_load"},
-///       [this](std::shared_future<std::vector<rclcpp::Parameter>> future) {
-///         const auto parameters = future.get();
-///         if (!parameters.empty()) {
-///           RCLCPP_INFO(get_logger(), "partial load: %d", parameters.front().as_bool());
-///         }
-///       });
-///   }
-///
-/// private:
-///   std::unique_ptr<autoware::agnocast_wrapper::AsyncParametersClient> params_;
-/// };
-/// @endcode
+/// On the Agnocast backend, do not destroy this client while a request is outstanding or while an
+/// executor may still spin the node: a queued response is not withdrawn by the destruction.
 class AsyncParametersClient
 {
 public:
   /// @brief Construct a parameters client bound to a wrapper Node.
   ///
-  /// Selects the backend from use_agnocast() at construction; the choice is fixed for the
-  /// wrapper's lifetime.
+  /// @pre The given Node must outlive this client. It dangles in both modes, but only rclcpp
+  ///      keeps the node alive through its interface shared_ptrs; ::agnocast::ClientBase stores a
+  ///      raw pointer and dereferences it on the response error path.
   ///
-  /// @pre The given Node must outlive this client. Both backends build their service clients
-  ///      from the node and keep them bound to it.
-  ///
-  /// @throws rclcpp::exceptions::InvalidServiceNameError if remote_node_name cannot form a
-  ///         service name.
+  /// @throws std::invalid_argument if the QoS is transient-local or best-effort; see
+  ///         detail::checked_parameters_qos(). Both backends also reject a remote_node_name that
+  ///         cannot form a service name, with a backend-dependent type.
   ///
   /// @param node             Wrapper node providing access to either an agnocast::Node or an
   ///                         rclcpp::Node.
   /// @param remote_node_name Name of the node whose parameters are read. Empty means this node.
   /// @param qos              QoS of the underlying service clients.
-  /// @param group            Callback group the underlying service clients are added to.
+  /// @param group            Callback group the underlying service clients are added to. Left
+  ///                         null, they land in the node's default MutuallyExclusive group, which
+  ///                         at ENABLE_AGNOCAST=1 aborts the process if that group also holds
+  ///                         rclcpp entities. Pass a group of their own, or a Reentrant one.
   explicit AsyncParametersClient(
     autoware::agnocast_wrapper::Node * node, const std::string & remote_node_name = "",
     const rclcpp::QoS & qos = rclcpp::ParametersQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   : impl_(
-      // Only the selected branch of the conditional is evaluated, which matters: in an
-      // agnocast-enabled build get_rclcpp_node() throws when the node is in agnocast mode, and
-      // get_agnocast_node() throws when it is not.
-      use_agnocast() ? decltype(impl_)(
-                         std::in_place_type<AgnocastImpl>, node->get_agnocast_node().get(),
-                         detail::checked_remote_node_name(
-                           remote_node_name, node->get_name(), node->get_namespace()),
-                         qos, group)
-                     : decltype(impl_)(
-                         std::in_place_type<RclcppImpl>, node->get_rclcpp_node().get(),
-                         detail::checked_remote_node_name(
-                           remote_node_name, node->get_name(), node->get_namespace()),
-// rclcpp 28+ (Jazzy) takes the QoS as rclcpp::QoS; Humble uses rclcpp 16.x, whose
-// AsyncParametersClient still takes an rmw_qos_profile_t. Same normalization as ROS2Client's
-// constructor in client.hpp.
-#if RCLCPP_VERSION_MAJOR >= 28
-                         qos,
-#else
-                         qos.get_rmw_qos_profile(),
-#endif
-                         group))
+      // A conditional, not an if/else: only the selected branch is evaluated, and the other
+      // one's accessor would throw.
+      use_agnocast()
+        ? decltype(impl_)(
+            std::in_place_type<AgnocastImpl>, node->get_agnocast_node().get(), remote_node_name,
+            detail::checked_parameters_qos(qos), std::move(group))
+        : decltype(impl_)(
+            std::in_place_type<RclcppImpl>, node->get_rclcpp_node().get(), remote_node_name,
+            detail::to_rclcpp_parameters_qos(detail::checked_parameters_qos(qos)),
+            std::move(group)))
   {
   }
 
   /// @brief Read parameters from the remote node.
   ///
-  /// @note The Agnocast backend delivers the response over an Agnocast subscription of its own, so
-  ///       the future resolves and the callback runs only while an Agnocast executor spins the
-  ///       node. A plain rclcpp executor never serves them, whatever wait_for_service() said.
+  /// @note The Agnocast backend answers over an Agnocast subscription, so the future resolves only
+  ///       while an Agnocast executor spins the node, whatever wait_for_service() said.
+  /// @note Do not block on the future from inside a callback, on either backend: the executor
+  ///       that would deliver the response is the one being blocked.
   ///
   /// @param names    Parameter names to read.
   /// @param callback Invoked with the resolved future when the response arrives.
@@ -199,43 +143,33 @@ public:
     const std::vector<std::string> & names,
     std::function<void(std::shared_future<std::vector<rclcpp::Parameter>>)> callback = nullptr)
   {
-    return std::visit([&](auto & impl) { return impl.get_parameters(names, callback); }, impl_);
+    return std::visit(
+      [&](auto & impl) { return impl.get_parameters(names, std::move(callback)); }, impl_);
   }
 
   /// @brief Block until the remote node's parameter services are available, or the timeout
   ///        expires.
   ///
-  /// Templated on the duration because both upstream clients are, so callers keep passing the
-  /// std::chrono literal they already use.
+  /// The Agnocast backend honours the timeout only where agnocast::init() ran, which
+  /// autoware_agnocast_wrapper_register_node() arranges for an AgnocastOnly executor. In a
+  /// component container agnocast::ok() is false and it returns false after one probe instead,
+  /// which a caller cannot tell from a timeout.
   ///
-  /// The timeout is honoured the same way on both backends; the Agnocast client does not do that
-  /// on its own, so the wrapper waits by polling service_is_ready() there.
-  ///
-  /// @param timeout Maximum duration to wait; a negative duration waits forever, and a zero
-  ///                duration is a non-blocking probe.
+  /// @param timeout Maximum duration to wait; zero is a non-blocking probe. A negative duration
+  ///                -- the default -- waits forever, and in an AgnocastOnly process only
+  ///                agnocast::shutdown() leaves it: SIGINT and SIGTERM reach it, and so does this
+  ///                package's shutdown() from another thread, but rclcpp::shutdown() does not.
   /// @return true if the services became available, false on timeout.
   template <typename RepT = int64_t, typename RatioT = std::milli>
   bool wait_for_service(
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::duration<RepT, RatioT>(-1))
   {
-    return std::visit(
-      [&](auto & impl) {
-        if constexpr (std::is_same_v<std::decay_t<decltype(impl)>, AgnocastImpl>) {
-          return wait_by_polling(
-            impl, std::chrono::duration_cast<std::chrono::nanoseconds>(timeout));
-        } else {
-          return impl.wait_for_service(timeout);
-        }
-      },
-      impl_);
+    return std::visit([&](auto & impl) { return impl.wait_for_service(timeout); }, impl_);
   }
 
   /// @brief Report whether the remote node's parameter services are available right now.
   ///
-  /// Non-blocking. What "available" covers differs slightly: the Agnocast backend checks all six
-  /// parameter services, the rclcpp one checks five (it leaves out set_parameters_atomically), so
-  /// the Agnocast answer is the stricter of the two. Every parameter service of a node comes up
-  /// together, so the two only disagree inside that window.
+  /// Non-blocking, unlike wait_for_service().
   ///
   /// @return true if the remote node's parameter services are available.
   bool service_is_ready() const
@@ -243,60 +177,15 @@ public:
     return std::visit([](const auto & impl) { return impl.service_is_ready(); }, impl_);
   }
 
-  // Non-copyable and non-movable: the backend is chosen at construction and the underlying
-  // clients are bound to the node then, so a second handle onto the same impl has no meaning.
   AsyncParametersClient(const AsyncParametersClient &) = delete;
   AsyncParametersClient & operator=(const AsyncParametersClient &) = delete;
   AsyncParametersClient(AsyncParametersClient &&) = delete;
   AsyncParametersClient & operator=(AsyncParametersClient &&) = delete;
 
 private:
-  /// @brief rclcpp-backed implementation held inside impl_.
   using RclcppImpl = ::rclcpp::AsyncParametersClient;
-
-  /// @brief Agnocast-backed implementation held inside impl_.
   using AgnocastImpl = ::agnocast::AsyncParametersClient;
 
-  /// @brief Wait for the Agnocast backend by polling, so that it honours the timeout.
-  ///
-  /// agnocast::AsyncParametersClient::wait_for_service() stops as soon as agnocast::ok() is false,
-  /// and that is the case in anything but an AgnocastOnly executable, so there it returns after
-  /// one probe. A caller cannot tell that false from a real timeout. service_is_ready() carries no
-  /// such context check, so poll that instead.
-  ///
-  /// @param impl    Agnocast backend to poll.
-  /// @param timeout Negative waits forever, zero probes once, positive bounds the wait.
-  /// @return true if the services became available, false on timeout or on shutdown.
-  static bool wait_by_polling(const AgnocastImpl & impl, std::chrono::nanoseconds timeout)
-  {
-    // The cadence agnocast's own wait uses once it gets past its context check.
-    constexpr auto poll_interval =
-      std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::milliseconds(100));
-    const auto start = std::chrono::steady_clock::now();
-
-    while (true) {
-      if (impl.service_is_ready()) {
-        return true;
-      }
-      // Both upstream clients treat a zero timeout as "ask once, do not block".
-      if (timeout == std::chrono::nanoseconds::zero() || !autoware::agnocast_wrapper::ok()) {
-        return false;
-      }
-
-      auto nap = poll_interval;
-      if (timeout > std::chrono::nanoseconds::zero()) {
-        const auto left = timeout - (std::chrono::steady_clock::now() - start);
-        if (left <= std::chrono::nanoseconds::zero()) {
-          return false;
-        }
-        nap = std::min(poll_interval, std::chrono::duration_cast<std::chrono::nanoseconds>(left));
-      }
-      std::this_thread::sleep_for(nap);
-    }
-  }
-
-  /// Held by value: neither client captures `this`, so nothing needs the address of the active
-  /// alternative to stay put.
   std::variant<RclcppImpl, AgnocastImpl> impl_;
 };
 
@@ -307,69 +196,30 @@ private:
 namespace autoware::agnocast_wrapper
 {
 
-/// @brief Curated AsyncParametersClient for the non-Agnocast build.
-///
-/// Holds a ::rclcpp::AsyncParametersClient by value and forwards only the member set shared with
-/// the Agnocast build, instead of deriving from it. This keeps the public surface identical in
-/// both builds, so code that compiles under ENABLE_AGNOCAST=0 also compiles under =1. Deriving
-/// would leak the full upstream API — the setters, the parameter-event subscription, the
-/// node-interface constructors — into the =0 build and allow =0-only code that breaks under =1.
+// Agnocast-disabled build: a thin composition wrapper over ::rclcpp::AsyncParametersClient rather
+// than a derived class, so the full upstream API cannot leak into the =0 build and let =0-only code
+// compile that breaks under =1. Signatures and semantics match the agnocast-enabled build above,
+// which carries the documentation.
 class AsyncParametersClient
 {
 public:
-  /// @brief Construct from a wrapper Node.
-  ///
-  /// In this build autoware::agnocast_wrapper::Node owns an internal rclcpp::Node, so the call
-  /// forwards to ::rclcpp::AsyncParametersClient built on node->get_rclcpp_node().
-  ///
-  /// @pre The given Node must outlive this client.
-  ///
-  /// @throws rclcpp::exceptions::InvalidServiceNameError if remote_node_name cannot form a
-  ///         service name.
-  ///
-  /// @param node             Wrapper node providing the underlying rclcpp::Node.
-  /// @param remote_node_name Name of the node whose parameters are read. Empty means this node.
-  /// @param qos              QoS of the underlying service clients.
-  /// @param group            Callback group the underlying service clients are added to.
   explicit AsyncParametersClient(
     autoware::agnocast_wrapper::Node * node, const std::string & remote_node_name = "",
     const rclcpp::QoS & qos = rclcpp::ParametersQoS(),
     rclcpp::CallbackGroup::SharedPtr group = nullptr)
   : impl_(
-      node->get_rclcpp_node().get(),
-      detail::checked_remote_node_name(remote_node_name, node->get_name(), node->get_namespace()),
-// See the Agnocast-build constructor above for why the QoS argument is version-gated.
-#if RCLCPP_VERSION_MAJOR >= 28
-      qos,
-#else
-      qos.get_rmw_qos_profile(),
-#endif
-      group)
+      node->get_rclcpp_node().get(), remote_node_name,
+      detail::to_rclcpp_parameters_qos(detail::checked_parameters_qos(qos)), std::move(group))
   {
   }
 
-  /// @brief Read parameters from the remote node.
-  ///
-  /// @param names    Parameter names to read.
-  /// @param callback Invoked with the resolved future when the response arrives.
-  /// @return Shared future resolving to the parameters, in the order they were requested.
   std::shared_future<std::vector<rclcpp::Parameter>> get_parameters(
     const std::vector<std::string> & names,
     std::function<void(std::shared_future<std::vector<rclcpp::Parameter>>)> callback = nullptr)
   {
-    return impl_.get_parameters(names, callback);
+    return impl_.get_parameters(names, std::move(callback));
   }
 
-  /// @brief Block until the remote node's parameter services are available, or the timeout
-  ///        expires.
-  ///
-  /// This build has only the rclcpp backend. The Agnocast-build class polls to reach the same
-  /// contract, so the two agree: a negative duration waits forever, a zero duration is a
-  /// non-blocking probe, and a positive one bounds the wait.
-  ///
-  /// @param timeout Maximum duration to wait; a negative duration waits forever, and a zero
-  ///                duration is a non-blocking probe.
-  /// @return true if the services became available, false on timeout.
   template <typename RepT = int64_t, typename RatioT = std::milli>
   bool wait_for_service(
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::duration<RepT, RatioT>(-1))
@@ -377,16 +227,8 @@ public:
     return impl_.wait_for_service(timeout);
   }
 
-  /// @brief Report whether the remote node's parameter services are available right now.
-  ///
-  /// Non-blocking. rclcpp checks five of the six parameter services (it leaves out
-  /// set_parameters_atomically), so this is marginally laxer than the Agnocast backend, which
-  /// checks all six.
-  ///
-  /// @return true if the remote node's parameter services are available.
   bool service_is_ready() const { return impl_.service_is_ready(); }
 
-  // Non-copyable and non-movable: matches the Agnocast-build client.
   AsyncParametersClient(const AsyncParametersClient &) = delete;
   AsyncParametersClient & operator=(const AsyncParametersClient &) = delete;
   AsyncParametersClient(AsyncParametersClient &&) = delete;

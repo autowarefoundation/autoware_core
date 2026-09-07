@@ -12,6 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+// What each backend does with a request is covered by that backend's own tests, so what is left
+// here is the wrapper's own: the surface it presents in both builds, the arguments it rejects
+// itself, and that each member reaches its backend at all.
+
 #include "autoware/agnocast_wrapper/parameter_client.hpp"
 
 #include "autoware/agnocast_wrapper/node.hpp"
@@ -23,12 +27,10 @@
 
 #include <chrono>
 #include <cstdlib>
-#include <future>
 #include <memory>
+#include <stdexcept>
 #include <string>
-#include <thread>
 #include <type_traits>
-#include <vector>
 
 namespace
 {
@@ -42,40 +44,14 @@ static_assert(!std::is_move_constructible_v<AsyncParametersClient>);
 static_assert(!std::is_move_assignable_v<AsyncParametersClient>);
 
 /// Same probe as test/cases/polling_subscriber.cpp: agnocast exits the process from inside the
-/// subscription constructor when LD_PRELOAD lacks the heaphook, which would take the whole test
-/// binary down instead of failing one case.
+/// constructor when LD_PRELOAD lacks the heaphook, which would take the whole test binary down
+/// instead of failing one case.
 bool agnocast_heaphook_loaded()
 {
   const char * ld_preload = std::getenv("LD_PRELOAD");
   return ld_preload != nullptr &&
          std::string(ld_preload).find("libagnocast_heaphook.so") != std::string::npos;
 }
-
-/// Stops the executor from the destructor: an ASSERT_* that returns early must not leave a
-/// joinable std::thread behind, whose destructor calls std::terminate.
-class SpinThread
-{
-public:
-  explicit SpinThread(rclcpp::Executor & executor)
-  : executor_(executor), thread_([&executor] { executor.spin(); })
-  {
-  }
-
-  ~SpinThread()
-  {
-    executor_.cancel();
-    thread_.join();
-  }
-
-  SpinThread(const SpinThread &) = delete;
-  SpinThread & operator=(const SpinThread &) = delete;
-  SpinThread(SpinThread &&) = delete;
-  SpinThread & operator=(SpinThread &&) = delete;
-
-private:
-  rclcpp::Executor & executor_;
-  std::thread thread_;
-};
 
 class AsyncParametersClientTest : public testing::Test
 {
@@ -89,127 +65,50 @@ protected:
   }
 };
 
-/// The constructor's name check, exercised directly rather than through the constructor: the
-/// rclcpp backend rejects the same names on its own and with the same exception type, so only the
-/// agnocast backend could tell a missing check from a working one, and that backend needs the
-/// kernel module to run at all.
-TEST(AsyncParametersClientNameCheck, RejectsAMalformedRemoteName)
+TEST_F(AsyncParametersClientTest, RejectsATransientLocalQos)
 {
+  // Arrange
+  const auto node = std::make_shared<Node>("parameter_client_transient_local");
+
+  // Act & Assert
   EXPECT_THROW(
-    autoware::agnocast_wrapper::detail::checked_remote_node_name("bad name!", "n", "/"),
-    rclcpp::exceptions::InvalidServiceNameError);
+    AsyncParametersClient(node.get(), "no_such_node", rclcpp::ParametersQoS().transient_local()),
+    std::invalid_argument);
 }
 
-TEST(AsyncParametersClientNameCheck, RejectsARemoteNameTooLongForEveryParameterService)
+TEST_F(AsyncParametersClientTest, RejectsABestEffortQos)
 {
-  // rmw_validate_full_topic_name() rejects a name longer than RMW_TOPIC_MAX_NAME_LENGTH (247).
-  // This one measures 246 with the shortest of the six parameter services, "/get_parameters", and
-  // 257 with the longest, "/set_parameters_atomically".
-  const std::string remote_node_name = "/" + std::string(230, 'a');
+  // Arrange
+  const auto node = std::make_shared<Node>("parameter_client_best_effort");
 
+  // Act & Assert
   EXPECT_THROW(
-    autoware::agnocast_wrapper::detail::checked_remote_node_name(remote_node_name, "n", "/"),
-    rclcpp::exceptions::InvalidServiceNameError);
+    AsyncParametersClient(node.get(), "no_such_node", rclcpp::ParametersQoS().best_effort()),
+    std::invalid_argument);
 }
 
-TEST(AsyncParametersClientNameCheck, AcceptsANameThatFitsEveryParameterService)
+TEST_F(AsyncParametersClientTest, AcceptsAVolatileReliableQos)
 {
-  const std::string remote_node_name = "/" + std::string(200, 'a');
+  // Arrange
+  const auto node = std::make_shared<Node>("parameter_client_volatile");
 
-  EXPECT_NO_THROW(
-    autoware::agnocast_wrapper::detail::checked_remote_node_name(remote_node_name, "n", "/"));
+  // Act & Assert
+  EXPECT_NO_THROW(AsyncParametersClient(
+    node.get(), "no_such_node", rclcpp::ParametersQoS().durability_volatile().reliable()));
 }
 
-TEST_F(AsyncParametersClientTest, WaitForServiceTimesOutForAnAbsentRemoteNode)
+// wait_for_service() is a member template, so without a call nothing instantiates it and a typo in
+// either build's forwarding would still compile. An absent remote node answers both readiness
+// queries the same way on either backend.
+TEST_F(AsyncParametersClientTest, ReachesTheBackendForAnAbsentRemoteNode)
 {
-  const auto node = std::make_shared<Node>("parameter_client_timeout");
+  // Arrange
+  const auto node = std::make_shared<Node>("parameter_client_absent_remote");
   AsyncParametersClient client(node.get(), "no_such_node");
 
-  constexpr auto timeout = std::chrono::milliseconds(200);
-  const auto start = std::chrono::steady_clock::now();
-  EXPECT_FALSE(client.wait_for_service(timeout));
-
-  // Only the agnocast backend can fail this, and only in a binary like this one, whose context is
-  // an rclcpp one rather than an AgnocastOnly one. Half the timeout separates "waited" from "did
-  // not wait" without pinning how a backend accounts for the budget.
-  EXPECT_GE(std::chrono::steady_clock::now() - start, timeout / 2);
-}
-
-TEST_F(AsyncParametersClientTest, WaitForServiceWithAZeroTimeoutDoesNotBlock)
-{
-  const auto node = std::make_shared<Node>("parameter_client_zero_timeout");
-  AsyncParametersClient client(node.get(), "no_such_node");
-
-  constexpr auto budget = std::chrono::milliseconds(100);
-  const auto start = std::chrono::steady_clock::now();
-  EXPECT_FALSE(client.wait_for_service(std::chrono::nanoseconds::zero()));
-
-  EXPECT_LT(std::chrono::steady_clock::now() - start, budget);
-}
-
-TEST_F(AsyncParametersClientTest, ServiceIsNotReadyForAnAbsentRemoteNode)
-{
-  const auto node = std::make_shared<Node>("parameter_client_not_ready");
-  AsyncParametersClient client(node.get(), "no_such_node");
-
+  // Act & Assert
   EXPECT_FALSE(client.service_is_ready());
-}
-
-TEST_F(AsyncParametersClientTest, RejectsARemoteNameThatCannotFormAServiceName)
-{
-  const auto node = std::make_shared<Node>("parameter_client_bad_name");
-
-  EXPECT_THROW(
-    AsyncParametersClient(node.get(), "bad name!"), rclcpp::exceptions::InvalidServiceNameError);
-}
-
-TEST_F(AsyncParametersClientTest, AcceptsAnEmptyRemoteNameAsThisNode)
-{
-  const auto node = std::make_shared<Node>("parameter_client_self");
-
-  // The empty default is the "this node" case; the backends fill it in with the node's own fully
-  // qualified name.
-  EXPECT_NO_THROW(AsyncParametersClient(node.get()));
-}
-
-TEST_F(AsyncParametersClientTest, GetParametersReadsARemoteNode)
-{
-  if (autoware::agnocast_wrapper::use_agnocast()) {
-    GTEST_SKIP() << "the agnocast backend is served by an agnocast executor, which this test "
-                    "does not spin.";
-  }
-
-  const auto server = std::make_shared<Node>("parameter_client_server");
-  server->declare_parameter<bool>("enable_partial_load", true);
-
-  const auto node = std::make_shared<Node>("parameter_client_reader");
-  AsyncParametersClient client(node.get(), "parameter_client_server");
-
-  // Both backends satisfy the promise before they invoke the callback, so a resolved future says
-  // nothing about whether the callback has run yet. Declared before the spin thread: the callback
-  // holds a reference to it, and members are destroyed in reverse declaration order, so the
-  // executor has to stop first.
-  std::promise<void> callback_done;
-  const auto callback_ran = callback_done.get_future();
-
-  rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(server->get_node_base_interface());
-  executor.add_node(node->get_node_base_interface());
-  SpinThread spin(executor);
-
-  ASSERT_TRUE(client.wait_for_service(std::chrono::seconds(10)));
-  EXPECT_TRUE(client.service_is_ready());
-
-  const auto future = client.get_parameters(
-    {"enable_partial_load"}, [&callback_done](std::shared_future<std::vector<rclcpp::Parameter>>) {
-      callback_done.set_value();
-    });
-  ASSERT_EQ(future.wait_for(std::chrono::seconds(10)), std::future_status::ready);
-
-  const auto parameters = future.get();
-  ASSERT_EQ(parameters.size(), 1u);
-  EXPECT_TRUE(parameters.front().as_bool());
-  EXPECT_EQ(callback_ran.wait_for(std::chrono::seconds(10)), std::future_status::ready);
+  EXPECT_FALSE(client.wait_for_service(std::chrono::milliseconds(0)));
 }
 
 }  // namespace
