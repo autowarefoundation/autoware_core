@@ -359,15 +359,21 @@ TEST_F(TestRouteHandler, getLaneletSequenceStopsWhenNoNewPreviousLaneletIsFound)
   ASSERT_EQ(lanelet_sequence.size(), 1ul);
   EXPECT_EQ(lanelet_sequence.front().id(), 282ul);
 
-  // Sanity check that the traversal above stopped because its only candidate was the goal lanelet:
-  // adding the other predecessor of 282 to the route lets the traversal advance again.
+  // Sanity check that traversal above stopped because its only candidate was goal lanelet:
+  // adding other predecessor of 282 to route lets traversal advance again.
   route_handler_->setRouteLanelets(route_handler_->getLaneletsFromIds({287, 277, 282, 345}));
   const auto sequence_with_predecessor =
     route_handler_->getLaneletSequence(route_handler_->getLaneletsFromId(282), 100.0, 0.0);
   EXPECT_GT(sequence_with_predecessor.size(), 1ul);
 }
 
-// Verifies lane-change interval reporting and the no-target result for preferred lanes.
+// - This test verifies lane-change interval reporting and no-target result for preferred lanes.
+// - lcov target: getLateralIntervalsToPreferredLane(), getLaneChangeTarget()
+// - Purposes:
+//    - Validates legacy logic's ability to calculate metric distances (-3.5m)
+//      for rightward lane changes.
+//    - Ensures that requesting a lane change target from  a set of preferred lanes
+//      correctly yields no target (std::nullopt).
 TEST_F(TestRouteHandler, ManeuverTargetingAndIntervals)
 {
   const auto current_lanes = get_current_lanes();
@@ -382,7 +388,13 @@ TEST_F(TestRouteHandler, ManeuverTargetingAndIntervals)
   EXPECT_FALSE(target_lane.has_value());
 }
 
-// Verifies area-routing state and termination when traversing a cyclic route.
+// - This test verifies area-routing state and termination when traversing a cyclic route.
+// - lcov target: setAllowArea(), allowArea(), getLaneletSequence() cycle breakers.
+// - Loads a specialized map (overlap_map.osm) containing topological loops.
+// - Purposes:
+//    - By requesting an infinite forward distance (std::numeric_limits<double>::max()),
+//      this test forces internal R-Tree and graph crawler to hit their visited-node
+//      break conditions, preventing infinite while-loops.
 TEST_F(TestRouteHandler, AreaRoutingAndCyclicTopologies)
 {
   set_route_handler("overlap_map.osm");
@@ -403,7 +415,12 @@ TEST_F(TestRouteHandler, AreaRoutingAndCyclicTopologies)
     << "Cyclic guard failed; infinite loop detected in getLaneletSequence.";
 }
 
-// Verifies bicycle and opposite-direction lane queries on the standard test map.
+// - This test verifies bicycle and opposite-direction lane queries on standard test map.
+// - lcov target: getLeftBicycleLanelet(), getRightBicycleLanelet(), getLeftOppositeLanelets(), etc.
+// - Purposes:
+//    - Forces execution of specialized adjacency queries.
+//    - On standard test map, these should safely return empty sets/nullopts,
+//      successfully executing internal lanelet layer evaluations without crashing.
 TEST_F(TestRouteHandler, TestOppositeAndBicycleLaneQueries)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -420,7 +437,11 @@ TEST_F(TestRouteHandler, TestOppositeAndBicycleLaneQueries)
   EXPECT_TRUE(right_opp.empty());
 }
 
-// Verifies pull-over, pull-out, and dead-end queries for the default route.
+// - This test verifies pull-over, pull-out, and dead-end queries for the default route.
+// - lcov target: getPullOverTarget(), getPullOutStartLane(), isDeadEndLanelet()
+// - Purposes:
+//    - Verifies fallback behavior of maneuver-specific spatial queries when
+//      ego vehicle is positioned on standard continuous lanes.
 TEST_F(TestRouteHandler, TestManeuverSpecificQueries)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -438,7 +459,13 @@ TEST_F(TestRouteHandler, TestManeuverSpecificQueries)
   EXPECT_FALSE(route_handler_->isDeadEndLanelet(ref_lane));
 }
 
-// Verifies route planning when the routing cost permits non-drivable lanelets.
+// - This test verifies route planning when routing cost permits non-drivable lanelets.
+// - lcov target: route_handler.hpp (RoutingCostDrivable), findDrivableLanePath().
+// - Purposes:
+//    - Forces internal routing algorithm to consider non-drivable lanelets as valid path segments
+//      by setting RoutingCostDrivable flag to false.
+//    - Evaluates Lanelet2 traffic rules to check for participant:vehicle="no" attributes during A*
+//    search.
 TEST_F(TestRouteHandler, TestNonDrivableLaneRouting)
 {
   const auto start_pose = route_handler_->getStartPose();
@@ -452,7 +479,12 @@ TEST_F(TestRouteHandler, TestNonDrivableLaneRouting)
   EXPECT_FALSE(path_lanelets.empty());
 }
 
-// Verifies route metadata accessors and that clearing a route resets readiness.
+// - This test verifies route metadata accessors and that clearing a route resets readiness.
+// - lcov target: clearRoute(), getRouteHeader(), getOriginalStartPose(), etc.
+// - Purposes:
+//    - Validates that route metadata can be accessed without throwing exceptions.
+//    - Ensures that calling clearRoute() correctly resets internal state of route handler
+//      and marks it as not ready for further operations.
 TEST_F(TestRouteHandler, SimpleGettersAndStateClear)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -475,7 +507,13 @@ TEST_F(TestRouteHandler, SimpleGettersAndStateClear)
   EXPECT_FALSE(route_handler_->isHandlerReady());
 }
 
-// Verifies the public topological, shoulder, and route-membership queries.
+// - This test verifies public topological, shoulder, and route-membership queries.
+// - lcov target: getLeftLanelet(), getRightLanelet(), getMostLeftLanelet(), etc.
+// - Purposes:
+//    - Validates that route handler can correctly identify adjacent lanelets, shoulder lanelets,
+//    and route membership for a given reference lanelet.
+//    - Ensures that public API for topological and neighbor queries behaves as expected on standard
+//    test route.
 TEST_F(TestRouteHandler, TopologicalAndNeighborQueries)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -498,7 +536,13 @@ TEST_F(TestRouteHandler, TopologicalAndNeighborQueries)
   EXPECT_FALSE(route_handler_->getLanesAfterGoal(10.0).empty());
 }
 
-// Verifies planning and segment creation through the LaneletOrArea overloads.
+// - This test verifies planning and segment creation through LaneletOrArea overloads.
+// - lcov target: planPathLaneletsBetweenCheckpoints(), createMapSegmentsFromLaneletOrAreaPath().
+// - Purposes:
+//    - Validates that route handler can plan a path using LaneletOrArea types and convert resulting
+//    path into map segments without throwing exceptions.
+//    - Ensures that overloads for handling LaneletOrArea types are functioning correctly and
+//    returning expected results.
 TEST_F(TestRouteHandler, LaneletOrAreaPathOverloads)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -517,7 +561,14 @@ TEST_F(TestRouteHandler, LaneletOrAreaPathOverloads)
   EXPECT_FALSE(segments.empty());
 }
 
-// Verifies routing, segment conversion, shared-boundary traversal, and sequence helpers.
+// - This test verifies execution of deep algorithms including routing, segment conversion,
+// shared-boundary traversal, and sequence helpers.
+// - lcov target: planPathLaneletsBetweenCheckpoints(), createMapSegments(),
+// getAllLeftSharedLinestringLanelets(), etc.
+// - Purposes:
+//    - Validates that route handler can execute a series of complex operations without throwing
+//    exceptions
+//      and that results are consistent with expectations.
 TEST_F(TestRouteHandler, DeepAlgorithmExecution)
 {
   set_test_route("lane_change_test_route.yaml");
