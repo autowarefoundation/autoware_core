@@ -18,6 +18,8 @@
 
 #include <gtest/gtest.h>
 
+#include <limits>
+
 namespace autoware::route_handler::test
 {
 TEST_F(TestRouteHandler, isRouteHandlerReadyTest)
@@ -363,4 +365,20 @@ TEST_F(TestRouteHandler, getLaneletSequenceStopsWhenNoNewPreviousLaneletIsFound)
     route_handler_->getLaneletSequence(route_handler_->getLaneletsFromId(282), 100.0, 0.0);
   EXPECT_GT(sequence_with_predecessor.size(), 1ul);
 }
+
+// Verifies lane-change interval reporting and the no-target result for preferred lanes.
+TEST_F(TestRouteHandler, ManeuverTargetingAndIntervals)
+{
+  const auto current_lanes = get_current_lanes();
+
+  const auto intervals =
+    route_handler_->getLateralIntervalsToPreferredLane(current_lanes.back(), Direction::RIGHT);
+  ASSERT_EQ(intervals.size(), 1UL);
+  EXPECT_DOUBLE_EQ(intervals.front(), -3.5);
+
+  const auto safe_lanes = route_handler_->getLaneletsFromIds({4770, 4775});
+  const auto target_lane = route_handler_->getLaneChangeTarget(safe_lanes, Direction::RIGHT);
+  EXPECT_FALSE(target_lane.has_value());
+}
+
 }  // namespace autoware::route_handler::test
