@@ -46,6 +46,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <exception>
@@ -79,6 +80,9 @@ constexpr double reference_latitude = 35.62426;
 constexpr double reference_longitude = 139.74252;
 constexpr double reference_altitude = 10.0;
 constexpr const char * reference_mgrs_grid = "54SUE";
+// Cases that need several fixes offset them by multiples of 0.001 degrees: about 111 m in latitude
+// and 90 m in longitude at this latitude, so the fixes project to clearly distinct positions and
+// every output can be matched to the fix it came from.
 
 // Golden values: MGRS(54SUE) projection of (reference_latitude, reference_longitude,
 // reference_altitude) as observed from the node output (identity antenna->base TF, WGS84 vertical
@@ -239,6 +243,7 @@ Point make_point(double x, double y, double z)
 
 Point mean_of(const std::vector<Point> & points)
 {
+  assert(!points.empty() && "mean_of requires at least one point");
   Point mean = make_point(0.0, 0.0, 0.0);
   for (const auto & p : points) {
     mean.x += p.x;
@@ -251,6 +256,7 @@ Point mean_of(const std::vector<Point> & points)
 
 double median_of(std::vector<double> values)
 {
+  assert(!values.empty() && "median_of requires at least one value");
   std::sort(values.begin(), values.end());
   const std::size_t mid = values.size() / 2;
   return (values.size() % 2 == 1) ? values[mid] : (values[mid] + values[mid - 1]) / 2.0;
@@ -778,6 +784,8 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_StillPublishesEve
   const auto projector = make_mgrs_projector_info();
   send_projector_info(projector);
 
+  // Three fixes about 100 m apart (see the note at the reference constants), so that each output
+  // can be checked against its own fix and not a neighbor.
   const std::vector<NavSatFix> fixes = {
     make_fix(reference_latitude, reference_longitude, reference_altitude),
     make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
@@ -809,7 +817,10 @@ TEST_F(GnssPoserCharacterization, MethodInstant_Egm2008VerticalDatum_ConvertsHei
 
   const auto expected = project_antenna(fix, projector);
   expect_point_near(last_pose().pose.position, expected, 1e-9);
-  // The geoid undulation around Tokyo is tens of meters, so z must clearly differ from altitude.
+  // The EGM2008 geoid is about 36 m above the WGS84 ellipsoid at the reference point, so the
+  // conversion moves z by about -36 m. The exact value is checked above against the library; this
+  // bound only has to sit far below the undulation and far above any conversion noise to show that
+  // a conversion happened at all (with WGS84 as the datum, z would equal the altitude exactly).
   EXPECT_GT(std::abs(last_pose().pose.position.z - reference_altitude), 1.0);
 }
 
