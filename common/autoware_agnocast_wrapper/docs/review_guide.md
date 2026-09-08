@@ -310,7 +310,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Polling subscribers use the `polling::` free-function API (see Part 2 Section 3.1)
 
-- [ ] If the node also uses message_filters, timers, tf2, or diagnostic_updater, they have been migrated to the corresponding `autoware::agnocast_wrapper::*` wrappers (see the [README](../README.md) for usage and current limitations)
+- [ ] If the node also uses message_filters, timers, tf2, diagnostic_updater, or an async parameters client, they have been migrated to the corresponding `autoware::agnocast_wrapper::*` wrappers (see the [README](../README.md) for usage and current limitations)
 
 - [ ] If the original CMakeLists.txt used `rclcpp_components_register_node()`, it has been replaced with `autoware_agnocast_wrapper_register_node()` (see Part 2 Section 5)
 
@@ -485,6 +485,8 @@ Review points:
 - [ ] The receiving variable is `std::shared_ptr<const MessageT>`, not a `message_ptr` or `AUTOWARE_MESSAGE_CONST_SHARED_PTR`.
 - [ ] The **policy tag** is preserved from the original code. `polling_policy::Latest` (the default) re-delivers the cached message every call; `polling_policy::Newest` returns `nullptr` until a new message arrives.
 - [ ] `polling_policy::All` is rejected at compile time — `take_data()` returns a single message, not a vector.
+- [ ] The QoS history depth is 1 — any other depth throws `std::invalid_argument` at construction.
+- [ ] `take_data()` is called from a single thread, or from callbacks in one mutually exclusive callback group — it is not synchronized, the same as `autoware_utils_rclcpp`.
 
 &nbsp;
 
