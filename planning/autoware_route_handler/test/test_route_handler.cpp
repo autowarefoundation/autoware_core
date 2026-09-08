@@ -437,4 +437,17 @@ TEST_F(TestRouteHandler, TestManeuverSpecificQueries)
   EXPECT_FALSE(route_handler_->isDeadEndLanelet(ref_lane));
 }
 
+// Verifies route planning when the routing cost permits non-drivable lanelets.
+TEST_F(TestRouteHandler, TestNonDrivableLaneRouting)
+{
+  const auto start_pose = route_handler_->getStartPose();
+  const auto goal_pose = route_handler_->getGoalPose();
+
+  lanelet::ConstLanelets path_lanelets;
+  const auto success =
+    route_handler_->planPathLaneletsBetweenCheckpoints(start_pose, goal_pose, &path_lanelets, true);
+
+  EXPECT_TRUE(success);
+  EXPECT_FALSE(path_lanelets.empty());
+}
 }  // namespace autoware::route_handler::test
