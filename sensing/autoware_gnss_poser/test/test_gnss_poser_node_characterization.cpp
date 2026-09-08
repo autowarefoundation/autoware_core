@@ -99,7 +99,11 @@ constexpr const char * reference_mgrs_grid = "54SUE";
 constexpr double golden_x = 86128.181788819958;
 constexpr double golden_y = 43002.610125367064;
 constexpr double golden_z = reference_altitude;
-constexpr double golden_tolerance = 1e-4;  // [m]
+// Tolerances for computed values. A behavior change worth catching moves a position by centimeters
+// or more and a heading by about 0.001 rad or more; the floating-point noise of the pipeline is
+// many orders of magnitude below both. Values the node copies are compared exactly instead.
+constexpr double position_tolerance = 1e-4;  // [m]
+constexpr double angle_tolerance = 1e-6;     // [rad]
 // EGM2008 geoid height at the reference point, from GeographicLib's GeoidEval on the egm2008-1
 // dataset: independent of the node and of autoware_geography_utils.
 constexpr double reference_geoid_height = 36.12;  // [m]
@@ -256,15 +260,16 @@ double yaw_of(const Quaternion & quaternion)
   return yaw;
 }
 
-// Two quaternions describe the same rotation when |q1 . q2| == 1.
-void expect_same_rotation(const Quaternion & actual, const Quaternion & expected, double tol = 1e-9)
+// Two orientations agree when the rotation angle between them, 2 * acos(|q1 . q2|), is negligible.
+void expect_same_rotation(
+  const Quaternion & actual, const Quaternion & expected, double tol = angle_tolerance)
 {
   const double dot =
     actual.x * expected.x + actual.y * expected.y + actual.z * expected.z + actual.w * expected.w;
-  EXPECT_NEAR(std::abs(dot), 1.0, tol)
-    << "actual=(" << actual.x << "," << actual.y << "," << actual.z << "," << actual.w
-    << ") expected=(" << expected.x << "," << expected.y << "," << expected.z << "," << expected.w
-    << ")";
+  const double angle = 2.0 * std::acos(std::min(1.0, std::abs(dot)));
+  EXPECT_LE(angle, tol) << "actual=(" << actual.x << "," << actual.y << "," << actual.z << ","
+                        << actual.w << ") expected=(" << expected.x << "," << expected.y << ","
+                        << expected.z << "," << expected.w << ")";
 }
 
 GnssInsOrientationStamped make_orientation(
@@ -340,7 +345,8 @@ Point component_wise_median_of(const std::vector<Point> & points)
   return make_point(median_of(xs), median_of(ys), median_of(zs));
 }
 
-void expect_point_near(const Point & actual, const Point & expected, double tol = 1e-6)
+void expect_point_near(
+  const Point & actual, const Point & expected, double tol = position_tolerance)
 {
   EXPECT_NEAR(actual.x, expected.x, tol);
   EXPECT_NEAR(actual.y, expected.y, tol);
@@ -892,11 +898,11 @@ TEST_F(GnssPoserCharacterization, MethodInstant_PublishesProjectedAntennaPositio
   EXPECT_EQ(pose.header.frame_id, "my_map");
   EXPECT_EQ(pose.header.stamp, fix.header.stamp);
   // Golden values recorded from the current implementation: a change in the library shows here.
-  expect_point_near(pose.pose.position, make_point(golden_x, golden_y, golden_z), golden_tolerance);
+  expect_point_near(pose.pose.position, make_point(golden_x, golden_y, golden_z));
   // The same library call the node composes: a change in how the node calls it shows here.
-  expect_point_near(pose.pose.position, project_antenna(fix, projector), 1e-9);
-  // z is the altitude passed through untouched (MGRS ignores it, WGS84 -> WGS84 is the identity).
-  EXPECT_DOUBLE_EQ(pose.pose.position.z, reference_altitude);
+  expect_point_near(pose.pose.position, project_antenna(fix, projector));
+  // z is the altitude passed through (MGRS ignores it, WGS84 -> WGS84 is the identity).
+  EXPECT_NEAR(pose.pose.position.z, reference_altitude, position_tolerance);
 
   // gnss_pose_cov carries a copy of the same header and pose, hence exact equality.
   const auto & pose_cov = last_pose_cov();
@@ -924,7 +930,7 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_StillPublishesEve
   for (std::size_t i = 0; i < fixes.size(); ++i) {
     send_fix(fixes[i]);
     ASSERT_NO_FATAL_FAILURE(wait_for_outputs(i + 1));
-    expect_point_near(last_pose().pose.position, project_antenna(fixes[i], projector), 1e-9);
+    expect_point_near(last_pose().pose.position, project_antenna(fixes[i], projector));
   }
   EXPECT_EQ(peer_->poses.size(), 3U);
 }
@@ -972,8 +978,7 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LocalCartesianUtmProjector_UsesM
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
 
   // Literal expectation: the fix sits on the origin, so only the altitude offset remains.
-  expect_point_near(
-    last_pose().pose.position, make_point(0.0, 0.0, reference_altitude - (-10.0)), 1e-6);
+  expect_point_near(last_pose().pose.position, make_point(0.0, 0.0, reference_altitude - (-10.0)));
 }
 
 // =======================================================================================
@@ -1047,8 +1052,9 @@ TEST_F(GnssPoserCharacterization, MethodMedian_OddBuffer_ComponentWiseMedian)
   const auto expected_123 = component_wise_median_of({antenna[0], antenna[1], antenna[2]});
   for (const auto & sample : antenna) {
     ASSERT_FALSE(
-      std::abs(sample.x - expected_123.x) < 1e-6 && std::abs(sample.y - expected_123.y) < 1e-6 &&
-      std::abs(sample.z - expected_123.z) < 1e-6)
+      std::abs(sample.x - expected_123.x) < position_tolerance &&
+      std::abs(sample.y - expected_123.y) < position_tolerance &&
+      std::abs(sample.z - expected_123.z) < position_tolerance)
       << "fixture data: the component-wise median must not coincide with a sample";
   }
 
@@ -1252,8 +1258,7 @@ TEST_F(GnssPoserCharacterization, MethodInstant_BuffEpochZero_IsHarmless)
   const auto fix = make_reference_fix();
   send_fix(fix);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position, project_antenna(fix, make_mgrs_projector_info()), 1e-9);
+  expect_point_near(last_pose().pose.position, project_antenna(fix, make_mgrs_projector_info()));
 }
 
 // =======================================================================================
@@ -1274,7 +1279,7 @@ TEST_F(GnssPoserCharacterization, InsOrientation_UsesLatestMessageAndSquaredRmse
   send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
   send_fix(make_reference_fix());
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, 1e-9);
+  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
   expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(M_PI / 2.0));
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_roll_roll], 0.01, rmse_squared_tolerance);
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_pitch_pitch], 0.04, rmse_squared_tolerance);
@@ -1284,7 +1289,7 @@ TEST_F(GnssPoserCharacterization, InsOrientation_UsesLatestMessageAndSquaredRmse
   send_orientation(make_orientation(-M_PI / 4.0, 0.5, 0.6, 0.7));
   send_fix(make_reference_fix());
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), -M_PI / 4.0, 1e-9);
+  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), -M_PI / 4.0, angle_tolerance);
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_roll_roll], 0.25, rmse_squared_tolerance);
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_pitch_pitch], 0.36, rmse_squared_tolerance);
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_yaw_yaw], 0.49, rmse_squared_tolerance);
@@ -1311,7 +1316,7 @@ TEST_F(GnssPoserCharacterization, InsOrientation_NoMessageYet_IdentityAndUnitCov
   send_fix(fix);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   EXPECT_TRUE(last_fixed().data);
-  expect_point_near(last_pose().pose.position, project_antenna(fix, projector), 1e-9);
+  expect_point_near(last_pose().pose.position, project_antenna(fix, projector));
   expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(0.0));
   EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_roll_roll], 1.0);
   EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_pitch_pitch], 1.0);
@@ -1362,7 +1367,7 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_FirstFixIdentity_ThenYawFrom
   send_fix(fix2);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
   const double expected_yaw = std::atan2(p2.y - p1.y, p2.x - p1.x);
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), expected_yaw, 1e-9);
+  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), expected_yaw, angle_tolerance);
   expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(expected_yaw));
 
   // Third fix: the heading follows the latest displacement only. It is atan2(p3 - p2), the heading
@@ -1373,7 +1378,7 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_FirstFixIdentity_ThenYawFrom
   const double yaw_step = std::atan2(p3.y - p2.y, p3.x - p2.x);
   const double yaw_from_start = std::atan2(p3.y - p1.y, p3.x - p1.x);
   ASSERT_GT(std::abs(yaw_step - yaw_from_start), 0.5) << "fixture data must tell the two apart";
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), yaw_step, 1e-9);
+  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), yaw_step, angle_tolerance);
 
   // Standing still: displacement is zero => yaw snaps back to 0, not "keep last heading".
   send_fix(fix3);
@@ -1406,7 +1411,8 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_PreviousPositionSurvivesNonF
   ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
   send_fix(fix2);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), std::atan2(p2.y - p1.y, p2.x - p1.x), 1e-9);
+  EXPECT_NEAR(
+    yaw_of(last_pose().pose.orientation), std::atan2(p2.y - p1.y, p2.x - p1.x), angle_tolerance);
 }
 
 // When a buffer is in use, the heading is derived from consecutive *averaged* positions, not from
@@ -1441,7 +1447,9 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_UsesFilteredPosit
   send_fix(fixes[2]);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
   // Heading is derived from consecutive *averaged* positions, not raw antenna positions.
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), std::atan2(m23.y - m12.y, m23.x - m12.x), 1e-9);
+  EXPECT_NEAR(
+    yaw_of(last_pose().pose.orientation), std::atan2(m23.y - m12.y, m23.x - m12.x),
+    angle_tolerance);
 }
 
 // =======================================================================================
@@ -1478,8 +1486,8 @@ TEST_F(GnssPoserCharacterization, Tf_StaticAntennaToBaseTransform_IsComposedAndB
   const auto antenna = project_antenna(fix, projector);
   const auto expected_position = make_point(antenna.x - 2.0, antenna.y + 1.0, antenna.z + 0.5);
   const auto & pose = last_pose();
-  expect_point_near(pose.pose.position, expected_position, 1e-6);
-  EXPECT_NEAR(std::abs(yaw_of(pose.pose.orientation)), M_PI, 1e-9);
+  expect_point_near(pose.pose.position, expected_position);
+  EXPECT_NEAR(std::abs(yaw_of(pose.pose.orientation)), M_PI, angle_tolerance);
   EXPECT_EQ(pose.header.frame_id, "my_map");
 
   // The broadcast TF mirrors the pose exactly: my_map -> my_gnss_base at the fix stamp.
@@ -1526,14 +1534,14 @@ TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_UnknownFrame
   const auto fix_unknown = make_reference_fix(NavSatStatus::STATUS_FIX, "some_other_antenna");
   send_fix(fix_unknown);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, project_antenna(fix_unknown, projector), 1e-9);
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, 1e-9);
+  expect_point_near(last_pose().pose.position, project_antenna(fix_unknown, projector));
+  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
 
   // Same frame as base_frame: no lookup, identity.
   const auto fix_base = make_reference_fix(NavSatStatus::STATUS_FIX, "my_base");
   send_fix(fix_base);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  expect_point_near(last_pose().pose.position, project_antenna(fix_base, projector), 1e-9);
+  expect_point_near(last_pose().pose.position, project_antenna(fix_base, projector));
 
   // Known frame: the TF is applied (positive control).
   const auto fix_known = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
@@ -1541,7 +1549,7 @@ TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_UnknownFrame
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
   const auto antenna = project_antenna(fix_known, projector);
   expect_point_near(
-    last_pose().pose.position, make_point(antenna.x - 2.0, antenna.y + 1.0, antenna.z + 0.5), 1e-6);
+    last_pose().pose.position, make_point(antenna.x - 2.0, antenna.y + 1.0, antenna.z + 0.5));
 }
 
 // The antenna -> base transform is looked up at the fix's header stamp, not at "latest". With a
@@ -1577,14 +1585,14 @@ TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp)
   send_fix(fix_at_t0);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   expect_point_near(
-    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z), 1e-6);
+    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z));
 
   // Fix stamped 1 s later: lookup needs extrapolation, fails, and falls back to identity.
   auto fix_later = fix_at_t0;
   fix_later.header.stamp = make_stamp(1001, 0);
   send_fix(fix_later);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  expect_point_near(last_pose().pose.position, projected, 1e-9);
+  expect_point_near(last_pose().pose.position, projected);
   EXPECT_EQ(last_pose().header.stamp, fix_later.header.stamp);
 
   // Fix with a zero stamp: tf2 treats time 0 as "latest", so the transform is applied again.
@@ -1593,7 +1601,7 @@ TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp)
   send_fix(fix_zero);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
   expect_point_near(
-    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z), 1e-6);
+    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z));
 }
 
 // When the antenna -> base relation changes over time, each pose follows the relation at its own
@@ -1630,16 +1638,16 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStam
   send_fix(fix);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   expect_point_near(
-    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z), 1e-6);
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), 0.0, 1e-6);
+    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z));
+  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), 0.0, angle_tolerance);
 
   // At t1 it uses the second.
   fix.header.stamp = t1;
   send_fix(fix);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
   expect_point_near(
-    last_pose().pose.position, make_point(projected.x + 2.0, projected.y, projected.z), 1e-6);
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, 1e-6);
+    last_pose().pose.position, make_point(projected.x + 2.0, projected.y, projected.z));
+  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
 
   // Halfway between, tf2 interpolates: translation 1.5 m, yaw 45 degrees. Going back in time is
   // fine, the buffer keeps both transforms.
@@ -1647,8 +1655,8 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStam
   send_fix(fix);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
   expect_point_near(
-    last_pose().pose.position, make_point(projected.x + 1.5, projected.y, projected.z), 1e-6);
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 4.0, 1e-6);
+    last_pose().pose.position, make_point(projected.x + 1.5, projected.y, projected.z));
+  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 4.0, angle_tolerance);
 }
 
 // =======================================================================================
