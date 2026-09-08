@@ -473,4 +473,27 @@ TEST_F(TestRouteHandler, SimpleGettersAndStateClear)
   route_handler_->clearRoute();
   EXPECT_FALSE(route_handler_->isHandlerReady());
 }
+
+// Verifies the public topological, shoulder, and route-membership queries.
+TEST_F(TestRouteHandler, TopologicalAndNeighborQueries)
+{
+  set_test_route("lane_change_test_route.yaml");
+  ASSERT_TRUE(route_handler_->isHandlerReady());
+
+  const auto ref_lane = route_handler_->getLaneletsFromId(4765);
+  EXPECT_EQ(ref_lane.id(), 4765);
+
+  EXPECT_FALSE(route_handler_->getLeftLanelet(ref_lane, false, false).has_value());
+  ASSERT_TRUE(route_handler_->getRightLanelet(ref_lane, false, false).has_value());
+  EXPECT_EQ(route_handler_->getRightLanelet(ref_lane, false, false)->id(), 9590);
+  EXPECT_EQ(route_handler_->getMostLeftLanelet(ref_lane, false, false).id(), 4765);
+  EXPECT_EQ(route_handler_->getMostRightLanelet(ref_lane, false, false).id(), 9590);
+  EXPECT_FALSE(route_handler_->getNextLanelets(ref_lane).empty());
+  EXPECT_FALSE(route_handler_->getPreviousLanelets(ref_lane).empty());
+  EXPECT_FALSE(route_handler_->getLaneChangeableNeighbors(ref_lane).empty());
+  EXPECT_FALSE(route_handler_->getLeftShoulderLanelet(ref_lane).has_value());
+  EXPECT_FALSE(route_handler_->getRightShoulderLanelet(ref_lane).has_value());
+  EXPECT_TRUE(route_handler_->isRouteLanelet(ref_lane));
+  EXPECT_FALSE(route_handler_->getLanesAfterGoal(10.0).empty());
+}
 }  // namespace autoware::route_handler::test
