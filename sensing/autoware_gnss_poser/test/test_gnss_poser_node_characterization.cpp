@@ -817,10 +817,11 @@ TEST_F(GnssPoserCharacterization, MethodInstant_Egm2008VerticalDatum_ConvertsHei
 
   const auto expected = project_antenna(fix, projector);
   expect_point_near(last_pose().pose.position, expected, 1e-9);
-  // The EGM2008 geoid is about 36 m above the WGS84 ellipsoid at the reference point, so the
-  // conversion moves z by about -36 m. The exact value is checked above against the library; this
-  // bound only has to sit far below the undulation and far above any conversion noise to show that
-  // a conversion happened at all (with WGS84 as the datum, z would equal the altitude exactly).
+  // The WGS84 ellipsoidal height and the EGM2008 orthometric height differ by the geoid height,
+  // about 36 m at the reference point, so a converted z is clearly away from the input altitude
+  // while an unconverted one equals it exactly. This is only a sanity check that the conversion
+  // happened (the exact value is compared with the library above); the 1.0 m bound has no meaning
+  // of its own, any value between the conversion noise and the ~36 m offset would do.
   EXPECT_GT(std::abs(last_pose().pose.position.z - reference_altitude), 1.0);
 }
 
