@@ -59,10 +59,6 @@ public:
   using WrapType = typename WrapSharedPtr::element_type;
 
   using SharedRequest = std::shared_ptr<typename SpecT::Service::Request>;
-  // Taken off the handle rather than spelled from the spec: a node type may hand back a response
-  // pointer that is not std::shared_ptr (Agnocast returns a shared-memory pointer), and both
-  // rclcpp::Client and the Agnocast wrapper expose these two names. SharedRequest stays a plain
-  // std::shared_ptr because every handle accepts one, so callers keep using std::make_shared.
   using SharedResponse = typename WrapType::SharedResponse;
   using SharedFuture = typename WrapType::SharedFuture;
 
