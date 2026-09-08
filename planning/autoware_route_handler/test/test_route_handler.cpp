@@ -450,4 +450,27 @@ TEST_F(TestRouteHandler, TestNonDrivableLaneRouting)
   EXPECT_TRUE(success);
   EXPECT_FALSE(path_lanelets.empty());
 }
+
+// Verifies route metadata accessors and that clearing a route resets readiness.
+TEST_F(TestRouteHandler, SimpleGettersAndStateClear)
+{
+  set_test_route("lane_change_test_route.yaml");
+  ASSERT_TRUE(route_handler_->isHandlerReady());
+
+  EXPECT_TRUE(route_handler_->isMapMsgReady());
+  EXPECT_FALSE(route_handler_->isAllowedGoalModification());
+
+  EXPECT_NO_THROW({
+    (void)route_handler_->getRouteHeader();
+    (void)route_handler_->getOriginalStartPose();
+    (void)route_handler_->getOriginalGoalPose();
+    (void)route_handler_->getRouteUuid();
+  });
+
+  const auto pref_lanes = route_handler_->getPreferredLanelets();
+  EXPECT_FALSE(pref_lanes.empty());
+
+  route_handler_->clearRoute();
+  EXPECT_FALSE(route_handler_->isHandlerReady());
+}
 }  // namespace autoware::route_handler::test
