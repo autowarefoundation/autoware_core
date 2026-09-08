@@ -384,8 +384,9 @@ public:
                           [promise_ptr = std::move(promise_ptr)](
                             typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
                             try {
-                              promise_ptr->set_value(
-                                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+                              std::shared_ptr<const typename ServiceT::Response> ros2_response =
+                                ros2_shared_future.get();
+                              promise_ptr->set_value(std::move(ros2_response));
                             } catch (...) {
                               promise_ptr->set_exception(std::current_exception());
                             }
@@ -411,8 +412,9 @@ public:
            shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
             // If an exception is set in the underlying future, propagate it to our promise.
             try {
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+              std::shared_ptr<const typename ServiceT::Response> ros2_response =
+                ros2_shared_future.get();
+              promise_ptr->set_value(std::move(ros2_response));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;

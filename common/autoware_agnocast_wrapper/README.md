@@ -71,11 +71,14 @@ same source compiles in both builds:
 
 A subscription callback may also take the plain `MessageT::ConstSharedPtr`; it needs no macro because it is spelled the same in both builds.
 
-**On the Agnocast path an owning handle must not outlive the subscription that delivered it.** This covers `AUTOWARE_MESSAGE_CONST_SHARED_PTR`, a callback taking `MessageT::ConstSharedPtr`, and the pointer returned by `polling::take_data()`. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription **before** any member that caches a message:
+**On the Agnocast path an owning handle must not outlive the endpoint that delivered it.** This covers `AUTOWARE_MESSAGE_CONST_SHARED_PTR`, a callback taking `MessageT::ConstSharedPtr`, the pointer returned by `polling::take_data()`, and a client response (`AUTOWARE_CLIENT_RESPONSE_PTR`, which aliases the handle the client received). Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription **before** any member that caches a message:
 
 ```cpp
 AUTOWARE_SUBSCRIPTION_PTR(PointCloud2) sub_;   // declared first -> destroyed last
 std::shared_ptr<const PointCloud2> latest_;    // destroyed first -> safe
+
+AUTOWARE_CLIENT_PTR(SrvT) client_;             // same rule for a cached client response
+std::shared_ptr<const SrvT::Response> cached_;
 ```
 
 The DDS path lets the same pointer be held indefinitely, so a node validated only with `ENABLE_AGNOCAST=0` will not show the problem.
@@ -83,6 +86,22 @@ The DDS path lets the same pointer be held indefinitely, so a node validated onl
 `AUTOWARE_CLIENT_PTR(S)` / `AUTOWARE_SERVICE_PTR(S)` and the `AUTOWARE_CLIENT_*FUTURE*` macros resolve to
 the wrapper's own `Client<S>` / `Service<S>` types in **both** builds, so client and service code needs no
 per-build spelling. See [Key Macros](docs/review_guide.md#3-key-macros) for the full macro list.
+
+#### Client responses are plain `std::shared_ptr`
+
+A client hands its response over as `std::shared_ptr<const ServiceT::Response>` in both builds, so
+code that has to pass the response to an interface taking a `std::shared_ptr` needs no conversion:
+
+```cpp
+auto result = client_->async_send_request(std::move(request));
+...
+std::shared_ptr<const SrvT::Response> response = result.get();
+```
+
+The payload is not copied on the Agnocast path either: the returned pointer aliases the received
+handle. **It and every copy of it must be destroyed before the client that produced it** — destroying
+the client drops the kernel-side reference, so a later publish can recycle the entry the copies still
+point at.
 
 Publisher, subscription, client and service handles carry the same read-back accessors in both builds: `get_topic_name()` and `get_actual_qos()` on a publisher or a subscription, `get_service_name()` on a client or a service. The polling subscriber carries `get_topic_name()` but not `get_actual_qos()`. `get_actual_qos()` is the one whose meaning differs: on the Agnocast path it reports the QoS as requested, not RMW-resolved.
 
@@ -345,22 +364,6 @@ void onPointCloud(const PointCloud2::ConstSharedPtr input_msg) {
 ```
 
 The payload is not copied here either, and the pointer may be kept alive beyond the callback, at the same cost as `AUTOWARE_MESSAGE_CONST_SHARED_PTR` — one heap allocation per message, and copies of the pointer are free.
-
-#### Client responses are plain `std::shared_ptr`
-
-A client hands its response over as `std::shared_ptr<const ServiceT::Response>` in both builds, so
-code that has to pass the response to an interface taking a `std::shared_ptr` needs no conversion:
-
-```cpp
-auto result = client_->async_send_request(std::move(request));
-...
-std::shared_ptr<const SrvT::Response> response = result.get();
-```
-
-The payload is not copied on the Agnocast path either: the returned pointer aliases the received
-handle. **It and every copy of it must be destroyed before the client that produced it** — destroying
-the client drops the kernel-side reference, so a later publish can recycle the entry the copies still
-point at.
 
 To use the macros provided by this package in your own package, include the following lines in your `CMakeLists.txt`:
 
