@@ -671,6 +671,38 @@ TEST_F(GnssPoserCharacterization, Construct_WrongParameterType_FailsToStart)
   }
 }
 
+// `gnss_pose_pub_method` accepts exactly 0 (instant), 1 (average) and 2 (median). Any other value
+// makes the node fail to start instead of being silently treated as one of them (before this
+// validation, every non-zero value buffered and every value other than 1 selected the median).
+TEST_F(GnssPoserCharacterization, Construct_UnknownPubMethod_FailsToStart)
+{
+  for (const int method : {-1, 3, 42}) {
+    NodeParams params;
+    params.gnss_pose_pub_method = method;
+    params.buff_epoch = 3;
+    EXPECT_THROW(
+      std::make_shared<autoware::gnss_poser::GNSSPoser>(params.to_options()), std::exception)
+      << "gnss_pose_pub_method=" << method;
+  }
+}
+
+// `buff_epoch` must be at least 1 whatever the method: 0 and negative values make the node fail to
+// start. Before this validation a zero-capacity buffer counted as "full", so the average published
+// NaN coordinates and the median threw inside the callback.
+TEST_F(GnssPoserCharacterization, Construct_BuffEpochBelowOne_FailsToStart)
+{
+  for (const int method : {0, 1, 2}) {
+    for (const int buff_epoch : {0, -1}) {
+      NodeParams params;
+      params.gnss_pose_pub_method = method;
+      params.buff_epoch = buff_epoch;
+      EXPECT_THROW(
+        std::make_shared<autoware::gnss_poser::GNSSPoser>(params.to_options()), std::exception)
+        << "gnss_pose_pub_method=" << method << " buff_epoch=" << buff_epoch;
+    }
+  }
+}
+
 // The node has no built-in defaults: the values README.md and the schema document as defaults live
 // in config/gnss_poser.param.yaml, which the launch file loads. That file must keep constructing
 // the node and read back exactly as documented.
@@ -982,7 +1014,7 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LocalCartesianUtmProjector_UsesM
 }
 
 // =======================================================================================
-// 4. Position buffering (gnss_pose_pub_method = 1 average / 2 median / other)
+// 4. Position buffering (gnss_pose_pub_method = 1 average / 2 median)
 // =======================================================================================
 
 // With method 1 nothing is published until `buff_epoch` fixes have been buffered (each of them
@@ -1113,41 +1145,6 @@ TEST_F(GnssPoserCharacterization, MethodMedian_EvenBuffer_AveragesTwoCentralValu
   expect_point_near(last_pose().pose.position, component_wise_median_of(antenna));
 }
 
-// A `gnss_pose_pub_method` outside the documented 0..2 is accepted: any non-zero value enables
-// buffering and any value other than 1 selects the median.
-//
-// NOTE(characterization): the schema documents the range but the node never validates it. Frozen
-// here so that adding validation is an explicit decision (and a change to this case), not a side
-// effect of the refactoring.
-TEST_F(GnssPoserCharacterization, MethodUnknown_BehavesLikeMedian)
-{
-  NodeParams params;
-  params.gnss_pose_pub_method = 3;
-  params.buff_epoch = 3;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-
-  const std::vector<NavSatFix> fixes = {
-    make_fix(reference_latitude, reference_longitude, reference_altitude + 20.0),
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude),
-    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 10.0)};
-  std::vector<Point> antenna;
-  for (const auto & fix : fixes) {
-    antenna.push_back(project_antenna(fix, projector));
-  }
-
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  send_fix(fixes[1]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
-  EXPECT_TRUE(peer_->poses.empty());  // buffering is active (unlike method 0)
-
-  send_fix(fixes[2]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, component_wise_median_of(antenna));
-}
-
 // Non-fixed messages neither fill nor clear the position buffer: two accepted fixes around one
 // NO_FIX still produce the mean of exactly those two.
 TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByNonFixedMessages)
@@ -1213,52 +1210,6 @@ TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByGatedFixes)
   expect_point_near(
     last_pose().pose.position,
     mean_of({project_antenna(fix1, projector), project_antenna(fix2, projector)}));
-}
-
-// `buff_epoch = 0` with the average publishes NaN coordinates on every output: a zero-capacity
-// buffer is always "full", and the mean of nothing is 0/0. The node does not notice: `gnss_fixed`
-// is true, `gnss_pose_cov` still carries the receiver's position covariance next to the NaN
-// position, and the TF broadcast is NaN as well.
-//
-// NOTE(characterization): this is not a behavior to keep, it is one to be aware of. README says
-// buff_epoch = 0 makes the method lose effect; it does not, and no consumer is told. The median
-// counterpart (method 2, buff_epoch 0) throws std::out_of_range inside the callback and is
-// deliberately not pinned. Rejecting buff_epoch = 0 at construction is a refactoring-phase change.
-TEST_F(GnssPoserCharacterization, MethodAverage_BuffEpochZero_PublishesNaNPosition)
-{
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 0;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  send_projector_info(make_mgrs_projector_info());
-
-  send_fix(make_reference_fix());
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_output_counts(1, 1, 1, 1);
-  EXPECT_TRUE(last_fixed().data);
-  const auto is_nan_point = [](const auto & p) {
-    return std::isnan(p.x) && std::isnan(p.y) && std::isnan(p.z);
-  };
-  EXPECT_TRUE(is_nan_point(last_pose().pose.position));
-  EXPECT_TRUE(is_nan_point(last_pose_cov().pose.pose.position));
-  EXPECT_TRUE(is_nan_point(last_tf().transform.translation));
-  // The covariance still claims the receiver's accuracy for a position that is NaN.
-  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_xx], 1.0);
-}
-
-// `buff_epoch = 0` with method 0 is harmless, because the buffer is never touched.
-TEST_F(GnssPoserCharacterization, MethodInstant_BuffEpochZero_IsHarmless)
-{
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.buff_epoch = 0;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  send_projector_info(make_mgrs_projector_info());
-
-  const auto fix = make_reference_fix();
-  send_fix(fix);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, project_antenna(fix, make_mgrs_projector_info()));
 }
 
 // =======================================================================================

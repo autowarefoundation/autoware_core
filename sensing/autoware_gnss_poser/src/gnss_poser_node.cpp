@@ -21,12 +21,32 @@
 
 #include <algorithm>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 #include <vector>
 
 namespace autoware::gnss_poser
 {
+namespace
+{
+GnssPosePubMethod to_gnss_pose_pub_method(const int value)
+{
+  switch (value) {
+    case 0:
+      return GnssPosePubMethod::Instant;
+    case 1:
+      return GnssPosePubMethod::Average;
+    case 2:
+      return GnssPosePubMethod::Median;
+    default:
+      throw std::invalid_argument(
+        "gnss_pose_pub_method must be 0 (instant), 1 (average) or 2 (median), got " +
+        std::to_string(value));
+  }
+}
+}  // namespace
+
 GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("gnss_poser", node_options),
   tf2_listener_(tf2_buffer_, *this),
@@ -37,7 +57,7 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
   use_gnss_ins_orientation_(declare_parameter<bool>("use_gnss_ins_orientation")),
   msg_gnss_ins_orientation_stamped_(
     std::make_shared<autoware_sensing_msgs::msg::GnssInsOrientationStamped>()),
-  gnss_pose_pub_method_(static_cast<int>(declare_parameter<int>("gnss_pose_pub_method")))
+  gnss_pose_pub_method_(to_gnss_pose_pub_method(declare_parameter<int>("gnss_pose_pub_method")))
 {
   // Subscribe to map_projector_info topic
   sub_map_projector_info_ = create_subscription<autoware_map_msgs::msg::MapProjectorInfo>(
@@ -45,7 +65,10 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
     std::bind(&GNSSPoser::callback_map_projector_info, this, std::placeholders::_1));
 
   // Set up position buffer
-  int buff_epoch = static_cast<int>(declare_parameter<int>("buff_epoch"));
+  const int buff_epoch = declare_parameter<int>("buff_epoch");
+  if (buff_epoch < 1) {
+    throw std::invalid_argument("buff_epoch must be at least 1, got " + std::to_string(buff_epoch));
+  }
   position_buffer_.set_capacity(buff_epoch);
 
   // Set subscribers and publishers
@@ -126,7 +149,7 @@ void GNSSPoser::callback_nav_sat_fix(
   geometry_msgs::msg::Pose gnss_antenna_pose{};
 
   // publish pose immediately
-  if (!gnss_pose_pub_method_) {
+  if (gnss_pose_pub_method_ == GnssPosePubMethod::Instant) {
     gnss_antenna_pose.position = position;
   } else {
     // fill position buffer
@@ -138,7 +161,7 @@ void GNSSPoser::callback_nav_sat_fix(
       return;
     }
     // publish average pose or median pose of position buffer
-    gnss_antenna_pose.position = (gnss_pose_pub_method_ == 1)
+    gnss_antenna_pose.position = (gnss_pose_pub_method_ == GnssPosePubMethod::Average)
                                    ? get_average_position(position_buffer_)
                                    : get_median_position(position_buffer_);
   }
