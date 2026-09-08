@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <limits>
+#include <vector>
 
 namespace autoware::route_handler::test
 {
@@ -495,5 +496,24 @@ TEST_F(TestRouteHandler, TopologicalAndNeighborQueries)
   EXPECT_FALSE(route_handler_->getRightShoulderLanelet(ref_lane).has_value());
   EXPECT_TRUE(route_handler_->isRouteLanelet(ref_lane));
   EXPECT_FALSE(route_handler_->getLanesAfterGoal(10.0).empty());
+}
+
+// Verifies planning and segment creation through the LaneletOrArea overloads.
+TEST_F(TestRouteHandler, LaneletOrAreaPathOverloads)
+{
+  set_test_route("lane_change_test_route.yaml");
+  ASSERT_TRUE(route_handler_->isHandlerReady());
+
+  const auto start_pose = route_handler_->getStartPose();
+  const auto goal_pose = route_handler_->getGoalPose();
+
+  std::vector<lanelet::ConstLaneletOrArea> path_areas;
+  const auto success =
+    route_handler_->planPathLaneletsBetweenCheckpoints(start_pose, goal_pose, &path_areas, false);
+
+  ASSERT_TRUE(success);
+  ASSERT_FALSE(path_areas.empty());
+  const auto segments = route_handler_->createMapSegmentsFromLaneletOrAreaPath(path_areas);
+  EXPECT_FALSE(segments.empty());
 }
 }  // namespace autoware::route_handler::test
