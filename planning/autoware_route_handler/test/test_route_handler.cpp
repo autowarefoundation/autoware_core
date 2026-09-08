@@ -402,4 +402,21 @@ TEST_F(TestRouteHandler, AreaRoutingAndCyclicTopologies)
     << "Cyclic guard failed; infinite loop detected in getLaneletSequence.";
 }
 
+// Verifies bicycle and opposite-direction lane queries on the standard test map.
+TEST_F(TestRouteHandler, TestOppositeAndBicycleLaneQueries)
+{
+  ASSERT_TRUE(route_handler_->isHandlerReady());
+  const auto ref_lane = route_handler_->getLaneletsFromId(4765);
+
+  const auto left_bike = route_handler_->getLeftBicycleLanelet(ref_lane);
+  const auto right_bike = route_handler_->getRightBicycleLanelet(ref_lane);
+  EXPECT_FALSE(left_bike.has_value());
+  EXPECT_FALSE(right_bike.has_value());
+
+  const auto left_opp = route_handler_->getLeftOppositeLanelets(ref_lane);
+  const auto right_opp = route_handler_->getRightOppositeLanelets(ref_lane);
+  EXPECT_TRUE(left_opp.empty());
+  EXPECT_TRUE(right_opp.empty());
+}
+
 }  // namespace autoware::route_handler::test
