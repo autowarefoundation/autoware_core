@@ -92,6 +92,12 @@ constexpr double golden_x = 86128.181788819958;
 constexpr double golden_y = 43002.610125367064;
 constexpr double golden_z = reference_altitude;
 constexpr double golden_tolerance = 1e-4;  // [m]
+// EGM2008 geoid height at the reference point, from GeographicLib's GeoidEval on the egm2008-1
+// dataset: independent of the node and of autoware_geography_utils.
+constexpr double reference_geoid_height = 36.12;  // [m]
+// The library and GeoidEval interpolate the same grid; 1 cm covers their difference while any
+// missing (0 m) or wrongly signed (+36 m) conversion is far outside.
+constexpr double geoid_height_tolerance = 0.01;  // [m]
 
 // A deterministic, clearly artificial header stamp so that "stamp copied from input" and
 // "stamp taken from the node clock" can be told apart.
@@ -798,8 +804,11 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_StillPublishesEve
   EXPECT_EQ(peer_->poses.size(), 3U);
 }
 
-// The projector's `vertical_datum` is honored: with EGM2008 the height is converted from the WGS84
-// ellipsoid, by tens of meters around Tokyo. Skipped when the geoid dataset is not installed.
+// The projector's `vertical_datum` is honored: with EGM2008 the WGS84 ellipsoidal altitude is
+// converted to an orthometric height, i.e. lowered by the geoid height (about 36 m at the reference
+// point), while x and y are the MGRS coordinates as before. The expectation is independent ground
+// truth (the golden coordinates and GeoidEval's geoid height). Skipped when the geoid dataset is
+// not installed.
 TEST_F(GnssPoserCharacterization, MethodInstant_Egm2008VerticalDatum_ConvertsHeightFromWgs84)
 {
   if (!is_egm2008_dataset_available()) {
@@ -815,14 +824,10 @@ TEST_F(GnssPoserCharacterization, MethodInstant_Egm2008VerticalDatum_ConvertsHei
   send_fix(fix);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
 
-  const auto expected = project_antenna(fix, projector);
-  expect_point_near(last_pose().pose.position, expected, 1e-9);
-  // The WGS84 ellipsoidal height and the EGM2008 orthometric height differ by the geoid height,
-  // about 36 m at the reference point, so a converted z is clearly away from the input altitude
-  // while an unconverted one equals it exactly. This is only a sanity check that the conversion
-  // happened (the exact value is compared with the library above); the 1.0 m bound has no meaning
-  // of its own, any value between the conversion noise and the ~36 m offset would do.
-  EXPECT_GT(std::abs(last_pose().pose.position.z - reference_altitude), 1.0);
+  expect_point_near(
+    last_pose().pose.position,
+    make_point(golden_x, golden_y, reference_altitude - reference_geoid_height),
+    geoid_height_tolerance);
 }
 
 // Projector info is forwarded to the projection library as-is: with LOCAL_CARTESIAN_UTM the map
@@ -841,10 +846,9 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LocalCartesianUtmProjector_UsesM
   send_fix(fix);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
 
-  expect_point_near(last_pose().pose.position, project_antenna(fix, projector), 1e-9);
-  EXPECT_NEAR(last_pose().pose.position.x, 0.0, 1e-6);
-  EXPECT_NEAR(last_pose().pose.position.y, 0.0, 1e-6);
-  EXPECT_NEAR(last_pose().pose.position.z, reference_altitude - (-10.0), 1e-6);
+  // Literal expectation: the fix sits on the origin, so only the altitude offset remains.
+  expect_point_near(
+    last_pose().pose.position, make_point(0.0, 0.0, reference_altitude - (-10.0)), 1e-6);
 }
 
 // =======================================================================================
