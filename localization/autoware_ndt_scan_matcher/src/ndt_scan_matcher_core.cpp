@@ -241,8 +241,7 @@ NDTScanMatcher::get_differential_point_cloud_map(
     status = result.wait_for(std::chrono::seconds(1));
   }
 
-  return autoware::agnocast_wrapper::to_shared_ptr<MapUpdateModule::GetDifferentialPointCloudMap>(
-    result.get());
+  return result.get();
 }
 
 void NDTScanMatcher::apply_diagnostics_update(
