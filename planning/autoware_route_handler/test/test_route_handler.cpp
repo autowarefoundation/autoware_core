@@ -381,4 +381,25 @@ TEST_F(TestRouteHandler, ManeuverTargetingAndIntervals)
   EXPECT_FALSE(target_lane.has_value());
 }
 
+// Verifies area-routing state and termination when traversing a cyclic route.
+TEST_F(TestRouteHandler, AreaRoutingAndCyclicTopologies)
+{
+  set_route_handler("overlap_map.osm");
+  set_test_route("overlap_test_route.yaml");
+  ASSERT_TRUE(route_handler_->isHandlerReady());
+
+  EXPECT_FALSE(route_handler_->allowArea());
+  route_handler_->setAllowArea(true);
+  EXPECT_TRUE(route_handler_->allowArea());
+
+  const auto start_lane = route_handler_->getLaneletsFromId(277);
+  const auto sequence =
+    route_handler_->getLaneletSequence(start_lane, 0.0, std::numeric_limits<double>::max());
+
+  ASSERT_FALSE(sequence.empty());
+
+  EXPECT_LT(sequence.size(), static_cast<std::size_t>(100))
+    << "Cyclic guard failed; infinite loop detected in getLaneletSequence.";
+}
+
 }  // namespace autoware::route_handler::test
