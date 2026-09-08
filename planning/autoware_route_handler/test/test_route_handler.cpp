@@ -516,4 +516,47 @@ TEST_F(TestRouteHandler, LaneletOrAreaPathOverloads)
   const auto segments = route_handler_->createMapSegmentsFromLaneletOrAreaPath(path_areas);
   EXPECT_FALSE(segments.empty());
 }
+
+// Verifies routing, segment conversion, shared-boundary traversal, and sequence helpers.
+TEST_F(TestRouteHandler, DeepAlgorithmExecution)
+{
+  set_test_route("lane_change_test_route.yaml");
+  ASSERT_TRUE(route_handler_->isHandlerReady());
+
+  const auto start_pose = route_handler_->getStartPose();
+  const auto goal_pose = route_handler_->getGoalPose();
+  const auto ref_lane = route_handler_->getLaneletsFromId(4765);
+  lanelet::ConstLanelets lane_vector = {ref_lane};
+
+  lanelet::ConstLanelets drivable_path;
+  const auto found_drivable =
+    route_handler_->planPathLaneletsBetweenCheckpoints(start_pose, goal_pose, &drivable_path, true);
+  ASSERT_TRUE(found_drivable);
+  ASSERT_FALSE(drivable_path.empty());
+
+  EXPECT_NO_THROW({
+    auto segments = route_handler_->createMapSegments(lane_vector);
+    EXPECT_FALSE(segments.empty());
+
+    std::vector<lanelet::ConstLaneletOrArea> area_vector;
+    area_vector.emplace_back(ref_lane);
+    auto area_segments = route_handler_->createMapSegmentsFromLaneletOrAreaPath(area_vector);
+    EXPECT_FALSE(area_segments.empty());
+  });
+
+  EXPECT_NO_THROW({
+    (void)route_handler_->getAllLeftSharedLinestringLanelets(ref_lane, true, true);
+    (void)route_handler_->getAllLeftSharedLinestringLanelets(ref_lane, false, false);
+    (void)route_handler_->getAllRightSharedLinestringLanelets(ref_lane, true, true);
+    (void)route_handler_->getAllRightSharedLinestringLanelets(ref_lane, false, false);
+  });
+
+  EXPECT_NO_THROW({
+    (void)route_handler_->getPrecedingLaneletSequence(ref_lane, 50.0);
+    (void)route_handler_->getShoulderLaneletSequence(ref_lane, start_pose, 10.0, 10.0);
+    (void)route_handler_->get_shoulder_lanelet_sequence(ref_lane, 10.0, 10.0);
+    (void)route_handler_->getLaneChangeTargetExceptPreferredLane(lane_vector, Direction::RIGHT);
+    (void)route_handler_->getLaneChangeTargetExceptPreferredLane(lane_vector, Direction::LEFT);
+  });
+}
 }  // namespace autoware::route_handler::test
