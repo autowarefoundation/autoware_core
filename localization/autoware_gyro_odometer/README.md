@@ -75,3 +75,4 @@
 | `vehicle_twist_queue_size`       | the size of vehicle_twist_queue.                                                                                    | none                            | none                                              |
 | `imu_queue_size`                 | the size of gyro_queue.                                                                                             | none                            | none                                              |
 | `is_succeed_transform_imu`       | whether transform imu is succeed or not.                                                                            | none                            | failed                                            |
+| `is_frame_id_consistent`         | whether the two input topics carry the same `frame_id`.                                                             | none                            | the two inputs carry different frames             |
