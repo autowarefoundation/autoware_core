@@ -419,4 +419,22 @@ TEST_F(TestRouteHandler, TestOppositeAndBicycleLaneQueries)
   EXPECT_TRUE(right_opp.empty());
 }
 
+// Verifies pull-over, pull-out, and dead-end queries for the default route.
+TEST_F(TestRouteHandler, TestManeuverSpecificQueries)
+{
+  ASSERT_TRUE(route_handler_->isHandlerReady());
+
+  const auto goal_pose = route_handler_->getGoalPose();
+  const auto pull_over_target = route_handler_->getPullOverTarget(goal_pose);
+  EXPECT_FALSE(pull_over_target.has_value());
+
+  const auto start_pose = route_handler_->getStartPose();
+  const auto pull_out_start =
+    route_handler_->getPullOutStartLane(start_pose, 2.0);  // 2.0m vehicle width
+  EXPECT_FALSE(pull_out_start.has_value());
+
+  const auto ref_lane = route_handler_->getLaneletsFromId(4765);
+  EXPECT_FALSE(route_handler_->isDeadEndLanelet(ref_lane));
+}
+
 }  // namespace autoware::route_handler::test
