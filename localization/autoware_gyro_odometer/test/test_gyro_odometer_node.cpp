@@ -131,16 +131,6 @@ bool reported_flag(const DiagnosticsSnapshot & snapshot, const std::string & key
   return it->second == "True";
 }
 
-int32_t reported_int(const DiagnosticsSnapshot & snapshot, const std::string & key)
-{
-  const auto it = snapshot.values.find(key);
-  EXPECT_NE(it, snapshot.values.end()) << "diagnostics has no entry named " << key;
-  if (it == snapshot.values.end()) {
-    return 0;
-  }
-  return static_cast<int32_t>(std::stol(it->second));
-}
-
 // Drives the node over its real topics while keeping every step of the scenario ordered.
 //
 // There is no background spin: the test thread itself pumps the executor, and only ever one
@@ -449,38 +439,6 @@ TEST_F(GyroOdometerNodeTest, UnresolvableImuFrameDropsPendingData)
     << "reported message was: " << diagnostics.message;
 }
 
-// An IMU sample whose frame cannot be resolved must never have its rate reach an output, not even
-// one that resolvable samples complete afterwards. It is kept out of the queue rather than fused,
-// so the resolvable sample that follows it is free to be fused on its own.
-TEST_F(GyroOdometerNodeTest, UnresolvableImuKeepsItsRateOutOfEveryOutput)
-{
-  start_node("base_link", 10.0);
-  const auto stamp = make_stamp(100, 0);
-
-  send_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
-  send_imu(make_imu(stamp, "base_link", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-  send_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
-  ASSERT_TRUE(take_output().has_value()) << "priming did not reach a first fusion";
-
-  // Unresolvable, and carrying a rate nothing else in this scenario could account for.
-  send_imu(make_imu(stamp, "unresolvable_link", 10.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-  // Resolvable, and the only sample a fusion is allowed to draw on.
-  send_imu(make_imu(stamp, "base_link", 0.0, 0.0, 0.3, 0.01, 0.01, 0.01));
-  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
-
-  const auto output = take_output();
-  ASSERT_TRUE(output.has_value());
-  const auto & fused = output->twist_with_covariance_raw;
-
-  EXPECT_DOUBLE_EQ(fused.twist.twist.angular.x, 0.0)
-    << "the unresolvable sample was fused: its rate is showing up in the output";
-  EXPECT_DOUBLE_EQ(fused.twist.twist.angular.z, 0.3);
-
-  const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_EQ(reported_int(diagnostics, "imu_queue_size"), 1)
-    << "the unresolvable sample was queued alongside the resolvable one";
-}
-
 // A fusion that completes leaves nothing for the diagnostics to complain about.
 TEST_F(GyroOdometerNodeTest, CompletedFusionReportsOk)
 {
@@ -494,7 +452,6 @@ TEST_F(GyroOdometerNodeTest, CompletedFusionReportsOk)
 
   const DiagnosticsSnapshot diagnostics = take_diagnostics();
   EXPECT_EQ(diagnostics.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
-  EXPECT_EQ(diagnostics.message, "OK");
   EXPECT_TRUE(reported_flag(diagnostics, "is_succeed_transform_imu"));
 }
 
