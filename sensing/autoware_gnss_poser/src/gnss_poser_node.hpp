@@ -19,29 +19,31 @@
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>
 #include <rclcpp/rclcpp.hpp>
-#include <tf2/LinearMath/Transform.hpp>
 #include <tf2/transform_datatypes.hpp>
 
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
-
-#include <boost/circular_buffer.hpp>
 
 #include <string>
 
 namespace autoware::gnss_poser
 {
+// ROS layer of the GNSS poser: parameters, subscriptions, the antenna TF lookup, logging and
+// publishing. The pose computation itself is GnssPoser (gnss_poser.hpp).
 class GnssPoserNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit GnssPoserNode(const rclcpp::NodeOptions & node_options);
 
 private:
+  GnssPoserParams declare_gnss_poser_params();
+
   void callback_map_projector_info(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::MapProjectorInfo) & msg);
   void callback_nav_sat_fix(
@@ -56,7 +58,8 @@ private:
     const builtin_interfaces::msg::Time & stamp);
   void publish_fixed(const builtin_interfaces::msg::Time & stamp, bool fixed);
   void publish_pose(
-    const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg, const tf2::Transform & tf_map2base_link);
+    const builtin_interfaces::msg::Time & stamp,
+    const geometry_msgs::msg::PoseWithCovariance & pose_with_covariance);
   void publish_tf(
     const std::string & frame_id, const std::string & child_frame_id,
     const geometry_msgs::msg::PoseStamped & pose_msg);
@@ -74,23 +77,11 @@ private:
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) pose_cov_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::BoolStamped) fixed_pub_;
 
-  autoware_map_msgs::msg::MapProjectorInfo projector_info_;
   const std::string base_frame_;
   const std::string gnss_base_frame_;
   const std::string map_frame_;
-  bool received_map_projector_info_ = false;
-  bool use_gnss_ins_orientation_;
 
-  boost::circular_buffer<geometry_msgs::msg::Point> position_buffer_;
-
-  // Previous antenna position used to derive orientation from motion. Owned per instance so the
-  // orientation-from-motion path is deterministic and reset on construction.
-  geometry_msgs::msg::Point prev_position_;
-  bool has_prev_position_ = false;
-
-  autoware_sensing_msgs::msg::GnssInsOrientationStamped::SharedPtr
-    msg_gnss_ins_orientation_stamped_;
-  GnssPosePubMethod gnss_pose_pub_method_;
+  GnssPoser gnss_poser_;
 };
 }  // namespace autoware::gnss_poser
 
