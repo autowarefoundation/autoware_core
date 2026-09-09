@@ -147,7 +147,7 @@ int32_t reported_int(const DiagnosticsSnapshot & snapshot, const std::string & k
 // message is in flight, so the node cannot observe the two input topics in an order the scenario
 // did not ask for. Time is simulated and only moves when the scenario moves it, which is also what
 // makes the diagnostics timer fire at a point the scenario chooses.
-class GyroOdometerNodeCharacterization : public ::testing::Test
+class GyroOdometerNodeTest : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -348,7 +348,7 @@ private:
 // Only the two arrival flags are pinned here. The reported level and the rest of the message are
 // left alone on purpose: the transform result and both message ages are reported before any input
 // has ever set them, so what they contribute to the message is not something to hold the node to.
-TEST_F(GyroOdometerNodeCharacterization, NoInputReportsNeitherMessageArrived)
+TEST_F(GyroOdometerNodeTest, NoInputReportsNeitherMessageArrived)
 {
   start_node("base_link", 10.0);
 
@@ -389,7 +389,7 @@ TEST(GyroOdometer, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals)
 
 // A completed pair puts the longitudinal velocity of the vehicle twist and the angular velocity of
 // the IMU on all four output topics.
-TEST_F(GyroOdometerNodeCharacterization, CompletedPairIsPublishedOnAllFourTopics)
+TEST_F(GyroOdometerNodeTest, CompletedPairIsPublishedOnAllFourTopics)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
@@ -427,7 +427,7 @@ TEST_F(GyroOdometerNodeCharacterization, CompletedPairIsPublishedOnAllFourTopics
 
 // An IMU frame that cannot be resolved into the output frame drops the pending data instead of
 // fusing it, and says so through the diagnostics.
-TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuFrameDropsPendingData)
+TEST_F(GyroOdometerNodeTest, UnresolvableImuFrameDropsPendingData)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
@@ -452,7 +452,7 @@ TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuFrameDropsPendingData)
 // An IMU sample whose frame cannot be resolved must never have its rate reach an output, not even
 // one that resolvable samples complete afterwards. It is kept out of the queue rather than fused,
 // so the resolvable sample that follows it is free to be fused on its own.
-TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuKeepsItsRateOutOfEveryOutput)
+TEST_F(GyroOdometerNodeTest, UnresolvableImuKeepsItsRateOutOfEveryOutput)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
@@ -482,7 +482,7 @@ TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuKeepsItsRateOutOfEveryOu
 }
 
 // A fusion that completes leaves nothing for the diagnostics to complain about.
-TEST_F(GyroOdometerNodeCharacterization, CompletedFusionReportsOk)
+TEST_F(GyroOdometerNodeTest, CompletedFusionReportsOk)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
@@ -500,7 +500,7 @@ TEST_F(GyroOdometerNodeCharacterization, CompletedFusionReportsOk)
 
 // An IMU sample in an unresolvable frame is reported as a transform failure; being too old on top
 // of that is not reported, because the sample never reaches the staleness judgment.
-TEST_F(GyroOdometerNodeCharacterization, StaleAndUnresolvableImuReportsTheTransformFailure)
+TEST_F(GyroOdometerNodeTest, StaleAndUnresolvableImuReportsTheTransformFailure)
 {
   start_node("base_link", 1.0);
   const auto stamp = make_stamp(100, 0);
@@ -523,7 +523,7 @@ TEST_F(GyroOdometerNodeCharacterization, StaleAndUnresolvableImuReportsTheTransf
 
 // An unresolvable IMU sample arriving before any vehicle twist has to be survivable: there is no
 // vehicle twist yet whose age could be worked out, and the node still has to carry on reporting.
-TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuBeforeAnyVehicleTwistIsSurvivable)
+TEST_F(GyroOdometerNodeTest, UnresolvableImuBeforeAnyVehicleTwistIsSurvivable)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
@@ -538,7 +538,7 @@ TEST_F(GyroOdometerNodeCharacterization, UnresolvableImuBeforeAnyVehicleTwistIsS
 
 // The transform status describes the IMU sample that arrived most recently, whether or not there
 // was anything to fuse it against.
-TEST_F(GyroOdometerNodeCharacterization, ImuAloneStillReportsItsTransformStatus)
+TEST_F(GyroOdometerNodeTest, ImuAloneStillReportsItsTransformStatus)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
@@ -553,7 +553,7 @@ TEST_F(GyroOdometerNodeCharacterization, ImuAloneStillReportsItsTransformStatus)
 
 // With the IMU frame resolvable, the queued angular velocity is rotated by the looked-up transform
 // before it is fused.
-TEST_F(GyroOdometerNodeCharacterization, ResolvableImuFrameRotatesTheAngularVelocity)
+TEST_F(GyroOdometerNodeTest, ResolvableImuFrameRotatesTheAngularVelocity)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
@@ -583,7 +583,7 @@ TEST_F(GyroOdometerNodeCharacterization, ResolvableImuFrameRotatesTheAngularVelo
 // Staleness is judged between the two inputs' stamps, not against the node clock: a pair whose
 // stamps agree with each other fuses however far the clock has moved past them, and the ages the
 // diagnostics report are measured between the stamps as well.
-TEST_F(GyroOdometerNodeCharacterization, MutuallyFreshPairFusesRegardlessOfTheClock)
+TEST_F(GyroOdometerNodeTest, MutuallyFreshPairFusesRegardlessOfTheClock)
 {
   start_node("base_link", 1.0);
   const auto stamp = make_stamp(100, 0);
@@ -607,7 +607,7 @@ TEST_F(GyroOdometerNodeCharacterization, MutuallyFreshPairFusesRegardlessOfTheCl
 
 // A vehicle twist waiting for its IMU counterpart survives an unresolvable sample in between: the
 // next resolvable sample fuses with it as if the unresolvable one had never been published.
-TEST_F(GyroOdometerNodeCharacterization, PendingDataSurvivesAnUnresolvableImu)
+TEST_F(GyroOdometerNodeTest, PendingDataSurvivesAnUnresolvableImu)
 {
   start_node("base_link", 10.0);
   const auto stamp = make_stamp(100, 0);
