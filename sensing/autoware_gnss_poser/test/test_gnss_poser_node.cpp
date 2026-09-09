@@ -70,12 +70,12 @@ autoware_map_msgs::msg::MapProjectorInfo createMapProjectorInfoMsg()
   return msg;
 }
 
-class GNSSPoserConstructorTest : public ::testing::Test
+class GnssPoserNodeConstructorTest : public ::testing::Test
 {
 };
 
 // Test node creation
-TEST_F(GNSSPoserConstructorTest, TestNodeCreation)
+TEST_F(GnssPoserNodeConstructorTest, TestNodeCreation)
 {
   rclcpp::NodeOptions options;
   options.append_parameter_override("base_frame", "base_link");
@@ -85,7 +85,7 @@ TEST_F(GNSSPoserConstructorTest, TestNodeCreation)
   options.append_parameter_override("buff_epoch", 10);
   options.append_parameter_override("gnss_pose_pub_method", 0);
 
-  EXPECT_NO_THROW({ auto node = std::make_shared<autoware::gnss_poser::GNSSPoser>(options); });
+  EXPECT_NO_THROW({ auto node = std::make_shared<autoware::gnss_poser::GnssPoserNode>(options); });
 }
 
 // Define a node class for publishing messages
@@ -127,7 +127,7 @@ public:
   std::shared_ptr<tf2_ros::TransformBroadcaster> tf_broadcaster_;
 };
 
-class GNSSPoserTest : public ::testing::Test
+class GnssPoserNodeTest : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -145,7 +145,7 @@ protected:
     options.append_parameter_override("gnss_pose_pub_method", 0);  // Direct position publishing
 
     // Create the node under test
-    gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GNSSPoser>(options);
+    gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GnssPoserNode>(options);
 
     // Create single executor for both nodes
     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
@@ -225,7 +225,7 @@ protected:
     gnss_poser_node_.reset();
 
     // Create new node and add to the same executor
-    gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GNSSPoser>(options);
+    gnss_poser_node_ = std::make_shared<autoware::gnss_poser::GnssPoserNode>(options);
     executor_->add_node(gnss_poser_node_->get_node_base_interface());
 
     // Re-create test subscriptions on the new node
@@ -236,7 +236,7 @@ protected:
     executor_->spin_some(std::chrono::milliseconds(10));
   }
 
-  std::shared_ptr<autoware::gnss_poser::GNSSPoser> gnss_poser_node_;
+  std::shared_ptr<autoware::gnss_poser::GnssPoserNode> gnss_poser_node_;
   std::shared_ptr<TestPublisherNode> publisher_node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
 
@@ -254,7 +254,7 @@ protected:
 };
 
 // Test GNSS fixed status handling
-TEST_F(GNSSPoserTest, TestFixedGNSS)
+TEST_F(GnssPoserNodeTest, TestFixedGNSS)
 {
   // Publish GPS Fix info (STATUS_FIX)
   auto nav_sat_fix = createNavSatFixMsg(35.681236, 139.767125, 41.0);
@@ -282,7 +282,7 @@ TEST_F(GNSSPoserTest, TestFixedGNSS)
 }
 
 // Test GNSS non-fixed status handling
-TEST_F(GNSSPoserTest, TestNonFixedGNSS)
+TEST_F(GnssPoserNodeTest, TestNonFixedGNSS)
 {
   fixed_status_received_ = false;
   pose_received_ = false;
@@ -310,7 +310,7 @@ TEST_F(GNSSPoserTest, TestNonFixedGNSS)
 }
 
 // Test GNSS fixed status and position handling
-TEST_F(GNSSPoserTest, TestGNSSFixProcessing)
+TEST_F(GnssPoserNodeTest, TestGNSSFixProcessing)
 {
   // Publish map projection info
   auto map_projector_info = createMapProjectorInfoMsg();
@@ -351,7 +351,7 @@ TEST_F(GNSSPoserTest, TestGNSSFixProcessing)
 }
 
 // Test covariance handling
-TEST_F(GNSSPoserTest, TestCovarianceProcessing)
+TEST_F(GnssPoserNodeTest, TestCovarianceProcessing)
 {
   // Publish map projection info
   auto map_projector_info = createMapProjectorInfoMsg();
@@ -397,7 +397,7 @@ TEST_F(GNSSPoserTest, TestCovarianceProcessing)
 }
 
 // Test different orientation source configurations
-TEST_F(GNSSPoserTest, TestOrientationSources)
+TEST_F(GnssPoserNodeTest, TestOrientationSources)
 {
   // Create node without using GNSS-INS orientation
   rclcpp::NodeOptions options;
@@ -439,7 +439,7 @@ TEST_F(GNSSPoserTest, TestOrientationSources)
 }
 
 // Test different publishing methods
-TEST_F(GNSSPoserTest, TestPositionBufferMethods)
+TEST_F(GnssPoserNodeTest, TestPositionBufferMethods)
 {
   // Create node using position buffer
   rclcpp::NodeOptions options;
@@ -476,7 +476,7 @@ TEST_F(GNSSPoserTest, TestPositionBufferMethods)
 }
 
 // Add new test case to test static transform functionality
-TEST_F(GNSSPoserTest, TestStaticTransform)
+TEST_F(GnssPoserNodeTest, TestStaticTransform)
 {
   // Publish map projection info
   auto map_projector_info = createMapProjectorInfoMsg();
@@ -529,7 +529,7 @@ TEST_F(GNSSPoserTest, TestStaticTransform)
 }
 
 // Add test for median position calculation functionality
-TEST_F(GNSSPoserTest, TestMedianPosition)
+TEST_F(GnssPoserNodeTest, TestMedianPosition)
 {
   // Create node using median method
   rclcpp::NodeOptions options;
@@ -612,33 +612,33 @@ double yawOf(const geometry_msgs::msg::Quaternion & quaternion)
 }
 }  // namespace
 
-// Direct unit tests for the pure static helpers of GNSSPoser. The fixture is declared a friend of
-// GNSSPoser so it can reach the private static methods without spinning up a node/executor.
-class GNSSPoserHelpersTest : public ::testing::Test
+// Direct unit tests for the pure static helpers of GnssPoserNode. The fixture is declared a friend
+// of GnssPoserNode so it can reach the private static methods without spinning up a node/executor.
+class GnssPoserHelpersTest : public ::testing::Test
 {
 protected:
   static geometry_msgs::msg::Point getMedianPosition(
     const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
   {
-    return autoware::gnss_poser::GNSSPoser::get_median_position(position_buffer);
+    return autoware::gnss_poser::GnssPoserNode::get_median_position(position_buffer);
   }
 
   static geometry_msgs::msg::Point getAveragePosition(
     const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
   {
-    return autoware::gnss_poser::GNSSPoser::get_average_position(position_buffer);
+    return autoware::gnss_poser::GnssPoserNode::get_average_position(position_buffer);
   }
 
   static geometry_msgs::msg::Quaternion getQuaternionByPositionDifference(
     const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point)
   {
-    return autoware::gnss_poser::GNSSPoser::get_quaternion_by_position_difference(
+    return autoware::gnss_poser::GnssPoserNode::get_quaternion_by_position_difference(
       point, prev_point);
   }
 };
 
 // Odd-sized buffer: median is the middle element of each coordinate.
-TEST_F(GNSSPoserHelpersTest, MedianPositionOddSize)
+TEST_F(GnssPoserHelpersTest, MedianPositionOddSize)
 {
   const auto buffer = makePositionBuffer({
     makePoint(3.0, 30.0, 300.0),
@@ -653,7 +653,7 @@ TEST_F(GNSSPoserHelpersTest, MedianPositionOddSize)
 }
 
 // Even-sized buffer: median averages the two central elements (previously uncovered branch).
-TEST_F(GNSSPoserHelpersTest, MedianPositionEvenSize)
+TEST_F(GnssPoserHelpersTest, MedianPositionEvenSize)
 {
   const auto buffer = makePositionBuffer({
     makePoint(4.0, 40.0, 400.0),
@@ -670,7 +670,7 @@ TEST_F(GNSSPoserHelpersTest, MedianPositionEvenSize)
 }
 
 // Average asserts the actual mean values (previously only existence was checked).
-TEST_F(GNSSPoserHelpersTest, AveragePositionValues)
+TEST_F(GnssPoserHelpersTest, AveragePositionValues)
 {
   const auto buffer = makePositionBuffer({
     makePoint(1.0, 10.0, 100.0),
@@ -685,7 +685,7 @@ TEST_F(GNSSPoserHelpersTest, AveragePositionValues)
 }
 
 // Orientation-from-motion across the cardinal directions, plus the identical-points edge case.
-TEST_F(GNSSPoserHelpersTest, QuaternionByPositionDifferenceHeadings)
+TEST_F(GnssPoserHelpersTest, QuaternionByPositionDifferenceHeadings)
 {
   const auto origin = makePoint(0.0, 0.0, 0.0);
 

@@ -47,7 +47,7 @@ GnssPosePubMethod to_gnss_pose_pub_method(const int value)
 }
 }  // namespace
 
-GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
+GnssPoserNode::GnssPoserNode(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("gnss_poser", node_options),
   tf2_listener_(tf2_buffer_, *this),
   tf2_broadcaster_(*this),
@@ -62,7 +62,7 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
   // Subscribe to map_projector_info topic
   sub_map_projector_info_ = create_subscription<autoware_map_msgs::msg::MapProjectorInfo>(
     "/map/map_projector_info", rclcpp::QoS{1}.transient_local(),
-    std::bind(&GNSSPoser::callback_map_projector_info, this, std::placeholders::_1));
+    std::bind(&GnssPoserNode::callback_map_projector_info, this, std::placeholders::_1));
 
   // Set up position buffer
   const int buff_epoch = declare_parameter<int>("buff_epoch");
@@ -74,11 +74,12 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
   // Set subscribers and publishers
   nav_sat_fix_sub_ = create_subscription<sensor_msgs::msg::NavSatFix>(
     "fix", rclcpp::QoS{1},
-    std::bind(&GNSSPoser::callback_nav_sat_fix, this, std::placeholders::_1));
+    std::bind(&GnssPoserNode::callback_nav_sat_fix, this, std::placeholders::_1));
   autoware_orientation_sub_ =
     create_subscription<autoware_sensing_msgs::msg::GnssInsOrientationStamped>(
       "autoware_orientation", rclcpp::QoS{1},
-      std::bind(&GNSSPoser::callback_gnss_ins_orientation_stamped, this, std::placeholders::_1));
+      std::bind(
+        &GnssPoserNode::callback_gnss_ins_orientation_stamped, this, std::placeholders::_1));
 
   pose_pub_ = create_publisher<geometry_msgs::msg::PoseStamped>("gnss_pose", rclcpp::QoS{1});
   pose_cov_pub_ = create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
@@ -93,14 +94,14 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
   msg_gnss_ins_orientation_stamped_->orientation.rmse_rotation_z = 1.0;
 }
 
-void GNSSPoser::callback_map_projector_info(
+void GnssPoserNode::callback_map_projector_info(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::MapProjectorInfo) & msg)
 {
   projector_info_ = *msg;
   received_map_projector_info_ = true;
 }
 
-void GNSSPoser::callback_nav_sat_fix(
+void GnssPoserNode::callback_nav_sat_fix(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::NavSatFix) & nav_sat_fix_msg_ptr)
 {
   // Return immediately if map_projector_info has not been received yet.
@@ -238,25 +239,25 @@ void GNSSPoser::callback_nav_sat_fix(
   publish_tf(map_frame_, gnss_base_frame_, gnss_base_pose_msg);
 }
 
-void GNSSPoser::callback_gnss_ins_orientation_stamped(
+void GnssPoserNode::callback_gnss_ins_orientation_stamped(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
   msg)
 {
   *msg_gnss_ins_orientation_stamped_ = *msg;
 }
 
-bool GNSSPoser::is_fixed(const sensor_msgs::msg::NavSatStatus & nav_sat_status_msg)
+bool GnssPoserNode::is_fixed(const sensor_msgs::msg::NavSatStatus & nav_sat_status_msg)
 {
   return nav_sat_status_msg.status >= sensor_msgs::msg::NavSatStatus::STATUS_FIX;
 }
 
-bool GNSSPoser::can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg)
+bool GnssPoserNode::can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg)
 {
   return nav_sat_fix_msg.position_covariance_type >
          sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
 }
 
-geometry_msgs::msg::Point GNSSPoser::get_median_position(
+geometry_msgs::msg::Point GnssPoserNode::get_median_position(
   const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
 {
   auto get_median = [](std::vector<double> array) {
@@ -284,7 +285,7 @@ geometry_msgs::msg::Point GNSSPoser::get_median_position(
   return median_point;
 }
 
-geometry_msgs::msg::Point GNSSPoser::get_average_position(
+geometry_msgs::msg::Point GnssPoserNode::get_average_position(
   const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
 {
   std::vector<double> array_x;
@@ -306,7 +307,7 @@ geometry_msgs::msg::Point GNSSPoser::get_average_position(
   return average_point;
 }
 
-geometry_msgs::msg::Quaternion GNSSPoser::get_quaternion_by_position_difference(
+geometry_msgs::msg::Quaternion GnssPoserNode::get_quaternion_by_position_difference(
   const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point)
 {
   const double yaw = std::atan2(point.y - prev_point.y, point.x - prev_point.x);
@@ -315,7 +316,7 @@ geometry_msgs::msg::Quaternion GNSSPoser::get_quaternion_by_position_difference(
   return tf2::toMsg(quaternion);
 }
 
-bool GNSSPoser::get_static_transform(
+bool GnssPoserNode::get_static_transform(
   const std::string & target_frame, const std::string & source_frame,
   const geometry_msgs::msg::TransformStamped::SharedPtr transform_stamped_ptr,
   const builtin_interfaces::msg::Time & stamp)
@@ -360,7 +361,7 @@ bool GNSSPoser::get_static_transform(
   return true;
 }
 
-void GNSSPoser::publish_tf(
+void GnssPoserNode::publish_tf(
   const std::string & frame_id, const std::string & child_frame_id,
   const geometry_msgs::msg::PoseStamped & pose_msg)
 {
@@ -385,4 +386,4 @@ void GNSSPoser::publish_tf(
 }  // namespace autoware::gnss_poser
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::gnss_poser::GNSSPoser)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::gnss_poser::GnssPoserNode)

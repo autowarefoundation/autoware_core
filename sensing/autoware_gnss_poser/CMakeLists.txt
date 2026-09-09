@@ -17,7 +17,7 @@ ament_auto_add_library(gnss_poser_node SHARED
 )
 
 autoware_agnocast_wrapper_register_node(gnss_poser_node
-  PLUGIN "autoware::gnss_poser::GNSSPoser"
+  PLUGIN "autoware::gnss_poser::GnssPoserNode"
   EXECUTABLE gnss_poser
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
   ROS2_EXECUTOR SingleThreadedExecutor
@@ -32,7 +32,7 @@ if(BUILD_TESTING AND NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST
   target_link_libraries(test_${PROJECT_NAME} gnss_poser_node)
   target_include_directories(test_${PROJECT_NAME} PRIVATE src)
 
-  # Characterization tests: pin the externally observable behavior of GNSSPoser
+  # Characterization tests: pin the externally observable behavior of GnssPoserNode
   # (see test/test_gnss_poser_node_characterization.cpp for the rationale).
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node_characterization
     test/test_gnss_poser_node_characterization.cpp

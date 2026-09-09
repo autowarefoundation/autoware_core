@@ -33,7 +33,7 @@
 
 // Forward declaration so the unit-test fixture (defined at global scope) can be granted access to
 // the pure static helpers below without spinning up a node.
-class GNSSPoserHelpersTest;
+class GnssPoserHelpersTest;
 
 namespace autoware::gnss_poser
 {
@@ -41,14 +41,14 @@ namespace autoware::gnss_poser
 // average / component-wise median of the last `buff_epoch` ones.
 enum class GnssPosePubMethod { Instant = 0, Average = 1, Median = 2 };
 
-class GNSSPoser : public autoware::agnocast_wrapper::Node
+class GnssPoserNode : public autoware::agnocast_wrapper::Node
 {
 public:
-  explicit GNSSPoser(const rclcpp::NodeOptions & node_options);
+  explicit GnssPoserNode(const rclcpp::NodeOptions & node_options);
 
 private:
   // Allow unit tests to exercise the pure static helpers directly.
-  friend class ::GNSSPoserHelpersTest;
+  friend class ::GnssPoserHelpersTest;
 
   void callback_map_projector_info(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::MapProjectorInfo) & msg);
