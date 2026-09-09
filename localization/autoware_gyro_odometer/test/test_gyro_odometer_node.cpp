@@ -96,14 +96,24 @@ protected:
   }
 
   // Bring up the gyro_odometer node and start spinning both nodes.
-  void start_gyro_odometer_node()
+  bool start_gyro_odometer_node()
   {
     gyro_odometer_node_ = std::make_shared<autoware::gyro_odometer::GyroOdometerNode>(
       get_node_options_with_default_params());
     executor_->add_node(gyro_odometer_node_->get_node_base_interface());
     executor_thread_ = std::thread([this]() { executor_->spin(); });
 
-    std::this_thread::sleep_for(std::chrono::milliseconds(500));
+    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+    while (std::chrono::steady_clock::now() < deadline) {
+      if (
+        imu_publisher_->get_subscription_count() > 0 &&
+        vehicle_twist_publisher_->get_subscription_count() > 0 &&
+        twist_subscription_->get_publisher_count() > 0) {
+        return true;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    return false;
   }
 
   TwistWithCovarianceStamped::SharedPtr received_twist()
@@ -132,17 +142,16 @@ TEST_F(GyroOdometerNodeTest, TestGyroOdometerWithImuAndVelocity)
   // Arrange
   const Imu input_imu = generate_sample_imu();
   const TwistWithCovarianceStamped input_velocity = generate_sample_velocity();
-  start_gyro_odometer_node();
+  ASSERT_TRUE(start_gyro_odometer_node()) << "Topic discovery did not complete within 5 seconds";
 
   // Act
-  // TODO(youtalk): Remove these after the refinement of the GyroOdometerNode
-  vehicle_twist_publisher_->publish(input_velocity);
-  imu_publisher_->publish(input_imu);
-
-  vehicle_twist_publisher_->publish(input_velocity);
-  imu_publisher_->publish(input_imu);
-
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  // The node discards samples until both inputs arrive. Keep both inputs active until fusion.
+  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
+  while (!received_twist() && std::chrono::steady_clock::now() < deadline) {
+    vehicle_twist_publisher_->publish(input_velocity);
+    imu_publisher_->publish(input_imu);
+    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  }
 
   // Assert
   const auto twist = received_twist();
@@ -165,7 +174,7 @@ TEST_F(GyroOdometerNodeTest, TestGyroOdometerImuOnly)
 {
   // Arrange
   const Imu input_imu = generate_sample_imu();
-  start_gyro_odometer_node();
+  ASSERT_TRUE(start_gyro_odometer_node()) << "Topic discovery did not complete within 5 seconds";
 
   // Act
   imu_publisher_->publish(input_imu);

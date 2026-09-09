@@ -34,6 +34,8 @@
 
 namespace autoware::ekf_localizer
 {
+// Floating point tolerance at EXPECT_NEAR and similar checks
+constexpr float near_tol = 1e-4F;
 
 namespace
 {
@@ -43,6 +45,7 @@ namespace
 HyperParameters make_params()
 {
   HyperParameters params{};  // value-initialize every field to zero/empty
+
   params.show_debug_info = false;
   params.ekf_rate = 50.0;
   params.ekf_dt = 1.0 / 50.0;
@@ -64,6 +67,8 @@ HyperParameters make_params()
   params.z_filter_proc_dev = 1.0;
   params.roll_filter_proc_dev = 0.01;
   params.pitch_filter_proc_dev = 0.01;
+  params.ellipse_scale = 3.0;
+
   return params;
 }
 
@@ -288,6 +293,152 @@ TEST(TestEKFLocalizer, CompensateRphWithDelayNonZeroAngularVelocity)
     compensated.pose.pose.orientation.z, compensated.pose.pose.orientation.w);
   const double yaw = tf2::getYaw(q);
   EXPECT_NEAR(yaw, 0.5, 1e-6);
+}
+
+TEST(TestEKFLocalizer, UpdateStepReportsBothStartupConditions)
+{
+  const auto params = make_params();
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+
+  // Call update_step without activating or initializing
+  auto result = ekf_localizer->update_step(t_curr);
+
+  // Expect early return flags to be correctly set
+  EXPECT_FALSE(result.is_activated);
+  EXPECT_FALSE(result.is_set_initialpose);
+}
+
+TEST(TestEKFLocalizer, UpdateStepNormalExecution)
+{
+  const auto params = make_params();
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t0), identity_transform());
+  ekf_localizer->activate(true);
+
+  // Push measurements to temporary queues
+  const rclcpp::Time t1(100, 1e8, RCL_ROS_TIME);  // 0.1s later
+  auto pose = make_pose(1.0, 0.0, 0.0, "map", t1);
+  auto twist = make_twist(1.0, 0.0, "base_link", t1);
+
+  using PoseWithCov = geometry_msgs::msg::PoseWithCovarianceStamped;
+  using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
+
+  ekf_localizer->push_pose(std::make_shared<PoseWithCov>(pose));
+  ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
+
+  auto result = ekf_localizer->update_step(t1);
+
+  // Expects flags OK
+  EXPECT_TRUE(result.is_activated);
+  EXPECT_TRUE(result.is_set_initialpose);
+
+  // Expects mega-struct assembly and frame IDs OK
+  EXPECT_EQ(result.pose.header.frame_id, "map");
+  EXPECT_EQ(result.twist.header.frame_id, "base_link");
+  EXPECT_EQ(result.odom.child_frame_id, "base_link");
+  EXPECT_EQ(result.odom.header.frame_id, "map");
+
+  // Expects queues drained and processed (so no_update_count resets to 0)
+  EXPECT_EQ(result.pose_diag_info.no_update_count, 0u);
+  EXPECT_EQ(result.twist_diag_info.no_update_count, 0u);
+
+  // Expects math algorithms were triggered (ellipse should be > 0)
+  EXPECT_GT(result.ellipse_long_radius, 0.0);
+}
+
+TEST(TestEKFLocalizer, UpdateStepAsyncWarningPropagation)
+{
+  auto params = make_params();
+  params.max_twist_queue_size = 1;  // Now I tighten queue limit here
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t0), identity_transform());
+  ekf_localizer->activate(true);
+
+  // Flood staging queue to trigger async warning
+  auto twist = make_twist(1.0, 0.0, "base_link", t0);
+  using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
+
+  ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
+  ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
+
+  // Execute to drain warnings
+  auto result = ekf_localizer->update_step(t0);
+
+  // Expects flood warning was successfully packaged into struct
+  ASSERT_FALSE(result.warnings.empty());
+}
+
+TEST(TestEKFLocalizer, UpdateStepDeterministicKinematics)
+{
+  auto params = make_params();
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t_curr), identity_transform());
+  ekf_localizer->activate(true);
+
+  EKFUpdateResult result;
+
+  // Run filter for 1s (50 ticks at 50Hz, each 0.02s) in loop (deterministic)
+  for (int i = 1; i <= 50; ++i) {
+    t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
+    auto twist = make_twist(5.0, 0.0, "base_link", t_curr);
+    using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
+
+    ekf_localizer->push_twist(std::make_shared<TwistWithCov>(twist));
+    result = ekf_localizer->update_step(t_curr);
+  }
+
+  // This result is now 100% deterministic, fetched from a good run
+  EXPECT_NEAR(result.pose.pose.position.x, 4.38252, near_tol);
+  EXPECT_NEAR(result.pose.pose.position.y, 0.0, near_tol);
+
+  // Expects memory of covariance to grow due to prediction
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+  EXPECT_GT(result.pose_cov.pose.covariance[COV_IDX::X_X], 1.0);
+}
+
+TEST(TestEKFLocalizer, UpdateStepCounterChecks)
+{
+  const auto params = make_params();
+
+  // Params fetched from legacy code setup
+  const int update_count_warn = 50;
+  const int update_count_error = update_count_warn * 2;
+
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t_curr), identity_transform());
+  ekf_localizer->activate(true);
+
+  EKFUpdateResult result;
+
+  // Some ticks, no sensor inputs (reach warn threshold)
+  for (int i = 1; i <= update_count_warn; ++i) {
+    t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
+    result = ekf_localizer->update_step(t_curr);
+  }
+
+  // Diagnostic counters should hit WARN threshold
+  EXPECT_EQ(result.pose_diag_info.no_update_count, update_count_warn);
+  EXPECT_EQ(result.twist_diag_info.no_update_count, update_count_warn);
+
+  // Advance exactly those more ticks (reach error threshold)
+  for (int i = 1; i <= update_count_warn; ++i) {
+    t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
+    result = ekf_localizer->update_step(t_curr);
+  }
+
+  // The diagnostics counter should hit ERROR threshold
+  EXPECT_EQ(result.pose_diag_info.no_update_count, update_count_error);
+  EXPECT_EQ(result.twist_diag_info.no_update_count, update_count_error);
 }
 
 // ---------------------------------------------------------------------------

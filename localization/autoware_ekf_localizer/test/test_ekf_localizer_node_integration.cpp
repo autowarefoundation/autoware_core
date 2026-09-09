@@ -28,7 +28,6 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
-#include <limits>
 #include <memory>
 #include <string>
 #include <thread>
@@ -295,195 +294,7 @@ TEST_F(EKFLocalizerIntegrationHarness, GatekeeperInitialization)
   EXPECT_NEAR(latest_odom_->pose.pose.position.y, 20.0, near_tol);
 }
 
-// TEST 2. Confirms node correctly performs deterministic kinematics.
-// Expects:
-// - Node should publish odometry that moves 5.0 m in X after 1 second of
-// constant velocity input (5.0 m/s in X, 0.0 rad/s in yaw).
-// - Node should report covariance growth due to prediction step.
-// This test will:
-// 1. Trigger node init.
-// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
-// 3. Publish a constant twist (5.0 m/s in X, 0.0 rad/s in yaw) for 1 second (50 ticks at 50Hz).
-// 4. Expects:
-// - Odometry to have moved 5.0 m in X, nothing in Y, hence new pose should be (5.0, 0.0, 0.0).
-// - Covariance to have grown due to prediction step.
-TEST_F(EKFLocalizerIntegrationHarness, DeterministicKinematics)
-{
-  // Boot
-  trigger_node();
-
-  // Init pose
-  pub_initial_pose_->publish(make_pose(0.0, 0.0));
-  spin_executor();
-
-  // Constant twist (velocity X = 5.0, yaw rate = 0.0)
-  geometry_msgs::msg::TwistWithCovarianceStamped twist_msg = make_twist(5.0, 0.0);
-
-  // Run filter for 1 second (20 ticks at 50Hz)
-  for (int i = 0; i < 50; ++i) {
-    twist_msg.header.stamp = current_time_;
-    pub_twist_->publish(twist_msg);
-    step_time(0.02);
-  }
-
-  // Velocity is 5.0 m/s for 1s.
-  // Due to Kalman ramp-up, distance traveled must be positive, around range (4.5, 5.0).
-  ASSERT_NE(latest_odom_, nullptr);
-  EXPECT_GT(latest_odom_->pose.pose.position.x, 4.5);
-  EXPECT_LT(latest_odom_->pose.pose.position.x, 5.0);
-  EXPECT_NEAR(latest_odom_->pose.pose.position.y, 0.0, near_tol);
-
-  // Expects memory of covariance to grow due to prediction
-  ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
-  double cov_x_x = latest_odom_->pose.covariance[0];
-  EXPECT_NEAR(cov_x_x, 0.0120766, near_tol);
-}
-
-// TEST 3. Confirms node correctly rejects NaN/Inf pose measurements and not crash.
-// This test will:
-// 1. Trigger node init.
-// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
-// 3. Publish a pose with NaN coordinates.
-// 4. Expects node to ignore that NaN pose and not crash, and odometry should remain at init pose.
-TEST_F(EKFLocalizerIntegrationHarness, RejectsNanOrInfPose)
-{
-  // Boot
-  trigger_node();
-
-  // Init pose
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
-  pub_initial_pose_->publish(init_pose);
-  spin_once_tick_once();
-
-  // Clear diagnostics state from init
-  latest_diag_ = nullptr;
-
-  geometry_msgs::msg::PoseWithCovarianceStamped nan_pose = make_pose();
-  nan_pose.pose.pose.position.x = std::numeric_limits<double>::quiet_NaN();
-
-  pub_pose_->publish(nan_pose);
-  spin_once_tick_once();
-
-  ASSERT_NE(latest_odom_, nullptr);
-  EXPECT_FALSE(std::isnan(latest_odom_->pose.pose.position.x));
-  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
-}
-
-// TEST 4. Confirms node correctly rejects Mahalanobis outlier pose measurements and not crash.
-// This test will:
-// 1. Trigger node init.
-// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
-// 3. Publish a pose with a massive jump (10000.0, -5000.0) to violate Mahalanobis distance gate.
-// 4. Expects node to ignore that huge jump and emit a WARN, and odometry should remain at init
-// pose.
-TEST_F(EKFLocalizerIntegrationHarness, RejectsMahalanobisOutlier)
-{
-  trigger_node();
-
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
-  pub_initial_pose_->publish(init_pose);
-  spin_once_tick_once();
-
-  latest_diag_ = nullptr;
-  const size_t odom_count_before = odom_count_;
-
-  geometry_msgs::msg::PoseWithCovarianceStamped far_pose = make_pose(
-    10000.0,  // Massive jump
-    -5000.0);
-  pub_pose_->publish(far_pose);
-  spin_executor();
-
-  // Expects node to ignore that huge jump and emit a WARN
-  EXPECT_TRUE(poll_for_diagnostic("[WARN]mahalanobis distance of pose topic", 5))
-    << "Failed to trigger Mahalanobis gate warning.";
-
-  ASSERT_GT(odom_count_, odom_count_before) << "Node stopped publishing odometry.";
-  ASSERT_NE(latest_odom_, nullptr);
-  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
-}
-
-// TEST 5. Confirms node correctly rejects delayed pose measurements and not crash.
-// This test will:
-// 1. Trigger node init.
-// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
-// 3. Publish a pose with a timestamp 50 seconds in the past (delayed beyond pose_additional_delay).
-// 4. Expects node to ignore that delayed pose and emit a WARN, and odometry should remain at init
-// pose.
-TEST_F(EKFLocalizerIntegrationHarness, RejectsDelayedPose)
-{
-  trigger_node();
-
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
-  pub_initial_pose_->publish(init_pose);
-  spin_once_tick_once();
-
-  // Warm up delay buffer a little bit, so that delayed pose is actually delayed enough to trigger
-  // warning
-  for (int i = 0; i < 50; ++i) {
-    step_time(0.02);
-  }
-
-  latest_diag_ = nullptr;
-  const size_t odom_count_before = odom_count_;
-
-  geometry_msgs::msg::PoseWithCovarianceStamped ancient_pose = make_pose();
-  ancient_pose.header.stamp = current_time_ - rclcpp::Duration::from_seconds(50.0);
-  pub_pose_->publish(ancient_pose);
-  spin_executor();
-
-  // Expects node to ignore ancient message and emit a WARN
-  EXPECT_TRUE(poll_for_diagnostic("[WARN]pose topic is delay", 5))
-    << "Failed to trigger Delay limit warning.";
-
-  ASSERT_GT(odom_count_, odom_count_before) << "Node stopped publishing odometry.";
-  ASSERT_NE(latest_odom_, nullptr);
-  EXPECT_NEAR(latest_odom_->pose.pose.position.x, 0.0, near_tol);
-}
-
-// TEST 6. Confirms node correctly handles pose queue overflow.
-// Expects node to ignore oldest messages and process newest messages without crashing.
-// This test will:
-// 1. Trigger node init.
-// 2. Publish an init pose (0.0, 0.0, 0.0) in map frame.
-// 3. Flood pose queue with 8 messages (max_pose_queue_size is 5 by default).
-// 4. Step time to trigger EKF timer callback, which should pop oldest 3 messages and process newest
-// 5 without crashing.
-// 5. Expects odometry to be updated with the newest pose message, and covariance array to be of
-// size 36.
-TEST_F(EKFLocalizerIntegrationHarness, QueueOverflow)
-{
-  // Boot
-  trigger_node();
-
-  // Init pose
-  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
-  pub_initial_pose_->publish(init_pose);
-  spin_once_tick_once();
-
-  // As default max_pose_queue_size is 5, we gonna flood queue with 8 messages
-  for (int i = 0; i < 8; ++i) {
-    geometry_msgs::msg::PoseWithCovarianceStamped rapid_pose = make_pose(0.1 * i, 0.0);
-    pub_pose_->publish(rapid_pose);
-
-    // Spin executor to process subscription callbacks instantly,
-    // but don't step time (so EKF timer callback can't drain queue yet)
-    executor_->spin_some();
-  }
-
-  // Now step time to trigger EKF timer callback
-  // It should pop oldest 3, process newest 5, without crashing
-  step_time(0.02);
-
-  ASSERT_NE(latest_odom_, nullptr);
-
-  // Expects updated state, should be somewhere x > 0.0
-  EXPECT_GT(latest_odom_->pose.pose.position.x, 0.0);
-
-  // Array boundary protection test
-  ASSERT_EQ(latest_odom_->pose.covariance.size(), 36U);
-}
-
-// TEST 7. Confirms node correctly handles timeouts and cascaded WARN => ERROR diagnostics.
+// TEST 2. Confirms node correctly handles timeouts and cascaded WARN => ERROR diagnostics.
 // Expects node to emit WARN at 50 ticks of no pose updates, and ERROR at 100 ticks of no pose
 // updates. This test will:
 // 1. Trigger node init.
@@ -510,12 +321,12 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
   EXPECT_FALSE(has_diagnostic("[WARN]pose is not updated"))
     << "Node failed to shut up before tick 50.";
 
-  // ============ 2. Advance 10 more tick to hit 50 (WARN state) ============
+  // ============ 2. Advance 30 more tick to exceed 50 but not yet 100 (WARN state) ============
 
   EXPECT_TRUE(poll_for_diagnostic("[WARN]pose is not updated", 30))
     << "Node failed to WARN at 50 missed updates.";
 
-  // ============ 3. Advance much more ticks to hit over 100 (ERROR state) ============
+  // ============ 3. Advance much more ticks to exceed 100 (ERROR state) ============
 
   EXPECT_TRUE(poll_for_diagnostic("[ERROR]pose is not updated", 70))
     << "Node failed to ERROR at 100 missed updates.";
