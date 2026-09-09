@@ -29,7 +29,6 @@
 #include <memory>
 #include <string>
 #include <tuple>
-#include <utility>
 #include <vector>
 
 #ifdef ROS_DISTRO_GALACTIC
