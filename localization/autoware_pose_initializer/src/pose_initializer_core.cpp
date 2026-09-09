@@ -152,7 +152,7 @@ void PoseInitializer::on_initialize(
 {
   try {
     // NOTE: This function is not executed during initialization because mutually exclusive.
-    if (stop_check_ && !stop_check_->isVehicleStopped(stop_check_duration_)) {
+    if (stop_check_ && !stop_check_->is_vehicle_stopped(stop_check_duration_)) {
       autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
       respose_status.success = false;
       respose_status.code = Initialize::Service::Response::ERROR_UNSAFE;
