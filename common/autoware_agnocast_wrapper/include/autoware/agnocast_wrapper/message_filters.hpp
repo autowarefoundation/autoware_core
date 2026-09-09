@@ -387,7 +387,8 @@ class Synchronizer
 ///
 /// The callback receives `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)&...)` or
 /// `(const typename Ms::ConstSharedPtr&...)`. In agnocast mode both forms alias the
-/// ipc_shared_ptr rather than copying, preserving zero-copy semantics during the callback.
+/// ipc_shared_ptr rather than copying, and either may be retained past the callback, but not past
+/// the subscription that delivered it.
 ///
 /// @note Current limitations:
 ///   - 2..8 message types per Synchronizer (upstream Signal9 has no 9-arg MFP overload).

@@ -85,7 +85,7 @@ same source compiles in both builds:
 
 A subscription callback may also take the plain `MessageT::ConstSharedPtr`; it needs no macro because it is spelled the same in both builds.
 
-**On the Agnocast path an owning handle must not outlive the subscription that delivered it.** This covers `AUTOWARE_MESSAGE_CONST_SHARED_PTR`, a callback taking `MessageT::ConstSharedPtr`, the pointer returned by `polling::take_data()`, and `AUTOWARE_CLIENT_RESPONSE_PTR`, which the client delivers through a response subscription of its own and which therefore must not outlive the client. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription **before** any member that caches a message:
+**On the Agnocast path an owning handle must not outlive the subscription that delivered it.** This covers `AUTOWARE_MESSAGE_CONST_SHARED_PTR`, a callback taking `MessageT::ConstSharedPtr`, the pointer returned by `polling::take_data()`, a message delivered to a `message_filters` synchronizer callback, and `AUTOWARE_CLIENT_RESPONSE_PTR`, which the client delivers through a response subscription of its own and which therefore must not outlive the client. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription **before** any member that caches a message:
 
 ```cpp
 AUTOWARE_SUBSCRIPTION_PTR(PointCloud2) sub_;   // declared first -> destroyed last
@@ -439,7 +439,7 @@ void onSynchronized(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::CameraInfo) & info);
 ```
 
-Each parameter may also be spelled `MessageT::ConstSharedPtr`; the `AUTOWARE_MESSAGE_CONST_SHARED_PTR` form is probed first, so a callback accepting both resolves to it. Either form is subject to the lifetime rule in [Type spellings](#type-spellings), where the handle a message must not outlive is the `Subscriber`.
+Each parameter may also be spelled `MessageT::ConstSharedPtr`; the `AUTOWARE_MESSAGE_CONST_SHARED_PTR` form is probed first, so a callback accepting both resolves to it. Either form is subject to the lifetime rule in [Type spellings](#type-spellings): release the message before the `Subscriber` is destroyed, `unsubscribe()`d, or re-`subscribe()`d, each of which drops the Agnocast subscription that delivered it.
 
 ### Migration guide (from `::message_filters`)
 
