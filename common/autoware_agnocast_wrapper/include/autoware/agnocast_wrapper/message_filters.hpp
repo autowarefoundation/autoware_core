@@ -27,6 +27,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <utility>
 #include <variant>
@@ -128,7 +129,6 @@ class PolicySynchronizer
 
 public:
   using Callback = std::function<void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...)>;
-  using ConstSharedPtrCallback = std::function<void(const typename Ms::ConstSharedPtr &...)>;
 
   PolicySynchronizer(uint32_t queue_size, Subscriber<Ms> &... subs)
   : sync_(
@@ -168,124 +168,107 @@ public:
   template <class C>
   ::message_filters::Connection registerCallback(C & callback)
   {
-    return registerCallbackInternal(makeCallback(callback));
+    return registerCallbackInternal(makeAdapter(callback));
   }
 
   template <class C>
   ::message_filters::Connection registerCallback(const C & callback)
   {
-    return registerCallbackInternal(makeCallback(callback));
+    return registerCallbackInternal(makeAdapter(callback));
   }
 
   template <class C, typename T>
   ::message_filters::Connection registerCallback(C & callback, T * t)
   {
-    return registerCallbackInternal(bindMemberCallback(callback, t));
+    return registerCallbackInternal(makeAdapter(callback, t));
   }
 
   template <class C, typename T>
   ::message_filters::Connection registerCallback(const C & callback, T * t)
   {
-    return registerCallbackInternal(bindMemberCallback(callback, t));
+    return registerCallbackInternal(makeAdapter(callback, t));
   }
 
 private:
-  using AnyCallback = std::variant<Callback, ConstSharedPtrCallback>;
-
-  // Per-registration adapter: owns the user callable and gives each backend the argument shape the
-  // registration resolved to, converted to message_ptr or handed over as it is. Upstream keeps only
-  // a raw pointer (adapter.get()), so it is held in `adapters_` to keep it alive.
-  struct CallbackAdapter
+  // Type-erased handle for `adapters_`. Each registration makes a distinct adapter type, so the
+  // vector needs a common base; upstream keeps only a raw pointer into the adapter, which is why
+  // the synchronizer owns them at all.
+  struct AdapterBase
   {
-    AnyCallback fn;
+    virtual ~AdapterBase() = default;
+  };
+
+  /// Per-registration adapter: owns the user callable and gives each backend the argument shape
+  /// that callable declares.
+  ///
+  /// @tparam C     the user callable, or a pointer to member function when `Bound` is given
+  /// @tparam Bound empty for a free callable; the instance pointer for a member function
+  template <class C, class... Bound>
+  struct CallbackAdapter : AdapterBase
+  {
+    C fn;
+    std::tuple<Bound...> bound;
+
+    CallbackAdapter(C fn_in, Bound... bound_in) : fn(std::move(fn_in)), bound(bound_in...) {}
+
+    static constexpr bool takes_message_ptr =
+      std::is_invocable_v<C &, Bound..., const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...>;
+
+    static_assert(
+      takes_message_ptr ||
+        std::is_invocable_v<C &, Bound..., const typename Ms::ConstSharedPtr &...>,
+      "synchronizer callback should be invocable with either "
+      "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ...");
+
+    template <typename... Args>
+    void call(const Args &... args)
+    {
+      std::apply([&](Bound... b) { std::invoke(fn, b..., args...); }, bound);
+    }
 
     void agnocastInvoke(const agnocast::message_filters::MessageEvent<const Ms> &... es)
     {
-      std::visit(
-        [&](auto & callback) {
-          using CallbackT = std::decay_t<decltype(callback)>;
-          if constexpr (std::is_same_v<CallbackT, ConstSharedPtrCallback>) {
-            callback(
-              detail::to_std_shared_ptr(agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
-          } else {
-            static_assert(std::is_same_v<CallbackT, Callback>, "unhandled callback alternative");
-            callback(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(
-              agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
-          }
-        },
-        fn);
+      if constexpr (takes_message_ptr) {
+        // Wrap ipc_shared_ptr in message_ptr (copies ipc_shared_ptr refcount, not data)
+        call(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(
+          agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
+      } else {
+        call(detail::to_std_shared_ptr(agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
+      }
     }
 
     void rclcppInvoke(const typename Ms::ConstSharedPtr &... ms)
     {
-      std::visit(
-        [&](auto & callback) {
-          using CallbackT = std::decay_t<decltype(callback)>;
-          if constexpr (std::is_same_v<CallbackT, ConstSharedPtrCallback>) {
-            callback(ms...);
-          } else {
-            static_assert(std::is_same_v<CallbackT, Callback>, "unhandled callback alternative");
-            callback(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(std::shared_ptr<const Ms>(ms))...);
-          }
-        },
-        fn);
+      if constexpr (takes_message_ptr) {
+        call(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(std::shared_ptr<const Ms>(ms))...);
+      } else {
+        call(ms...);
+      }
     }
   };
 
-  using AdapterPtr = std::unique_ptr<CallbackAdapter>;
+  using AdapterPtr = std::unique_ptr<AdapterBase>;
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
 
-  template <class C>
-  static AnyCallback makeCallback(const C & callback)
+  template <class C, class... Bound>
+  static auto makeAdapter(C callback, Bound... bound)
   {
-    if constexpr (std::is_invocable_v<
-                    std::decay_t<C> &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...>) {
-      return AnyCallback{std::in_place_type<Callback>, callback};
-    } else {
-      static_assert(
-        std::is_invocable_v<std::decay_t<C> &, const typename Ms::ConstSharedPtr &...>,
-        "synchronizer callback should be invocable with either "
-        "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ...");
-      return AnyCallback{std::in_place_type<ConstSharedPtrCallback>, callback};
-    }
+    return std::make_unique<CallbackAdapter<C, Bound...>>(std::move(callback), bound...);
   }
 
-  template <class C, typename T>
-  static AnyCallback bindMemberCallback(C && callback, T * t)
+  template <class AdapterT>
+  ::message_filters::Connection registerCallbackInternal(std::unique_ptr<AdapterT> adapter)
   {
-    if constexpr (std::is_invocable_v<
-                    std::decay_t<C>, T *, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...>) {
-      return AnyCallback{
-        std::in_place_type<Callback>,
-        [callback = std::forward<C>(callback),
-         t](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ... ms) { (t->*callback)(ms...); }};
-    } else {
-      static_assert(
-        std::is_invocable_v<std::decay_t<C>, T *, const typename Ms::ConstSharedPtr &...>,
-        "synchronizer member callback should be invocable with either "
-        "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ...");
-      return AnyCallback{
-        std::in_place_type<ConstSharedPtrCallback>,
-        [callback = std::forward<C>(callback), t](const typename Ms::ConstSharedPtr &... ms) {
-          (t->*callback)(ms...);
-        }};
-    }
-  }
-
-  ::message_filters::Connection registerCallbackInternal(AnyCallback && callback)
-  {
-    auto adapter = std::make_unique<CallbackAdapter>();
-    adapter->fn = std::move(callback);
     auto * const adapter_raw = adapter.get();
 
     auto upstream_conn = std::visit(
       [adapter_raw](auto & sync) -> ::message_filters::Connection {
         using SyncT = std::decay_t<decltype(sync)>;
         if constexpr (std::is_same_v<SyncT, AgnocastSync>) {
-          return sync.registerCallback(&CallbackAdapter::agnocastInvoke, adapter_raw);
+          return sync.registerCallback(&AdapterT::agnocastInvoke, adapter_raw);
         } else {
-          return sync.registerCallback(&CallbackAdapter::rclcppInvoke, adapter_raw);
+          return sync.registerCallback(&AdapterT::rclcppInvoke, adapter_raw);
         }
       },
       sync_);
