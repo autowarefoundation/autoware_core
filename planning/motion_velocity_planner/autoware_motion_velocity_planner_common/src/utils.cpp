@@ -29,6 +29,7 @@
 #include <cmath>
 #include <limits>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <unordered_map>
@@ -43,19 +44,43 @@ namespace
 // enough that the difference is irrelevant: 1e-4 corresponds to a 10 km radius.
 constexpr double min_curvature_for_arc = 1e-4;
 
-// Curvature of the road at the goal, taken from the last three trajectory points. Three points on
-// a circle give its curvature exactly, so the coarse spacing of the decimated trajectory does not
-// cost accuracy here. Returns zero (straight) when there are too few points or they are too close
-// together to define a circle.
-double estimate_goal_curvature(const std::vector<TrajectoryPoint> & points)
+// Index of the point roughly `distance` metres back from the end of `points`, clamped to the
+// start. Used to spread the curvature samples over a fixed baseline rather than over whatever
+// spacing the trajectory happens to have.
+size_t index_before_end(const std::vector<TrajectoryPoint> & points, const double distance)
+{
+  double travelled = 0.0;
+  for (size_t i = points.size() - 1; i > 0; --i) {
+    travelled += autoware_utils_geometry::calc_distance2d(
+      points.at(i).pose.position, points.at(i - 1).pose.position);
+    if (travelled >= distance) {
+      return i - 1;
+    }
+  }
+  return 0;
+}
+
+// Curvature of the road at the end of `points`, from three points spread over `baseline_length`.
+// Three points on a circle give its curvature exactly, so a clean arc needs no more than that; the
+// baseline is what keeps a densely sampled trajectory from turning rounding noise into curvature.
+// Returns zero (straight) when there are too few points, or when they are too close together or
+// too collinear to define a circle.
+double estimate_goal_curvature(
+  const std::vector<TrajectoryPoint> & points, const double baseline_length)
 {
   if (points.size() < 3) {
     return 0.0;
   }
+  size_t middle = index_before_end(points, baseline_length);
+  size_t first = index_before_end(points, 2.0 * baseline_length);
+  // Fall back to the last three points when the trajectory is shorter than the baseline.
+  if (first == middle || middle == points.size() - 1) {
+    first = points.size() - 3;
+    middle = points.size() - 2;
+  }
   try {
     return autoware_utils_geometry::calc_curvature(
-      points.at(points.size() - 3).pose.position, points.at(points.size() - 2).pose.position,
-      points.back().pose.position);
+      points.at(first).pose.position, points.at(middle).pose.position, points.back().pose.position);
   } catch (const std::runtime_error &) {
     return 0.0;
   }
@@ -94,7 +119,7 @@ TrajectoryPoint extend_trajectory_point(
 
 std::vector<TrajectoryPoint> get_extended_trajectory_points(
   const std::vector<TrajectoryPoint> & input_points, const double extend_distance,
-  const double step_length)
+  const double step_length, const std::optional<double> curvature)
 {
   auto output_points = input_points;
   const auto is_driving_forward_opt =
@@ -114,17 +139,18 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
   }
 
   const auto goal_point = input_points.back();
-  const double curvature = estimate_goal_curvature(input_points);
+  const double goal_curvature =
+    curvature.value_or(estimate_goal_curvature(input_points, step_length));
   // Stop one epsilon short of extend_distance so that a step landing exactly on it does not add a
   // duplicate of the final point below.
   constexpr double duplicate_point_epsilon = 1e-6;
   for (double extend_sum = step_length; extend_sum < extend_distance - duplicate_point_epsilon;
        extend_sum += step_length) {
     output_points.push_back(
-      extend_trajectory_point(extend_sum, goal_point, is_driving_forward, curvature));
+      extend_trajectory_point(extend_sum, goal_point, is_driving_forward, goal_curvature));
   }
   output_points.push_back(
-    extend_trajectory_point(extend_distance, goal_point, is_driving_forward, curvature));
+    extend_trajectory_point(extend_distance, goal_point, is_driving_forward, goal_curvature));
 
   return output_points;
 }
@@ -157,10 +183,13 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const auto decimated_traj_points_from_ego =
     resample_trajectory_points(traj_points_from_ego, decimate_trajectory_step_length);
 
-  // extend trajectory
+  // extend trajectory. Measure the curvature on the untrimmed trajectory: close to the goal the
+  // trimmed and decimated one is only a couple of points long, which is exactly when the
+  // extension past the goal decides whether an obstacle beyond it is seen.
   const auto extended_traj_points_from_ego = get_extended_trajectory_points(
     decimated_traj_points_from_ego, goal_extended_trajectory_length,
-    decimate_trajectory_step_length);
+    decimate_trajectory_step_length,
+    estimate_goal_curvature(traj_points, decimate_trajectory_step_length));
   if (extended_traj_points_from_ego.size() < 2) {
     return traj_points;
   }
