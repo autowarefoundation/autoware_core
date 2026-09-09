@@ -42,9 +42,9 @@
 #define AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) \
   autoware::agnocast_wrapper::message_ptr<    \
     typename ServiceT::Request, autoware::agnocast_wrapper::OwnershipType::Shared>
-#define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) \
-  autoware::agnocast_wrapper::message_ptr<     \
-    const typename ServiceT::Response, autoware::agnocast_wrapper::OwnershipType::Shared>
+// The client hands the response over as a plain std::shared_ptr in both builds: the agnocast
+// backend aliases the received handle, so nothing is copied.
+#define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Response>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) \
