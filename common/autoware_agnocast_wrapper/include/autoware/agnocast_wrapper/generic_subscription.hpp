@@ -53,10 +53,10 @@ namespace autoware::agnocast_wrapper
 /// linking against their message packages.
 ///
 /// Messages are always delivered as rclcpp::SerializedMessage: on the Agnocast path, the message
-/// lives in shared memory as a concrete type unknown at compile time, so agnocast::GenericSubscription
-/// serializes it before handing it to the callback. There is no message_ptr overload here as there is
-/// for the typed Subscription — a type-erased message has no compile-time type to hand out a
-/// zero-copy handle to.
+/// lives in shared memory as a concrete type unknown at compile time, so
+/// agnocast::GenericSubscription serializes it before handing it to the callback. There is no
+/// message_ptr overload here as there is for the typed Subscription — a type-erased message has no
+/// compile-time type to hand out a zero-copy handle to.
 class GenericSubscription
 {
 public:
@@ -82,8 +82,9 @@ public:
     NodeT * node, const std::string & topic_name, const std::string & topic_type,
     const rclcpp::QoS & qos, GenericSubscriptionCallback callback,
     const agnocast::SubscriptionOptions & options)
-  : subscription_(agnocast::create_generic_subscription(
-      node, topic_name, topic_type, qos, std::move(callback), options))
+  : subscription_(
+      agnocast::create_generic_subscription(
+        node, topic_name, topic_type, qos, std::move(callback), options))
   {
   }
 

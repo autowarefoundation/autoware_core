@@ -36,9 +36,9 @@ namespace autoware::agnocast_wrapper
 /// against their message packages.
 ///
 /// Messages are always published from an rclcpp::SerializedMessage: Agnocast's GenericPublisher
-/// deserializes it into shared memory inside publish(), the mirror image of what GenericSubscription
-/// does on the way out. There is no message_ptr overload here as there is for the typed Publisher —
-/// a type-erased message has no compile-time type to allocate in place.
+/// deserializes it into shared memory inside publish(), the mirror image of what
+/// GenericSubscription does on the way out. There is no message_ptr overload here as there is for
+/// the typed Publisher — a type-erased message has no compile-time type to allocate in place.
 class GenericPublisher
 {
 public:
@@ -111,7 +111,8 @@ public:
 /// the Node member of the same name for the wrapper-Node form, which also supports agnocast::Node).
 inline GenericPublisher::SharedPtr create_generic_publisher(
   rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
-  const rclcpp::QoS & qos, const agnocast::PublisherOptions & options = agnocast::PublisherOptions{})
+  const rclcpp::QoS & qos,
+  const agnocast::PublisherOptions & options = agnocast::PublisherOptions{})
 {
   if (use_agnocast()) {
     return std::make_shared<AgnocastGenericPublisher>(node, topic_name, topic_type, qos, options);
