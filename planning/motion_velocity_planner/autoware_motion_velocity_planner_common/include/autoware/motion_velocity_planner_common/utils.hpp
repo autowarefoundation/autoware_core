@@ -175,12 +175,15 @@ double calc_dist_to_traj_poly(
   const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys);
 
 /**
- * @brief append the `input_points` up to `extend_length` every `step_length`, in the direction of
- * the last point of `input_points`, keeping its vel/acc
+ * @brief append the `input_points` up to `extend_length` every `step_length`, following the road
+ * curvature at the last point of `input_points`, keeping its vel/acc
+ * @param curvature curvature to follow past the last point. When not given it is estimated from
+ * `input_points`, which is only reliable while they still span a few metres; callers that still
+ * hold the untrimmed trajectory should measure it there and pass it in.
  */
 std::vector<TrajectoryPoint> get_extended_trajectory_points(
   const std::vector<TrajectoryPoint> & input_points, const double extend_distance,
-  const double step_length);
+  const double step_length, const std::optional<double> curvature = std::nullopt);
 
 /**
  * @brief insert a stop point in the given trajectory
