@@ -198,6 +198,14 @@ private:
     virtual ~AdapterBase() = default;
   };
 
+  // std::shared_ptr<const void> names no message type, so it needs a pattern that does in order to
+  // be repeated once per synchronized message.
+  template <typename>
+  struct as_void_ptr
+  {
+    using type = std::shared_ptr<const void>;
+  };
+
   /// Per-registration adapter: owns the user callable and gives each backend the argument shape
   /// that callable declares.
   ///
@@ -214,11 +222,20 @@ private:
     static constexpr bool takes_message_ptr =
       std::is_invocable_v<C &, Bound..., const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...>;
 
+    // The two exclusions are shapes std::shared_ptr<const M> converts to but upstream
+    // message_filters has no ParameterAdapter for, so they would compile in the agnocast-enabled
+    // build only. subscription.hpp excludes the same two.
+    static constexpr bool takes_const_shared_ptr =
+      std::is_invocable_v<C &, Bound..., const typename Ms::ConstSharedPtr &...> &&
+      !std::is_invocable_v<C &, Bound..., std::weak_ptr<const Ms>...> &&
+      !std::is_invocable_v<C &, Bound..., typename as_void_ptr<Ms>::type...>;
+
     static_assert(
-      takes_message_ptr ||
-        std::is_invocable_v<C &, Bound..., const typename Ms::ConstSharedPtr &...>,
+      takes_message_ptr || takes_const_shared_ptr,
       "synchronizer callback should be invocable with either "
-      "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ...");
+      "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ..., and not "
+      "with std::weak_ptr<const M> ... or std::shared_ptr<const void> ..., which upstream "
+      "message_filters cannot deliver");
 
     template <typename... Args>
     void call(const Args &... args)
