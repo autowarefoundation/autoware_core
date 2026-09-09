@@ -9543,6 +9543,10 @@ surface), so client and service code needs no per-build spelling:</p>
 <td><code>AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(SrvT)</code></td>
 <td><code>Client&lt;SrvT&gt;::SharedFutureAndRequestId</code></td>
 </tr>
+<tr>
+<td><code>AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)</code></td>
+<td><code>std::shared_ptr&lt;const SrvT::Response&gt;</code></td>
+</tr>
 </tbody>
 </table>
 <p>Request/response pointer types <strong>do</strong> differ per build:</p>
@@ -9570,13 +9574,11 @@ surface), so client and service code needs no per-build spelling:</p>
 <td><code>message_ptr&lt;Request, …&gt;</code></td>
 <td><code>std::shared_ptr&lt;SrvT::Request&gt;</code></td>
 </tr>
-<tr>
-<td><code>AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)</code></td>
-<td><code>message_ptr&lt;const Response, …&gt;</code></td>
-<td><code>std::shared_ptr&lt;const SrvT::Response&gt;</code></td>
-</tr>
 </tbody>
 </table>
+<p>The client response is a plain <code>std::shared_ptr&lt;const Response&gt;</code> in both builds — the agnocast
+backend aliases the received handle, so nothing is copied. Review point: <strong>the response must not
+outlive the client that produced it</strong>, because that client owns the kernel-side reference.</p>
 <p> </p>
 <h3 id="publishersubscriber-creation">Publisher/Subscriber Creation<a class="headerlink" href="#publishersubscriber-creation" title="Permanent link">#</a></h3>
 <table>
