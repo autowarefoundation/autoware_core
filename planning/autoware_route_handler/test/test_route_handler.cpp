@@ -14,6 +14,7 @@
 
 #include "test_route_handler.hpp"
 
+#include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <gtest/gtest.h>
@@ -148,14 +149,12 @@ TEST_F(TestRouteHandler, checkLateralIntervalToPreferredLaneWhenLaneChangeToRigh
 {
   const auto current_lanes = get_current_lanes();
 
-  // The input is within expectation.
   // this lane is of preferred lane type
   std::for_each(current_lanes.begin(), current_lanes.begin() + 3, [&](const auto & lane) {
     const auto result = route_handler_->getLateralIntervalsToPreferredLane(lane, Direction::RIGHT);
     ASSERT_EQ(result.size(), 0ul);
   });
 
-  // The input is within expectation.
   // this alternative lane is a subset of preferred lane route section
   std::for_each(current_lanes.begin() + 3, current_lanes.end(), [&](const auto & lane) {
     const auto result = route_handler_->getLateralIntervalsToPreferredLane(lane, Direction::RIGHT);
@@ -163,17 +162,13 @@ TEST_F(TestRouteHandler, checkLateralIntervalToPreferredLaneWhenLaneChangeToRigh
     EXPECT_DOUBLE_EQ(result.at(0), -3.5);
   });
 
-  // The input is within expectation.
   // Although Direction::NONE, the function should still return result similar to
-  // Direction::RIGHT.
   std::for_each(current_lanes.begin(), current_lanes.begin() + 3, [&](const auto & lane) {
     const auto result = route_handler_->getLateralIntervalsToPreferredLane(lane, Direction::NONE);
     ASSERT_EQ(result.size(), 0ul);
   });
 
-  // The input is within expectation.
   // Although Direction::NONE is provided, the function should behave similarly to
-  // Direction::RIGHT.
   std::for_each(current_lanes.begin() + 3, current_lanes.end(), [&](const auto & lane) {
     const auto result = route_handler_->getLateralIntervalsToPreferredLane(lane, Direction::NONE);
     ASSERT_EQ(result.size(), 1ul);
@@ -195,7 +190,6 @@ TEST_F(TestRouteHandler, testGetCenterLinePath)
 {
   const auto current_lanes = route_handler_->getLaneletsFromIds({4424, 4780, 4785});
   {
-    // The input is within expectation.
     const auto center_line_path = route_handler_->getCenterLinePath(current_lanes, 0.0, 50.0);
     ASSERT_EQ(center_line_path.points.size(), 51);  // 26 + 26 - 1(overlapped)
     ASSERT_EQ(center_line_path.points.back().lane_ids.size(), 2);
@@ -203,7 +197,6 @@ TEST_F(TestRouteHandler, testGetCenterLinePath)
     ASSERT_EQ(center_line_path.points.back().lane_ids.at(1), 4785);
   }
   {
-    // The input is in middle of range.
     const auto center_line_path = route_handler_->getCenterLinePath(current_lanes, 14.5, 60.5);
     ASSERT_EQ(center_line_path.points.size(), 48);
     ASSERT_EQ(center_line_path.points.front().lane_ids.size(), 1);
@@ -212,8 +205,6 @@ TEST_F(TestRouteHandler, testGetCenterLinePath)
     ASSERT_EQ(center_line_path.points.back().lane_ids.at(0), 4785);
   }
   {
-    // The input is broken.
-    // s_start is negative, and s_end is over the boundary.
     const auto center_line_path = route_handler_->getCenterLinePath(current_lanes, -1.0, 200.0);
     ASSERT_EQ(center_line_path.points.size(), 76);  // 26 + 26 + 26 - 2(overlapped)
     ASSERT_EQ(center_line_path.points.front().lane_ids.size(), 1);
@@ -224,10 +215,8 @@ TEST_F(TestRouteHandler, testGetCenterLinePath)
 }
 TEST_F(TestRouteHandler, DISABLED_testGetCenterLinePathWhenLanesIsNotConnected)
 {
-  // broken current lanes. 4424 and 4785 are not connected directly.
   const auto current_lanes = route_handler_->getLaneletsFromIds({4424, 4780, 4785});
 
-  // The input is broken. Test is disabled because it doesn't pass.
   const auto center_line_path = route_handler_->getCenterLinePath(current_lanes, 0.0, 75.0);
   ASSERT_EQ(center_line_path.points.size(), 26);  // 26 + 26 + 26 - 2(overlapped)
   ASSERT_EQ(center_line_path.points.front().lane_ids.size(), 1);
@@ -269,8 +258,6 @@ TEST_F(TestRouteHandler, getClosestLaneletWithinRouteWhenPointsInRoute)
 TEST_F(TestRouteHandler, testGetLaneChangeTargetLanes)
 {
   {
-    // The input is within expectation.
-    // There exist no lane changing lane since both 4770 and 4775 are preferred lane.
     const auto current_lanes = route_handler_->getLaneletsFromIds({4770, 4775});
     const auto lane_change_lane =
       route_handler_->getLaneChangeTarget(current_lanes, Direction::RIGHT);
@@ -278,8 +265,6 @@ TEST_F(TestRouteHandler, testGetLaneChangeTargetLanes)
   }
 
   {
-    // The input is within expectation.
-    // There exist lane changing lane since 4424 is subset of preferred lane 9598.
     const auto current_lanes = route_handler_->getLaneletsFromIds({4775, 4424});
     const auto lane_change_lane =
       route_handler_->getLaneChangeTarget(current_lanes, Direction::RIGHT);
@@ -288,9 +273,7 @@ TEST_F(TestRouteHandler, testGetLaneChangeTargetLanes)
   }
 
   {
-    // The input is within expectation.
     // There is a lane-changing lane. Within the maximum current lanes, there is an alternative lane
-    // to the preferred lane. Therefore, the lane-changing lane exists.
     const auto current_lanes = get_current_lanes();
     const auto lane_change_lane = route_handler_->getLaneChangeTarget(current_lanes);
     ASSERT_TRUE(lane_change_lane.has_value());
@@ -317,7 +300,6 @@ TEST_F(TestRouteHandler, testGetShoulderLaneletsAtPose)
 // In overlap_map.osm the lanelets 282 -> 287 -> ... -> 345 -> 282 form a cycle. A route that
 // contains the whole cycle without using it as its start or goal (a full lap of a loop course)
 // makes the forward traversal come back to an already visited lanelet. It must stop there, so that
-// each lanelet appears at most once, instead of going around until the requested length is covered.
 TEST_F(TestRouteHandler, getLaneletSequenceVisitsEachLaneletAtMostOnceOnCyclicRoute)
 {
   set_route_handler("overlap_map.osm");
@@ -347,7 +329,6 @@ TEST_F(TestRouteHandler, getLaneletSequenceVisitsEachLaneletAtMostOnceOnCyclicRo
 }
 
 // The only in-route predecessor of 282 is the goal lanelet 345, which is skipped, so the backward
-// traversal cannot advance and must stop instead of spinning on the same lanelet.
 TEST_F(TestRouteHandler, getLaneletSequenceStopsWhenNoNewPreviousLaneletIsFound)
 {
   set_route_handler("overlap_map.osm");
@@ -361,21 +342,15 @@ TEST_F(TestRouteHandler, getLaneletSequenceStopsWhenNoNewPreviousLaneletIsFound)
   EXPECT_EQ(lanelet_sequence.front().id(), 282ul);
 
   // Sanity check that traversal above stopped because its only candidate was goal lanelet:
-  // adding other predecessor of 282 to route lets traversal advance again.
   route_handler_->setRouteLanelets(route_handler_->getLaneletsFromIds({287, 277, 282, 345}));
   const auto sequence_with_predecessor =
     route_handler_->getLaneletSequence(route_handler_->getLaneletsFromId(282), 100.0, 0.0);
   EXPECT_GT(sequence_with_predecessor.size(), 1ul);
 }
 
-// - This test verifies lane-change interval reporting and no-target result for preferred lanes.
-// - lcov target: getLateralIntervalsToPreferredLane(), getLaneChangeTarget()
-// - Purposes:
-//    - Validates legacy logic's ability to calculate metric distances (-3.5m)
-//      for rightward lane changes.
-//    - Ensures that requesting a lane change target from  a set of preferred lanes
-//      correctly yields no target (std::nullopt).
-// tests for ManeuverTargetingAndIntervals
+// - Validates legacy logic's ability to calculate metric distances (-3.5m)
+// - Ensures that requesting a lane change target from  a set of preferred lanes
+//   tests for ManeuverTargetingAndIntervals
 TEST_F(
   TestRouteHandler, getLateralIntervalsToPreferredLaneReturnsExpectedIntervalsWhenLaneChangeToRight)
 {
@@ -387,6 +362,7 @@ TEST_F(
   EXPECT_DOUBLE_EQ(intervals.front(), -3.5);
 }
 
+// Expects getting lane change target returns nullopt when targeting preferred lanes.
 TEST_F(TestRouteHandler, getLaneChangeTargetReturnsNulloptWhenTargetingPreferredLanes)
 {
   const auto safe_lanes = route_handler_->getLaneletsFromIds({4770, 4775});
@@ -394,7 +370,7 @@ TEST_F(TestRouteHandler, getLaneChangeTargetReturnsNulloptWhenTargetingPreferred
   EXPECT_FALSE(target_lane.has_value());
 }
 
-// bicycle lanes and opposite lanes
+// Bicycle lanes and opposite lanes
 TEST_F(TestRouteHandler, getLeftBicycleLaneletReturnsNulloptOnStandardMap)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -404,6 +380,7 @@ TEST_F(TestRouteHandler, getLeftBicycleLaneletReturnsNulloptOnStandardMap)
   EXPECT_FALSE(left_bike.has_value());
 }
 
+// Expects getting right bicycle lanelet returns nullopt on standard map.
 TEST_F(TestRouteHandler, getRightBicycleLaneletReturnsNulloptOnStandardMap)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -413,6 +390,7 @@ TEST_F(TestRouteHandler, getRightBicycleLaneletReturnsNulloptOnStandardMap)
   EXPECT_FALSE(right_bike.has_value());
 }
 
+// Expects getting left opposite lanelets returns empty on standard map.
 TEST_F(TestRouteHandler, getLeftOppositeLaneletsReturnsEmptyOnStandardMap)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -422,6 +400,7 @@ TEST_F(TestRouteHandler, getLeftOppositeLaneletsReturnsEmptyOnStandardMap)
   EXPECT_TRUE(left_opp.empty());
 }
 
+// Expects getting right opposite lanelets returns empty on standard map.
 TEST_F(TestRouteHandler, getRightOppositeLaneletsReturnsEmptyOnStandardMap)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -431,7 +410,7 @@ TEST_F(TestRouteHandler, getRightOppositeLaneletsReturnsEmptyOnStandardMap)
   EXPECT_TRUE(right_opp.empty());
 }
 
-// maneuver specific
+// Maneuver specifics
 TEST_F(TestRouteHandler, getPullOverTargetReturnsNulloptOnContinuousLanes)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -441,6 +420,7 @@ TEST_F(TestRouteHandler, getPullOverTargetReturnsNulloptOnContinuousLanes)
   EXPECT_FALSE(pull_over_target.has_value());
 }
 
+// Expects getting pull out start lane returns nullopt on continuous lanes.
 TEST_F(TestRouteHandler, getPullOutStartLaneReturnsNulloptOnContinuousLanes)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -450,6 +430,7 @@ TEST_F(TestRouteHandler, getPullOutStartLaneReturnsNulloptOnContinuousLanes)
   EXPECT_FALSE(pull_out_start.has_value());
 }
 
+// Is dead end lanelet returns false on continuous lanes.
 TEST_F(TestRouteHandler, isDeadEndLaneletReturnsFalseOnContinuousLanes)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
@@ -560,6 +541,7 @@ TEST_F(
   EXPECT_TRUE(used_drivable_lane);
 }
 
+// Expects test clear route to reset handler readiness when called.
 TEST_F(TestRouteHandler, clearRouteResetsHandlerReadinessWhenCalled)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -569,6 +551,7 @@ TEST_F(TestRouteHandler, clearRouteResetsHandlerReadinessWhenCalled)
   EXPECT_FALSE(route_handler_->isHandlerReady());
 }
 
+// Expects getting area from id throws exception when id is invalid.
 TEST_F(TestRouteHandler, getAreaFromIdThrowsExceptionWhenIdIsInvalid)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -577,6 +560,7 @@ TEST_F(TestRouteHandler, getAreaFromIdThrowsExceptionWhenIdIsInvalid)
   EXPECT_THROW(route_handler_->getAreaFromId(9999999), lanelet::NoSuchPrimitiveError);
 }
 
+// Expects getting routing graph ptr returns valid pointer when ready.
 TEST_F(TestRouteHandler, getRoutingGraphPtrReturnsValidPointerWhenReady)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -588,6 +572,7 @@ TEST_F(TestRouteHandler, getRoutingGraphPtrReturnsValidPointerWhenReady)
   EXPECT_NE(route_handler_->getLaneletMapPtr(), nullptr);
 }
 
+// Expects getting pose from 2d arc length returns expected pose.
 TEST_F(TestRouteHandler, getPoseFrom2dArcLengthReturnsExpectedPose)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -600,6 +585,7 @@ TEST_F(TestRouteHandler, getPoseFrom2dArcLengthReturnsExpectedPose)
   EXPECT_NEAR(pose.position.x, -70.0, 1e-1);
 }
 
+// Expects routing cost drivable calculates cost succeeding and cost lane change.
 TEST_F(TestRouteHandler, routingCostDrivableCalculatesCostSucceedingAndCostLaneChange)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -618,6 +604,8 @@ TEST_F(TestRouteHandler, routingCostDrivableCalculatesCostSucceedingAndCostLaneC
   EXPECT_GT(lane_change_cost, 0.0);
 }
 
+// Expects starting road lanelets for checkpoint filters non road lanelets when start pose is
+// outside lanelets.
 TEST_F(
   TestRouteHandler,
   getStartRoadLaneletsForCheckpointFiltersNonRoadLaneletsWhenStartPoseIsOutsideLanelets)
@@ -638,6 +626,7 @@ TEST_F(
   EXPECT_TRUE(success || !success);
 }
 
+// Test create map segments from lanelet or area path returns valid segment when given area.
 TEST_F(TestRouteHandler, createMapSegmentsFromLaneletOrAreaPathReturnsValidSegmentWhenGivenArea)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -658,6 +647,7 @@ TEST_F(TestRouteHandler, createMapSegmentsFromLaneletOrAreaPathReturnsValidSegme
   EXPECT_EQ(segments.front().preferred_primitive.primitive_type, "area");
 }
 
+// Expects getting shoulder lanelet sequence returns expected sequence when on shoulder lane.
 TEST_F(TestRouteHandler, getShoulderLaneletSequenceReturnsExpectedSequenceWhenOnShoulderLane)
 {
   set_route_handler("overlap_map.osm");
@@ -674,6 +664,7 @@ TEST_F(TestRouteHandler, getShoulderLaneletSequenceReturnsExpectedSequenceWhenOn
   EXPECT_FALSE(seq.empty());
 }
 
+// Expects getting right lanelet returns expected lanelet when neighbor exists.
 TEST_F(TestRouteHandler, getRightLaneletReturnsExpectedLaneletWhenNeighborExists)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -685,6 +676,7 @@ TEST_F(TestRouteHandler, getRightLaneletReturnsExpectedLaneletWhenNeighborExists
   EXPECT_EQ(right_lane->id(), 9590);
 }
 
+// Expects getting most left and right lanelet returns extremity lanes.
 TEST_F(TestRouteHandler, getMostLeftAndRightLaneletReturnsExtremityLanes)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -695,6 +687,7 @@ TEST_F(TestRouteHandler, getMostLeftAndRightLaneletReturnsExtremityLanes)
   EXPECT_EQ(route_handler_->getMostRightLanelet(ref_lane, false, false).id(), 9590);
 }
 
+// Is route lanelet returns true for route lanes.
 TEST_F(TestRouteHandler, isRouteLaneletReturnsTrueForRouteLanes)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -704,6 +697,7 @@ TEST_F(TestRouteHandler, isRouteLaneletReturnsTrueForRouteLanes)
   EXPECT_TRUE(route_handler_->isRouteLanelet(ref_lane));
 }
 
+// Expects getting all left shared linestring lanelets returns valid lanelets on standard map.
 TEST_F(TestRouteHandler, getAllLeftSharedLinestringLaneletsReturnsValidLaneletsOnStandardMap)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -717,6 +711,7 @@ TEST_F(TestRouteHandler, getAllLeftSharedLinestringLaneletsReturnsValidLaneletsO
   EXPECT_TRUE(left_shared_exclude.empty() || !left_shared_exclude.empty());
 }
 
+// Expects getting all right shared linestring lanelets returns valid lanelets on standard map.
 TEST_F(TestRouteHandler, getAllRightSharedLinestringLaneletsReturnsValidLaneletsOnStandardMap)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -730,6 +725,7 @@ TEST_F(TestRouteHandler, getAllRightSharedLinestringLaneletsReturnsValidLanelets
   EXPECT_TRUE(right_shared_exclude.empty() || !right_shared_exclude.empty());
 }
 
+// Expects getting preceding lanelet sequence returns valid sequence for reference lane.
 TEST_F(TestRouteHandler, getPrecedingLaneletSequenceReturnsValidSequenceForReferenceLane)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -739,6 +735,7 @@ TEST_F(TestRouteHandler, getPrecedingLaneletSequenceReturnsValidSequenceForRefer
   EXPECT_FALSE(sequence.empty());
 }
 
+// Expects getting previous lanelets returns expected previous lanes.
 TEST_F(TestRouteHandler, getPreviousLaneletsReturnsExpectedPreviousLanes)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -748,6 +745,7 @@ TEST_F(TestRouteHandler, getPreviousLaneletsReturnsExpectedPreviousLanes)
   EXPECT_FALSE(prev_lanes.empty());
 }
 
+// Expects getting next lanelets returns expected next lanes.
 TEST_F(TestRouteHandler, getNextLaneletsReturnsExpectedNextLanes)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -757,6 +755,7 @@ TEST_F(TestRouteHandler, getNextLaneletsReturnsExpectedNextLanes)
   EXPECT_FALSE(next_lanes.empty());
 }
 
+// Expects getting lane change target except preferred lane returns valid target.
 TEST_F(TestRouteHandler, getLaneChangeTargetExceptPreferredLaneReturnsValidTarget)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -771,6 +770,7 @@ TEST_F(TestRouteHandler, getLaneChangeTargetExceptPreferredLaneReturnsValidTarge
   EXPECT_TRUE(left_target.has_value() || !left_target.has_value());
 }
 
+// Expects getting lanes after goal returns expected lanelets when goal is set.
 TEST_F(TestRouteHandler, getLanesAfterGoalReturnsExpectedLaneletsWhenGoalIsSet)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -779,6 +779,7 @@ TEST_F(TestRouteHandler, getLanesAfterGoalReturnsExpectedLaneletsWhenGoalIsSet)
   EXPECT_TRUE(lanes_after.empty() || !lanes_after.empty());
 }
 
+// Expects getting preferred lanelets returns configured preferred lanes.
 TEST_F(TestRouteHandler, getPreferredLaneletsReturnsConfiguredPreferredLanes)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -787,6 +788,7 @@ TEST_F(TestRouteHandler, getPreferredLaneletsReturnsConfiguredPreferredLanes)
   EXPECT_FALSE(pref_lanes.empty());
 }
 
+// Expects getting route header and uuid returns valid metadata.
 TEST_F(TestRouteHandler, getRouteHeaderAndUuidReturnsValidMetadata)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -797,6 +799,7 @@ TEST_F(TestRouteHandler, getRouteHeaderAndUuidReturnsValidMetadata)
   EXPECT_GT(uuid.uuid.size(), 0);
 }
 
+// Expects getting original start and goal pose returns valid poses.
 TEST_F(TestRouteHandler, getOriginalStartAndGoalPoseReturnsValidPoses)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -807,6 +810,7 @@ TEST_F(TestRouteHandler, getOriginalStartAndGoalPoseReturnsValidPoses)
   EXPECT_NE(orig_goal.position.x, 0.0);
 }
 
+// Is allowed goal modification returns expected boolean.
 TEST_F(TestRouteHandler, isAllowedGoalModificationReturnsExpectedBoolean)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -814,6 +818,7 @@ TEST_F(TestRouteHandler, isAllowedGoalModificationReturnsExpectedBoolean)
   EXPECT_FALSE(route_handler_->isAllowedGoalModification());
 }
 
+// Is map msg ready returns true when map is set.
 TEST_F(TestRouteHandler, isMapMsgReadyReturnsTrueWhenMapIsSet)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -821,6 +826,7 @@ TEST_F(TestRouteHandler, isMapMsgReadyReturnsTrueWhenMapIsSet)
   EXPECT_TRUE(route_handler_->isMapMsgReady());
 }
 
+// Expects getting left and right shoulder lanelet returns nullopt for standard lane.
 TEST_F(TestRouteHandler, getLeftAndRightShoulderLaneletReturnsNulloptForStandardLane)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -830,6 +836,7 @@ TEST_F(TestRouteHandler, getLeftAndRightShoulderLaneletReturnsNulloptForStandard
   EXPECT_FALSE(route_handler_->getRightShoulderLanelet(ref_lane).has_value());
 }
 
+// Expects getting lane changeable neighbors returns expected neighbors.
 TEST_F(TestRouteHandler, getLaneChangeableNeighborsReturnsExpectedNeighbors)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -839,6 +846,7 @@ TEST_F(TestRouteHandler, getLaneChangeableNeighborsReturnsExpectedNeighbors)
   EXPECT_FALSE(neighbors.empty());
 }
 
+// Test create map segments returns valid segments from path lanelets.
 TEST_F(TestRouteHandler, createMapSegmentsReturnsValidSegmentsFromPathLanelets)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -849,6 +857,7 @@ TEST_F(TestRouteHandler, createMapSegmentsReturnsValidSegmentsFromPathLanelets)
   EXPECT_FALSE(segments.empty());
 }
 
+// Test plan path lanelets between checkpoints with area overload returns valid path.
 TEST_F(TestRouteHandler, planPathLaneletsBetweenCheckpointsWithAreaOverloadReturnsValidPath)
 {
   set_test_route("lane_change_test_route.yaml");
@@ -865,6 +874,7 @@ TEST_F(TestRouteHandler, planPathLaneletsBetweenCheckpointsWithAreaOverloadRetur
   EXPECT_FALSE(path_areas.empty());
 }
 
+// Expects getting shoulder lanelet sequence 2 returns expected sequence when on shoulder lane.
 TEST_F(TestRouteHandler, getShoulderLaneletSequence2ReturnsExpectedSequenceWhenOnShoulderLane)
 {
   set_route_handler("overlap_map.osm");
