@@ -658,7 +658,7 @@ TEST_F(TestRouteHandler, getShoulderLaneletSequenceReturnsExpectedSequenceWhenOn
   const auto shoulder_lanelets = route_handler_->getShoulderLaneletsAtPose(pose);
   ASSERT_FALSE(shoulder_lanelets.empty());
 
-  const auto shoulder_lane = shoulder_lanelets.front();
+  const auto & shoulder_lane = shoulder_lanelets.front();
 
   auto seq = route_handler_->getShoulderLaneletSequence(shoulder_lane, pose, 10.0, 10.0);
   EXPECT_FALSE(seq.empty());
@@ -885,7 +885,7 @@ TEST_F(TestRouteHandler, getShoulderLaneletSequence2ReturnsExpectedSequenceWhenO
   const auto shoulder_lanelets = route_handler_->getShoulderLaneletsAtPose(pose);
   ASSERT_FALSE(shoulder_lanelets.empty());
 
-  const auto shoulder_lane = shoulder_lanelets.front();
+  const auto & shoulder_lane = shoulder_lanelets.front();
 
   auto seq = route_handler_->get_shoulder_lanelet_sequence(shoulder_lane, 10.0, 10.0);
   EXPECT_FALSE(seq.empty());
