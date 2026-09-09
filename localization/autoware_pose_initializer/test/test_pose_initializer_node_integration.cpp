@@ -34,6 +34,7 @@
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <vector>
@@ -50,6 +51,33 @@ namespace
 {
 // Floating point tolerance at EXPECT_NEAR and similar checks
 constexpr float near_tol = 1e-2F;
+
+// The node declares its parameters without defaults, so a test has to supply the whole set.
+rclcpp::NodeOptions make_node_options(
+  bool user_defined_initial_pose_enable = false,
+  const std::vector<double> & user_defined_initial_pose = {0, 0, 0, 0, 0, 0, 1})
+{
+  rclcpp::NodeOptions options;
+  options.append_parameter_override("ekf_enabled", true);
+  options.append_parameter_override("gnss_enabled", true);
+  options.append_parameter_override("ndt_enabled", true);
+  options.append_parameter_override("yabloc_enabled", false);
+  options.append_parameter_override("stop_check_enabled", true);
+  options.append_parameter_override("stop_check_duration", 0.5);
+  options.append_parameter_override("gnss_pose_timeout", 3.0);
+  options.append_parameter_override("pose_error_check_enabled", true);
+  options.append_parameter_override("pose_error_threshold", 5.0);
+  options.append_parameter_override(
+    "user_defined_initial_pose.enable", user_defined_initial_pose_enable);
+  options.append_parameter_override("map_height_fitter.target", "vector_map");
+  options.append_parameter_override("map_height_fitter.map_loader_name", "/map/vector_map_loader");
+  options.append_parameter_override("user_defined_initial_pose.pose", user_defined_initial_pose);
+
+  const std::vector<double> cov(36, 0.01);  // Satisfy the 36-element array requirement
+  options.append_parameter_override("output_pose_covariance", cov);
+  options.append_parameter_override("gnss_particle_covariance", cov);
+  return options;
+}
 }  // namespace
 
 class PoseInitializerNodeIntegrationTest : public ::testing::Test
@@ -59,28 +87,7 @@ protected:
   {
     // rclcpp init once for whole test binary via RosEnv below.
 
-    rclcpp::NodeOptions options;
-    options.append_parameter_override("ekf_enabled", true);
-    options.append_parameter_override("gnss_enabled", true);
-    options.append_parameter_override("ndt_enabled", true);
-    options.append_parameter_override("yabloc_enabled", false);
-    options.append_parameter_override("stop_check_enabled", true);
-    options.append_parameter_override("stop_check_duration", 0.5);
-    options.append_parameter_override("gnss_pose_timeout", 3.0);
-    options.append_parameter_override("pose_error_check_enabled", true);
-    options.append_parameter_override("pose_error_threshold", 5.0);
-    options.append_parameter_override("user_defined_initial_pose.enable", false);
-    options.append_parameter_override("map_height_fitter.target", "vector_map");
-    options.append_parameter_override(
-      "map_height_fitter.map_loader_name", "/map/vector_map_loader");
-    options.append_parameter_override(
-      "user_defined_initial_pose.pose", std::vector<double>{0, 0, 0, 0, 0, 0, 1});
-
-    const std::vector<double> cov(36, 0.01);  // Satisfy the 36-element array requirement
-    options.append_parameter_override("output_pose_covariance", cov);
-    options.append_parameter_override("gnss_particle_covariance", cov);
-
-    node_ = std::make_shared<PoseInitializer>(options);
+    node_ = std::make_shared<PoseInitializer>(make_node_options());
     harness_ = std::make_shared<rclcpp::Node>("test_harness");
 
     // Harness pub/sub
@@ -377,6 +384,183 @@ TEST_F(PoseInitializerNodeIntegrationTest, AutoInitLargePoseErrSucceedsWithWarn)
   // Reset pose is now aligned pose (X = 11.0)
   ASSERT_NE(last_reset_pose_, nullptr);
   EXPECT_NEAR(last_reset_pose_->pose.pose.position.x, 11.0, near_tol);
+}
+
+// ============================ USER DEFINED INITIAL POSE HERE ============================
+
+// Fixture for the startup path, where the node initializes itself from
+// `user_defined_initial_pose` instead of from an Initialize request.
+class PoseInitializerUserDefinedInitialPoseTest : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    harness_ = std::make_shared<rclcpp::Node>("test_harness");
+
+    // Harness sub
+    sub_reset_ = harness_->create_subscription<PoseWithCovarianceStamped>(
+      "pose_reset", 1, [this](PoseWithCovarianceStamped::ConstSharedPtr msg) {
+        {
+          std::lock_guard<std::mutex> lk(startup_mtx_);
+          last_reset_pose_ = msg;
+        }
+        startup_cv_.notify_one();
+      });
+    sub_state_ = harness_->create_subscription<InitializationState>(
+      "/localization/initialization_state", 10, [this](InitializationState::ConstSharedPtr msg) {
+        {
+          std::lock_guard<std::mutex> lk(startup_mtx_);
+          state_history_.push_back(msg->state);
+        }
+        startup_cv_.notify_one();
+      });
+
+    // Harness service mocks
+    auto trigger_callback = [this](
+                              const std::shared_ptr<SetBool::Request> /*req*/,
+                              std::shared_ptr<SetBool::Response> res) {
+      trigger_calls_++;
+      res->success = mock_trigger_success_;
+    };
+    srv_ekf_trigger_ = harness_->create_service<SetBool>("ekf_trigger_node", trigger_callback);
+    srv_ndt_trigger_ = harness_->create_service<SetBool>("ndt_trigger_node", trigger_callback);
+  }
+
+  void TearDown() override
+  {
+    if (exec_) {
+      exec_->cancel();
+    }
+    if (exec_thread_.joinable()) {
+      exec_thread_.join();
+    }
+  }
+
+  void start_node(const std::vector<double> & initial_pose)
+  {
+    node_ = std::make_shared<PoseInitializer>(make_node_options(true, initial_pose));
+
+    // `pose_reset` is volatile and the node publishes on it milliseconds into the spin, so the
+    // harness has to be matched before then or the sample is dropped.
+    ASSERT_TRUE(wait_for_matched(std::chrono::seconds(2))) << "Timed out matching the node";
+
+    exec_ =
+      std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(), 8);
+    exec_->add_node(node_);
+    exec_->add_node(harness_);
+    exec_thread_ = std::thread([this]() { exec_->spin(); });
+  }
+
+  // Endpoint matching happens in the middleware, so this works before the executor is spinning.
+  bool wait_for_matched(std::chrono::milliseconds timeout)
+  {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (std::chrono::steady_clock::now() < deadline) {
+      if (sub_reset_->get_publisher_count() > 0 && sub_state_->get_publisher_count() > 0) {
+        return true;
+      }
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    }
+    return false;
+  }
+
+  std::shared_ptr<PoseInitializer> node_;
+  std::shared_ptr<rclcpp::Node> harness_;
+  std::shared_ptr<rclcpp::executors::MultiThreadedExecutor> exec_;
+  std::thread exec_thread_;
+
+  rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_reset_;
+  rclcpp::Subscription<InitializationState>::SharedPtr sub_state_;
+
+  rclcpp::Service<SetBool>::SharedPtr srv_ekf_trigger_;
+  rclcpp::Service<SetBool>::SharedPtr srv_ndt_trigger_;
+
+  PoseWithCovarianceStamped::ConstSharedPtr last_reset_pose_ = nullptr;
+
+  // The whole sequence, because the constructor publishes UNINITIALIZED before the startup path
+  // runs and the failure case ends on that same value.
+  std::vector<InitializationState::_state_type> state_history_;
+
+  std::atomic<bool> mock_trigger_success_{true};
+  std::atomic<int> trigger_calls_{0};
+
+  // Guards last_reset_pose_ and state_history_
+  std::mutex startup_mtx_;
+  std::condition_variable startup_cv_;
+
+  template <typename Predicate>
+  bool wait_for(Predicate predicate, std::chrono::milliseconds timeout)
+  {
+    std::unique_lock<std::mutex> lk(startup_mtx_);
+    return startup_cv_.wait_for(lk, timeout, predicate);
+  }
+};
+
+// TEST 9. Confirms that enabling user_defined_initial_pose will:
+// - Publish the configured pose on startup, with no init req involved.
+// - Toggle both localizer triggers (4 calls).
+// - Reach INITIALIZED state.
+TEST_F(PoseInitializerUserDefinedInitialPoseTest, UserDefinedInitOnStartupSucceeds)
+{
+  start_node({1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0});
+
+  ASSERT_TRUE(wait_for(
+    [this]() {
+      return last_reset_pose_ && !state_history_.empty() &&
+             state_history_.back() == InitializationState::INITIALIZED;
+    },
+    std::chrono::seconds(2)))
+    << "Timed out waiting for startup initialization";
+
+  std::lock_guard<std::mutex> lk(startup_mtx_);
+  EXPECT_EQ(last_reset_pose_->header.frame_id, "map");
+  EXPECT_DOUBLE_EQ(last_reset_pose_->pose.pose.position.x, 1.0);
+  EXPECT_DOUBLE_EQ(last_reset_pose_->pose.pose.position.y, 2.0);
+  EXPECT_DOUBLE_EQ(last_reset_pose_->pose.pose.position.z, 3.0);
+  EXPECT_DOUBLE_EQ(last_reset_pose_->pose.pose.orientation.w, 1.0);
+
+  // (deactivate + activate) x 2 for both EKF and NDT = 4 calls
+  EXPECT_EQ(trigger_calls_.load(), 4);
+}
+
+// TEST 10. Confirms that a trigger failure during startup falls back to UNINITIALIZED without
+// publishing a pose, and that the exception does not escape the timer callback.
+TEST_F(PoseInitializerUserDefinedInitialPoseTest, UserDefinedInitTriggerFailsStaysUninitialized)
+{
+  mock_trigger_success_ = false;
+
+  start_node({1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0});
+
+  ASSERT_TRUE(wait_for(
+    [this]() {
+      const auto size = state_history_.size();
+      return size >= 2 && state_history_[size - 2] == InitializationState::INITIALIZING &&
+             state_history_[size - 1] == InitializationState::UNINITIALIZED;
+    },
+    std::chrono::seconds(2)))
+    << "Timed out waiting for the node to fall back to UNINITIALIZED";
+
+  std::lock_guard<std::mutex> lk(startup_mtx_);
+  EXPECT_EQ(last_reset_pose_, nullptr) << "Published a reset pose despite the failure!";
+
+  // Gives up on the first deactivation, so NDT is never asked
+  EXPECT_EQ(trigger_calls_.load(), 1);
+}
+
+// TEST 11. Confirms that a pose of the wrong size is rejected at construction.
+TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsPoseOfWrongSize)
+{
+  EXPECT_THROW(
+    std::make_shared<PoseInitializer>(make_node_options(true, {1.0, 2.0, 3.0})),
+    std::invalid_argument);
+}
+
+// TEST 12. Confirms that a zero quaternion is rejected at construction.
+TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsZeroQuaternion)
+{
+  EXPECT_THROW(
+    std::make_shared<PoseInitializer>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0})),
+    std::invalid_argument);
 }
 
 // Initialize/shutdown rclcpp once for entire test binary to avoid repeated
