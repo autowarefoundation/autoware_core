@@ -84,6 +84,9 @@ TEST(GyroOdometer, ImuAloneNeverFuses)
   const GyroOdometer::Status status = gyro_odometer.take_status();
   EXPECT_TRUE(status.imu_arrived);
   EXPECT_FALSE(status.vehicle_twist_arrived);
+  // No age is worked out until both sides have been heard from.
+  EXPECT_DOUBLE_EQ(status.latest_vehicle_twist_dt, 0.0);
+  EXPECT_DOUBLE_EQ(status.latest_imu_dt, 0.0);
 }
 
 // Vehicle twists alone never fuse, however many arrive.
@@ -100,6 +103,9 @@ TEST(GyroOdometer, VehicleTwistAloneNeverFuses)
   const GyroOdometer::Status status = gyro_odometer.take_status();
   EXPECT_TRUE(status.vehicle_twist_arrived);
   EXPECT_FALSE(status.imu_arrived);
+  // No age is worked out until both sides have been heard from.
+  EXPECT_DOUBLE_EQ(status.latest_vehicle_twist_dt, 0.0);
+  EXPECT_DOUBLE_EQ(status.latest_imu_dt, 0.0);
 }
 
 // Vehicle twists that arrive while no IMU sample is queued accumulate, and the IMU sample that
@@ -286,6 +292,112 @@ TEST(GyroOdometer, StandstillClearsAngularVelocityInTheCompensatedOutput)
   EXPECT_DOUBLE_EQ(output->twist_with_covariance.twist.twist.angular.z, 0.0);
   EXPECT_DOUBLE_EQ(output->twist.twist.angular.x, 0.0);
   EXPECT_DOUBLE_EQ(output->twist.twist.angular.y, 0.0);
+}
+
+// An age exactly at the tolerance is not stale: the check is a strict comparison.
+TEST(GyroOdometer, VehicleTwistAgedExactlyToToleranceStillFuses)
+{
+  // Arrange: the IMU sample is one second newer than the twist, and one second is the tolerance.
+  constexpr double tolerance_sec = 1.0;
+  const auto twist_stamp = make_stamp(100, 0);
+  const auto imu_stamp = make_stamp(101, 0);
+  GyroOdometer gyro_odometer{tolerance_sec};
+  gyro_odometer.input_vehicle_twist(make_vehicle_twist(twist_stamp, 1.0, 4.0));
+  gyro_odometer.input_imu(make_imu(imu_stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+
+  // Act
+  const auto output = gyro_odometer.input_vehicle_twist(make_vehicle_twist(twist_stamp, 1.0, 4.0));
+
+  // Assert
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(gyro_odometer.take_status().latest_vehicle_twist_dt, tolerance_sec);
+}
+
+// Mirror of the above: this time the IMU sample is the older of the two.
+TEST(GyroOdometer, ImuAgedExactlyToToleranceStillFuses)
+{
+  // Arrange: the twist is one second newer than the IMU sample, and one second is the tolerance.
+  constexpr double tolerance_sec = 1.0;
+  const auto imu_stamp = make_stamp(100, 0);
+  const auto twist_stamp = make_stamp(101, 0);
+  GyroOdometer gyro_odometer{tolerance_sec};
+  gyro_odometer.input_imu(make_imu(imu_stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+  gyro_odometer.input_vehicle_twist(make_vehicle_twist(twist_stamp, 1.0, 4.0));
+
+  // Act
+  const auto output =
+    gyro_odometer.input_imu(make_imu(imu_stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+
+  // Assert
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(gyro_odometer.take_status().latest_imu_dt, tolerance_sec);
+}
+
+// Standing still clears the angular velocity only while both magnitudes are strictly under the
+// threshold. A yaw rate sitting exactly on it survives.
+TEST(GyroOdometer, YawRateExactlyAtTheThresholdKeepsTheAngularVelocity)
+{
+  // Arrange: the vehicle is stopped, so the yaw rate alone decides.
+  constexpr double stop_threshold = 0.01;
+  const auto stamp = make_stamp(100, 0);
+  GyroOdometer gyro_odometer{10.0};
+  gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
+  gyro_odometer.input_imu(make_imu(stamp, "base_link", 0.0, 0.0, stop_threshold, 0.01, 0.01, 0.01));
+
+  // Act
+  const auto output = gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, 0.0, 4.0));
+
+  // Assert
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(output->twist.twist.angular.z, stop_threshold);
+}
+
+// Mirror of the above: this time the yaw rate is nil and the speed sits exactly on the threshold.
+TEST(GyroOdometer, SpeedExactlyAtTheThresholdKeepsTheAngularVelocity)
+{
+  // Arrange: the yaw rate is nil, so the speed alone decides.
+  constexpr double stop_threshold = 0.01;
+  const auto stamp = make_stamp(100, 0);
+  GyroOdometer gyro_odometer{10.0};
+  gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, stop_threshold, 0.0));
+  gyro_odometer.input_imu(make_imu(stamp, "base_link", 0.5, 0.6, 0.0, 0.01, 0.01, 0.01));
+
+  // Act
+  const auto output =
+    gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, stop_threshold, 4.0));
+
+  // Assert
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(output->twist.twist.angular.x, 0.5);
+  EXPECT_DOUBLE_EQ(output->twist.twist.angular.y, 0.6);
+}
+
+// Frames that disagree are not fused, and the vehicle twist that was waiting goes with them.
+TEST(GyroOdometer, PairWithDisagreeingFramesIsNotFused)
+{
+  // Arrange: make_vehicle_twist() stamps base_link, so an IMU in another frame disagrees. The two
+  // velocities differ, so a twist wrongly kept across the mismatch would show up as their mean.
+  constexpr double vx_before_mismatch = 1.0;
+  constexpr double vx_after_mismatch = 5.0;
+  const auto stamp = make_stamp(100, 0);
+  GyroOdometer gyro_odometer{10.0};
+  gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, vx_before_mismatch, 4.0));
+  gyro_odometer.input_imu(make_imu(stamp, "imu_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+
+  // Act
+  const auto mismatched =
+    gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, vx_before_mismatch, 4.0));
+  const bool consistent_at_mismatch = gyro_odometer.take_status().is_frame_id_consistent;
+  gyro_odometer.input_vehicle_twist(make_vehicle_twist(stamp, vx_after_mismatch, 4.0));
+  const auto fused =
+    gyro_odometer.input_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+
+  // Assert
+  EXPECT_FALSE(mismatched.has_value());
+  EXPECT_FALSE(consistent_at_mismatch);
+  ASSERT_TRUE(fused.has_value());
+  EXPECT_DOUBLE_EQ(fused->twist_with_covariance_raw.twist.twist.linear.x, vx_after_mismatch);
+  EXPECT_TRUE(gyro_odometer.take_status().is_frame_id_consistent);
 }
 
 // the output stamp being the later of the two latest queue stamps.
