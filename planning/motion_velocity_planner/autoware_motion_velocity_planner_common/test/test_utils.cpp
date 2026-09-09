@@ -25,6 +25,8 @@
 
 #include <algorithm>
 #include <cmath>
+#include <iostream>
+#include <limits>
 #include <memory>
 #include <stdexcept>
 #include <string>
@@ -119,6 +121,49 @@ std::vector<TrajectoryPoint> make_straight_forward_trajectory(
     points.push_back(p);
   }
   return points;
+}
+
+// Build a trajectory following a circular arc of the given radius (left turn, centre at (0, R))
+// with each point's orientation set to the arc tangent, so direction detection returns "driving
+// forward" just like make_straight_forward_trajectory.
+std::vector<TrajectoryPoint> make_arc_forward_trajectory(
+  const size_t num_points, const double step, const double radius)
+{
+  std::vector<TrajectoryPoint> points;
+  points.reserve(num_points);
+  for (size_t i = 0; i < num_points; ++i) {
+    const double theta = static_cast<double>(i) * step / radius;
+    TrajectoryPoint p;
+    p.pose.position.x = radius * std::sin(theta);
+    p.pose.position.y = radius * (1.0 - std::cos(theta));
+    p.pose.orientation = autoware_utils_geometry::create_quaternion_from_yaw(theta);
+    p.longitudinal_velocity_mps = 1.0;
+    points.push_back(p);
+  }
+  return points;
+}
+
+// Shortest distance from a point to the polyline through the trajectory points from begin_index
+// onwards. The collision check sweeps a footprint between consecutive points, so distance to the
+// segments is what decides a hit, not distance to the nearest sampled point.
+double distance_to_polyline(
+  const std::vector<TrajectoryPoint> & points, const size_t begin_index,
+  const geometry_msgs::msg::Point & query)
+{
+  double closest = std::numeric_limits<double>::max();
+  for (size_t i = begin_index; i + 1 < points.size(); ++i) {
+    const auto & a = points.at(i).pose.position;
+    const auto & b = points.at(i + 1).pose.position;
+    const double dx = b.x - a.x;
+    const double dy = b.y - a.y;
+    const double length_squared = dx * dx + dy * dy;
+    const double t =
+      length_squared > 0.0
+        ? std::clamp(((query.x - a.x) * dx + (query.y - a.y) * dy) / length_squared, 0.0, 1.0)
+        : 0.0;
+    closest = std::min(closest, std::hypot(query.x - (a.x + t * dx), query.y - (a.y + t * dy)));
+  }
+  return closest;
 }
 
 geometry_msgs::msg::Point make_point(const double x, const double y)
@@ -260,10 +305,11 @@ TEST(MvpUtilsExtend, AppendsIntermediateAndFinalPoints)
 
   const auto result = get_extended_trajectory_points(points, extend_distance, step_length);
 
-  // loop pushes one point at extend_sum = 2.0 (2.0 < 5.0 - 2.0 = 3.0), then the final point at
-  // exactly extend_distance.
-  ASSERT_EQ(result.size(), points.size() + 2);
+  // The loop steps by step_length up to extend_distance (2.0 and 4.0), then the final point lands
+  // on extend_distance exactly.
+  ASSERT_EQ(result.size(), points.size() + 3);
   EXPECT_NEAR(result[points.size()].pose.position.x, 2.0 + 2.0, 1e-6);      // x = 4.0
+  EXPECT_NEAR(result[points.size() + 1].pose.position.x, 2.0 + 4.0, 1e-6);  // x = 6.0
   EXPECT_NEAR(result.back().pose.position.x, 2.0 + extend_distance, 1e-6);  // x = 7.0
   // velocity is carried over from the goal point.
   EXPECT_DOUBLE_EQ(
@@ -291,6 +337,108 @@ TEST(MvpUtilsExtend, EmptyInputReturnsEmptyWithoutDereferencingBack)
   const std::vector<TrajectoryPoint> empty_points;
   const auto result = get_extended_trajectory_points(empty_points, 5.0, 2.0);
   EXPECT_TRUE(result.empty());
+}
+
+// The goal-side extension follows the curvature of the road at the goal instead of the tangent,
+// so on a circular arc the extended points stay on the arc. Anything more than a few millimetres
+// of drift means the extension has gone back to a straight line.
+TEST(MvpUtilsExtend, ExtensionFollowsLaneCurvature)
+{
+  constexpr double extend_distance = 6.0;
+  constexpr double step_length = 2.0;
+
+  for (const double radius : {5.0, 10.0, 20.0, 50.0}) {
+    const auto points = make_arc_forward_trajectory(6, 1.0, radius);
+    const auto result = get_extended_trajectory_points(points, extend_distance, step_length);
+    ASSERT_GT(result.size(), points.size());
+
+    for (size_t i = points.size(); i < result.size(); ++i) {
+      const auto & p = result[i].pose.position;
+      // Distance off the arc = how far the point sits from the arc's circle.
+      const double drift = std::abs(std::hypot(p.x, p.y - radius) - radius);
+      EXPECT_LT(drift, 1e-3) << "radius = " << radius << " m, extended point " << i;
+      std::cout << "[drift] radius = " << radius << " m, point " << i << " -> drift = " << drift
+                << " m" << std::endl;
+    }
+  }
+}
+
+// A straight trajectory must keep extending straight: the curvature estimate is zero there and the
+// arc formula has to degrade to the tangent case rather than dividing by it.
+TEST(MvpUtilsExtend, StraightTrajectoryStillExtendsStraight)
+{
+  const auto points = make_straight_forward_trajectory(5, 1.0);  // last point at x = 4.0
+  const auto result = get_extended_trajectory_points(points, 6.0, 2.0);
+
+  ASSERT_GT(result.size(), points.size());
+  for (size_t i = points.size(); i < result.size(); ++i) {
+    EXPECT_NEAR(result[i].pose.position.y, 0.0, 1e-9) << "extended point " << i;
+  }
+}
+
+// The extension samples every step_length so that the one-step collision polygons built from it
+// stay tight against the road. A gap wider than step_length would cut the corner on a curve.
+TEST(MvpUtilsExtend, ExtensionSpacesPointsByStepLength)
+{
+  const auto points = make_straight_forward_trajectory(3, 1.0);  // last point at x = 2.0
+  constexpr double extend_distance = 6.0;
+  constexpr double step_length = 2.0;
+  const auto result = get_extended_trajectory_points(points, extend_distance, step_length);
+
+  ASSERT_GT(result.size(), points.size());
+  double previous_x = points.back().pose.position.x;
+  for (size_t i = points.size(); i < result.size(); ++i) {
+    const double gap = result[i].pose.position.x - previous_x;
+    EXPECT_GT(gap, 0.0) << "extended point " << i;
+    EXPECT_LE(gap, step_length + 1e-6) << "extended point " << i;
+    previous_x = result[i].pose.position.x;
+  }
+  EXPECT_NEAR(result.back().pose.position.x, 2.0 + extend_distance, 1e-6);
+}
+
+// Check that a point obstacle on a circular arc beyond the goal lies within the extended
+// footprint. The lateral reach combines the vehicle half width and a nominal margin;
+// a point obstacle does not contribute an additional object half width.
+TEST(MvpUtilsExtend, ScenarioCurveKeepsPedestrianInsideExtendedFootprint)
+{
+  constexpr double lane_radius = 5.0;
+  constexpr double extend_distance = 6.0;
+  constexpr double step_length = 2.0;
+
+  // Place the obstacle using a longitudinal offset, half vehicle length, gap, and half object
+  // length. These fixed test dimensions put it between the final two extended points.
+  constexpr double s_to_pedestrian = 1.0485 + 3.117 / 2.0 + 1.5 + 0.8;
+  constexpr double ego_half_width = 1.265 / 2.0;  // scenario ego bounding box
+  constexpr double nominal_lateral_margin = 0.1;  // obstacle_filtering.lateral_margin.nominal
+  constexpr double pointcloud_reach = ego_half_width + nominal_lateral_margin;
+
+  const auto points = make_arc_forward_trajectory(6, 1.0, lane_radius);
+  const auto result = get_extended_trajectory_points(points, extend_distance, step_length);
+
+  const double theta_goal = 5.0 / lane_radius;  // last input point, 5 steps of 1 m
+  const double theta_pedestrian = theta_goal + s_to_pedestrian / lane_radius;
+  const auto pedestrian = make_point(
+    lane_radius * std::sin(theta_pedestrian), lane_radius * (1.0 - std::cos(theta_pedestrian)));
+
+  double reached_arc_length = 0.0;
+  for (size_t i = points.size(); i < result.size(); ++i) {
+    const auto & p = result.at(i).pose.position;
+    const double theta = std::atan2(p.x, lane_radius - p.y);
+    reached_arc_length = std::max(reached_arc_length, (theta - theta_goal) * lane_radius);
+  }
+  // Measure from the goal so the first swept segment (goal -> first extended point) counts too.
+  const double lateral_distance = distance_to_polyline(result, points.size() - 1, pedestrian);
+
+  std::cout << "[scenario] arc length goal -> pedestrian = " << s_to_pedestrian << " m\n"
+            << "[scenario] extension reaches             = " << reached_arc_length << " m\n"
+            << "[scenario] pedestrian to swept path      = " << lateral_distance << " m\n"
+            << "[scenario] pointcloud lateral reach      = " << pointcloud_reach << " m"
+            << std::endl;
+
+  // The extension covers the pedestrian's arc position ...
+  EXPECT_GT(reached_arc_length, s_to_pedestrian);
+  // ... and the swept footprint reaches it.
+  EXPECT_LT(lateral_distance, pointcloud_reach);
 }
 
 // ----------------------------- calc_distance_to_front_object -----------------------------------

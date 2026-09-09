@@ -20,13 +20,16 @@
 #include "autoware/motion_velocity_planner_common/planner_data.hpp"
 #include "autoware/motion_velocity_planner_common/velocity_planning_result.hpp"
 
+#include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_visualization/marker_helper.hpp>
 
 #include <boost/geometry.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -36,12 +39,51 @@ namespace autoware::motion_velocity_planner::utils
 {
 namespace
 {
-TrajectoryPoint extend_trajectory_point(
-  const double extend_distance, const TrajectoryPoint & goal_point, const bool is_driving_forward)
+// Below this curvature the arc formula divides by an almost-zero radius, and the road is straight
+// enough that the difference is irrelevant: 1e-4 corresponds to a 10 km radius.
+constexpr double min_curvature_for_arc = 1e-4;
+
+// Curvature of the road at the goal, taken from the last three trajectory points. Three points on
+// a circle give its curvature exactly, so the coarse spacing of the decimated trajectory does not
+// cost accuracy here. Returns zero (straight) when there are too few points or they are too close
+// together to define a circle.
+double estimate_goal_curvature(const std::vector<TrajectoryPoint> & points)
 {
+  if (points.size() < 3) {
+    return 0.0;
+  }
+  try {
+    return autoware_utils_geometry::calc_curvature(
+      points.at(points.size() - 3).pose.position, points.at(points.size() - 2).pose.position,
+      points.back().pose.position);
+  } catch (const std::runtime_error &) {
+    return 0.0;
+  }
+}
+
+TrajectoryPoint extend_trajectory_point(
+  const double extend_distance, const TrajectoryPoint & goal_point, const bool is_driving_forward,
+  const double curvature)
+{
+  const double signed_distance = extend_distance * (is_driving_forward ? 1.0 : -1.0);
+
+  // Follow the road rather than the tangent. In the goal frame, travelling signed_distance along a
+  // circle of the given curvature lands at (sin(t) / k, (1 - cos(t)) / k) having turned by
+  // t = k * signed_distance. As k tends to zero this tends to (signed_distance, 0) with no turn,
+  // which is the straight extension used below the threshold.
+  double x = signed_distance;
+  double y = 0.0;
+  double yaw = 0.0;
+  if (std::abs(curvature) >= min_curvature_for_arc) {
+    const double turn = curvature * signed_distance;
+    x = std::sin(turn) / curvature;
+    y = (1.0 - std::cos(turn)) / curvature;
+    yaw = turn;
+  }
+
   TrajectoryPoint extended_trajectory_point;
-  extended_trajectory_point.pose = autoware_utils_geometry::calc_offset_pose(
-    goal_point.pose, extend_distance * (is_driving_forward ? 1.0 : -1.0), 0.0, 0.0);
+  extended_trajectory_point.pose =
+    autoware_utils_geometry::calc_offset_pose(goal_point.pose, x, y, 0.0, yaw);
   extended_trajectory_point.longitudinal_velocity_mps = goal_point.longitudinal_velocity_mps;
   extended_trajectory_point.lateral_velocity_mps = goal_point.lateral_velocity_mps;
   extended_trajectory_point.acceleration_mps2 = goal_point.acceleration_mps2;
@@ -72,11 +114,17 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
   }
 
   const auto goal_point = input_points.back();
-  for (double extend_sum = step_length; extend_sum < extend_distance - step_length;
+  const double curvature = estimate_goal_curvature(input_points);
+  // Stop one epsilon short of extend_distance so that a step landing exactly on it does not add a
+  // duplicate of the final point below.
+  constexpr double duplicate_point_epsilon = 1e-6;
+  for (double extend_sum = step_length; extend_sum < extend_distance - duplicate_point_epsilon;
        extend_sum += step_length) {
-    output_points.push_back(extend_trajectory_point(extend_sum, goal_point, is_driving_forward));
+    output_points.push_back(
+      extend_trajectory_point(extend_sum, goal_point, is_driving_forward, curvature));
   }
-  output_points.push_back(extend_trajectory_point(extend_distance, goal_point, is_driving_forward));
+  output_points.push_back(
+    extend_trajectory_point(extend_distance, goal_point, is_driving_forward, curvature));
 
   return output_points;
 }
