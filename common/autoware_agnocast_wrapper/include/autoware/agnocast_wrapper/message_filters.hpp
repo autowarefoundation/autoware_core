@@ -192,9 +192,9 @@ public:
 private:
   using AnyCallback = std::variant<Callback, ConstSharedPtrCallback>;
 
-  // Per-registration adapter: owns the user callable and bridges upstream's MessageEvent /
-  // ConstSharedPtr arguments to the wrapper's message_ptr type. Upstream keeps only a raw
-  // pointer (adapter.get()), so it is held in `adapters_` to keep it alive.
+  // Per-registration adapter: owns the user callable and gives each backend the argument shape the
+  // registration resolved to, converted to message_ptr or handed over as it is. Upstream keeps only
+  // a raw pointer (adapter.get()), so it is held in `adapters_` to keep it alive.
   struct CallbackAdapter
   {
     AnyCallback fn;
