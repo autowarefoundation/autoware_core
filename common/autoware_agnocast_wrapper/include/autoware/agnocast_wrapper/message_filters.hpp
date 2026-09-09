@@ -271,6 +271,12 @@ private:
   template <class C, class... Bound>
   static auto makeAdapter(C callback, Bound... bound)
   {
+    // Upstream constrains the two-argument overload to void (T::*)(P0, P1). std::invoke would
+    // otherwise also accept a callable whose first parameter merely takes the instance, which
+    // upstream turns away in overload resolution.
+    static_assert(
+      sizeof...(Bound) == 0 || std::is_member_function_pointer_v<C>,
+      "registerCallback(callback, instance) takes a pointer to a member function of the instance");
     return std::make_unique<CallbackAdapter<C, Bound...>>(std::move(callback), bound...);
   }
 
