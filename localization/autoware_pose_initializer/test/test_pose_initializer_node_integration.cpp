@@ -122,7 +122,7 @@ protected:
     // Force executor to use 8 threads to prevent future.get() deadlocks
     exec_ =
       std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(), 8);
-    exec_->add_node(node_);
+    exec_->add_node(node_->get_node_base_interface());
     exec_->add_node(harness_);
     exec_thread_ = std::thread([this]() { exec_->spin(); });
 
