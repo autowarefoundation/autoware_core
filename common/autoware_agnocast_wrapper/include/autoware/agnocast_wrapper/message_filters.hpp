@@ -128,6 +128,7 @@ class PolicySynchronizer
 
 public:
   using Callback = std::function<void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...)>;
+  using ConstSharedPtrCallback = std::function<void(const typename Ms::ConstSharedPtr &...)>;
 
   PolicySynchronizer(uint32_t queue_size, Subscriber<Ms> &... subs)
   : sync_(
@@ -152,7 +153,9 @@ public:
   ///        `::message_filters::Synchronizer::registerCallback` overloads (free callable
   ///        or member-fn-ptr + instance; const and non-const).
   ///
-  /// Signature: `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) &...)`.
+  /// Signature: `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) &...)` or
+  /// `void(const typename Ms::ConstSharedPtr &...)`; the message_ptr form is probed first, so a
+  /// callable accepting both keeps resolving to it.
   /// Returns `::message_filters::Connection` whose `.disconnect()` removes THIS callable
   /// only (not RAII — scope exit does NOT unregister).
   ///
@@ -165,13 +168,13 @@ public:
   template <class C>
   ::message_filters::Connection registerCallback(C & callback)
   {
-    return registerCallbackInternal(Callback(callback));
+    return registerCallbackInternal(makeCallback(callback));
   }
 
   template <class C>
   ::message_filters::Connection registerCallback(const C & callback)
   {
-    return registerCallbackInternal(Callback(callback));
+    return registerCallbackInternal(makeCallback(callback));
   }
 
   template <class C, typename T>
@@ -187,23 +190,45 @@ public:
   }
 
 private:
+  using AnyCallback = std::variant<Callback, ConstSharedPtrCallback>;
+
   // Per-registration adapter: owns the user callable and bridges upstream's MessageEvent /
   // ConstSharedPtr arguments to the wrapper's message_ptr type. Upstream keeps only a raw
   // pointer (adapter.get()), so it is held in `adapters_` to keep it alive.
   struct CallbackAdapter
   {
-    Callback fn;
+    AnyCallback fn;
 
     void agnocastInvoke(const agnocast::message_filters::MessageEvent<const Ms> &... es)
     {
-      // Wrap ipc_shared_ptr in message_ptr (copies ipc_shared_ptr refcount, not data)
-      fn(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(
-        agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
+      std::visit(
+        [&](auto & callback) {
+          using CallbackT = std::decay_t<decltype(callback)>;
+          if constexpr (std::is_same_v<CallbackT, ConstSharedPtrCallback>) {
+            callback(
+              detail::to_std_shared_ptr(agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
+          } else {
+            static_assert(std::is_same_v<CallbackT, Callback>, "unhandled callback alternative");
+            callback(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(
+              agnocast::ipc_shared_ptr<const Ms>(es.getMessage()))...);
+          }
+        },
+        fn);
     }
 
     void rclcppInvoke(const typename Ms::ConstSharedPtr &... ms)
     {
-      fn(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(std::shared_ptr<const Ms>(ms))...);
+      std::visit(
+        [&](auto & callback) {
+          using CallbackT = std::decay_t<decltype(callback)>;
+          if constexpr (std::is_same_v<CallbackT, ConstSharedPtrCallback>) {
+            callback(ms...);
+          } else {
+            static_assert(std::is_same_v<CallbackT, Callback>, "unhandled callback alternative");
+            callback(AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)(std::shared_ptr<const Ms>(ms))...);
+          }
+        },
+        fn);
     }
   };
 
@@ -211,15 +236,44 @@ private:
   using RclcppSync = ::message_filters::Synchronizer<RclcppPolicy>;
   using AgnocastSync = agnocast::message_filters::Synchronizer<AgnocastPolicy>;
 
-  template <class C, typename T>
-  static Callback bindMemberCallback(C && callback, T * t)
+  template <class C>
+  static AnyCallback makeCallback(const C & callback)
   {
-    return Callback{
-      [callback = std::forward<C>(callback),
-       t](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ... ms) { (t->*callback)(ms...); }};
+    if constexpr (std::is_invocable_v<
+                    std::decay_t<C> &, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...>) {
+      return AnyCallback{std::in_place_type<Callback>, callback};
+    } else {
+      static_assert(
+        std::is_invocable_v<std::decay_t<C> &, const typename Ms::ConstSharedPtr &...>,
+        "synchronizer callback should be invocable with either "
+        "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ...");
+      return AnyCallback{std::in_place_type<ConstSharedPtrCallback>, callback};
+    }
   }
 
-  ::message_filters::Connection registerCallbackInternal(Callback && callback)
+  template <class C, typename T>
+  static AnyCallback bindMemberCallback(C && callback, T * t)
+  {
+    if constexpr (std::is_invocable_v<
+                    std::decay_t<C>, T *, const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...>) {
+      return AnyCallback{
+        std::in_place_type<Callback>,
+        [callback = std::forward<C>(callback),
+         t](const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ... ms) { (t->*callback)(ms...); }};
+    } else {
+      static_assert(
+        std::is_invocable_v<std::decay_t<C>, T *, const typename Ms::ConstSharedPtr &...>,
+        "synchronizer member callback should be invocable with either "
+        "const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M) & ... or const M::ConstSharedPtr & ...");
+      return AnyCallback{
+        std::in_place_type<ConstSharedPtrCallback>,
+        [callback = std::forward<C>(callback), t](const typename Ms::ConstSharedPtr &... ms) {
+          (t->*callback)(ms...);
+        }};
+    }
+  }
+
+  ::message_filters::Connection registerCallbackInternal(AnyCallback && callback)
   {
     auto adapter = std::make_unique<CallbackAdapter>();
     adapter->fn = std::move(callback);
@@ -325,9 +379,9 @@ class Synchronizer
 /// @brief Synchronizer specialization for the wrapper-layer ApproximateTime policy.
 ///        Switches between rclcpp and agnocast message_filters at runtime.
 ///
-/// The callback receives `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)&...)`.
-/// In agnocast mode, message_ptrs are created from the ipc_shared_ptrs, preserving
-/// zero-copy semantics during the callback lifetime.
+/// The callback receives `(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms)&...)` or
+/// `(const typename Ms::ConstSharedPtr&...)`. In agnocast mode both forms alias the
+/// ipc_shared_ptr rather than copying, preserving zero-copy semantics during the callback.
 ///
 /// @note Current limitations:
 ///   - 2..8 message types per Synchronizer (upstream Signal9 has no 9-arg MFP overload).

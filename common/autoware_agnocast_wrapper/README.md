@@ -411,6 +411,8 @@ void onSynchronized(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::CameraInfo) & info);
 ```
 
+Each parameter may also be spelled `MessageT::ConstSharedPtr`; the `AUTOWARE_MESSAGE_CONST_SHARED_PTR` form is probed first, so a callback accepting both resolves to it. Either form is subject to the lifetime rule in [Type spellings](#type-spellings), where the handle a message must not outlive is the `Subscriber`.
+
 ### Migration guide (from `::message_filters`)
 
 | Before                                                    | After                                                                                 |
