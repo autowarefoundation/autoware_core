@@ -121,11 +121,7 @@ void GnssPoserNode::callback_nav_sat_fix(
   // check fixed topic
   const bool is_status_fixed = is_fixed(nav_sat_fix_msg_ptr->status);
 
-  // publish is_fixed topic
-  auto is_fixed_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(fixed_pub_);
-  is_fixed_msg->stamp = nav_sat_fix_msg_ptr->header.stamp;
-  is_fixed_msg->data = is_status_fixed;
-  fixed_pub_->publish(std::move(is_fixed_msg));
+  publish_fixed(nav_sat_fix_msg_ptr->header.stamp, is_status_fixed);
 
   if (!is_status_fixed) {
     RCLCPP_WARN_STREAM_THROTTLE(
@@ -196,8 +192,23 @@ void GnssPoserNode::callback_nav_sat_fix(
   tf2::Transform tf_map2base_link{};
   tf_map2base_link = tf_map2gnss_antenna * tf_gnss_antenna2base_link;
 
+  publish_pose(*nav_sat_fix_msg_ptr, tf_map2base_link);
+}
+
+void GnssPoserNode::publish_fixed(const builtin_interfaces::msg::Time & stamp, const bool fixed)
+{
+  // publish is_fixed topic
+  auto is_fixed_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(fixed_pub_);
+  is_fixed_msg->stamp = stamp;
+  is_fixed_msg->data = fixed;
+  fixed_pub_->publish(std::move(is_fixed_msg));
+}
+
+void GnssPoserNode::publish_pose(
+  const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg, const tf2::Transform & tf_map2base_link)
+{
   auto gnss_base_pose_unique = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pose_pub_);
-  gnss_base_pose_unique->header.stamp = nav_sat_fix_msg_ptr->header.stamp;
+  gnss_base_pose_unique->header.stamp = nav_sat_fix_msg.header.stamp;
   gnss_base_pose_unique->header.frame_id = map_frame_;
   tf2::toMsg(tf_map2base_link, gnss_base_pose_unique->pose);
 
@@ -212,11 +223,11 @@ void GnssPoserNode::callback_nav_sat_fix(
   gnss_base_pose_cov_msg->pose.pose = gnss_base_pose_msg.pose;
   constexpr std::size_t diagonal_stride = 7;
   gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 0] =
-    can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[0] : 10.0;
+    can_get_covariance(nav_sat_fix_msg) ? nav_sat_fix_msg.position_covariance[0] : 10.0;
   gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 1] =
-    can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[4] : 10.0;
+    can_get_covariance(nav_sat_fix_msg) ? nav_sat_fix_msg.position_covariance[4] : 10.0;
   gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 2] =
-    can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[8] : 10.0;
+    can_get_covariance(nav_sat_fix_msg) ? nav_sat_fix_msg.position_covariance[8] : 10.0;
 
   if (use_gnss_ins_orientation_) {
     gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 3] =

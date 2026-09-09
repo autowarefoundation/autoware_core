@@ -19,6 +19,7 @@
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2/LinearMath/Transform.hpp>
 #include <tf2/transform_datatypes.hpp>
 
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
@@ -53,6 +54,9 @@ private:
     const std::string & target_frame, const std::string & source_frame,
     const geometry_msgs::msg::TransformStamped::SharedPtr transform_stamped_ptr,
     const builtin_interfaces::msg::Time & stamp);
+  void publish_fixed(const builtin_interfaces::msg::Time & stamp, bool fixed);
+  void publish_pose(
+    const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg, const tf2::Transform & tf_map2base_link);
   void publish_tf(
     const std::string & frame_id, const std::string & child_frame_id,
     const geometry_msgs::msg::PoseStamped & pose_msg);
