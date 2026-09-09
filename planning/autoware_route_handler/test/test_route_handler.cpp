@@ -19,6 +19,7 @@
 #include <gtest/gtest.h>
 
 #include <limits>
+#include <memory>
 #include <vector>
 
 namespace autoware::route_handler::test
@@ -455,6 +456,108 @@ TEST_F(TestRouteHandler, isDeadEndLaneletReturnsFalseOnContinuousLanes)
 
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   EXPECT_FALSE(route_handler_->isDeadEndLanelet(ref_lane));
+}
+
+// Coverage for findDrivableLanePathIncludingAreas using custom-built map
+TEST_F(
+  TestRouteHandler,
+  findDrivableLanePathIncludingAreasFindsFallbackPathWhenShortestPathContainsNonDrivableLane)
+{
+  const lanelet::Point3d entry_left_0(1, 0.0, 0.0, 0.0);
+  const lanelet::Point3d entry_left_1(2, 0.0, 10.0, 0.0);
+  const lanelet::Point3d entry_right_0(3, 1.0, 0.0, 0.0);
+  const lanelet::Point3d entry_right_1(4, 1.0, 10.0, 0.0);
+  const lanelet::LineString3d entry_left(10, {entry_left_0, entry_left_1});
+  const lanelet::LineString3d entry_right(11, {entry_right_0, entry_right_1});
+  lanelet::Lanelet entry_lane(100, entry_left, entry_right);
+  entry_lane.attributes()["subtype"] = "road";
+
+  const lanelet::Point3d exit_left_0(5, 0.0, 20.0, 0.0);
+  const lanelet::Point3d exit_left_1(6, 0.0, 30.0, 0.0);
+  const lanelet::Point3d exit_right_0(7, 1.0, 20.0, 0.0);
+  const lanelet::Point3d exit_right_1(8, 1.0, 30.0, 0.0);
+  const lanelet::LineString3d exit_left(12, {exit_left_0, exit_left_1});
+  const lanelet::LineString3d exit_right(13, {exit_right_0, exit_right_1});
+  lanelet::Lanelet exit_lane(300, exit_left, exit_right);
+  exit_lane.attributes()["subtype"] = "road";
+
+  const lanelet::Point3d mid_left_0(9, 0.0, 10.0, 0.0);
+  const lanelet::Point3d mid_left_1(10, 0.0, 20.0, 0.0);
+  const lanelet::Point3d mid_right_0(11, 1.0, 10.0, 0.0);
+  const lanelet::Point3d mid_right_1(12, 1.0, 20.0, 0.0);
+  const lanelet::LineString3d mid_left(14, {entry_left_1, mid_left_0, mid_left_1, exit_left_0});
+  const lanelet::LineString3d mid_right(
+    15, {entry_right_1, mid_right_0, mid_right_1, exit_right_0});
+
+  lanelet::Lanelet non_drivable_lane(200, mid_left, mid_right);
+  non_drivable_lane.attributes()["subtype"] = "road";
+  non_drivable_lane.attributes()["no_drivable_lane"] = "yes";
+
+  const lanelet::Point3d alt_left_0(13, -2.0, 10.0, 0.0);
+  const lanelet::Point3d alt_left_1(14, -2.0, 20.0, 0.0);
+  const lanelet::Point3d alt_right_0(15, -1.0, 10.0, 0.0);
+  const lanelet::Point3d alt_right_1(16, -1.0, 20.0, 0.0);
+  const lanelet::LineString3d alt_left(16, {entry_left_1, alt_left_0, alt_left_1, exit_left_0});
+  const lanelet::LineString3d alt_right(
+    17, {entry_right_1, alt_right_0, alt_right_1, exit_right_0});
+
+  lanelet::Lanelet drivable_lane(201, alt_left, alt_right);
+  drivable_lane.attributes()["subtype"] = "road";
+
+  auto map = std::make_shared<lanelet::LaneletMap>();
+  map->add(entry_lane);
+  map->add(non_drivable_lane);
+  map->add(drivable_lane);
+  map->add(exit_lane);
+
+  const auto map_bin = autoware::experimental::lanelet2_utils::to_autoware_map_msgs(map);
+  auto route_handler = std::make_shared<autoware::route_handler::RouteHandler>(map_bin);
+
+  autoware_planning_msgs::msg::LaneletRoute route;
+  route.header.frame_id = "map";
+  route.start_pose = autoware::test_utils::createPose(0.5, 5.0, 0.0, 0.0, 0.0, 0.0);
+  route.goal_pose = autoware::test_utils::createPose(0.5, 25.0, 0.0, 0.0, 0.0, 0.0);
+
+  autoware_planning_msgs::msg::LaneletPrimitive primitive1;
+  primitive1.id = 100;
+  primitive1.primitive_type = "lane";
+  autoware_planning_msgs::msg::LaneletSegment segment1;
+  segment1.preferred_primitive = primitive1;
+  segment1.primitives.push_back(primitive1);
+
+  autoware_planning_msgs::msg::LaneletPrimitive primitive2;
+  primitive2.id = 200;
+  primitive2.primitive_type = "lane";
+  autoware_planning_msgs::msg::LaneletSegment segment2;
+  segment2.preferred_primitive = primitive2;
+  segment2.primitives.push_back(primitive2);
+
+  autoware_planning_msgs::msg::LaneletPrimitive primitive3;
+  primitive3.id = 300;
+  primitive3.primitive_type = "lane";
+  autoware_planning_msgs::msg::LaneletSegment segment3;
+  segment3.preferred_primitive = primitive3;
+  segment3.primitives.push_back(primitive3);
+
+  route.segments.push_back(segment1);
+  route.segments.push_back(segment2);
+  route.segments.push_back(segment3);
+
+  route_handler->setRoute(route);
+  ASSERT_TRUE(route_handler->isHandlerReady());
+
+  lanelet::ConstLanelets path_lanelets;
+  const auto success = route_handler->planPathLaneletsBetweenCheckpoints(
+    route.start_pose, route.goal_pose, &path_lanelets, true);
+
+  ASSERT_TRUE(success);
+  EXPECT_FALSE(path_lanelets.empty());
+
+  bool used_drivable_lane = false;
+  for (const auto & lane : path_lanelets) {
+    if (lane.id() == 201) used_drivable_lane = true;
+  }
+  EXPECT_TRUE(used_drivable_lane);
 }
 
 TEST_F(TestRouteHandler, clearRouteResetsHandlerReadinessWhenCalled)
