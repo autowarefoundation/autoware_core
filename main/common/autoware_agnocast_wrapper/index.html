@@ -8319,23 +8319,33 @@ same source compiles in both builds:</p>
 <td><code>std::shared_ptr&lt;S::Request&gt;</code></td>
 <td><code>message_ptr&lt;S::Request, Shared&gt;</code></td>
 </tr>
-<tr>
-<td>Client response</td>
-<td><code>AUTOWARE_CLIENT_RESPONSE_PTR(S)</code>, or <code>Client&lt;S&gt;::SharedResponse</code> off the client (const, unlike the same-named <code>rclcpp::Client</code> alias)</td>
-<td><code>std::shared_ptr&lt;const S::Response&gt;</code></td>
-<td><code>message_ptr&lt;const S::Response, Shared&gt;</code></td>
-</tr>
 </tbody>
 </table>
 <p>A subscription callback may also take the plain <code>MessageT::ConstSharedPtr</code>; it needs no macro because it is spelled the same in both builds.</p>
 <p><strong>On the Agnocast path an owning handle must not outlive the subscription that delivered it.</strong> This covers <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code>, a callback taking <code>MessageT::ConstSharedPtr</code>, the pointer returned by <code>polling::take_data()</code>, and <code>AUTOWARE_CLIENT_RESPONSE_PTR</code>, which the client delivers through a response subscription of its own and which therefore must not outlive the client. Reading it afterwards can return recycled memory, and releasing it can abort the process. Members are destroyed in reverse declaration order, so declare the subscription <strong>before</strong> any member that caches a message:</p>
 <div class="highlight"><pre><span></span><code><span class="n">AUTOWARE_SUBSCRIPTION_PTR</span><span class="p">(</span><span class="n">PointCloud2</span><span class="p">)</span><span class="w"> </span><span class="n">sub_</span><span class="p">;</span><span class="w">   </span><span class="c1">// declared first -&gt; destroyed last</span>
 <span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">PointCloud2</span><span class="o">&gt;</span><span class="w"> </span><span class="n">latest_</span><span class="p">;</span><span class="w">    </span><span class="c1">// destroyed first -&gt; safe</span>
+
+<span class="n">AUTOWARE_CLIENT_PTR</span><span class="p">(</span><span class="n">SrvT</span><span class="p">)</span><span class="w"> </span><span class="n">client_</span><span class="p">;</span><span class="w">             </span><span class="c1">// same rule for a cached client response</span>
+<span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">SrvT</span><span class="o">::</span><span class="n">Response</span><span class="o">&gt;</span><span class="w"> </span><span class="n">cached_</span><span class="p">;</span>
 </code></pre></div>
 <p>The DDS path lets the same pointer be held indefinitely, so a node validated only with <code>ENABLE_AGNOCAST=0</code> will not show the problem.</p>
 <p><code>AUTOWARE_CLIENT_PTR(S)</code> / <code>AUTOWARE_SERVICE_PTR(S)</code> and the <code>AUTOWARE_CLIENT_*FUTURE*</code> macros resolve to
 the wrapper's own <code>Client&lt;S&gt;</code> / <code>Service&lt;S&gt;</code> types in <strong>both</strong> builds, so client and service code needs no
 per-build spelling. See <a href="docs/review_guide/#3-key-macros">Key Macros</a> for the full macro list.</p>
+<h4 id="client-responses-are-plain-stdshared_ptr">Client responses are plain <code>std::shared_ptr</code><a class="headerlink" href="#client-responses-are-plain-stdshared_ptr" title="Permanent link">#</a></h4>
+<p>A client hands its response over as <code>std::shared_ptr&lt;const ServiceT::Response&gt;</code> in both builds, so
+code that has to pass the response to an interface taking a <code>std::shared_ptr</code> needs no conversion.
+The client also exposes it as <code>Client&lt;S&gt;::SharedResponse</code>, which is const — unlike the same-named
+<code>rclcpp::Client</code> alias:</p>
+<div class="highlight"><pre><span></span><code><span class="k">auto</span><span class="w"> </span><span class="n">result</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">client_</span><span class="o">-&gt;</span><span class="n">async_send_request</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">move</span><span class="p">(</span><span class="n">request</span><span class="p">));</span>
+<span class="p">...</span>
+<span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">SrvT</span><span class="o">::</span><span class="n">Response</span><span class="o">&gt;</span><span class="w"> </span><span class="n">response</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">result</span><span class="p">.</span><span class="n">get</span><span class="p">();</span>
+</code></pre></div>
+<p>The payload is not copied on the Agnocast path either: the returned pointer aliases the received
+handle. <strong>It and every copy of it must be destroyed before the client that produced it</strong> — destroying
+the client drops the kernel-side reference, so a later publish can recycle the entry the copies still
+point at.</p>
 <p>Publisher, subscription, client and service handles carry the same read-back accessors in both builds: <code>get_topic_name()</code> and <code>get_actual_qos()</code> on a publisher or a subscription, <code>get_service_name()</code> on a client or a service. The polling subscriber carries <code>get_topic_name()</code> but not <code>get_actual_qos()</code>. <code>get_actual_qos()</code> is the one whose meaning differs: on the Agnocast path it reports the QoS as requested, not RMW-resolved.</p>
 <p>On rclcpp 21 (Iron) and newer, a client or service handle also carries <code>configure_introspection(clock, qos, state)</code>, which forwards to the <code>rclcpp</code> or the Agnocast counterpart so that a utility written against <code>rclcpp::Node</code> can enable ROS 2 service introspection without knowing which backend is behind it. It is <strong>not declared</strong> on Humble (rclcpp 16), so gate any call on <code>RCLCPP_VERSION_GTE(21, 0, 0)</code>; the preconditions the handle enforces in both builds and the backend differences it does not are documented in <code>client.hpp</code> and <code>service.hpp</code>.</p>
 <h4 id="build-modes-agnocast-disabled-vs-agnocast-enabled">Build modes: agnocast-disabled vs agnocast-enabled<a class="headerlink" href="#build-modes-agnocast-disabled-vs-agnocast-enabled" title="Permanent link">#</a></h4>
