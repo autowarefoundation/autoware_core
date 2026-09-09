@@ -17,6 +17,7 @@
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
 
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -52,11 +53,7 @@ GnssPoserNode::GnssPoserNode(const rclcpp::NodeOptions & node_options)
   gnss_poser_(
     declare_gnss_poser_params(),
     [this](const std::string & gnss_frame, const builtin_interfaces::msg::Time & stamp) {
-      // get TF from gnss_antenna to base_link
-      auto tf_gnss_antenna2base_link_msg_ptr =
-        std::make_shared<geometry_msgs::msg::TransformStamped>();
-      get_static_transform(gnss_frame, base_frame_, tf_gnss_antenna2base_link_msg_ptr, stamp);
-      return tf_gnss_antenna2base_link_msg_ptr->transform;
+      return get_static_transform(gnss_frame, base_frame_, stamp);
     })
 {
   // Subscribe to map_projector_info topic
@@ -177,49 +174,28 @@ void GnssPoserNode::callback_gnss_ins_orientation_stamped(
   gnss_poser_.set_ins_orientation(msg->orientation);
 }
 
-bool GnssPoserNode::get_static_transform(
+std::optional<geometry_msgs::msg::Transform> GnssPoserNode::get_static_transform(
   const std::string & target_frame, const std::string & source_frame,
-  const geometry_msgs::msg::TransformStamped::SharedPtr transform_stamped_ptr,
   const builtin_interfaces::msg::Time & stamp)
 {
   if (target_frame == source_frame) {
-    transform_stamped_ptr->header.stamp = stamp;
-    transform_stamped_ptr->header.frame_id = target_frame;
-    transform_stamped_ptr->child_frame_id = source_frame;
-    transform_stamped_ptr->transform.translation.x = 0.0;
-    transform_stamped_ptr->transform.translation.y = 0.0;
-    transform_stamped_ptr->transform.translation.z = 0.0;
-    transform_stamped_ptr->transform.rotation.x = 0.0;
-    transform_stamped_ptr->transform.rotation.y = 0.0;
-    transform_stamped_ptr->transform.rotation.z = 0.0;
-    transform_stamped_ptr->transform.rotation.w = 1.0;
-    return true;
+    return geometry_msgs::msg::Transform{};  // identity: zero translation, rotation w = 1
   }
 
   try {
-    *transform_stamped_ptr = tf2_buffer_.lookupTransform(
-      target_frame, source_frame,
-      tf2::TimePoint(std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec)));
+    return tf2_buffer_
+      .lookupTransform(
+        target_frame, source_frame,
+        tf2::TimePoint(std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec)))
+      .transform;
   } catch (tf2::TransformException & ex) {
     RCLCPP_WARN_STREAM_THROTTLE(
       this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(), ex.what());
     RCLCPP_WARN_STREAM_THROTTLE(
       this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(),
       "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str());
-
-    transform_stamped_ptr->header.stamp = stamp;
-    transform_stamped_ptr->header.frame_id = target_frame;
-    transform_stamped_ptr->child_frame_id = source_frame;
-    transform_stamped_ptr->transform.translation.x = 0.0;
-    transform_stamped_ptr->transform.translation.y = 0.0;
-    transform_stamped_ptr->transform.translation.z = 0.0;
-    transform_stamped_ptr->transform.rotation.x = 0.0;
-    transform_stamped_ptr->transform.rotation.y = 0.0;
-    transform_stamped_ptr->transform.rotation.z = 0.0;
-    transform_stamped_ptr->transform.rotation.w = 1.0;
-    return false;
+    return std::nullopt;
   }
-  return true;
 }
 
 void GnssPoserNode::publish_tf(

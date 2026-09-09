@@ -58,12 +58,12 @@ class GnssPoser
 {
 public:
   /// \brief Resolves the transform from the antenna frame named in the fix header to base_link at
-  /// the fix header stamp.
+  /// the fix header stamp, or std::nullopt when it cannot be resolved.
   ///
   /// input_fix() calls it only for a fix that passed the gates and the buffering, right before the
-  /// pose is composed. How the transform is obtained (TF lookup, fallback) is the caller's
-  /// business.
-  using TransformLookup = std::function<geometry_msgs::msg::Transform(
+  /// pose is composed. Obtaining the transform (TF lookup, logging) is the caller's business; what
+  /// to do when there is none is decided here.
+  using TransformLookup = std::function<std::optional<geometry_msgs::msg::Transform>(
     const std::string & antenna_frame, const builtin_interfaces::msg::Time & stamp)>;
 
   /// \param lookup_antenna_to_base_link see TransformLookup; kept for the lifetime of the object.

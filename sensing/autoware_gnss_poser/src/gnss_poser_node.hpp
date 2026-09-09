@@ -27,9 +27,11 @@
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/transform.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <optional>
 #include <string>
 
 namespace autoware::gnss_poser
@@ -52,9 +54,10 @@ private:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
     msg);
 
-  bool get_static_transform(
+  // The transform between the two frames at `stamp`, or std::nullopt (with a throttled warning)
+  // when TF cannot provide it.
+  std::optional<geometry_msgs::msg::Transform> get_static_transform(
     const std::string & target_frame, const std::string & source_frame,
-    const geometry_msgs::msg::TransformStamped::SharedPtr transform_stamped_ptr,
     const builtin_interfaces::msg::Time & stamp);
   void publish_fixed(const builtin_interfaces::msg::Time & stamp, bool fixed);
   void publish_pose(
