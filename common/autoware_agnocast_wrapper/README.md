@@ -419,9 +419,9 @@ using Policy = sync_policies::ApproximateTime<
 Synchronizer<Policy> sync(Policy(10), image_sub, info_sub);
 
 // 3. Register callback. Mirrors `::message_filters::Synchronizer::registerCallback` —
-//    pass a member-function pointer and `this`, or a `std::bind` result, or any other
-//    callable convertible to `void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M0) &,
-//                                    const AUTOWARE_MESSAGE_CONST_SHARED_PTR(M1) &)`.
+//    pass a member-function pointer and `this`, or a `std::bind` result: at ENABLE_AGNOCAST=0
+//    this Synchronizer is upstream's, which forwards nine placeholders to the callable, so a
+//    bare lambda or functor compiles only in the agnocast-enabled build.
 //    Returns a `::message_filters::Connection` for later `.disconnect()`.
 auto conn = sync.registerCallback(&MyNode::onSynchronized, this);
 // Note: `conn` going out of scope does NOT unregister the callback.
