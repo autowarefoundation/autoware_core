@@ -14,6 +14,8 @@
 #ifndef GNSS_POSER_NODE_HPP_
 #define GNSS_POSER_NODE_HPP_
 
+#include "gnss_poser.hpp"
+
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -31,25 +33,14 @@
 
 #include <string>
 
-// Forward declaration so the unit-test fixture (defined at global scope) can be granted access to
-// the pure static helpers below without spinning up a node.
-class GnssPoserHelpersTest;
-
 namespace autoware::gnss_poser
 {
-// How the published position is derived from the incoming fixes: the latest one as-is, or the
-// average / component-wise median of the last `buff_epoch` ones.
-enum class GnssPosePubMethod { Instant = 0, Average = 1, Median = 2 };
-
 class GnssPoserNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit GnssPoserNode(const rclcpp::NodeOptions & node_options);
 
 private:
-  // Allow unit tests to exercise the pure static helpers directly.
-  friend class ::GnssPoserHelpersTest;
-
   void callback_map_projector_info(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::MapProjectorInfo) & msg);
   void callback_nav_sat_fix(
@@ -57,15 +48,6 @@ private:
   void callback_gnss_ins_orientation_stamped(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
     msg);
-
-  static bool is_fixed(const sensor_msgs::msg::NavSatStatus & nav_sat_status_msg);
-  static bool can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg);
-  static geometry_msgs::msg::Point get_median_position(
-    const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer);
-  static geometry_msgs::msg::Point get_average_position(
-    const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer);
-  static geometry_msgs::msg::Quaternion get_quaternion_by_position_difference(
-    const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point);
 
   bool get_static_transform(
     const std::string & target_frame, const std::string & source_frame,
