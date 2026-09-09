@@ -237,6 +237,32 @@ public:
     return create_publisher<MessageT>(topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
+  // ===== Generic (type-erased) publisher =====
+  // Dispatches on use_agnocast() directly, rather than through visit_node() as the typed
+  // create_publisher() above does: visit_node() has a decltype(auto) return type deduced from its
+  // own (templated) body, and this method — unlike create_publisher<MessageT>(), which is itself a
+  // template and so has its instantiation deferred until called — is an ordinary member function
+  // that GCC compiles as part of the class, before visit_node()'s return type has been deduced.
+  GenericPublisher::SharedPtr create_generic_publisher(
+    const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
+    const agnocast::PublisherOptions & options = agnocast::PublisherOptions{})
+  {
+    if (use_agnocast()) {
+      return std::make_shared<AgnocastGenericPublisher>(
+        get_agnocast_node().get(), topic_name, topic_type, qos, options);
+    } else {
+      return std::make_shared<ROS2GenericPublisher>(
+        get_rclcpp_node().get(), topic_name, topic_type, qos, options);
+    }
+  }
+
+  GenericPublisher::SharedPtr create_generic_publisher(
+    const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth)
+  {
+    return create_generic_publisher(
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
+  }
+
   // ===== Subscription =====
   // create_subscription(topic, qos, options) must select the callback-less overload below.
   // Without this guard, Func deduces to SubscriptionOptions and the callback overload wins,
@@ -288,6 +314,32 @@ public:
         return std::make_shared<ROS2Subscription<MessageT>>(n.get(), topic_name, qos, options);
       }
     });
+  }
+
+  // ===== Generic (type-erased) subscription =====
+  // See the comment on create_generic_publisher() above for why this dispatches on use_agnocast()
+  // directly instead of going through visit_node().
+  GenericSubscription::SharedPtr create_generic_subscription(
+    const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
+    GenericSubscriptionCallback callback,
+    const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
+  {
+    if (use_agnocast()) {
+      return std::make_shared<AgnocastGenericSubscription>(
+        get_agnocast_node().get(), topic_name, topic_type, qos, std::move(callback), options);
+    } else {
+      return std::make_shared<ROS2GenericSubscription>(
+        get_rclcpp_node().get(), topic_name, topic_type, qos, std::move(callback), options);
+    }
+  }
+
+  GenericSubscription::SharedPtr create_generic_subscription(
+    const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth,
+    GenericSubscriptionCallback callback)
+  {
+    return create_generic_subscription(
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
+      std::move(callback));
   }
 
   // ===== Client / Service =====
@@ -720,6 +772,21 @@ public:
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
+  // ===== Generic (type-erased) publisher =====
+  rclcpp::GenericPublisher::SharedPtr create_generic_publisher(
+    const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
+    const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions{})
+  {
+    return node_->create_generic_publisher(topic_name, topic_type, qos, options);
+  }
+
+  rclcpp::GenericPublisher::SharedPtr create_generic_publisher(
+    const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth)
+  {
+    return node_->create_generic_publisher(
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
+  }
+
   // ===== Subscription =====
   // create_subscription(topic, qos, options) must select the callback-less overload below.
   // Without this guard, Func deduces to SubscriptionOptions and the callback overload wins,
@@ -771,6 +838,25 @@ public:
     polling_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
     return node_->create_subscription<MessageT>(
       topic_name, qos, [](std::unique_ptr<MessageT>) { assert(false); }, polling_options);
+  }
+
+  // ===== Generic (type-erased) subscription =====
+  rclcpp::GenericSubscription::SharedPtr create_generic_subscription(
+    const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
+    GenericSubscriptionCallback callback,
+    const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
+  {
+    return node_->create_generic_subscription(
+      topic_name, topic_type, qos, std::move(callback), options);
+  }
+
+  rclcpp::GenericSubscription::SharedPtr create_generic_subscription(
+    const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth,
+    GenericSubscriptionCallback callback)
+  {
+    return node_->create_generic_subscription(
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
+      std::move(callback));
   }
 
   // ===== Client =====

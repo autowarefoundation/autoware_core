@@ -49,6 +49,8 @@
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Publisher<MessageT>::SharedPtr
+#define AUTOWARE_GENERIC_SUBSCRIPTION_PTR autoware::agnocast_wrapper::GenericSubscription::SharedPtr
+#define AUTOWARE_GENERIC_PUBLISHER_PTR autoware::agnocast_wrapper::GenericPublisher::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) \
   typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) \
@@ -124,6 +126,8 @@
 #define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Response>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) typename rclcpp::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
+#define AUTOWARE_GENERIC_SUBSCRIPTION_PTR rclcpp::GenericSubscription::SharedPtr
+#define AUTOWARE_GENERIC_PUBLISHER_PTR rclcpp::GenericPublisher::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) \
   typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) \
