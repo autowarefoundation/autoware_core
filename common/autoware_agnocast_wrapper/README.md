@@ -72,16 +72,15 @@ The member _names_ and argument lists above are the same in both builds, but the
 message types they use are not the same C++ types. Always spell them with the `AUTOWARE_*` macros so the
 same source compiles in both builds:
 
-| What                             | Spell it as                                                                                                                            | `ENABLE_AGNOCAST=0`                  | `ENABLE_AGNOCAST=1`                            |
-| -------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------ | ---------------------------------------------- |
-| `create_publisher` result        | `AUTOWARE_PUBLISHER_PTR(M)`                                                                                                            | `rclcpp::Publisher<M>::SharedPtr`    | `agnocast_wrapper::Publisher<M>::SharedPtr`    |
-| `create_subscription` result     | `AUTOWARE_SUBSCRIPTION_PTR(M)`                                                                                                         | `rclcpp::Subscription<M>::SharedPtr` | `agnocast_wrapper::Subscription<M>::SharedPtr` |
-| `create_wall_timer` result       | `AUTOWARE_TIMER_PTR`                                                                                                                   | `rclcpp::TimerBase::SharedPtr`       | `agnocast_wrapper::Timer::SharedPtr`           |
-| `create_publisher` options arg   | `AUTOWARE_PUBLISHER_OPTIONS`                                                                                                           | `rclcpp::PublisherOptions`           | `agnocast::PublisherOptions`                   |
-| `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`                                                                                                        | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
-| Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)`                                                                                                 | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
-| `async_send_request` request arg | `AUTOWARE_CLIENT_REQUEST_PTR(S)`                                                                                                       | `std::shared_ptr<S::Request>`        | `message_ptr<S::Request, Shared>`              |
-| Client response                  | `AUTOWARE_CLIENT_RESPONSE_PTR(S)`, or `Client<S>::SharedResponse` off the client (const, unlike the same-named `rclcpp::Client` alias) | `std::shared_ptr<const S::Response>` | `message_ptr<const S::Response, Shared>`       |
+| What                             | Spell it as                            | `ENABLE_AGNOCAST=0`                  | `ENABLE_AGNOCAST=1`                            |
+| -------------------------------- | -------------------------------------- | ------------------------------------ | ---------------------------------------------- |
+| `create_publisher` result        | `AUTOWARE_PUBLISHER_PTR(M)`            | `rclcpp::Publisher<M>::SharedPtr`    | `agnocast_wrapper::Publisher<M>::SharedPtr`    |
+| `create_subscription` result     | `AUTOWARE_SUBSCRIPTION_PTR(M)`         | `rclcpp::Subscription<M>::SharedPtr` | `agnocast_wrapper::Subscription<M>::SharedPtr` |
+| `create_wall_timer` result       | `AUTOWARE_TIMER_PTR`                   | `rclcpp::TimerBase::SharedPtr`       | `agnocast_wrapper::Timer::SharedPtr`           |
+| `create_publisher` options arg   | `AUTOWARE_PUBLISHER_OPTIONS`           | `rclcpp::PublisherOptions`           | `agnocast::PublisherOptions`                   |
+| `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`        | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
+| Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)` | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
+| `async_send_request` request arg | `AUTOWARE_CLIENT_REQUEST_PTR(S)`       | `std::shared_ptr<S::Request>`        | `message_ptr<S::Request, Shared>`              |
 
 A subscription callback may also take the plain `MessageT::ConstSharedPtr`; it needs no macro because it is spelled the same in both builds.
 
@@ -90,6 +89,9 @@ A subscription callback may also take the plain `MessageT::ConstSharedPtr`; it n
 ```cpp
 AUTOWARE_SUBSCRIPTION_PTR(PointCloud2) sub_;   // declared first -> destroyed last
 std::shared_ptr<const PointCloud2> latest_;    // destroyed first -> safe
+
+AUTOWARE_CLIENT_PTR(SrvT) client_;             // same rule for a cached client response
+std::shared_ptr<const SrvT::Response> cached_;
 ```
 
 The DDS path lets the same pointer be held indefinitely, so a node validated only with `ENABLE_AGNOCAST=0` will not show the problem.
@@ -97,6 +99,24 @@ The DDS path lets the same pointer be held indefinitely, so a node validated onl
 `AUTOWARE_CLIENT_PTR(S)` / `AUTOWARE_SERVICE_PTR(S)` and the `AUTOWARE_CLIENT_*FUTURE*` macros resolve to
 the wrapper's own `Client<S>` / `Service<S>` types in **both** builds, so client and service code needs no
 per-build spelling. See [Key Macros](docs/review_guide.md#3-key-macros) for the full macro list.
+
+#### Client responses are plain `std::shared_ptr`
+
+A client hands its response over as `std::shared_ptr<const ServiceT::Response>` in both builds, so
+code that has to pass the response to an interface taking a `std::shared_ptr` needs no conversion.
+The client also exposes it as `Client<S>::SharedResponse`, which is const — unlike the same-named
+`rclcpp::Client` alias:
+
+```cpp
+auto result = client_->async_send_request(std::move(request));
+...
+std::shared_ptr<const SrvT::Response> response = result.get();
+```
+
+The payload is not copied on the Agnocast path either: the returned pointer aliases the received
+handle. **It and every copy of it must be destroyed before the client that produced it** — destroying
+the client drops the kernel-side reference, so a later publish can recycle the entry the copies still
+point at.
 
 Publisher, subscription, client and service handles carry the same read-back accessors in both builds: `get_topic_name()` and `get_actual_qos()` on a publisher or a subscription, `get_service_name()` on a client or a service. The polling subscriber carries `get_topic_name()` but not `get_actual_qos()`. `get_actual_qos()` is the one whose meaning differs: on the Agnocast path it reports the QoS as requested, not RMW-resolved.
 
