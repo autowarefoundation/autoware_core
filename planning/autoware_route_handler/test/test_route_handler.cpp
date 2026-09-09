@@ -439,11 +439,33 @@ TEST_F(TestRouteHandler, isDeadEndLaneletReturnsFalseOnContinuousLanes)
   EXPECT_FALSE(route_handler_->isDeadEndLanelet(ref_lane));
 }
 
-// Coverage for findDrivableLanePathIncludingAreas using custom-built map
+/*
+ * Coverage for findDrivableLanePathIncludingAreas using custom-built map
+ * Illustration of this map with parallel drivable and non-drivable lanes
+ *
+ *       y (m)
+ *
+ *  30 ┤  exit_lane (id=300)
+ *     │  ↑
+ *  25 ┼  │   G (0.5, 25.0)
+ *     │  │
+ *  20 ┤──┴──────────────────
+ *     │ drivable │ non-drivable
+ *     │ (id=201) │ (id=200)
+ *     │  ↑       │  ↑ (preferred but "no_drivable_lane")
+ *  10 ┤──┴───────┴──────────
+ *     │  entry_lane (id=100)
+ *     │  ↑
+ *   5 ┼  │   S (0.5, 5.0)
+ *     │  │
+ *   0 ┼─────────────────── x (m)
+ *       -2       0    1
+ */
 TEST_F(
   TestRouteHandler,
   findDrivableLanePathIncludingAreasFindsFallbackPathWhenShortestPathContainsNonDrivableLane)
 {
+  // Entry lanelet
   const lanelet::Point3d entry_left_0(1, 0.0, 0.0, 0.0);
   const lanelet::Point3d entry_left_1(2, 0.0, 10.0, 0.0);
   const lanelet::Point3d entry_right_0(3, 1.0, 0.0, 0.0);
@@ -453,6 +475,7 @@ TEST_F(
   lanelet::Lanelet entry_lane(100, entry_left, entry_right);
   entry_lane.attributes()["subtype"] = "road";
 
+  // Exit lanelet
   const lanelet::Point3d exit_left_0(5, 0.0, 20.0, 0.0);
   const lanelet::Point3d exit_left_1(6, 0.0, 30.0, 0.0);
   const lanelet::Point3d exit_right_0(7, 1.0, 20.0, 0.0);
@@ -462,6 +485,7 @@ TEST_F(
   lanelet::Lanelet exit_lane(300, exit_left, exit_right);
   exit_lane.attributes()["subtype"] = "road";
 
+  // Middle lanelets (left drivable, right non-drivable)
   const lanelet::Point3d mid_left_0(9, 0.0, 10.0, 0.0);
   const lanelet::Point3d mid_left_1(10, 0.0, 20.0, 0.0);
   const lanelet::Point3d mid_right_0(11, 1.0, 10.0, 0.0);
