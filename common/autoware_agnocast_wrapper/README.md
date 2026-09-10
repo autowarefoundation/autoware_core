@@ -271,9 +271,9 @@ This surface is narrower than the typed publisher/subscription above:
   `void(std::shared_ptr<const rclcpp::SerializedMessage>)` — there is no `message_ptr` or
   zero-copy overload, since a type-erased message has no compile-time type to allocate in place or
   hand out a zero-copy handle to.
-- On the publisher side, `qos_overriding_options` is rejected (`std::invalid_argument`) rather than
-  honored: rclcpp's generic publisher silently drops it, while Agnocast's applies it, so honoring
-  it would behave differently per backend.
+- `qos_overriding_options` is rejected (`std::invalid_argument`), on both the publisher and the
+  subscription, rather than honored: rclcpp's generic publisher/subscription silently drop it,
+  while Agnocast's apply it, so honoring it would behave differently per backend.
 
 #### CMake setup
 

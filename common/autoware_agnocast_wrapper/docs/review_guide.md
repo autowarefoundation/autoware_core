@@ -490,9 +490,10 @@ Review points specific to the generic surface:
 - [ ] The subscription callback takes exactly `std::shared_ptr<const rclcpp::SerializedMessage>` —
       there is no `message_ptr` or zero-copy overload, since a type-erased message has no
       compile-time type to allocate in place.
-- [ ] `options.qos_overriding_options` is left default on the publisher side. A non-empty value
-      throws `std::invalid_argument` at construction: rclcpp's generic publisher silently ignores
-      it while Agnocast's applies it, so honoring it would behave differently per backend.
+- [ ] `options.qos_overriding_options` is left default, on both the publisher and the
+      subscription. A non-empty value throws `std::invalid_argument` at construction: rclcpp's
+      generic publisher/subscription silently ignore it while Agnocast's apply it, so honoring it
+      would behave differently per backend.
 
 &nbsp;
 

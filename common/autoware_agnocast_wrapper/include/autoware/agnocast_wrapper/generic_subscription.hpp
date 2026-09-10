@@ -49,6 +49,7 @@ using GenericSubscriptionCallback =
 #include <rclcpp/rclcpp.hpp>
 
 #include <cstddef>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -85,6 +86,29 @@ public:
   virtual rclcpp::QoS get_actual_qos() const = 0;
 };
 
+namespace detail
+{
+
+/// rclcpp::create_generic_subscription() only honors event_callbacks, use_default_callbacks and
+/// callback_group — it silently drops qos_overriding_options — while Agnocast's
+/// GenericSubscription applies it. Rather than have the same option take effect on one backend
+/// and not the other, reject it outright in both, so a caller can't end up depending on an
+/// override that only works under ENABLE_AGNOCAST=1. Mirrors
+/// generic_publisher.hpp's check_generic_publisher_options() for the same reason.
+inline void check_generic_subscription_options(
+  const agnocast::SubscriptionOptions & options, const std::string & topic_name)
+{
+  if (!options.qos_overriding_options.get_policy_kinds().empty()) {
+    throw std::invalid_argument(
+      "create_generic_subscription(" + topic_name +
+      "): qos_overriding_options is not supported for a generic subscription (honored by "
+      "Agnocast's GenericSubscription but silently ignored by rclcpp's, so it cannot behave "
+      "consistently across backends)");
+  }
+}
+
+}  // namespace detail
+
 class AgnocastGenericSubscription : public GenericSubscription
 {
   agnocast::GenericSubscription::SharedPtr subscription_;
@@ -95,10 +119,10 @@ public:
     NodeT * node, const std::string & topic_name, const std::string & topic_type,
     const rclcpp::QoS & qos, GenericSubscriptionCallback callback,
     const agnocast::SubscriptionOptions & options)
-  : subscription_(
-      agnocast::create_generic_subscription(
-        node, topic_name, topic_type, qos, std::move(callback), options))
   {
+    detail::check_generic_subscription_options(options, topic_name);
+    subscription_ = agnocast::create_generic_subscription(
+      node, topic_name, topic_type, qos, std::move(callback), options);
   }
 
   const char * get_topic_name() const override { return subscription_->get_topic_name(); }
@@ -114,9 +138,10 @@ public:
     rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
     const rclcpp::QoS & qos, GenericSubscriptionCallback callback,
     const agnocast::SubscriptionOptions & options)
-  : subscription_(node->create_generic_subscription(
-      topic_name, topic_type, qos, std::move(callback), to_rclcpp_subscription_options(options)))
   {
+    detail::check_generic_subscription_options(options, topic_name);
+    subscription_ = node->create_generic_subscription(
+      topic_name, topic_type, qos, std::move(callback), to_rclcpp_subscription_options(options));
   }
 
   const char * get_topic_name() const override { return subscription_->get_topic_name(); }

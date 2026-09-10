@@ -269,6 +269,30 @@ TEST(GenericPublisherOptionsTest, DefaultOptionsDoNotThrow)
       node.get(), "/test/generic_qos_default", "std_msgs/msg/String", rclcpp::QoS(1)));
 }
 
+TEST(GenericSubscriptionOptionsTest, RejectsQosOverridingOptions)
+{
+  auto node = std::make_shared<rclcpp::Node>("generic_subscription_options_reject");
+
+  agnocast::SubscriptionOptions options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    autoware::agnocast_wrapper::create_generic_subscription(
+      node.get(), "/test/generic_sub_qos_override", "std_msgs/msg/String", rclcpp::QoS(1),
+      [](auto) {}, options),
+    std::invalid_argument);
+}
+
+TEST(GenericSubscriptionOptionsTest, DefaultOptionsDoNotThrow)
+{
+  auto node = std::make_shared<rclcpp::Node>("generic_subscription_options_ok");
+
+  EXPECT_NO_THROW(
+    autoware::agnocast_wrapper::create_generic_subscription(
+      node.get(), "/test/generic_sub_qos_default", "std_msgs/msg/String", rclcpp::QoS(1),
+      [](auto) {}));
+}
+
 #endif  // USE_AGNOCAST_ENABLED
 
 }  // namespace
