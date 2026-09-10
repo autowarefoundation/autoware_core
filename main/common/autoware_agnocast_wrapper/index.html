@@ -8223,6 +8223,10 @@ is in Agnocast mode — see the <a href="#build-modes-agnocast-disabled-vs-agnoc
 <td><code>create_subscription&lt;MessageT&gt;()</code> (<code>QoS</code> and depth overloads, plus a callback-less form read with <code>take()</code>) — see <a href="#subscription-api">Subscription API</a></td>
 </tr>
 <tr>
+<td>Generic (type-erased) publisher/subscription</td>
+<td><code>create_generic_publisher()</code> / <code>create_generic_subscription()</code> (<code>QoS</code> and depth overloads) — runtime <code>topic_type</code> string instead of a compile-time <code>MessageT</code>, for a node that relays arbitrary topics; see <a href="#generic-type-erased-publishersubscription">Generic publisher/subscription</a></td>
+</tr>
+<tr>
 <td>Client</td>
 <td><code>create_client&lt;ServiceT&gt;()</code> (<code>rclcpp::QoS</code>); <code>async_send_request()</code> takes <code>allocate_output_service_request()</code>'s result, or a plain <code>std::shared_ptr&lt;S::Request&gt;</code> that the Agnocast backend copies</td>
 </tr>
@@ -8306,6 +8310,18 @@ same source compiles in both builds:</p>
 <td><code>AUTOWARE_SUBSCRIPTION_OPTIONS</code></td>
 <td><code>rclcpp::SubscriptionOptions</code></td>
 <td><code>agnocast::SubscriptionOptions</code></td>
+</tr>
+<tr>
+<td><code>create_generic_publisher</code> result</td>
+<td><code>AUTOWARE_GENERIC_PUBLISHER_PTR</code></td>
+<td><code>rclcpp::GenericPublisher::SharedPtr</code></td>
+<td><code>agnocast_wrapper::GenericPublisher::SharedPtr</code></td>
+</tr>
+<tr>
+<td><code>create_generic_subscription</code> result</td>
+<td><code>AUTOWARE_GENERIC_SUBSCRIPTION_PTR</code></td>
+<td><code>rclcpp::GenericSubscription::SharedPtr</code></td>
+<td><code>agnocast_wrapper::GenericSubscription::SharedPtr</code></td>
 </tr>
 <tr>
 <td>Owning subscription callback arg</td>
@@ -8501,6 +8517,27 @@ executor.</p>
 </code></pre></div>
 <p>Prefer <a href="#polling-subscriber-polling-namespace"><code>polling::create_polling_subscriber()</code></a> for polling: it keeps Agnocast's zero copy and offers a re-delivery policy, where <code>take()</code> copies out of shared memory and returns each message once. This form is for callers that need an <code>rclcpp::Subscription</code>-shaped handle, as <code>component_interface_utils</code> does.</p>
 <p><code>take()</code> throws <code>std::runtime_error</code> on a subscription created <strong>with</strong> a callback: the delivery mode is fixed at construction. Agnocast fills none of the fields <code>info</code> carries, so that path zeroes it and reports the sequence numbers as unsupported. <code>SubscriptionOptions::callback_group</code> is ignored with a warning, and intra-process delivery is disabled, because either would let something else consume the messages <code>take()</code> is there to read.</p>
+<h4 id="generic-type-erased-publishersubscription">Generic (type-erased) publisher/subscription<a class="headerlink" href="#generic-type-erased-publishersubscription" title="Permanent link">#</a></h4>
+<p>Mirrors <code>rclcpp::GenericPublisher</code>/<code>rclcpp::GenericSubscription</code>: the topic type is a runtime
+string (e.g. <code>"std_msgs/msg/String"</code>) instead of a compile-time <code>MessageT</code>, for a node — such as
+<code>autoware_topic_relay_controller</code> — that relays arbitrary topics without linking against their
+message packages. Messages are always handled as <code>rclcpp::SerializedMessage</code>, on both <code>publish()</code>
+and the subscription callback.</p>
+<div class="highlight"><pre><span></span><code><span class="n">pub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">create_generic_publisher</span><span class="p">(</span><span class="s">"output"</span><span class="p">,</span><span class="w"> </span><span class="s">"std_msgs/msg/String"</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">QoS</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
+<span class="n">sub_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">node</span><span class="o">-&gt;</span><span class="n">create_generic_subscription</span><span class="p">(</span>
+<span class="w">  </span><span class="s">"input"</span><span class="p">,</span><span class="w"> </span><span class="s">"std_msgs/msg/String"</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">QoS</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+<span class="w">  </span><span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">SerializedMessage</span><span class="o">&gt;</span><span class="w"> </span><span class="n">msg</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">});</span>
+</code></pre></div>
+<p>This surface is narrower than the typed publisher/subscription above:</p>
+<ul>
+<li>The subscription callback has exactly one supported shape,
+  <code>void(std::shared_ptr&lt;const rclcpp::SerializedMessage&gt;)</code> — there is no <code>message_ptr</code> or
+  zero-copy overload, since a type-erased message has no compile-time type to allocate in place or
+  hand out a zero-copy handle to.</li>
+<li><code>qos_overriding_options</code> is rejected (<code>std::invalid_argument</code>), on both the publisher and the
+  subscription, rather than honored: rclcpp's generic publisher/subscription silently drop it,
+  while Agnocast's apply it, so honoring it would behave differently per backend.</li>
+</ul>
 <h4 id="cmake-setup">CMake setup<a class="headerlink" href="#cmake-setup" title="Permanent link">#</a></h4>
 <p>To use the Node wrapper in your package, add the following to your <code>CMakeLists.txt</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_agnocast_wrapper</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
@@ -8741,6 +8778,16 @@ executor.</p>
 <span class="p">}</span>
 </code></pre></div>
 <p>The payload is not copied here either, and the pointer may be kept alive beyond the callback, at the same cost as <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> — one heap allocation per message, and copies of the pointer are free.</p>
+<p>A generic (type-erased) publisher/subscription — see
+<a href="#generic-type-erased-publishersubscription">Generic publisher/subscription</a> — is reached through
+its own macros, since there is no <code>MessageT</code> to pass as the first macro argument:</p>
+<div class="highlight"><pre><span></span><code><span class="n">pub_output_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AUTOWARE_CREATE_GENERIC_PUBLISHER3</span><span class="p">(</span><span class="s">"output"</span><span class="p">,</span><span class="w"> </span><span class="s">"std_msgs/msg/String"</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">QoS</span><span class="p">(</span><span class="mi">1</span><span class="p">));</span>
+
+<span class="n">sub_input_</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">AUTOWARE_CREATE_GENERIC_SUBSCRIPTION</span><span class="p">(</span>
+<span class="w">  </span><span class="s">"input"</span><span class="p">,</span><span class="w"> </span><span class="s">"std_msgs/msg/String"</span><span class="p">,</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">QoS</span><span class="p">(</span><span class="mi">1</span><span class="p">),</span>
+<span class="w">  </span><span class="p">[](</span><span class="n">std</span><span class="o">::</span><span class="n">shared_ptr</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">rclcpp</span><span class="o">::</span><span class="n">SerializedMessage</span><span class="o">&gt;</span><span class="w"> </span><span class="n">msg</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">},</span>
+<span class="w">  </span><span class="n">AUTOWARE_SUBSCRIPTION_OPTIONS</span><span class="p">{});</span>
+</code></pre></div>
 <p>To use the macros provided by this package in your own package, include the following lines in your <code>CMakeLists.txt</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_agnocast_wrapper</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
 <span class="nb">ament_target_dependencies</span><span class="p">(</span><span class="s">target</span><span class="w"> </span><span class="s">autoware_agnocast_wrapper</span><span class="p">)</span>

@@ -1775,6 +1775,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#generic-type-erased-publishersubscriber-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic (type-erased) Publisher/Subscriber Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#31-polling-subscribers-polling-free-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8743,6 +8754,17 @@
 </li>
         
           <li class="md-nav__item">
+  <a href="#generic-type-erased-publishersubscriber-creation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generic (type-erased) Publisher/Subscriber Creation
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
   <a href="#31-polling-subscribers-polling-free-functions" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -9219,7 +9241,7 @@
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Member variable types: <code>rclcpp::Publisher&lt;M&gt;::SharedPtr</code> → <code>AUTOWARE_PUBLISHER_PTR(M)</code> etc.</li>
 </ul>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: <code>this-&gt;create_publisher</code> → <code>AUTOWARE_CREATE_PUBLISHER2</code> / <code>AUTOWARE_CREATE_PUBLISHER3</code> etc.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: <code>this-&gt;create_publisher</code> → <code>AUTOWARE_CREATE_PUBLISHER2</code> / <code>AUTOWARE_CREATE_PUBLISHER3</code> etc. (a type-erased topic uses <code>AUTOWARE_CREATE_GENERIC_PUBLISHER3/4</code> / <code>AUTOWARE_CREATE_GENERIC_SUBSCRIPTION</code> instead — see Part 2 Section 3)</li>
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code> (callbacks taking <code>const MessageT &amp;</code> can keep their signature unchanged, and so can <code>Message::ConstSharedPtr</code>)</li>
@@ -9343,7 +9365,7 @@ sudo<span class="w"> </span>modprobe<span class="w"> </span>agnocast
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Member variable types: <code>AUTOWARE_*_PTR</code> macros (e.g. <code>AUTOWARE_PUBLISHER_PTR(M)</code>)</li>
 </ul>
 <ul class="task-list">
-<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: Use <code>agnocast_wrapper::Node</code> member functions <code>create_publisher</code> / <code>create_subscription</code> directly (<strong><code>AUTOWARE_CREATE_*</code> macros are not needed</strong>)</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Creation: Use <code>agnocast_wrapper::Node</code> member functions <code>create_publisher</code> / <code>create_subscription</code> (and, for a type-erased topic, <code>create_generic_publisher</code> / <code>create_generic_subscription</code>) directly (<strong><code>AUTOWARE_CREATE_*</code> macros are not needed</strong>)</li>
 </ul>
 <ul class="task-list">
 <li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> Callback arguments: <code>const SharedPtr</code> / <code>UniquePtr</code> → <code>AUTOWARE_MESSAGE_CONST_SHARED_PTR</code> / <code>AUTOWARE_MESSAGE_UNIQUE_PTR</code> (callbacks taking <code>const MessageT &amp;</code> can keep their signature unchanged, and so can <code>Message::ConstSharedPtr</code>)</li>
@@ -9505,6 +9527,16 @@ sudo<span class="w"> </span>modprobe<span class="w"> </span>agnocast
 <td><code>Timer::SharedPtr</code></td>
 <td><code>rclcpp::TimerBase::SharedPtr</code></td>
 </tr>
+<tr>
+<td><code>AUTOWARE_GENERIC_PUBLISHER_PTR</code></td>
+<td><code>GenericPublisher::SharedPtr</code></td>
+<td><code>rclcpp::GenericPublisher::SharedPtr</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_GENERIC_SUBSCRIPTION_PTR</code></td>
+<td><code>GenericSubscription::SharedPtr</code></td>
+<td><code>rclcpp::GenericSubscription::SharedPtr</code></td>
+</tr>
 </tbody>
 </table>
 <p> </p>
@@ -9619,6 +9651,49 @@ pointer):</p>
 <ul>
 <li><code>AUTOWARE_CREATE_CLIENT1/2/3(service_type, service_name[, qos[, group]])</code> (+ <code>_ON_NODE</code> variants)</li>
 <li><code>AUTOWARE_CREATE_SERVICE2/3/4(service_type, service_name, callback[, qos[, group]])</code> (+ <code>_ON_NODE</code> variants)</li>
+</ul>
+<p> </p>
+<h3 id="generic-type-erased-publishersubscriber-creation">Generic (type-erased) Publisher/Subscriber Creation<a class="headerlink" href="#generic-type-erased-publishersubscriber-creation" title="Permanent link">#</a></h3>
+<p>There is no <code>MessageT</code> to pass as a macro argument here — the topic type is a runtime string
+instead — so these have their own macros rather than reusing <code>AUTOWARE_CREATE_PUBLISHER*</code>/
+<code>AUTOWARE_CREATE_SUBSCRIPTION</code>:</p>
+<table>
+<thead>
+<tr>
+<th>Macro</th>
+<th>ENABLE_AGNOCAST=1 (Agnocast)</th>
+<th>ENABLE_AGNOCAST=0 (ROS 2)</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>AUTOWARE_CREATE_GENERIC_PUBLISHER3(topic, topic_type, qos)</code></td>
+<td><code>agnocast_wrapper::create_generic_publisher(...)</code></td>
+<td><code>this-&gt;create_generic_publisher(...)</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_CREATE_GENERIC_PUBLISHER4(topic, topic_type, qos, options)</code></td>
+<td><code>agnocast_wrapper::create_generic_publisher(...)</code></td>
+<td><code>this-&gt;create_generic_publisher(...)</code></td>
+</tr>
+<tr>
+<td><code>AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(topic, topic_type, qos, callback, options)</code></td>
+<td><code>agnocast_wrapper::create_generic_subscription(...)</code></td>
+<td><code>this-&gt;create_generic_subscription(...)</code></td>
+</tr>
+</tbody>
+</table>
+<p>Each has an <code>_ON_NODE</code> variant taking the node explicitly as the first argument, same as the typed
+publisher/subscription macros above.</p>
+<p>Review points specific to the generic surface:</p>
+<ul class="task-list">
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> The subscription callback takes exactly <code>std::shared_ptr&lt;const rclcpp::SerializedMessage&gt;</code> —
+      there is no <code>message_ptr</code> or zero-copy overload, since a type-erased message has no
+      compile-time type to allocate in place.</li>
+<li class="task-list-item"><label class="task-list-control"><input type="checkbox" disabled><span class="task-list-indicator"></span></label> <code>options.qos_overriding_options</code> is left default, on both the publisher and the
+      subscription. A non-empty value throws <code>std::invalid_argument</code> at construction: rclcpp's
+      generic publisher/subscription silently ignore it while Agnocast's apply it, so honoring it
+      would behave differently per backend.</li>
 </ul>
 <p> </p>
 <h3 id="31-polling-subscribers-polling-free-functions">3.1 Polling Subscribers (<code>polling::</code> free functions)<a class="headerlink" href="#31-polling-subscribers-polling-free-functions" title="Permanent link">#</a></h3>
