@@ -31,21 +31,22 @@ is in Agnocast mode — see the [build-modes table](#build-modes-agnocast-disabl
 The following members / free functions are provided. Unless noted, signatures mirror their
 `rclcpp::Node` counterparts.
 
-| Category        | Members                                                                                                                                                                                                                                                                                                                                                                                                               |
-| --------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Construction    | `Node(name, options)`, `Node(name, namespace, options)`, virtual destructor, `SharedPtr`. Non-copyable and non-movable (copying would alias one backend behind two wrappers). Derives from `std::enable_shared_from_this<Node>`, so `shared_from_this()` is available when the node is owned by a `shared_ptr`                                                                                                        |
-| Basic info      | `get_name()`, `get_namespace()`, `get_fully_qualified_name()`, `get_logger()`                                                                                                                                                                                                                                                                                                                                         |
-| Time            | `get_clock()`, `now()`                                                                                                                                                                                                                                                                                                                                                                                                |
-| Node interfaces | `get_node_base_interface()`, `get_node_topics_interface()`, `get_node_parameters_interface()` (partial — only these three)                                                                                                                                                                                                                                                                                            |
-| Callback groups | `create_callback_group()`                                                                                                                                                                                                                                                                                                                                                                                             |
-| Parameters      | `declare_parameter()` (typed + `ParameterValue`/`ParameterType` overloads), `has_parameter()`, `undeclare_parameter()`, `get_parameter()` / `get_parameters()` (typed + prefix overloads), `set_parameter()` / `set_parameters()` / `set_parameters_atomically()`, `describe_parameter(s)()`, `get_parameter_types()`, `list_parameters()`, `add_on_set_parameters_callback()`, `remove_on_set_parameters_callback()` |
-| Publisher       | `create_publisher<MessageT>()` (`QoS` and depth overloads) — see [Publisher API](#publisher-api)                                                                                                                                                                                                                                                                                                                      |
-| Subscription    | `create_subscription<MessageT>()` (`QoS` and depth overloads, plus a callback-less form read with `take()`) — see [Subscription API](#subscription-api)                                                                                                                                                                                                                                                               |
-| Client          | `create_client<ServiceT>()` (`rclcpp::QoS`); `async_send_request()` takes `allocate_output_service_request()`'s result, or a plain `std::shared_ptr<S::Request>` that the Agnocast backend copies                                                                                                                                                                                                                     |
-| Service         | `create_service<ServiceT>()` (`rclcpp::QoS`) — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                             |
-| Timer           | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
-| Underlying node | `get_rclcpp_node()`; `get_agnocast_node()` (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free `to_rclcpp_node(node)`                                                                                                                                                                                                                            |
-| Context         | free `init()`, `shutdown()` and `ok()` — mode-agnostic replacements for the rclcpp equivalents (see [Context notes](#context-notes))                                                                                                                                                                                                                                                                                  |
+| Category                                     | Members                                                                                                                                                                                                                                                                                                                                                                                                               |
+| -------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Construction                                 | `Node(name, options)`, `Node(name, namespace, options)`, virtual destructor, `SharedPtr`. Non-copyable and non-movable (copying would alias one backend behind two wrappers). Derives from `std::enable_shared_from_this<Node>`, so `shared_from_this()` is available when the node is owned by a `shared_ptr`                                                                                                        |
+| Basic info                                   | `get_name()`, `get_namespace()`, `get_fully_qualified_name()`, `get_logger()`                                                                                                                                                                                                                                                                                                                                         |
+| Time                                         | `get_clock()`, `now()`                                                                                                                                                                                                                                                                                                                                                                                                |
+| Node interfaces                              | `get_node_base_interface()`, `get_node_topics_interface()`, `get_node_parameters_interface()` (partial — only these three)                                                                                                                                                                                                                                                                                            |
+| Callback groups                              | `create_callback_group()`                                                                                                                                                                                                                                                                                                                                                                                             |
+| Parameters                                   | `declare_parameter()` (typed + `ParameterValue`/`ParameterType` overloads), `has_parameter()`, `undeclare_parameter()`, `get_parameter()` / `get_parameters()` (typed + prefix overloads), `set_parameter()` / `set_parameters()` / `set_parameters_atomically()`, `describe_parameter(s)()`, `get_parameter_types()`, `list_parameters()`, `add_on_set_parameters_callback()`, `remove_on_set_parameters_callback()` |
+| Publisher                                    | `create_publisher<MessageT>()` (`QoS` and depth overloads) — see [Publisher API](#publisher-api)                                                                                                                                                                                                                                                                                                                      |
+| Subscription                                 | `create_subscription<MessageT>()` (`QoS` and depth overloads, plus a callback-less form read with `take()`) — see [Subscription API](#subscription-api)                                                                                                                                                                                                                                                               |
+| Generic (type-erased) publisher/subscription | `create_generic_publisher()` / `create_generic_subscription()` (`QoS` and depth overloads) — runtime `topic_type` string instead of a compile-time `MessageT`, for a node that relays arbitrary topics; see [Generic publisher/subscription](#generic-type-erased-publishersubscription)                                                                                                                              |
+| Client                                       | `create_client<ServiceT>()` (`rclcpp::QoS`); `async_send_request()` takes `allocate_output_service_request()`'s result, or a plain `std::shared_ptr<S::Request>` that the Agnocast backend copies                                                                                                                                                                                                                     |
+| Service                                      | `create_service<ServiceT>()` (`rclcpp::QoS`) — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                             |
+| Timer                                        | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
+| Underlying node                              | `get_rclcpp_node()`; `get_agnocast_node()` (agnocast-enabled build only — not declared in an agnocast-disabled build, so calling it there is a compile error); free `to_rclcpp_node(node)`                                                                                                                                                                                                                            |
+| Context                                      | free `init()`, `shutdown()` and `ok()` — mode-agnostic replacements for the rclcpp equivalents (see [Context notes](#context-notes))                                                                                                                                                                                                                                                                                  |
 
 > `OnSetParametersCallbackType` is aliased in this namespace and resolves to the correct rclcpp type
 > for both Humble (rclcpp 16.x) and Jazzy (rclcpp 28+).
@@ -72,15 +73,17 @@ The member _names_ and argument lists above are the same in both builds, but the
 message types they use are not the same C++ types. Always spell them with the `AUTOWARE_*` macros so the
 same source compiles in both builds:
 
-| What                             | Spell it as                            | `ENABLE_AGNOCAST=0`                  | `ENABLE_AGNOCAST=1`                            |
-| -------------------------------- | -------------------------------------- | ------------------------------------ | ---------------------------------------------- |
-| `create_publisher` result        | `AUTOWARE_PUBLISHER_PTR(M)`            | `rclcpp::Publisher<M>::SharedPtr`    | `agnocast_wrapper::Publisher<M>::SharedPtr`    |
-| `create_subscription` result     | `AUTOWARE_SUBSCRIPTION_PTR(M)`         | `rclcpp::Subscription<M>::SharedPtr` | `agnocast_wrapper::Subscription<M>::SharedPtr` |
-| `create_wall_timer` result       | `AUTOWARE_TIMER_PTR`                   | `rclcpp::TimerBase::SharedPtr`       | `agnocast_wrapper::Timer::SharedPtr`           |
-| `create_publisher` options arg   | `AUTOWARE_PUBLISHER_OPTIONS`           | `rclcpp::PublisherOptions`           | `agnocast::PublisherOptions`                   |
-| `create_subscription` options    | `AUTOWARE_SUBSCRIPTION_OPTIONS`        | `rclcpp::SubscriptionOptions`        | `agnocast::SubscriptionOptions`                |
-| Owning subscription callback arg | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)` | `std::shared_ptr<const M>`           | `message_ptr<const M, Shared>`                 |
-| `async_send_request` request arg | `AUTOWARE_CLIENT_REQUEST_PTR(S)`       | `std::shared_ptr<S::Request>`        | `message_ptr<S::Request, Shared>`              |
+| What                                 | Spell it as                            | `ENABLE_AGNOCAST=0`                      | `ENABLE_AGNOCAST=1`                                |
+| ------------------------------------ | -------------------------------------- | ---------------------------------------- | -------------------------------------------------- |
+| `create_publisher` result            | `AUTOWARE_PUBLISHER_PTR(M)`            | `rclcpp::Publisher<M>::SharedPtr`        | `agnocast_wrapper::Publisher<M>::SharedPtr`        |
+| `create_subscription` result         | `AUTOWARE_SUBSCRIPTION_PTR(M)`         | `rclcpp::Subscription<M>::SharedPtr`     | `agnocast_wrapper::Subscription<M>::SharedPtr`     |
+| `create_wall_timer` result           | `AUTOWARE_TIMER_PTR`                   | `rclcpp::TimerBase::SharedPtr`           | `agnocast_wrapper::Timer::SharedPtr`               |
+| `create_publisher` options arg       | `AUTOWARE_PUBLISHER_OPTIONS`           | `rclcpp::PublisherOptions`               | `agnocast::PublisherOptions`                       |
+| `create_subscription` options        | `AUTOWARE_SUBSCRIPTION_OPTIONS`        | `rclcpp::SubscriptionOptions`            | `agnocast::SubscriptionOptions`                    |
+| `create_generic_publisher` result    | `AUTOWARE_GENERIC_PUBLISHER_PTR`       | `rclcpp::GenericPublisher::SharedPtr`    | `agnocast_wrapper::GenericPublisher::SharedPtr`    |
+| `create_generic_subscription` result | `AUTOWARE_GENERIC_SUBSCRIPTION_PTR`    | `rclcpp::GenericSubscription::SharedPtr` | `agnocast_wrapper::GenericSubscription::SharedPtr` |
+| Owning subscription callback arg     | `AUTOWARE_MESSAGE_CONST_SHARED_PTR(M)` | `std::shared_ptr<const M>`               | `message_ptr<const M, Shared>`                     |
+| `async_send_request` request arg     | `AUTOWARE_CLIENT_REQUEST_PTR(S)`       | `std::shared_ptr<S::Request>`            | `message_ptr<S::Request, Shared>`                  |
 
 A subscription callback may also take the plain `MessageT::ConstSharedPtr`; it needs no macro because it is spelled the same in both builds.
 
@@ -247,6 +250,31 @@ Prefer [`polling::create_polling_subscriber()`](#polling-subscriber-polling-name
 
 `take()` throws `std::runtime_error` on a subscription created **with** a callback: the delivery mode is fixed at construction. Agnocast fills none of the fields `info` carries, so that path zeroes it and reports the sequence numbers as unsupported. `SubscriptionOptions::callback_group` is ignored with a warning, and intra-process delivery is disabled, because either would let something else consume the messages `take()` is there to read.
 
+#### Generic (type-erased) publisher/subscription
+
+Mirrors `rclcpp::GenericPublisher`/`rclcpp::GenericSubscription`: the topic type is a runtime
+string (e.g. `"std_msgs/msg/String"`) instead of a compile-time `MessageT`, for a node — such as
+`autoware_topic_relay_controller` — that relays arbitrary topics without linking against their
+message packages. Messages are always handled as `rclcpp::SerializedMessage`, on both `publish()`
+and the subscription callback.
+
+```cpp
+pub_ = node->create_generic_publisher("output", "std_msgs/msg/String", rclcpp::QoS(1));
+sub_ = node->create_generic_subscription(
+  "input", "std_msgs/msg/String", rclcpp::QoS(1),
+  [](std::shared_ptr<const rclcpp::SerializedMessage> msg) { ... });
+```
+
+This surface is narrower than the typed publisher/subscription above:
+
+- The subscription callback has exactly one supported shape,
+  `void(std::shared_ptr<const rclcpp::SerializedMessage>)` — there is no `message_ptr` or
+  zero-copy overload, since a type-erased message has no compile-time type to allocate in place or
+  hand out a zero-copy handle to.
+- `qos_overriding_options` is rejected (`std::invalid_argument`), on both the publisher and the
+  subscription, rather than honored: rclcpp's generic publisher/subscription silently drop it,
+  while Agnocast's apply it, so honoring it would behave differently per backend.
+
 #### CMake setup
 
 To use the Node wrapper in your package, add the following to your `CMakeLists.txt`:
@@ -399,6 +427,19 @@ void onPointCloud(const PointCloud2::ConstSharedPtr input_msg) {
 ```
 
 The payload is not copied here either, and the pointer may be kept alive beyond the callback, at the same cost as `AUTOWARE_MESSAGE_CONST_SHARED_PTR` — one heap allocation per message, and copies of the pointer are free.
+
+A generic (type-erased) publisher/subscription — see
+[Generic publisher/subscription](#generic-type-erased-publishersubscription) — is reached through
+its own macros, since there is no `MessageT` to pass as the first macro argument:
+
+```cpp
+pub_output_ = AUTOWARE_CREATE_GENERIC_PUBLISHER3("output", "std_msgs/msg/String", rclcpp::QoS(1));
+
+sub_input_ = AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(
+  "input", "std_msgs/msg/String", rclcpp::QoS(1),
+  [](std::shared_ptr<const rclcpp::SerializedMessage> msg) { ... },
+  AUTOWARE_SUBSCRIPTION_OPTIONS{});
+```
 
 To use the macros provided by this package in your own package, include the following lines in your `CMakeLists.txt`:
 
