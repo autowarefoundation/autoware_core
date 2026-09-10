@@ -208,6 +208,80 @@ TEST_F(GenericPubSubMethod1Test, MacroSubscriptionRejectsQosOverridingOptions)
     std::invalid_argument);
 }
 
+// The _ON_NODE macros (for use outside the node class — helper classes, free functions, member
+// objects holding only a node pointer) route through the same wrapper free function as the
+// this-implicit macros above, so they need their own coverage rather than assuming the
+// this-implicit tests exercise them too.
+TEST_F(GenericPubSubMethod1Test, MacroOnNodeRoundTrip)
+{
+  auto pub_node = std::make_shared<rclcpp::Node>("generic_pubsub_method1_on_node_pub");
+  auto sub_node = std::make_shared<rclcpp::Node>("generic_pubsub_method1_on_node_sub");
+
+  const AUTOWARE_GENERIC_PUBLISHER_PTR pub = AUTOWARE_CREATE_GENERIC_PUBLISHER3_ON_NODE(
+    pub_node.get(), "/test/generic_method1_on_node", "std_msgs/msg/String", rclcpp::QoS(1));
+
+  std::atomic<bool> received{false};
+  std::string received_data;
+  const AUTOWARE_GENERIC_SUBSCRIPTION_PTR sub = AUTOWARE_CREATE_GENERIC_SUBSCRIPTION_ON_NODE(
+    sub_node.get(), "/test/generic_method1_on_node", "std_msgs/msg/String", rclcpp::QoS(1),
+    ([&received, &received_data](auto serialized) {
+      received_data = deserialize(*serialized).data;
+      received = true;
+    }),
+    AUTOWARE_SUBSCRIPTION_OPTIONS{});
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(sub_node);
+
+  const auto discovery_deadline = std::chrono::steady_clock::now() + discovery_timeout;
+  while (std::chrono::steady_clock::now() < discovery_deadline &&
+         pub->get_subscription_count() + pub->get_intra_process_subscription_count() == 0) {
+    std::this_thread::sleep_for(poll_interval);
+  }
+  ASSERT_GT(pub->get_subscription_count() + pub->get_intra_process_subscription_count(), 0U);
+
+  String msg;
+  msg.data = "method1-on-node-generic";
+  pub->publish(serialize(msg));
+
+  const auto spin_deadline = std::chrono::steady_clock::now() + discovery_timeout;
+  while (!received.load() && std::chrono::steady_clock::now() < spin_deadline) {
+    executor.spin_some();
+    std::this_thread::sleep_for(poll_interval);
+  }
+
+  ASSERT_TRUE(received.load());
+  EXPECT_EQ(received_data, msg.data);
+}
+
+TEST_F(GenericPubSubMethod1Test, MacroOnNodePublisherRejectsQosOverridingOptions)
+{
+  auto node = std::make_shared<rclcpp::Node>("generic_method1_on_node_publisher_qos_reject");
+
+  AUTOWARE_PUBLISHER_OPTIONS options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    (AUTOWARE_CREATE_GENERIC_PUBLISHER4_ON_NODE(
+      node.get(), "/test/generic_method1_on_node_qos_override", "std_msgs/msg/String",
+      rclcpp::QoS(1), options)),
+    std::invalid_argument);
+}
+
+TEST_F(GenericPubSubMethod1Test, MacroOnNodeSubscriptionRejectsQosOverridingOptions)
+{
+  auto node = std::make_shared<rclcpp::Node>("generic_method1_on_node_subscription_qos_reject");
+
+  AUTOWARE_SUBSCRIPTION_OPTIONS options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    (AUTOWARE_CREATE_GENERIC_SUBSCRIPTION_ON_NODE(
+      node.get(), "/test/generic_method1_on_node_sub_qos_override", "std_msgs/msg/String",
+      rclcpp::QoS(1), [](auto) {}, options)),
+    std::invalid_argument);
+}
+
 TEST_F(GenericPubSubMethod2Test, NodeMemberRoundTrip)
 {
   using autoware::agnocast_wrapper::Node;
