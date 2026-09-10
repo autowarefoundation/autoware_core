@@ -30,7 +30,6 @@
 #include <array>
 #include <chrono>
 #include <functional>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -101,9 +100,9 @@ TwistWithCovarianceStamped make_vehicle_twist(
 // ---------------------------------------------------------------------------
 // Observations
 //
-// FusedOutput mirrors the four messages one fusion produces. DiagnosticsSnapshot keeps the reported
-// values as the strings they are put on the wire as, so that a test parses only the entries it
-// actually pins -- which matters because some of them are read before ever being assigned.
+// FusedOutput mirrors the four messages one fusion produces. Of the diagnostics only the reported
+// level is kept: the wording of the message and the reported values belong to the decision the
+// diagnostics suite already covers.
 // ---------------------------------------------------------------------------
 
 struct FusedOutput
@@ -113,23 +112,6 @@ struct FusedOutput
   TwistStamped twist;
   TwistWithCovarianceStamped twist_with_covariance;
 };
-
-struct DiagnosticsSnapshot
-{
-  std::map<std::string, std::string> values;
-  int8_t level{0};
-  std::string message;
-};
-
-bool reported_flag(const DiagnosticsSnapshot & snapshot, const std::string & key)
-{
-  const auto it = snapshot.values.find(key);
-  EXPECT_NE(it, snapshot.values.end()) << "diagnostics has no entry named " << key;
-  if (it == snapshot.values.end()) {
-    return false;
-  }
-  return it->second == "True";
-}
 
 // Drives the node over its real topics while keeping every step of the scenario ordered.
 //
@@ -173,13 +155,7 @@ protected:
           if (status.name.find("gyro_odometer_status") == std::string::npos) {
             continue;
           }
-          DiagnosticsSnapshot snapshot;
-          snapshot.level = status.level;
-          snapshot.message = status.message;
-          for (const auto & value : status.values) {
-            snapshot.values.emplace(value.key, value.value);
-          }
-          latest_diagnostics_ = snapshot;
+          latest_diagnostics_level_ = status.level;
           ++diagnostics_count_;
         }
       });
@@ -273,15 +249,15 @@ protected:
     return output;
   }
 
-  // Let the diagnostics timer fire once and return what it reported.
-  DiagnosticsSnapshot take_diagnostics()
+  // Let the diagnostics timer fire once and return the level it reported.
+  int8_t take_diagnostics_level()
   {
     const uint64_t before = diagnostics_count_;
     set_now(sim_now_ + rclcpp::Duration(diagnostics_period));
     const bool reported =
       pump_until([this, before]() { return diagnostics_count_ > before; }, wait_budget);
     EXPECT_TRUE(reported) << "the node did not report diagnostics";
-    return latest_diagnostics_;
+    return latest_diagnostics_level_;
   }
 
 private:
@@ -325,7 +301,7 @@ private:
   std::optional<TwistStamped> twist_;
   std::optional<TwistWithCovarianceStamped> twist_with_covariance_;
 
-  DiagnosticsSnapshot latest_diagnostics_;
+  int8_t latest_diagnostics_level_{0};
   uint64_t diagnostics_count_{0};
 
   rclcpp::Time sim_now_{0, 0, RCL_ROS_TIME};
@@ -333,21 +309,12 @@ private:
 
 }  // namespace
 
-// With nothing published, the node reports that neither input has arrived.
-//
-// Only the two arrival flags are pinned here. The reported level and the rest of the message are
-// left alone on purpose: the transform result and both message ages are reported before any input
-// has ever set them, so what they contribute to the message is not something to hold the node to.
-TEST_F(GyroOdometerNodeTest, NoInputReportsNeitherMessageArrived)
+// With nothing published, the node already reports at the highest severity.
+TEST_F(GyroOdometerNodeTest, NoInputReportsError)
 {
   start_node("base_link", 10.0);
 
-  const DiagnosticsSnapshot diagnostics = take_diagnostics();
-
-  EXPECT_FALSE(reported_flag(diagnostics, "is_arrived_first_vehicle_twist"));
-  EXPECT_FALSE(reported_flag(diagnostics, "is_arrived_first_imu"));
-  EXPECT_NE(diagnostics.message.find("Twist msg has not been arrived yet."), std::string::npos);
-  EXPECT_NE(diagnostics.message.find("IMU msg has not been arrived yet."), std::string::npos);
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 }
 
 // transform_covariance: the maximum diagonal term is written to every diagonal term, off-diagonals
@@ -427,16 +394,7 @@ TEST_F(GyroOdometerNodeTest, UnresolvableImuFrameDropsPendingData)
   send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
 
   EXPECT_FALSE(take_output().has_value());
-
-  const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_FALSE(reported_flag(diagnostics, "is_succeed_transform_imu"));
-  // A sample that never became usable does not count as the IMU side having arrived.
-  EXPECT_FALSE(reported_flag(diagnostics, "is_arrived_first_imu"));
-  EXPECT_EQ(diagnostics.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
-  EXPECT_NE(
-    diagnostics.message.find("Please publish TF from base_link to frame of IMU."),
-    std::string::npos)
-    << "reported message was: " << diagnostics.message;
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 }
 
 // A fusion that completes leaves nothing for the diagnostics to complain about.
@@ -450,32 +408,7 @@ TEST_F(GyroOdometerNodeTest, CompletedFusionReportsOk)
   send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
   ASSERT_TRUE(take_output().has_value());
 
-  const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_EQ(diagnostics.level, diagnostic_msgs::msg::DiagnosticStatus::OK);
-  EXPECT_TRUE(reported_flag(diagnostics, "is_succeed_transform_imu"));
-}
-
-// An IMU sample in an unresolvable frame is reported as a transform failure; being too old on top
-// of that is not reported, because the sample never reaches the staleness judgment.
-TEST_F(GyroOdometerNodeTest, StaleAndUnresolvableImuReportsTheTransformFailure)
-{
-  start_node("base_link", 1.0);
-  const auto stamp = make_stamp(100, 0);
-
-  send_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
-  send_imu(make_imu(stamp, "base_link", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
-  send_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
-  ASSERT_TRUE(take_output().has_value()) << "priming did not reach a first fusion";
-
-  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
-  set_now(rclcpp::Time(105, 0, RCL_ROS_TIME));
-  send_imu(make_imu(make_stamp(105, 0), "imu_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
-
-  EXPECT_FALSE(take_output().has_value());
-
-  const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_FALSE(reported_flag(diagnostics, "is_succeed_transform_imu"));
-  EXPECT_EQ(diagnostics.message, "Please publish TF from base_link to frame of IMU.");
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::OK);
 }
 
 // An unresolvable IMU sample arriving before any vehicle twist has to be survivable: there is no
@@ -487,14 +420,12 @@ TEST_F(GyroOdometerNodeTest, UnresolvableImuBeforeAnyVehicleTwistIsSurvivable)
 
   send_imu(make_imu(stamp, "imu_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
 
-  const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_FALSE(reported_flag(diagnostics, "is_arrived_first_imu"));
-  EXPECT_FALSE(reported_flag(diagnostics, "is_arrived_first_vehicle_twist"));
-  EXPECT_FALSE(reported_flag(diagnostics, "is_succeed_transform_imu"));
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 }
 
 // The transform status describes the IMU sample that arrived most recently, whether or not there
-// was anything to fuse it against.
+// was anything to fuse it against: a resolvable sample with no vehicle twist to meet leaves only
+// the missing vehicle twist to report, which is a warning rather than the transform failure.
 TEST_F(GyroOdometerNodeTest, ImuAloneStillReportsItsTransformStatus)
 {
   start_node("base_link", 10.0);
@@ -503,9 +434,7 @@ TEST_F(GyroOdometerNodeTest, ImuAloneStillReportsItsTransformStatus)
   send_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
   send_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
 
-  const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_TRUE(reported_flag(diagnostics, "is_succeed_transform_imu"));
-  EXPECT_EQ(diagnostics.message, "Twist msg has not been arrived yet.");
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::WARN);
 }
 
 // With the IMU frame resolvable, the queued angular velocity is rotated by the looked-up transform
@@ -532,9 +461,6 @@ TEST_F(GyroOdometerNodeTest, ResolvableImuFrameRotatesTheAngularVelocity)
   EXPECT_NEAR(raw.twist.twist.angular.z, 0.3, 1e-9);
   // The samples are relabelled as belonging to the output frame.
   EXPECT_EQ(raw.header.frame_id, "base_link");
-
-  const DiagnosticsSnapshot diagnostics = take_diagnostics();
-  EXPECT_TRUE(reported_flag(diagnostics, "is_succeed_transform_imu"));
 }
 
 // A vehicle twist waiting for its IMU counterpart survives an unresolvable sample in between: the
