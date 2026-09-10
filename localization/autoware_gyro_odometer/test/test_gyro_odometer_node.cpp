@@ -319,7 +319,7 @@ TEST_F(GyroOdometerNodeTest, NoInputReportsError)
 
 // transform_covariance: the maximum diagonal term is written to every diagonal term, off-diagonals
 // are zeroed.
-TEST(GyroOdometer, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals)
+TEST(GyroOdometerNode, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals)
 {
   std::array<double, 9> cov = {};
   cov[COV_IDX_XYZ::X_X] = 1.0;
@@ -341,8 +341,6 @@ TEST(GyroOdometer, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals)
   EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Z_X], 0.0);
   EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Z_Y], 0.0);
 }
-
-// fuse_twist: means over multiple entries, covariance reduction by queue size, fixed Y_Y/Z_Z, and
 
 // A completed pair puts the longitudinal velocity of the vehicle twist and the angular velocity of
 // the IMU on all four output topics.

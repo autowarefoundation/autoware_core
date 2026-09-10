@@ -400,6 +400,7 @@ TEST(GyroOdometer, PairWithDisagreeingFramesIsNotFused)
   EXPECT_TRUE(gyro_odometer.take_status().is_frame_id_consistent);
 }
 
+// fuse_twist: means over multiple entries, covariance reduction by queue size, fixed Y_Y/Z_Z, and
 // the output stamp being the later of the two latest queue stamps.
 TEST(GyroOdometer, FuseTwistComputesMeansCovarianceAndStamp)
 {
