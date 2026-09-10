@@ -40,6 +40,10 @@ namespace autoware::agnocast_wrapper
 /// deserializes it into shared memory inside publish(), the mirror image of what
 /// GenericSubscription does on the way out. There is no message_ptr overload here as there is for
 /// the typed Publisher — a type-erased message has no compile-time type to allocate in place.
+///
+/// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+///         loaded. Both backends load the typesupport library for topic_type at construction
+///         (rclcpp::GenericPublisher and agnocast::GenericPublisher document the same behavior).
 class GenericPublisher
 {
 public:

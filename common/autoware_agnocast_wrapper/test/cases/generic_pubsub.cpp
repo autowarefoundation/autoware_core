@@ -215,6 +215,21 @@ TEST(GenericPubSubMethod2Test, NodeMemberDepthAndOptionsOverload)
   EXPECT_EQ(received_data, msg.data);
 }
 
+TEST(GenericPubSubMethod2Test, UnknownTopicTypeThrows)
+{
+  using autoware::agnocast_wrapper::Node;
+
+  auto node = std::make_shared<Node>("generic_unknown_type_node");
+
+  // Both backends load topic_type's typesupport library at construction (see the @throws docs on
+  // GenericPublisher / Node::create_generic_publisher()); a nonexistent package name can't resolve
+  // on either.
+  EXPECT_THROW(
+    node->create_generic_publisher(
+      "/test/generic_unknown_type", "no_such_package/msg/NoSuchType", rclcpp::QoS(1)),
+    std::runtime_error);
+}
+
 // create_generic_publisher()/AgnocastGenericPublisher/ROS2GenericPublisher only exist in the
 // Agnocast-enabled build (generic_publisher.hpp is guarded by USE_AGNOCAST_ENABLED end to end),
 // so the qos_overriding_options rejection they share can only be exercised there.

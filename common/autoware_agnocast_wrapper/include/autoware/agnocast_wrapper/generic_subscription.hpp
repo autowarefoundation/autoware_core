@@ -57,6 +57,11 @@ namespace autoware::agnocast_wrapper
 /// agnocast::GenericSubscription serializes it before handing it to the callback. There is no
 /// message_ptr overload here as there is for the typed Subscription — a type-erased message has no
 /// compile-time type to hand out a zero-copy handle to.
+///
+/// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+///         loaded. Both backends load the typesupport library for topic_type at construction
+///         (rclcpp::GenericSubscription and agnocast::GenericSubscription document the same
+///         behavior).
 class GenericSubscription
 {
 public:

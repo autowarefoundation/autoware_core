@@ -257,6 +257,8 @@ public:
   }
 
   // ===== Generic (type-erased) publisher =====
+  /// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+  ///         loaded (see GenericPublisher).
   GenericPublisher::SharedPtr create_generic_publisher(
     const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
     const agnocast::PublisherOptions & options = agnocast::PublisherOptions{})
@@ -334,6 +336,8 @@ public:
   }
 
   // ===== Generic (type-erased) subscription =====
+  /// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+  ///         loaded (see GenericSubscription).
   GenericSubscription::SharedPtr create_generic_subscription(
     const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
     GenericSubscriptionCallback callback,
@@ -776,6 +780,8 @@ public:
   }
 
   // ===== Generic (type-erased) publisher =====
+  /// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+  ///         loaded (rclcpp::create_generic_publisher() documents the same behavior).
   rclcpp::GenericPublisher::SharedPtr create_generic_publisher(
     const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
     const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions{})
@@ -844,6 +850,8 @@ public:
   }
 
   // ===== Generic (type-erased) subscription =====
+  /// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+  ///         loaded (rclcpp::create_generic_subscription() documents the same behavior).
   rclcpp::GenericSubscription::SharedPtr create_generic_subscription(
     const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
     GenericSubscriptionCallback callback,
