@@ -114,9 +114,9 @@ public:
     rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
     const rclcpp::QoS & qos, GenericSubscriptionCallback callback,
     const agnocast::SubscriptionOptions & options)
+  : subscription_(node->create_generic_subscription(
+      topic_name, topic_type, qos, std::move(callback), to_rclcpp_subscription_options(options)))
   {
-    subscription_ = node->create_generic_subscription(
-      topic_name, topic_type, qos, std::move(callback), to_rclcpp_subscription_options(options));
   }
 
   const char * get_topic_name() const override { return subscription_->get_topic_name(); }
