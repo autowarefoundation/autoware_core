@@ -268,9 +268,50 @@ TEST_F(GenericPubSubMethod2Test, UnknownTopicTypeThrows)
     std::runtime_error);
 }
 
+// Unlike the Method 1 free functions below (only declared under USE_AGNOCAST_ENABLED), the
+// qos_overriding_options rejection on
+// Node::create_generic_publisher()/create_generic_subscription() itself is unconditional:
+// check_generic_publisher_qos_overriding_options()/
+// check_generic_subscription_qos_overriding_options() are declared outside any #ifdef so this
+// Method 2 entry point rejects it the same way in both builds — otherwise the same caller code
+// would compile and silently ignore qos_overriding_options under ENABLE_AGNOCAST=0 while throwing
+// under ENABLE_AGNOCAST=1. AUTOWARE_PUBLISHER_OPTIONS/AUTOWARE_SUBSCRIPTION_OPTIONS resolve to
+// whichever options type each build's Node member actually takes.
+TEST_F(GenericPubSubMethod2Test, NodeMemberPublisherRejectsQosOverridingOptions)
+{
+  using autoware::agnocast_wrapper::Node;
+
+  auto node = std::make_shared<Node>("generic_method2_publisher_qos_reject");
+
+  AUTOWARE_PUBLISHER_OPTIONS options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    node->create_generic_publisher(
+      "/test/generic_method2_qos_override", "std_msgs/msg/String", rclcpp::QoS(1), options),
+    std::invalid_argument);
+}
+
+TEST_F(GenericPubSubMethod2Test, NodeMemberSubscriptionRejectsQosOverridingOptions)
+{
+  using autoware::agnocast_wrapper::Node;
+
+  auto node = std::make_shared<Node>("generic_method2_subscription_qos_reject");
+
+  AUTOWARE_SUBSCRIPTION_OPTIONS options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    node->create_generic_subscription(
+      "/test/generic_method2_sub_qos_override", "std_msgs/msg/String", rclcpp::QoS(1), [](auto) {},
+      options),
+    std::invalid_argument);
+}
+
 // create_generic_publisher()/AgnocastGenericPublisher/ROS2GenericPublisher only exist in the
 // Agnocast-enabled build (generic_publisher.hpp is guarded by USE_AGNOCAST_ENABLED end to end),
-// so the qos_overriding_options rejection they share can only be exercised there.
+// so the Method 1 free functions' qos_overriding_options rejection can only be exercised there —
+// the Method 2 test above already covers ENABLE_AGNOCAST=0.
 #ifdef USE_AGNOCAST_ENABLED
 
 TEST_F(GenericPublisherOptionsTest, RejectsQosOverridingOptions)

@@ -786,6 +786,8 @@ public:
     const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
     const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions{})
   {
+    detail::check_generic_publisher_qos_overriding_options(
+      options.qos_overriding_options, topic_name);
     return node_->create_generic_publisher(topic_name, topic_type, qos, options);
   }
 
@@ -857,6 +859,8 @@ public:
     GenericSubscriptionCallback callback,
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
   {
+    detail::check_generic_subscription_qos_overriding_options(
+      options.qos_overriding_options, topic_name);
     return node_->create_generic_subscription(
       topic_name, topic_type, qos, std::move(callback), options);
   }

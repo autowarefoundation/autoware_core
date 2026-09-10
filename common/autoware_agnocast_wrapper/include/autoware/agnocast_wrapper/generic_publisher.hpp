@@ -16,6 +16,36 @@
 
 // Type-erased ("generic") publisher abstraction for the Agnocast build.
 
+#include <rclcpp/qos_overriding_options.hpp>
+
+#include <stdexcept>
+#include <string>
+
+namespace autoware::agnocast_wrapper::detail
+{
+
+/// rclcpp's create_generic_publisher() only honors event_callbacks, use_default_callbacks and
+/// callback_group — it silently drops qos_overriding_options — while Agnocast's GenericPublisher
+/// applies it. Declared unconditionally (unlike everything below) so both the Agnocast-enabled
+/// AgnocastGenericPublisher/ROS2GenericPublisher constructors further down and the non-Agnocast
+/// Node::create_generic_publisher() (see node.hpp) can reject it the same way: otherwise the same
+/// caller code would compile and silently ignore qos_overriding_options under ENABLE_AGNOCAST=0
+/// but throw under ENABLE_AGNOCAST=1, the same inconsistency across builds that rejecting it
+/// consistently between the two ENABLE_AGNOCAST=1 backends alone does not prevent.
+inline void check_generic_publisher_qos_overriding_options(
+  const rclcpp::QosOverridingOptions & qos_overriding_options, const std::string & topic_name)
+{
+  if (!qos_overriding_options.get_policy_kinds().empty()) {
+    throw std::invalid_argument(
+      "create_generic_publisher(" + topic_name +
+      "): qos_overriding_options is not supported for a generic publisher (honored by "
+      "Agnocast's GenericPublisher but silently ignored by rclcpp's, so it cannot behave "
+      "consistently across backends or builds)");
+  }
+}
+
+}  // namespace autoware::agnocast_wrapper::detail
+
 #ifdef USE_AGNOCAST_ENABLED
 
 #include "autoware/agnocast_wrapper/runtime.hpp"
@@ -26,8 +56,6 @@
 #include <cstddef>
 #include <cstdint>
 #include <memory>
-#include <stdexcept>
-#include <string>
 
 namespace autoware::agnocast_wrapper
 {
@@ -64,28 +92,6 @@ public:
   virtual rclcpp::QoS get_actual_qos() const = 0;
 };
 
-namespace detail
-{
-
-/// rclcpp::create_generic_publisher() only honors event_callbacks, use_default_callbacks and
-/// callback_group — it silently drops qos_overriding_options — while Agnocast's GenericPublisher
-/// applies it. Rather than have the same option take effect on one backend and not the other,
-/// reject it outright in both, so a caller can't end up depending on an override that only works
-/// under ENABLE_AGNOCAST=1.
-inline void check_generic_publisher_options(
-  const agnocast::PublisherOptions & options, const std::string & topic_name)
-{
-  if (!options.qos_overriding_options.get_policy_kinds().empty()) {
-    throw std::invalid_argument(
-      "create_generic_publisher(" + topic_name +
-      "): qos_overriding_options is not supported for a generic publisher (honored by "
-      "Agnocast's GenericPublisher but silently ignored by rclcpp's, so it cannot behave "
-      "consistently across backends)");
-  }
-}
-
-}  // namespace detail
-
 class AgnocastGenericPublisher : public GenericPublisher
 {
   agnocast::GenericPublisher::SharedPtr publisher_;
@@ -96,7 +102,8 @@ public:
     NodeT * node, const std::string & topic_name, const std::string & topic_type,
     const rclcpp::QoS & qos, const agnocast::PublisherOptions & options)
   {
-    detail::check_generic_publisher_options(options, topic_name);
+    detail::check_generic_publisher_qos_overriding_options(
+      options.qos_overriding_options, topic_name);
     publisher_ = agnocast::create_generic_publisher(node, topic_name, topic_type, qos, options);
   }
 
@@ -120,7 +127,8 @@ public:
     rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
     const rclcpp::QoS & qos, const agnocast::PublisherOptions & options)
   {
-    detail::check_generic_publisher_options(options, topic_name);
+    detail::check_generic_publisher_qos_overriding_options(
+      options.qos_overriding_options, topic_name);
     publisher_ = node->create_generic_publisher(topic_name, topic_type, qos);
   }
 

@@ -16,10 +16,13 @@
 
 // Type-erased ("generic") subscription abstraction for the Agnocast build.
 
+#include <rclcpp/qos_overriding_options.hpp>
 #include <rclcpp/serialized_message.hpp>
 
 #include <functional>
 #include <memory>
+#include <stdexcept>
+#include <string>
 
 namespace autoware::agnocast_wrapper
 {
@@ -38,6 +41,31 @@ namespace autoware::agnocast_wrapper
 using GenericSubscriptionCallback =
   std::function<void(std::shared_ptr<const rclcpp::SerializedMessage>)>;
 
+namespace detail
+{
+
+/// rclcpp's create_generic_subscription() only honors event_callbacks, use_default_callbacks and
+/// callback_group — it silently drops qos_overriding_options — while Agnocast's
+/// GenericSubscription applies it. Declared unconditionally (unlike the classes below), mirroring
+/// generic_publisher.hpp's check_generic_publisher_qos_overriding_options(): both the
+/// Agnocast-enabled AgnocastGenericSubscription/ROS2GenericSubscription constructors further down
+/// and the non-Agnocast Node::create_generic_subscription() (see node.hpp) need to reject it the
+/// same way, so the same caller code doesn't compile and silently ignore
+/// qos_overriding_options under ENABLE_AGNOCAST=0 while throwing under ENABLE_AGNOCAST=1.
+inline void check_generic_subscription_qos_overriding_options(
+  const rclcpp::QosOverridingOptions & qos_overriding_options, const std::string & topic_name)
+{
+  if (!qos_overriding_options.get_policy_kinds().empty()) {
+    throw std::invalid_argument(
+      "create_generic_subscription(" + topic_name +
+      "): qos_overriding_options is not supported for a generic subscription (honored by "
+      "Agnocast's GenericSubscription but silently ignored by rclcpp's, so it cannot behave "
+      "consistently across backends or builds)");
+  }
+}
+
+}  // namespace detail
+
 }  // namespace autoware::agnocast_wrapper
 
 #ifdef USE_AGNOCAST_ENABLED
@@ -49,8 +77,6 @@ using GenericSubscriptionCallback =
 #include <rclcpp/rclcpp.hpp>
 
 #include <cstddef>
-#include <stdexcept>
-#include <string>
 #include <utility>
 
 namespace autoware::agnocast_wrapper
@@ -86,29 +112,6 @@ public:
   virtual rclcpp::QoS get_actual_qos() const = 0;
 };
 
-namespace detail
-{
-
-/// rclcpp::create_generic_subscription() only honors event_callbacks, use_default_callbacks and
-/// callback_group — it silently drops qos_overriding_options — while Agnocast's
-/// GenericSubscription applies it. Rather than have the same option take effect on one backend
-/// and not the other, reject it outright in both, so a caller can't end up depending on an
-/// override that only works under ENABLE_AGNOCAST=1. Mirrors
-/// generic_publisher.hpp's check_generic_publisher_options() for the same reason.
-inline void check_generic_subscription_options(
-  const agnocast::SubscriptionOptions & options, const std::string & topic_name)
-{
-  if (!options.qos_overriding_options.get_policy_kinds().empty()) {
-    throw std::invalid_argument(
-      "create_generic_subscription(" + topic_name +
-      "): qos_overriding_options is not supported for a generic subscription (honored by "
-      "Agnocast's GenericSubscription but silently ignored by rclcpp's, so it cannot behave "
-      "consistently across backends)");
-  }
-}
-
-}  // namespace detail
-
 class AgnocastGenericSubscription : public GenericSubscription
 {
   agnocast::GenericSubscription::SharedPtr subscription_;
@@ -120,7 +123,8 @@ public:
     const rclcpp::QoS & qos, GenericSubscriptionCallback callback,
     const agnocast::SubscriptionOptions & options)
   {
-    detail::check_generic_subscription_options(options, topic_name);
+    detail::check_generic_subscription_qos_overriding_options(
+      options.qos_overriding_options, topic_name);
     subscription_ = agnocast::create_generic_subscription(
       node, topic_name, topic_type, qos, std::move(callback), options);
   }
@@ -139,7 +143,8 @@ public:
     const rclcpp::QoS & qos, GenericSubscriptionCallback callback,
     const agnocast::SubscriptionOptions & options)
   {
-    detail::check_generic_subscription_options(options, topic_name);
+    detail::check_generic_subscription_qos_overriding_options(
+      options.qos_overriding_options, topic_name);
     subscription_ = node->create_generic_subscription(
       topic_name, topic_type, qos, std::move(callback), to_rclcpp_subscription_options(options));
   }
