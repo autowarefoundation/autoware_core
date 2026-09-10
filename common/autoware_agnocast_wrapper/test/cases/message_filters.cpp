@@ -73,8 +73,8 @@ public:
   }
 };
 
-/// The operator() qualifiers std::function accepts, which is what registerCallback() has to accept
-/// too: it stores the callable in a std::function and invokes it as a non-const lvalue.
+/// The operator() qualifiers registerCallback() has to accept, since CallbackAdapter stores the
+/// callable and invokes it as a non-const lvalue.
 struct NonConstCallable
 {
   void operator()(const MessagePtrPose &, const MessagePtrPoint &) {}
