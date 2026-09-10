@@ -48,8 +48,7 @@ private:
   using State = autoware::component_interface_specs::localization::InitializationState;
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 
-  // NodeAdaptor deduces its constructor argument separately from NodeT, so the node type has
-  // to be named explicitly here and on every endpoint below.
+  // NodeAdaptor does not deduce NodeT from its constructor argument.
   using NodeT = autoware::agnocast_wrapper::Node;
   autoware::component_interface_utils::NodeAdaptor<NodeT> adaptor_{this};
   rclcpp::CallbackGroup::SharedPtr group_srv_;

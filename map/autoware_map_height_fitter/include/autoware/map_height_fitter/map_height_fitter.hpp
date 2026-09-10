@@ -32,9 +32,6 @@ using geometry_msgs::msg::Point;
 class MapHeightFitter final
 {
 public:
-  /// Takes autoware::agnocast_wrapper::Node rather than rclcpp::Node so the endpoints it creates
-  /// follow the node's backend. In the non-Agnocast build that node is backed by rclcpp, so
-  /// behavior is unchanged.
   explicit MapHeightFitter(autoware::agnocast_wrapper::Node * node);
   ~MapHeightFitter();
   MapHeightFitter(const MapHeightFitter &) = delete;

@@ -98,9 +98,6 @@ protected:
     loader_options.automatically_declare_parameters_from_overrides(true);
     loader_node_ = std::make_shared<rclcpp::Node>("map_loader", loader_options);
 
-    // agnocast_wrapper::Node does not derive from rclcpp::Node, so it joins the executor through
-    // its base interface. This test drives the rclcpp backend, which is what ENABLE_AGNOCAST=0
-    // gives it.
     executor_.add_node(fitter_node_->get_node_base_interface());
     executor_.add_node(loader_node_);
     spin_thread_ = std::thread([this] { executor_.spin(); });

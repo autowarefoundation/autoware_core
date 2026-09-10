@@ -15,13 +15,11 @@ target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
 autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
-# MapHeightFitterNode derives from autoware::agnocast_wrapper::Node, which requires an AgnocastOnly
-# executor, so it runs as a standalone executable rather than inside a component container.
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::map_height_fitter::MapHeightFitterNode"
   EXECUTABLE ${PROJECT_NAME}_node
   ROS2_EXECUTOR MultiThreadedExecutor
-  AGNOCAST_EXECUTOR AgnocastOnlyMultiThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
 if(BUILD_TESTING)
