@@ -29,10 +29,12 @@
 
 #include <atomic>
 #include <chrono>
+#include <functional>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <utility>
 
 #ifdef USE_AGNOCAST_ENABLED
@@ -43,6 +45,16 @@ namespace
 {
 
 using std_msgs::msg::String;
+
+// GenericSubscriptionCallback takes the message by shared_ptr<const SerializedMessage>, the
+// non-deprecated form on both Humble and Jazzy (see the type's doc comment) — pin that here so a
+// future edit that quietly reintroduces the deprecated non-const shared_ptr<SerializedMessage>
+// form fails to compile this test rather than only showing up as a deprecation warning.
+static_assert(
+  std::is_same_v<
+    autoware::agnocast_wrapper::GenericSubscriptionCallback,
+    std::function<void(std::shared_ptr<const rclcpp::SerializedMessage>)>>,
+  "GenericSubscriptionCallback should take shared_ptr<const SerializedMessage>");
 
 constexpr auto discovery_timeout = std::chrono::seconds(10);
 constexpr auto poll_interval = std::chrono::milliseconds(10);

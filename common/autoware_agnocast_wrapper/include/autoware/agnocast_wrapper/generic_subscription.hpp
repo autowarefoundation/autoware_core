@@ -29,7 +29,14 @@ namespace autoware::agnocast_wrapper
 /// autoware_topic_relay_controller (the motivating caller) already uses. Declared unconditionally
 /// (unlike the classes below) so it is available in both the Agnocast and non-Agnocast builds — the
 /// non-Agnocast Node::create_generic_subscription() (see node.hpp) needs it too.
-using GenericSubscriptionCallback = std::function<void(std::shared_ptr<rclcpp::SerializedMessage>)>;
+///
+/// Takes the message by `shared_ptr<const SerializedMessage>` rather than `shared_ptr<
+/// SerializedMessage>`: rclcpp deprecated the non-const form (AnySubscriptionCallback's
+/// SharedPtrSerializedMessageCallback) in favor of this one on both Humble and Jazzy, and
+/// Agnocast's GenericSubscription accepts it as well, so this stays forward-compatible without a
+/// per-distribution branch.
+using GenericSubscriptionCallback =
+  std::function<void(std::shared_ptr<const rclcpp::SerializedMessage>)>;
 
 }  // namespace autoware::agnocast_wrapper
 
