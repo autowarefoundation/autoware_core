@@ -157,8 +157,8 @@ public:
 /// the Node member of the same name for the wrapper-Node form, which also supports agnocast::Node).
 /// This is the Method 1 (macro + free function) entry point; reach it through
 /// AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(_ON_NODE) rather than calling it directly, so the same
-/// call site also compiles under ENABLE_AGNOCAST=0, where this free function does not exist and
-/// the macro instead forwards to rclcpp::Node::create_generic_subscription().
+/// call site also compiles under ENABLE_AGNOCAST=0, where this same name resolves to the
+/// rclcpp::GenericSubscription-returning overload below instead.
 inline GenericSubscription::SharedPtr create_generic_subscription(
   rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
   const rclcpp::QoS & qos, GenericSubscriptionCallback callback,
@@ -181,6 +181,54 @@ inline GenericSubscription::SharedPtr create_generic_subscription(
   return create_generic_subscription(
     node, topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
     std::move(callback), options);
+}
+
+}  // namespace autoware::agnocast_wrapper
+
+#else
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <cstddef>
+#include <utility>
+
+namespace autoware::agnocast_wrapper
+{
+
+/// Free-function form for incremental adoption on a node that stays an ordinary rclcpp::Node. This
+/// is the Method 1 (macro + free function) entry point; reach it through
+/// AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(_ON_NODE) rather than calling it directly, so the same
+/// call site also compiles under ENABLE_AGNOCAST=1, where this overload does not exist and the
+/// macro instead forwards to the AgnocastGenericSubscription/ROS2GenericSubscription-backed free
+/// function above.
+///
+/// Wraps rclcpp::Node::create_generic_subscription() rather than just calling it directly (unlike
+/// the typed AUTOWARE_CREATE_SUBSCRIPTION, where rclcpp's own create_subscription() is already
+/// exactly what is wanted): rclcpp's create_generic_subscription() silently drops
+/// qos_overriding_options, while the Agnocast-enabled build's counterpart above rejects it, so
+/// Method 1 needs the same check here for the two builds to behave the same way — see
+/// detail::check_generic_subscription_qos_overriding_options().
+///
+/// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+///         loaded (rclcpp::create_generic_subscription() documents the same behavior).
+inline rclcpp::GenericSubscription::SharedPtr create_generic_subscription(
+  rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
+  const rclcpp::QoS & qos, GenericSubscriptionCallback callback,
+  const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
+{
+  detail::check_generic_subscription_qos_overriding_options(
+    options.qos_overriding_options, topic_name);
+  return node->create_generic_subscription(
+    topic_name, topic_type, qos, std::move(callback), options);
+}
+
+inline rclcpp::GenericSubscription::SharedPtr create_generic_subscription(
+  rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
+  const size_t qos_history_depth, GenericSubscriptionCallback callback)
+{
+  return create_generic_subscription(
+    node, topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
+    std::move(callback));
 }
 
 }  // namespace autoware::agnocast_wrapper

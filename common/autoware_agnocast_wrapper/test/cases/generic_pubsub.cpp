@@ -122,6 +122,21 @@ public:
       topic, "std_msgs/msg/String", rclcpp::QoS(1), std::move(callback),
       AUTOWARE_SUBSCRIPTION_OPTIONS{});
   }
+
+  AUTOWARE_GENERIC_PUBLISHER_PTR create_string_publisher_with_options(
+    const std::string & topic, const AUTOWARE_PUBLISHER_OPTIONS & options)
+  {
+    return AUTOWARE_CREATE_GENERIC_PUBLISHER4(
+      topic, "std_msgs/msg/String", rclcpp::QoS(1), options);
+  }
+
+  AUTOWARE_GENERIC_SUBSCRIPTION_PTR create_string_subscription_with_options(
+    const std::string & topic, autoware::agnocast_wrapper::GenericSubscriptionCallback callback,
+    const AUTOWARE_SUBSCRIPTION_OPTIONS & options)
+  {
+    return AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(
+      topic, "std_msgs/msg/String", rclcpp::QoS(1), std::move(callback), options);
+  }
 };
 
 TEST_F(GenericPubSubMethod1Test, MacroRoundTrip)
@@ -161,6 +176,36 @@ TEST_F(GenericPubSubMethod1Test, MacroRoundTrip)
 
   ASSERT_TRUE(received.load());
   EXPECT_EQ(received_data, msg.data);
+}
+
+// Unlike the typed AUTOWARE_CREATE_PUBLISHER2/3 macros, which just forward to `this`'s own native
+// create_publisher() under ENABLE_AGNOCAST=0, AUTOWARE_CREATE_GENERIC_PUBLISHER4/
+// AUTOWARE_CREATE_GENERIC_SUBSCRIPTION route through the wrapper free function in both builds
+// specifically so this check applies here too, not just to the Node-member entry point covered by
+// GenericPubSubMethod2Test.NodeMember*RejectsQosOverridingOptions below.
+TEST_F(GenericPubSubMethod1Test, MacroPublisherRejectsQosOverridingOptions)
+{
+  auto node = std::make_shared<GenericPubSubMethod1Node>("generic_method1_publisher_qos_reject");
+
+  AUTOWARE_PUBLISHER_OPTIONS options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    node->create_string_publisher_with_options("/test/generic_method1_qos_override", options),
+    std::invalid_argument);
+}
+
+TEST_F(GenericPubSubMethod1Test, MacroSubscriptionRejectsQosOverridingOptions)
+{
+  auto node = std::make_shared<GenericPubSubMethod1Node>("generic_method1_subscription_qos_reject");
+
+  AUTOWARE_SUBSCRIPTION_OPTIONS options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    node->create_string_subscription_with_options(
+      "/test/generic_method1_sub_qos_override", [](auto) {}, options),
+    std::invalid_argument);
 }
 
 TEST_F(GenericPubSubMethod2Test, NodeMemberRoundTrip)

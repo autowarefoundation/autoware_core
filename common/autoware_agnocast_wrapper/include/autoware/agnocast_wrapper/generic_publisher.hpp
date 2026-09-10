@@ -147,8 +147,8 @@ public:
 /// the Node member of the same name for the wrapper-Node form, which also supports agnocast::Node).
 /// This is the Method 1 (macro + free function) entry point; reach it through
 /// AUTOWARE_CREATE_GENERIC_PUBLISHER3/4(_ON_NODE) rather than calling it directly, so the same
-/// call site also compiles under ENABLE_AGNOCAST=0, where this free function does not exist and
-/// the macro instead forwards to rclcpp::Node::create_generic_publisher().
+/// call site also compiles under ENABLE_AGNOCAST=0, where this same name resolves to the
+/// rclcpp::GenericPublisher-returning overload below instead.
 inline GenericPublisher::SharedPtr create_generic_publisher(
   rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
   const rclcpp::QoS & qos,
@@ -168,6 +168,51 @@ inline GenericPublisher::SharedPtr create_generic_publisher(
 {
   return create_generic_publisher(
     node, topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), options);
+}
+
+}  // namespace autoware::agnocast_wrapper
+
+#else
+
+#include <rclcpp/rclcpp.hpp>
+
+#include <cstddef>
+#include <memory>
+
+namespace autoware::agnocast_wrapper
+{
+
+/// Free-function form for incremental adoption on a node that stays an ordinary rclcpp::Node. This
+/// is the Method 1 (macro + free function) entry point; reach it through
+/// AUTOWARE_CREATE_GENERIC_PUBLISHER3/4(_ON_NODE) rather than calling it directly, so the same call
+/// site also compiles under ENABLE_AGNOCAST=1, where this overload does not exist and the macro
+/// instead forwards to the AgnocastGenericPublisher/ROS2GenericPublisher-backed free function
+/// above.
+///
+/// Wraps rclcpp::Node::create_generic_publisher() rather than just calling it directly (unlike the
+/// typed AUTOWARE_CREATE_PUBLISHER2/3, where rclcpp's own create_publisher() is already exactly
+/// what is wanted): rclcpp's create_generic_publisher() silently drops qos_overriding_options,
+/// while the Agnocast-enabled build's counterpart above rejects it, so Method 1 needs the same
+/// check here for the two builds to behave the same way — see
+/// detail::check_generic_publisher_qos_overriding_options().
+///
+/// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+///         loaded (rclcpp::create_generic_publisher() documents the same behavior).
+inline rclcpp::GenericPublisher::SharedPtr create_generic_publisher(
+  rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
+  const rclcpp::QoS & qos, const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions{})
+{
+  detail::check_generic_publisher_qos_overriding_options(
+    options.qos_overriding_options, topic_name);
+  return node->create_generic_publisher(topic_name, topic_type, qos, options);
+}
+
+inline rclcpp::GenericPublisher::SharedPtr create_generic_publisher(
+  rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
+  const size_t qos_history_depth)
+{
+  return create_generic_publisher(
+    node, topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
 }
 
 }  // namespace autoware::agnocast_wrapper
