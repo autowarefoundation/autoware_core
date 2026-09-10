@@ -568,7 +568,6 @@ TEST_F(
 // Expects test clear route to reset handler readiness when called.
 TEST_F(TestRouteHandler, clearRouteResetsHandlerReadinessWhenCalled)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   route_handler_->clearRoute();
@@ -578,7 +577,6 @@ TEST_F(TestRouteHandler, clearRouteResetsHandlerReadinessWhenCalled)
 // Expects getting area from id throws exception when id is invalid.
 TEST_F(TestRouteHandler, getAreaFromIdThrowsExceptionWhenIdIsInvalid)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   EXPECT_THROW(route_handler_->getAreaFromId(9999999), lanelet::NoSuchPrimitiveError);
@@ -587,7 +585,6 @@ TEST_F(TestRouteHandler, getAreaFromIdThrowsExceptionWhenIdIsInvalid)
 // Expects getting routing graph ptr returns valid pointer when ready.
 TEST_F(TestRouteHandler, getRoutingGraphPtrReturnsValidPointerWhenReady)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   EXPECT_NE(route_handler_->getRoutingGraphPtr(), nullptr);
@@ -599,7 +596,6 @@ TEST_F(TestRouteHandler, getRoutingGraphPtrReturnsValidPointerWhenReady)
 // Expects getting pose from 2d arc length returns expected pose.
 TEST_F(TestRouteHandler, getPoseFrom2dArcLengthReturnsExpectedPose)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
@@ -612,7 +608,6 @@ TEST_F(TestRouteHandler, getPoseFrom2dArcLengthReturnsExpectedPose)
 // Expects routing cost drivable calculates cost succeeding and cost lane change.
 TEST_F(TestRouteHandler, routingCostDrivableCalculatesCostSucceedingAndCostLaneChange)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
@@ -634,7 +629,6 @@ TEST_F(
   TestRouteHandler,
   getStartRoadLaneletsForCheckpointFiltersNonRoadLaneletsWhenStartPoseIsOutsideLanelets)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   auto start_pose = route_handler_->getStartPose();
@@ -653,7 +647,6 @@ TEST_F(
 // Test create map segments from lanelet or area path returns valid segment when given area.
 TEST_F(TestRouteHandler, createMapSegmentsFromLaneletOrAreaPathReturnsValidSegmentWhenGivenArea)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   lanelet::Point3d p1(lanelet::utils::getId(), 0, 0, 0);
@@ -691,7 +684,6 @@ TEST_F(TestRouteHandler, getShoulderLaneletSequenceReturnsExpectedSequenceWhenOn
 // Expects getting right lanelet returns expected lanelet when neighbor exists.
 TEST_F(TestRouteHandler, getRightLaneletReturnsExpectedLaneletWhenNeighborExists)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
@@ -703,7 +695,6 @@ TEST_F(TestRouteHandler, getRightLaneletReturnsExpectedLaneletWhenNeighborExists
 // Expects getting most left and right lanelet returns extremity lanes.
 TEST_F(TestRouteHandler, getMostLeftAndRightLaneletReturnsExtremityLanes)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
@@ -714,7 +705,6 @@ TEST_F(TestRouteHandler, getMostLeftAndRightLaneletReturnsExtremityLanes)
 // Is route lanelet returns true for route lanes.
 TEST_F(TestRouteHandler, isRouteLaneletReturnsTrueForRouteLanes)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
@@ -724,7 +714,6 @@ TEST_F(TestRouteHandler, isRouteLaneletReturnsTrueForRouteLanes)
 // Expects getting all left shared linestring lanelets returns valid lanelets on standard map.
 TEST_F(TestRouteHandler, getAllLeftSharedLinestringLaneletsReturnsValidLaneletsOnStandardMap)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto left_shared_include =
@@ -738,7 +727,6 @@ TEST_F(TestRouteHandler, getAllLeftSharedLinestringLaneletsReturnsValidLaneletsO
 // Expects getting all right shared linestring lanelets returns valid lanelets on standard map.
 TEST_F(TestRouteHandler, getAllRightSharedLinestringLaneletsReturnsValidLaneletsOnStandardMap)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto right_shared_include =
@@ -752,7 +740,6 @@ TEST_F(TestRouteHandler, getAllRightSharedLinestringLaneletsReturnsValidLanelets
 // Expects getting preceding lanelet sequence returns valid sequence for reference lane.
 TEST_F(TestRouteHandler, getPrecedingLaneletSequenceReturnsValidSequenceForReferenceLane)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto sequence = route_handler_->getPrecedingLaneletSequence(ref_lane, 50.0);
@@ -762,7 +749,6 @@ TEST_F(TestRouteHandler, getPrecedingLaneletSequenceReturnsValidSequenceForRefer
 // Expects getting previous lanelets returns expected previous lanes.
 TEST_F(TestRouteHandler, getPreviousLaneletsReturnsExpectedPreviousLanes)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto prev_lanes = route_handler_->getPreviousLanelets(ref_lane);
@@ -772,7 +758,6 @@ TEST_F(TestRouteHandler, getPreviousLaneletsReturnsExpectedPreviousLanes)
 // Expects getting next lanelets returns expected next lanes.
 TEST_F(TestRouteHandler, getNextLaneletsReturnsExpectedNextLanes)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto next_lanes = route_handler_->getNextLanelets(ref_lane);
@@ -782,7 +767,6 @@ TEST_F(TestRouteHandler, getNextLaneletsReturnsExpectedNextLanes)
 // Expects getting lane change target except preferred lane returns valid target.
 TEST_F(TestRouteHandler, getLaneChangeTargetExceptPreferredLaneReturnsValidTarget)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   lanelet::ConstLanelets lane_vector = {ref_lane};
@@ -797,7 +781,6 @@ TEST_F(TestRouteHandler, getLaneChangeTargetExceptPreferredLaneReturnsValidTarge
 // Expects getting lanes after goal returns expected lanelets when goal is set.
 TEST_F(TestRouteHandler, getLanesAfterGoalReturnsExpectedLaneletsWhenGoalIsSet)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   auto lanes_after = route_handler_->getLanesAfterGoal(10.0);
   EXPECT_TRUE(lanes_after.empty() || !lanes_after.empty());
@@ -806,7 +789,6 @@ TEST_F(TestRouteHandler, getLanesAfterGoalReturnsExpectedLaneletsWhenGoalIsSet)
 // Expects getting preferred lanelets returns configured preferred lanes.
 TEST_F(TestRouteHandler, getPreferredLaneletsReturnsConfiguredPreferredLanes)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   auto pref_lanes = route_handler_->getPreferredLanelets();
   EXPECT_FALSE(pref_lanes.empty());
@@ -815,7 +797,6 @@ TEST_F(TestRouteHandler, getPreferredLaneletsReturnsConfiguredPreferredLanes)
 // Expects getting route header and uuid returns valid metadata.
 TEST_F(TestRouteHandler, getRouteHeaderAndUuidReturnsValidMetadata)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   auto header = route_handler_->getRouteHeader();
   auto uuid = route_handler_->getRouteUuid();
@@ -826,7 +807,6 @@ TEST_F(TestRouteHandler, getRouteHeaderAndUuidReturnsValidMetadata)
 // Expects getting original start and goal pose returns valid poses.
 TEST_F(TestRouteHandler, getOriginalStartAndGoalPoseReturnsValidPoses)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   auto orig_start = route_handler_->getOriginalStartPose();
   auto orig_goal = route_handler_->getOriginalGoalPose();
@@ -837,7 +817,6 @@ TEST_F(TestRouteHandler, getOriginalStartAndGoalPoseReturnsValidPoses)
 // Is allowed goal modification returns expected boolean.
 TEST_F(TestRouteHandler, isAllowedGoalModificationReturnsExpectedBoolean)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   EXPECT_FALSE(route_handler_->isAllowedGoalModification());
 }
@@ -845,7 +824,6 @@ TEST_F(TestRouteHandler, isAllowedGoalModificationReturnsExpectedBoolean)
 // Is map msg ready returns true when map is set.
 TEST_F(TestRouteHandler, isMapMsgReadyReturnsTrueWhenMapIsSet)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   EXPECT_TRUE(route_handler_->isMapMsgReady());
 }
@@ -853,7 +831,6 @@ TEST_F(TestRouteHandler, isMapMsgReadyReturnsTrueWhenMapIsSet)
 // Expects getting left and right shoulder lanelet returns nullopt for standard lane.
 TEST_F(TestRouteHandler, getLeftAndRightShoulderLaneletReturnsNulloptForStandardLane)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   EXPECT_FALSE(route_handler_->getLeftShoulderLanelet(ref_lane).has_value());
@@ -863,7 +840,6 @@ TEST_F(TestRouteHandler, getLeftAndRightShoulderLaneletReturnsNulloptForStandard
 // Expects getting lane changeable neighbors returns expected neighbors.
 TEST_F(TestRouteHandler, getLaneChangeableNeighborsReturnsExpectedNeighbors)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto neighbors = route_handler_->getLaneChangeableNeighbors(ref_lane);
@@ -873,7 +849,6 @@ TEST_F(TestRouteHandler, getLaneChangeableNeighborsReturnsExpectedNeighbors)
 // Test create map segments returns valid segments from path lanelets.
 TEST_F(TestRouteHandler, createMapSegmentsReturnsValidSegmentsFromPathLanelets)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   lanelet::ConstLanelets lane_vector = {ref_lane};
@@ -884,7 +859,6 @@ TEST_F(TestRouteHandler, createMapSegmentsReturnsValidSegmentsFromPathLanelets)
 // Test plan path lanelets between checkpoints with area overload returns valid path.
 TEST_F(TestRouteHandler, planPathLaneletsBetweenCheckpointsWithAreaOverloadReturnsValidPath)
 {
-  set_test_route("lane_change_test_route.yaml");
   ASSERT_TRUE(route_handler_->isHandlerReady());
 
   const auto start_pose = route_handler_->getStartPose();
