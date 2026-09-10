@@ -408,7 +408,8 @@ TEST(MvpUtilsExtend, ScenarioCurveKeepsPedestrianInsideExtendedFootprint)
   // Place the obstacle using a longitudinal offset, half vehicle length, gap, and half object
   // length. These fixed test dimensions put it between the final two extended points.
   constexpr double s_to_pedestrian = 1.0485 + 3.117 / 2.0 + 1.5 + 0.8;
-  constexpr double ego_half_width = 1.265 / 2.0;  // scenario ego bounding box
+  // Vehicle half width is half the wheel tread plus the lateral overhang.
+  constexpr double ego_half_width = 0.975 / 2.0 + 0.1955;
   constexpr double nominal_lateral_margin = 0.1;  // obstacle_filtering.lateral_margin.nominal
   constexpr double pointcloud_reach = ego_half_width + nominal_lateral_margin;
 
