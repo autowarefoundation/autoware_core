@@ -128,8 +128,6 @@ class PolicySynchronizer
     "9-arg MFP overload, which the wrapper relies on for registration).");
 
 public:
-  using Callback = std::function<void(const AUTOWARE_MESSAGE_CONST_SHARED_PTR(Ms) & ...)>;
-
   PolicySynchronizer(uint32_t queue_size, Subscriber<Ms> &... subs)
   : sync_(
       use_agnocast()
