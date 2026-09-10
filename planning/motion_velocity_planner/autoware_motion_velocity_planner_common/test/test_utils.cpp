@@ -411,10 +411,14 @@ TEST(MvpUtilsExtend, ScenarioCurveKeepsPedestrianInsideExtendedFootprint)
   constexpr double extend_distance = 6.0;  // goal_extended_trajectory_length (X1)
   constexpr double step_length = 2.0;      // decimate_trajectory_step_length (X1)
 
-  // Arc length from the goal pose to the pedestrian centre, as the scenario computes it:
-  // ego_center_x + ego_length / 2 + 1.5 m gap + pedestrian half length.
+  // Arc length from the goal pose to the pedestrian centre, copied from the scenario's own
+  // LanePosition expression: ego_center_x + ego_length / 2 + 1.5 m gap + pedestrian half length.
+  // These are the scenario bounding box numbers, which is correct here because the scenario is
+  // what places the pedestrian.
   constexpr double s_to_pedestrian = 1.0485 + 3.117 / 2.0 + 1.5 + 0.8;
-  constexpr double ego_half_width = 1.265 / 2.0;  // scenario ego bounding box
+  // The collision check uses Autoware's own vehicle_info, not the scenario bounding box:
+  // wheel_tread / 2 + left_overhang for ymc_golfcart, the vehicle this scenario runs.
+  constexpr double ego_half_width = 0.975 / 2.0 + 0.1955;
   constexpr double nominal_lateral_margin = 0.1;  // obstacle_filtering.lateral_margin.nominal
   constexpr double pointcloud_reach = ego_half_width + nominal_lateral_margin;
 
