@@ -109,6 +109,10 @@ public:
 
 /// Free-function form for incremental adoption on a node that stays an ordinary rclcpp::Node (see
 /// the Node member of the same name for the wrapper-Node form, which also supports agnocast::Node).
+/// This is the Method 1 (macro + free function) entry point; reach it through
+/// AUTOWARE_CREATE_GENERIC_PUBLISHER3/4(_ON_NODE) rather than calling it directly, so the same
+/// call site also compiles under ENABLE_AGNOCAST=0, where this free function does not exist and
+/// the macro instead forwards to rclcpp::Node::create_generic_publisher().
 inline GenericPublisher::SharedPtr create_generic_publisher(
   rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
   const rclcpp::QoS & qos,

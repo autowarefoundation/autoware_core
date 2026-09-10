@@ -79,6 +79,26 @@
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2, arg3)
 
+// Method 1 (macro + free function) entry points for the generic (type-erased) publisher and
+// subscription: mirrors AUTOWARE_CREATE_PUBLISHER2/3 and AUTOWARE_CREATE_SUBSCRIPTION above, but
+// with a runtime topic_type string instead of a compile-time message_type.
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER3(topic, topic_type, qos) \
+  autoware::agnocast_wrapper::create_generic_publisher(this, topic, topic_type, qos)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER4(topic, topic_type, qos, options) \
+  autoware::agnocast_wrapper::create_generic_publisher(this, topic, topic_type, qos, options)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER3_ON_NODE(node, topic, topic_type, qos) \
+  autoware::agnocast_wrapper::create_generic_publisher(node, topic, topic_type, qos)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER4_ON_NODE(node, topic, topic_type, qos, options) \
+  autoware::agnocast_wrapper::create_generic_publisher(node, topic, topic_type, qos, options)
+
+#define AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(topic, topic_type, qos, callback, options) \
+  autoware::agnocast_wrapper::create_generic_subscription(                              \
+    this, topic, topic_type, qos, callback, options)
+#define AUTOWARE_CREATE_GENERIC_SUBSCRIPTION_ON_NODE(      \
+  node, topic, topic_type, qos, callback, options)         \
+  autoware::agnocast_wrapper::create_generic_subscription( \
+    node, topic, topic_type, qos, callback, options)
+
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
 #define AUTOWARE_CREATE_CLIENT2(service_type, service_name, qos) \
@@ -155,6 +175,25 @@
   (node)->create_publisher<message_type>(arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   (node)->create_publisher<message_type>(arg1, arg2, arg3)
+
+// Method 1 (macro + free function) entry points for the generic (type-erased) publisher and
+// subscription. `this`/`node` is a plain rclcpp::Node here, so these just forward to its own
+// native create_generic_publisher()/create_generic_subscription() (see AUTOWARE_CREATE_PUBLISHER2
+// above for the same pattern).
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER3(topic, topic_type, qos) \
+  this->create_generic_publisher(topic, topic_type, qos)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER4(topic, topic_type, qos, options) \
+  this->create_generic_publisher(topic, topic_type, qos, options)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER3_ON_NODE(node, topic, topic_type, qos) \
+  (node)->create_generic_publisher(topic, topic_type, qos)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER4_ON_NODE(node, topic, topic_type, qos, options) \
+  (node)->create_generic_publisher(topic, topic_type, qos, options)
+
+#define AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(topic, topic_type, qos, callback, options) \
+  this->create_generic_subscription(topic, topic_type, qos, callback, options)
+#define AUTOWARE_CREATE_GENERIC_SUBSCRIPTION_ON_NODE( \
+  node, topic, topic_type, qos, callback, options)    \
+  (node)->create_generic_subscription(topic, topic_type, qos, callback, options)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
