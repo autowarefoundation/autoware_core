@@ -16,12 +16,25 @@ import pathlib
 
 import launch
 from launch.actions import DeclareLaunchArgument
+from launch.actions import IncludeLaunchDescription
+from launch.actions import OpaqueFunction
+from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch.substitutions import LaunchConfiguration
 from launch.substitutions import PathJoinSubstitution
 from launch_ros.actions import ComposableNodeContainer
+from launch_ros.actions import Node
 from launch_ros.descriptions import ComposableNode
 from launch_ros.parameter_descriptions import ParameterFile
 from launch_ros.substitutions import FindPackageShare
+
+# (node name, class name, executable). Composed under ENABLE_AGNOCAST=0, where
+# autoware::agnocast_wrapper::Node is backed by rclcpp and a container takes it unchanged; run as
+# their own process under =1, where they need an AgnocastOnly executor a container cannot provide.
+API_NODES = [
+    ("interface", "InterfaceNode", "interface_node"),
+    ("localization", "LocalizationNode", "localization_node"),
+    ("routing", "RoutingNode", "routing_node"),
+]
 
 
 def create_api_node(node_name, class_name):
@@ -35,18 +48,49 @@ def create_api_node(node_name, class_name):
     )
 
 
+def create_standalone_api_node(node_name, executable):
+    """Launch one node as its own process."""
+    fullname = pathlib.Path("adapi/node") / node_name
+    return Node(
+        namespace=str(fullname.parent),
+        name=str(fullname.name),
+        package="autoware_default_adapi",
+        executable=executable,
+        parameters=[ParameterFile(LaunchConfiguration("config"))],
+        additional_env={"LD_PRELOAD": LaunchConfiguration("ld_preload_value")},
+    )
+
+
+def get_agnocast_env():
+    return IncludeLaunchDescription(
+        PythonLaunchDescriptionSource(
+            PathJoinSubstitution(
+                [
+                    FindPackageShare("autoware_agnocast_wrapper"),
+                    "launch",
+                    "agnocast_env.launch.py",
+                ]
+            )
+        )
+    )
+
+
 def get_default_config():
     path = FindPackageShare("autoware_default_adapi")
     path = PathJoinSubstitution([path, "config/default_adapi.param.yaml"])
     return path
 
 
-def generate_launch_description():
-    components = [
-        create_api_node("interface", "InterfaceNode"),
-        create_api_node("localization", "LocalizationNode"),
-        create_api_node("routing", "RoutingNode"),
-    ]
+def launch_setup(context, *args, **kwargs):
+    use_agnocast = context.perform_substitution(LaunchConfiguration("use_agnocast")) == "1"
+
+    if use_agnocast:
+        return [
+            create_standalone_api_node(node_name, executable)
+            for node_name, _, executable in API_NODES
+        ]
+
+    components = [create_api_node(node_name, class_name) for node_name, class_name, _ in API_NODES]
     container = ComposableNodeContainer(
         namespace="adapi",
         name="container",
@@ -55,5 +99,11 @@ def generate_launch_description():
         ros_arguments=["--log-level", "adapi.container:=WARN"],
         composable_node_descriptions=components,
     )
+    return [container]
+
+
+def generate_launch_description():
     argument = DeclareLaunchArgument("config", default_value=get_default_config())
-    return launch.LaunchDescription([argument, container])
+    return launch.LaunchDescription(
+        [argument, get_agnocast_env(), OpaqueFunction(function=launch_setup)]
+    )
