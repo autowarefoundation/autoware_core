@@ -431,15 +431,19 @@ surface), so client and service code needs no per-build spelling:
 | `AUTOWARE_CLIENT_SHARED_FUTURE(SrvT)`                | `Client<SrvT>::SharedFuture`             |
 | `AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(SrvT)`        | `Client<SrvT>::FutureAndRequestId`       |
 | `AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(SrvT)` | `Client<SrvT>::SharedFutureAndRequestId` |
+| `AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)`                 | `std::shared_ptr<const SrvT::Response>`  |
 
 Request/response pointer types **do** differ per build:
 
-| Macro                                | ENABLE_AGNOCAST=1                | ENABLE_AGNOCAST=0                       |
-| ------------------------------------ | -------------------------------- | --------------------------------------- |
-| `AUTOWARE_SERVER_REQUEST_PTR(SrvT)`  | `message_ptr<const Request, …>`  | `std::shared_ptr<const SrvT::Request>`  |
-| `AUTOWARE_SERVER_RESPONSE_PTR(SrvT)` | `message_ptr<Response, …>`       | `std::shared_ptr<SrvT::Response>`       |
-| `AUTOWARE_CLIENT_REQUEST_PTR(SrvT)`  | `message_ptr<Request, …>`        | `std::shared_ptr<SrvT::Request>`        |
-| `AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)` | `message_ptr<const Response, …>` | `std::shared_ptr<const SrvT::Response>` |
+| Macro                                | ENABLE_AGNOCAST=1               | ENABLE_AGNOCAST=0                      |
+| ------------------------------------ | ------------------------------- | -------------------------------------- |
+| `AUTOWARE_SERVER_REQUEST_PTR(SrvT)`  | `message_ptr<const Request, …>` | `std::shared_ptr<const SrvT::Request>` |
+| `AUTOWARE_SERVER_RESPONSE_PTR(SrvT)` | `message_ptr<Response, …>`      | `std::shared_ptr<SrvT::Response>`      |
+| `AUTOWARE_CLIENT_REQUEST_PTR(SrvT)`  | `message_ptr<Request, …>`       | `std::shared_ptr<SrvT::Request>`       |
+
+The client response is a plain `std::shared_ptr<const Response>` in both builds — the agnocast
+backend aliases the received handle, so nothing is copied. Review point: **the response must not
+outlive the client that produced it**, because that client owns the kernel-side reference.
 
 &nbsp;
 
