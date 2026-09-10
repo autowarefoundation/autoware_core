@@ -353,11 +353,12 @@ public:
 
   GenericSubscription::SharedPtr create_generic_subscription(
     const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth,
-    GenericSubscriptionCallback callback)
+    GenericSubscriptionCallback callback,
+    const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
   {
     return create_generic_subscription(
-      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)),
-      std::move(callback));
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::move(callback),
+      options);
   }
 
   // ===== Client / Service =====

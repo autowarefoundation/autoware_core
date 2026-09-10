@@ -168,6 +168,57 @@ TEST(GenericPubSubMethod2Test, NodeMemberRoundTrip)
   EXPECT_EQ(received_data, msg.data);
 }
 
+// The depth + options overload of create_generic_subscription() (as opposed to the depth-only
+// overload, which forwards to it with default options) is Agnocast-enabled-build only for now —
+// see the review comment this addresses.
+#ifdef USE_AGNOCAST_ENABLED
+
+TEST(GenericPubSubMethod2Test, NodeMemberDepthAndOptionsOverload)
+{
+  using autoware::agnocast_wrapper::Node;
+
+  auto pub_node = std::make_shared<Node>("generic_pubsub_method2_depth_pub");
+  auto sub_node = std::make_shared<Node>("generic_pubsub_method2_depth_sub");
+
+  const auto pub = pub_node->create_generic_publisher(
+    "/test/generic_method2_depth", "std_msgs/msg/String", rclcpp::QoS(1));
+
+  std::atomic<bool> received{false};
+  std::string received_data;
+  const auto sub = sub_node->create_generic_subscription(
+    "/test/generic_method2_depth", "std_msgs/msg/String", /*qos_history_depth=*/1,
+    [&received, &received_data](auto serialized) {
+      received_data = deserialize(*serialized).data;
+      received = true;
+    },
+    agnocast::SubscriptionOptions{});
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(sub_node->get_rclcpp_node());
+
+  const auto discovery_deadline = std::chrono::steady_clock::now() + discovery_timeout;
+  while (std::chrono::steady_clock::now() < discovery_deadline &&
+         pub->get_subscription_count() + pub->get_intra_process_subscription_count() == 0) {
+    std::this_thread::sleep_for(poll_interval);
+  }
+  ASSERT_GT(pub->get_subscription_count() + pub->get_intra_process_subscription_count(), 0U);
+
+  String msg;
+  msg.data = "method2-generic-depth-options";
+  pub->publish(serialize(msg));
+
+  const auto spin_deadline = std::chrono::steady_clock::now() + discovery_timeout;
+  while (!received.load() && std::chrono::steady_clock::now() < spin_deadline) {
+    executor.spin_some();
+    std::this_thread::sleep_for(poll_interval);
+  }
+
+  ASSERT_TRUE(received.load());
+  EXPECT_EQ(received_data, msg.data);
+}
+
+#endif  // USE_AGNOCAST_ENABLED
+
 // create_generic_publisher()/AgnocastGenericPublisher/ROS2GenericPublisher only exist in the
 // Agnocast-enabled build (generic_publisher.hpp is guarded by USE_AGNOCAST_ENABLED end to end),
 // so the qos_overriding_options rejection they share can only be exercised there.
