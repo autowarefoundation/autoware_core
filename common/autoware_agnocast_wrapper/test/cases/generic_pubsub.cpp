@@ -14,11 +14,15 @@
 
 // Exercises the generic (type-erased) publisher/subscription surface end to end: Method 1 (macro
 // + free function, on a plain rclcpp::Node) round-trips a serialized message through the runtime
-// backend actually selected by ENABLE_AGNOCAST (the ROS 2 one in this test environment, since no
-// agnocast heaphook/kernel module is available here — see agnocast_heaphook_loaded()).
+// backend actually selected by ENABLE_AGNOCAST. Every test below is skipped, not run, when
+// ENABLE_AGNOCAST=1 at runtime without the agnocast heaphook loaded: constructing an Agnocast
+// endpoint in that state exits the whole process instead of throwing, which would take the rest
+// of the test binary down with it — the same hazard polling_subscriber.cpp and
+// service_introspection.cpp guard against with the same agnocast_heaphook_loaded() check.
 
 #include "autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp"
 #include "autoware/agnocast_wrapper/node.hpp"
+#include "heaphook_probe.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/serialization.hpp>
@@ -44,6 +48,7 @@
 namespace
 {
 
+using autoware::agnocast_wrapper::test::agnocast_heaphook_loaded;
 using std_msgs::msg::String;
 
 // GenericSubscriptionCallback takes the message by shared_ptr<const SerializedMessage>, the
@@ -58,6 +63,27 @@ static_assert(
 
 constexpr auto discovery_timeout = std::chrono::seconds(10);
 constexpr auto poll_interval = std::chrono::milliseconds(10);
+
+/// Same guard as PollingSubscriberTest (polling_subscriber.cpp) and ServiceIntrospectionTest
+/// (service_introspection.cpp): every generic pub/sub test suite below aliases this fixture.
+class GenericPubSubTestBase : public testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    if (autoware::agnocast_wrapper::use_agnocast() && !agnocast_heaphook_loaded()) {
+      GTEST_SKIP() << "ENABLE_AGNOCAST=1 without the agnocast heaphook: the agnocast backend "
+                      "cannot be exercised in this environment.";
+    }
+  }
+};
+
+using GenericPubSubMethod1Test = GenericPubSubTestBase;
+using GenericPubSubMethod2Test = GenericPubSubTestBase;
+#ifdef USE_AGNOCAST_ENABLED
+using GenericPublisherOptionsTest = GenericPubSubTestBase;
+using GenericSubscriptionOptionsTest = GenericPubSubTestBase;
+#endif
 
 rclcpp::SerializedMessage serialize(const String & msg)
 {
@@ -98,7 +124,7 @@ public:
   }
 };
 
-TEST(GenericPubSubMethod1Test, MacroRoundTrip)
+TEST_F(GenericPubSubMethod1Test, MacroRoundTrip)
 {
   auto pub_node = std::make_shared<GenericPubSubMethod1Node>("generic_pubsub_method1_pub");
   auto sub_node = std::make_shared<GenericPubSubMethod1Node>("generic_pubsub_method1_sub");
@@ -137,7 +163,7 @@ TEST(GenericPubSubMethod1Test, MacroRoundTrip)
   EXPECT_EQ(received_data, msg.data);
 }
 
-TEST(GenericPubSubMethod2Test, NodeMemberRoundTrip)
+TEST_F(GenericPubSubMethod2Test, NodeMemberRoundTrip)
 {
   using autoware::agnocast_wrapper::Node;
 
@@ -183,7 +209,7 @@ TEST(GenericPubSubMethod2Test, NodeMemberRoundTrip)
 // The depth + options overload of create_generic_subscription() (as opposed to the depth-only
 // overload, which forwards to it with default options) now exists in both builds, mirroring
 // create_subscription<MessageT>()'s own depth + options overload.
-TEST(GenericPubSubMethod2Test, NodeMemberDepthAndOptionsOverload)
+TEST_F(GenericPubSubMethod2Test, NodeMemberDepthAndOptionsOverload)
 {
   using autoware::agnocast_wrapper::Node;
 
@@ -227,7 +253,7 @@ TEST(GenericPubSubMethod2Test, NodeMemberDepthAndOptionsOverload)
   EXPECT_EQ(received_data, msg.data);
 }
 
-TEST(GenericPubSubMethod2Test, UnknownTopicTypeThrows)
+TEST_F(GenericPubSubMethod2Test, UnknownTopicTypeThrows)
 {
   using autoware::agnocast_wrapper::Node;
 
@@ -247,7 +273,7 @@ TEST(GenericPubSubMethod2Test, UnknownTopicTypeThrows)
 // so the qos_overriding_options rejection they share can only be exercised there.
 #ifdef USE_AGNOCAST_ENABLED
 
-TEST(GenericPublisherOptionsTest, RejectsQosOverridingOptions)
+TEST_F(GenericPublisherOptionsTest, RejectsQosOverridingOptions)
 {
   auto node = std::make_shared<rclcpp::Node>("generic_publisher_options_reject");
 
@@ -260,7 +286,7 @@ TEST(GenericPublisherOptionsTest, RejectsQosOverridingOptions)
     std::invalid_argument);
 }
 
-TEST(GenericPublisherOptionsTest, DefaultOptionsDoNotThrow)
+TEST_F(GenericPublisherOptionsTest, DefaultOptionsDoNotThrow)
 {
   auto node = std::make_shared<rclcpp::Node>("generic_publisher_options_ok");
 
@@ -269,7 +295,7 @@ TEST(GenericPublisherOptionsTest, DefaultOptionsDoNotThrow)
       node.get(), "/test/generic_qos_default", "std_msgs/msg/String", rclcpp::QoS(1)));
 }
 
-TEST(GenericSubscriptionOptionsTest, RejectsQosOverridingOptions)
+TEST_F(GenericSubscriptionOptionsTest, RejectsQosOverridingOptions)
 {
   auto node = std::make_shared<rclcpp::Node>("generic_subscription_options_reject");
 
@@ -283,7 +309,7 @@ TEST(GenericSubscriptionOptionsTest, RejectsQosOverridingOptions)
     std::invalid_argument);
 }
 
-TEST(GenericSubscriptionOptionsTest, DefaultOptionsDoNotThrow)
+TEST_F(GenericSubscriptionOptionsTest, DefaultOptionsDoNotThrow)
 {
   auto node = std::make_shared<rclcpp::Node>("generic_subscription_options_ok");
 
