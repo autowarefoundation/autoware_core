@@ -641,7 +641,7 @@ TEST_F(
   const auto success = route_handler_->planPathLaneletsBetweenCheckpoints(
     start_pose, goal_pose, &path_lanelets, false);
 
-  EXPECT_TRUE(success || !success);
+  EXPECT_FALSE(success);
 }
 
 // Test create map segments from lanelet or area path returns valid segment when given area.
