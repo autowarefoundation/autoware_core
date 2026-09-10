@@ -870,7 +870,9 @@ public:
     GenericSubscriptionCallback callback,
     const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
   {
-    return node_->create_generic_subscription(
+    // Delegate to the QoS-taking overload above rather than calling node_ directly, so this
+    // overload goes through its check_generic_subscription_qos_overriding_options() call too.
+    return create_generic_subscription(
       topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::move(callback),
       options);
   }

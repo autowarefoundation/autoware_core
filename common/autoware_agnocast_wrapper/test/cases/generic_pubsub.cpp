@@ -427,6 +427,29 @@ TEST_F(GenericPubSubMethod2Test, NodeMemberSubscriptionRejectsQosOverridingOptio
     std::invalid_argument);
 }
 
+// Regression test: the depth-only (qos_history_depth) overload of
+// Node::create_generic_subscription() forwarded straight to node_->create_generic_subscription()
+// in the non-Agnocast build instead of delegating to the QoS-taking overload above, so it skipped
+// check_generic_subscription_qos_overriding_options() entirely — qos_overriding_options was
+// silently ignored through this overload under ENABLE_AGNOCAST=0 while throwing under
+// ENABLE_AGNOCAST=1 (where the depth overload already delegated correctly). The test above only
+// exercises the QoS-taking overload, so it never covered this path.
+TEST_F(GenericPubSubMethod2Test, NodeMemberSubscriptionDepthOverloadRejectsQosOverridingOptions)
+{
+  using autoware::agnocast_wrapper::Node;
+
+  auto node = std::make_shared<Node>("generic_method2_subscription_depth_qos_reject");
+
+  AUTOWARE_SUBSCRIPTION_OPTIONS options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    node->create_generic_subscription(
+      "/test/generic_method2_sub_depth_qos_override", "std_msgs/msg/String",
+      /*qos_history_depth=*/1, [](auto) {}, options),
+    std::invalid_argument);
+}
+
 // create_generic_publisher()/AgnocastGenericPublisher/ROS2GenericPublisher only exist in the
 // Agnocast-enabled build (generic_publisher.hpp is guarded by USE_AGNOCAST_ENABLED end to end),
 // so the Method 1 free functions' qos_overriding_options rejection can only be exercised there —
