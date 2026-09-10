@@ -80,6 +80,25 @@ namespace autoware::agnocast_wrapper
 ///            shared_ptr without throwing.
 class Node : public std::enable_shared_from_this<Node>
 {
+  // Declared before every member function below (including the public ones) so visit_node()'s
+  // decltype(auto) return type is deduced from its own body before an ordinary (non-template)
+  // member function such as create_generic_publisher() below needs to call it — see the comment
+  // there for the compile-order pitfall this avoids.
+  using NodeVariant = std::variant<std::shared_ptr<rclcpp::Node>, std::shared_ptr<agnocast::Node>>;
+  NodeVariant node_;
+
+  template <typename Visitor>
+  decltype(auto) visit_node(Visitor && vis)
+  {
+    return std::visit(std::forward<Visitor>(vis), node_);
+  }
+
+  template <typename Visitor>
+  decltype(auto) visit_node(Visitor && vis) const
+  {
+    return std::visit(std::forward<Visitor>(vis), node_);
+  }
+
 public:
   using SharedPtr = std::shared_ptr<Node>;
 
@@ -238,22 +257,20 @@ public:
   }
 
   // ===== Generic (type-erased) publisher =====
-  // Dispatches on use_agnocast() directly, rather than through visit_node() as the typed
-  // create_publisher() above does: visit_node() has a decltype(auto) return type deduced from its
-  // own (templated) body, and this method — unlike create_publisher<MessageT>(), which is itself a
-  // template and so has its instantiation deferred until called — is an ordinary member function
-  // that GCC compiles as part of the class, before visit_node()'s return type has been deduced.
   GenericPublisher::SharedPtr create_generic_publisher(
     const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
     const agnocast::PublisherOptions & options = agnocast::PublisherOptions{})
   {
-    if (use_agnocast()) {
-      return std::make_shared<AgnocastGenericPublisher>(
-        get_agnocast_node().get(), topic_name, topic_type, qos, options);
-    } else {
-      return std::make_shared<ROS2GenericPublisher>(
-        get_rclcpp_node().get(), topic_name, topic_type, qos, options);
-    }
+    return visit_node([&](auto & n) -> GenericPublisher::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastGenericPublisher>(
+          n.get(), topic_name, topic_type, qos, options);
+      } else {
+        return std::make_shared<ROS2GenericPublisher>(
+          n.get(), topic_name, topic_type, qos, options);
+      }
+    });
   }
 
   GenericPublisher::SharedPtr create_generic_publisher(
@@ -317,20 +334,21 @@ public:
   }
 
   // ===== Generic (type-erased) subscription =====
-  // See the comment on create_generic_publisher() above for why this dispatches on use_agnocast()
-  // directly instead of going through visit_node().
   GenericSubscription::SharedPtr create_generic_subscription(
     const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
     GenericSubscriptionCallback callback,
     const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
   {
-    if (use_agnocast()) {
-      return std::make_shared<AgnocastGenericSubscription>(
-        get_agnocast_node().get(), topic_name, topic_type, qos, std::move(callback), options);
-    } else {
-      return std::make_shared<ROS2GenericSubscription>(
-        get_rclcpp_node().get(), topic_name, topic_type, qos, std::move(callback), options);
-    }
+    return visit_node([&](auto & n) -> GenericSubscription::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastGenericSubscription>(
+          n.get(), topic_name, topic_type, qos, std::move(callback), options);
+      } else {
+        return std::make_shared<ROS2GenericSubscription>(
+          n.get(), topic_name, topic_type, qos, std::move(callback), options);
+      }
+    });
   }
 
   GenericSubscription::SharedPtr create_generic_subscription(
@@ -502,22 +520,6 @@ public:
     throw std::runtime_error(
       "get_rclcpp_node() called but the node is in agnocast mode. "
       "Check !use_agnocast() before calling this method.");
-  }
-
-private:
-  using NodeVariant = std::variant<std::shared_ptr<rclcpp::Node>, std::shared_ptr<agnocast::Node>>;
-  NodeVariant node_;
-
-  template <typename Visitor>
-  decltype(auto) visit_node(Visitor && vis)
-  {
-    return std::visit(std::forward<Visitor>(vis), node_);
-  }
-
-  template <typename Visitor>
-  decltype(auto) visit_node(Visitor && vis) const
-  {
-    return std::visit(std::forward<Visitor>(vis), node_);
   }
 };
 

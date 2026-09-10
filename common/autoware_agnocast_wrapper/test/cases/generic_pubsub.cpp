@@ -18,6 +18,7 @@
 // agnocast heaphook/kernel module is available here — see agnocast_heaphook_loaded()).
 
 #include "autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp"
+#include "autoware/agnocast_wrapper/node.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 #include <rclcpp/serialization.hpp>
@@ -112,6 +113,49 @@ TEST(GenericPubSubMethod1Test, MacroRoundTrip)
 
   String msg;
   msg.data = "method1-generic";
+  pub->publish(serialize(msg));
+
+  const auto spin_deadline = std::chrono::steady_clock::now() + discovery_timeout;
+  while (!received.load() && std::chrono::steady_clock::now() < spin_deadline) {
+    executor.spin_some();
+    std::this_thread::sleep_for(poll_interval);
+  }
+
+  ASSERT_TRUE(received.load());
+  EXPECT_EQ(received_data, msg.data);
+}
+
+TEST(GenericPubSubMethod2Test, NodeMemberRoundTrip)
+{
+  using autoware::agnocast_wrapper::Node;
+
+  auto pub_node = std::make_shared<Node>("generic_pubsub_method2_pub");
+  auto sub_node = std::make_shared<Node>("generic_pubsub_method2_sub");
+
+  const auto pub = pub_node->create_generic_publisher(
+    "/test/generic_method2", "std_msgs/msg/String", rclcpp::QoS(1));
+
+  std::atomic<bool> received{false};
+  std::string received_data;
+  const auto sub = sub_node->create_generic_subscription(
+    "/test/generic_method2", "std_msgs/msg/String", rclcpp::QoS(1),
+    [&received, &received_data](auto serialized) {
+      received_data = deserialize(*serialized).data;
+      received = true;
+    });
+
+  rclcpp::executors::SingleThreadedExecutor executor;
+  executor.add_node(sub_node->get_rclcpp_node());
+
+  const auto discovery_deadline = std::chrono::steady_clock::now() + discovery_timeout;
+  while (std::chrono::steady_clock::now() < discovery_deadline &&
+         pub->get_subscription_count() + pub->get_intra_process_subscription_count() == 0) {
+    std::this_thread::sleep_for(poll_interval);
+  }
+  ASSERT_GT(pub->get_subscription_count() + pub->get_intra_process_subscription_count(), 0U);
+
+  String msg;
+  msg.data = "method2-generic";
   pub->publish(serialize(msg));
 
   const auto spin_deadline = std::chrono::steady_clock::now() + discovery_timeout;
