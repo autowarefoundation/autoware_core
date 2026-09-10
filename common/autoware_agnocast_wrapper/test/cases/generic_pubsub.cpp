@@ -29,9 +29,14 @@
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <thread>
 #include <utility>
+
+#ifdef USE_AGNOCAST_ENABLED
+#include <agnocast/agnocast.hpp>
+#endif
 
 namespace
 {
@@ -118,5 +123,34 @@ TEST(GenericPubSubMethod1Test, MacroRoundTrip)
   ASSERT_TRUE(received.load());
   EXPECT_EQ(received_data, msg.data);
 }
+
+// create_generic_publisher()/AgnocastGenericPublisher/ROS2GenericPublisher only exist in the
+// Agnocast-enabled build (generic_publisher.hpp is guarded by USE_AGNOCAST_ENABLED end to end),
+// so the qos_overriding_options rejection they share can only be exercised there.
+#ifdef USE_AGNOCAST_ENABLED
+
+TEST(GenericPublisherOptionsTest, RejectsQosOverridingOptions)
+{
+  auto node = std::make_shared<rclcpp::Node>("generic_publisher_options_reject");
+
+  agnocast::PublisherOptions options;
+  options.qos_overriding_options = rclcpp::QosOverridingOptions{{rclcpp::QosPolicyKind::Depth}};
+
+  EXPECT_THROW(
+    autoware::agnocast_wrapper::create_generic_publisher(
+      node.get(), "/test/generic_qos_override", "std_msgs/msg/String", rclcpp::QoS(1), options),
+    std::invalid_argument);
+}
+
+TEST(GenericPublisherOptionsTest, DefaultOptionsDoNotThrow)
+{
+  auto node = std::make_shared<rclcpp::Node>("generic_publisher_options_ok");
+
+  EXPECT_NO_THROW(
+    autoware::agnocast_wrapper::create_generic_publisher(
+      node.get(), "/test/generic_qos_default", "std_msgs/msg/String", rclcpp::QoS(1)));
+}
+
+#endif  // USE_AGNOCAST_ENABLED
 
 }  // namespace

@@ -25,6 +25,7 @@
 
 #include <cstdint>
 #include <memory>
+#include <stdexcept>
 #include <string>
 
 namespace autoware::agnocast_wrapper
@@ -58,6 +59,28 @@ public:
   virtual rclcpp::QoS get_actual_qos() const = 0;
 };
 
+namespace detail
+{
+
+/// rclcpp::create_generic_publisher() only honors event_callbacks, use_default_callbacks and
+/// callback_group — it silently drops qos_overriding_options — while Agnocast's GenericPublisher
+/// applies it. Rather than have the same option take effect on one backend and not the other,
+/// reject it outright in both, so a caller can't end up depending on an override that only works
+/// under ENABLE_AGNOCAST=1.
+inline void check_generic_publisher_options(
+  const agnocast::PublisherOptions & options, const std::string & topic_name)
+{
+  if (!options.qos_overriding_options.get_policy_kinds().empty()) {
+    throw std::invalid_argument(
+      "create_generic_publisher(" + topic_name +
+      "): qos_overriding_options is not supported for a generic publisher (honored by "
+      "Agnocast's GenericPublisher but silently ignored by rclcpp's, so it cannot behave "
+      "consistently across backends)");
+  }
+}
+
+}  // namespace detail
+
 class AgnocastGenericPublisher : public GenericPublisher
 {
   agnocast::GenericPublisher::SharedPtr publisher_;
@@ -67,8 +90,9 @@ public:
   explicit AgnocastGenericPublisher(
     NodeT * node, const std::string & topic_name, const std::string & topic_type,
     const rclcpp::QoS & qos, const agnocast::PublisherOptions & options)
-  : publisher_(agnocast::create_generic_publisher(node, topic_name, topic_type, qos, options))
   {
+    detail::check_generic_publisher_options(options, topic_name);
+    publisher_ = agnocast::create_generic_publisher(node, topic_name, topic_type, qos, options);
   }
 
   void publish(const rclcpp::SerializedMessage & message) override { publisher_->publish(message); }
@@ -91,9 +115,8 @@ public:
     rclcpp::Node * node, const std::string & topic_name, const std::string & topic_type,
     const rclcpp::QoS & qos, const agnocast::PublisherOptions & options)
   {
-    rclcpp::PublisherOptions ros2_options;
-    ros2_options.qos_overriding_options = options.qos_overriding_options;
-    publisher_ = node->create_generic_publisher(topic_name, topic_type, qos, ros2_options);
+    detail::check_generic_publisher_options(options, topic_name);
+    publisher_ = node->create_generic_publisher(topic_name, topic_type, qos);
   }
 
   void publish(const rclcpp::SerializedMessage & message) override { publisher_->publish(message); }
