@@ -169,10 +169,8 @@ TEST(GenericPubSubMethod2Test, NodeMemberRoundTrip)
 }
 
 // The depth + options overload of create_generic_subscription() (as opposed to the depth-only
-// overload, which forwards to it with default options) is Agnocast-enabled-build only for now —
-// see the review comment this addresses.
-#ifdef USE_AGNOCAST_ENABLED
-
+// overload, which forwards to it with default options) now exists in both builds, mirroring
+// create_subscription<MessageT>()'s own depth + options overload.
 TEST(GenericPubSubMethod2Test, NodeMemberDepthAndOptionsOverload)
 {
   using autoware::agnocast_wrapper::Node;
@@ -191,7 +189,7 @@ TEST(GenericPubSubMethod2Test, NodeMemberDepthAndOptionsOverload)
       received_data = deserialize(*serialized).data;
       received = true;
     },
-    agnocast::SubscriptionOptions{});
+    AUTOWARE_SUBSCRIPTION_OPTIONS{});
 
   rclcpp::executors::SingleThreadedExecutor executor;
   executor.add_node(sub_node->get_rclcpp_node());
@@ -216,8 +214,6 @@ TEST(GenericPubSubMethod2Test, NodeMemberDepthAndOptionsOverload)
   ASSERT_TRUE(received.load());
   EXPECT_EQ(received_data, msg.data);
 }
-
-#endif  // USE_AGNOCAST_ENABLED
 
 // create_generic_publisher()/AgnocastGenericPublisher/ROS2GenericPublisher only exist in the
 // Agnocast-enabled build (generic_publisher.hpp is guarded by USE_AGNOCAST_ENABLED end to end),
