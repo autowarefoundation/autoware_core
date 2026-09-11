@@ -41,7 +41,7 @@ void LocalizationTriggerModule::wait_for_service()
   RCLCPP_INFO(node_->get_logger(), "%s triggering service is available!", label_.c_str());
 }
 
-void LocalizationTriggerModule::send_request(bool flag, bool need_spin) const
+void LocalizationTriggerModule::send_request(bool flag) const
 {
   const auto req = std::make_shared<SetBool::Request>();
   std::string command_name;
@@ -61,10 +61,6 @@ void LocalizationTriggerModule::send_request(bool flag, bool need_spin) const
   }
 
   auto future = client_trigger_->async_send_request(req);
-
-  if (need_spin) {
-    rclcpp::spin_until_future_complete(node_->get_node_base_interface(), future);
-  }
 
   if (future.get()->success) {
     RCLCPP_INFO(node_->get_logger(), "%s %s succeeded", label_.c_str(), command_name.c_str());
