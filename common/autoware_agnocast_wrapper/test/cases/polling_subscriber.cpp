@@ -45,7 +45,6 @@ using std_msgs::msg::String;
 
 constexpr auto discovery_timeout = std::chrono::seconds(10);
 constexpr auto poll_interval = std::chrono::milliseconds(10);
-constexpr auto delivery_grace = std::chrono::milliseconds(100);
 
 class PollingSubscriberTest : public testing::Test
 {
@@ -313,11 +312,7 @@ TEST_F(PollingSubscriberTest, AllReturnsEveryPendingMessageInOneCall)
     pub->publish(pub_msg);
   }
 
-  // Nothing takes the pair in the meantime, so waiting this far past what delivery needs makes a
-  // short result the policy handing back less than everything pending, not delivery still running.
-  std::this_thread::sleep_for(delivery_grace);
-
-  const auto msgs = sub->take_data();
+  const auto msgs = take_until_non_empty(sub);
   ASSERT_EQ(msgs.size(), 2u);
   EXPECT_EQ(msgs[0]->data, "first");
   EXPECT_EQ(msgs[1]->data, "second");
