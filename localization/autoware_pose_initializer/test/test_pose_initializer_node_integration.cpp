@@ -563,6 +563,35 @@ TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsZeroQuaternion)
     std::invalid_argument);
 }
 
+// TEST 13. Confirms the startup timer is wired onto the mutually exclusive callback group that
+// serves /localization/initialize, so the startup path and an Initialize request cannot interleave.
+TEST(PoseInitializerCallbackGroupTest, StartupTimerSharesTheInitializeServiceGroup)
+{
+  const auto node =
+    std::make_shared<PoseInitializer>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0}));
+
+  rclcpp::CallbackGroup::SharedPtr service_group;
+  node->for_each_callback_group([&](const rclcpp::CallbackGroup::SharedPtr group) {
+    group->find_service_ptrs_if([&](const rclcpp::ServiceBase::SharedPtr & service) {
+      if (std::string(service->get_service_name()) == "/localization/initialize") {
+        service_group = group;
+      }
+      return false;  // Visit them all
+    });
+  });
+  ASSERT_TRUE(service_group) << "No callback group serves /localization/initialize";
+
+  EXPECT_EQ(service_group->type(), rclcpp::CallbackGroupType::MutuallyExclusive)
+    << "The group has to be mutually exclusive to serialize the timer against the service";
+
+  size_t timers = 0;
+  service_group->find_timer_ptrs_if([&timers](const rclcpp::TimerBase::SharedPtr &) {
+    ++timers;
+    return false;
+  });
+  EXPECT_EQ(timers, 1U) << "The startup timer has to share the group that serves the service";
+}
+
 // Initialize/shutdown rclcpp once for entire test binary to avoid repeated
 // init/shutdown races across tests.
 class RosEnv : public ::testing::Environment
