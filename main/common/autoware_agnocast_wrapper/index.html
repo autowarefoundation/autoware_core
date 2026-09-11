@@ -8992,18 +8992,19 @@ its own macros, since there is no <code>MessageT</code> to pass as the first mac
 <p><strong>Note:</strong> <code>DiagnosticTask</code> subclasses (e.g. <code>FrequencyStatus</code>, <code>TimeStampStatus</code>, <code>Heartbeat</code>) defined in <code>diagnostic_updater</code> can be added via <code>updater_.add(task)</code> unchanged.</p>
 </blockquote>
 <h2 id="polling-subscriber-polling-namespace">Polling Subscriber (<code>polling::</code> namespace)<a class="headerlink" href="#polling-subscriber-polling-namespace" title="Permanent link">#</a></h2>
-<p><code>autoware::agnocast_wrapper::polling::create_polling_subscriber&lt;MessageT&gt;(node, topic, qos)</code> creates a polling (take-based) subscriber whose <code>take_data()</code> returns a plain <code>std::shared_ptr&lt;const MessageT&gt;</code> in <strong>both</strong> <code>ENABLE_AGNOCAST</code> modes. In agnocast mode the message stays in shared memory and is aliased into the returned <code>shared_ptr</code> (zero-copy, no payload copy); in rclcpp mode it reuses <code>autoware_utils_rclcpp::InterProcessPollingSubscriber</code>.</p>
+<p><code>autoware::agnocast_wrapper::polling::create_polling_subscriber&lt;MessageT&gt;(node, topic, qos)</code> creates a polling (take-based) subscriber whose <code>take_data()</code> returns what the <code>autoware_utils_rclcpp</code> policy of the same tag returns, in <strong>both</strong> <code>ENABLE_AGNOCAST</code> modes: a plain <code>std::shared_ptr&lt;const MessageT&gt;</code> for <code>polling_policy::Latest</code> and <code>polling_policy::Newest</code>, a <code>std::vector</code> of them for <code>polling_policy::All</code>. In agnocast mode the message stays in shared memory and is aliased into the returned <code>shared_ptr</code> (zero-copy, no payload copy); in rclcpp mode it reuses <code>autoware_utils_rclcpp::InterProcessPollingSubscriber</code>.</p>
 <h3 id="take_data-contract"><code>take_data()</code> contract<a class="headerlink" href="#take_data-contract" title="Permanent link">#</a></h3>
 <ul>
-<li>Returns the latest message, or <code>nullptr</code> when none is available.</li>
-<li>Re-delivery is governed by the <strong>policy tag</strong> and is identical across backends:<ul>
-<li><code>polling_policy::Latest</code> (default): re-delivers the cached message.</li>
-<li><code>polling_policy::Newest</code>: returns <code>nullptr</code> until a new message arrives.</li>
+<li>What a call returns is governed by the <strong>policy tag</strong>:<ul>
+<li><code>polling_policy::Latest</code> (default): the latest message, re-delivered until a newer one arrives, or <code>nullptr</code> when none has arrived.</li>
+<li><code>polling_policy::Newest</code>: the latest message, then <code>nullptr</code> until a new one arrives.</li>
+<li><code>polling_policy::All</code>: the newest depth messages not yet taken, oldest first, or an empty vector.</li>
 </ul>
 </li>
-<li><code>polling_policy::All</code> is rejected at compile time (<code>take_data()</code> returns a single message, not a vector).</li>
-<li>The QoS history depth must be 1; <code>create_polling_subscriber()</code> throws <code>std::invalid_argument</code> otherwise. A deeper queue makes <code>take_data()</code> lag behind the newest message, and depth 0 is not delivered at all in agnocast mode.</li>
-<li>The returned <code>std::shared_ptr</code> may be held across cycles, but in agnocast mode it must not outlive the polling subscriber (see <a href="#type-spellings">Type spellings</a>).</li>
+<li><code>Latest</code> and <code>Newest</code> behave identically across backends, and so does <code>All</code> while the publisher's history depth is at or above the subscriber's. Below that the agnocast backend queues only the publisher's depth, where the rclcpp backend queues the subscriber's.</li>
+<li><code>create_polling_subscriber()</code> throws <code>std::invalid_argument</code> for <code>KeepAll</code> and for history depth 0, which agnocast cannot serve. <code>Latest</code> and <code>Newest</code> additionally require depth 1, as their <code>autoware_utils_rclcpp</code> counterparts do; <code>All</code> accepts any other depth.</li>
+<li>The returned <code>std::shared_ptr</code> may be held across cycles, but in agnocast mode it must not outlive the polling subscriber (see <a href="#type-spellings">Type spellings</a>). With <code>All</code> this applies to every element of the vector.</li>
+<li>Holding one also holds shared memory: in agnocast mode each pins an entry the publisher cannot reclaim, so a deep <code>All</code> queue kept across cycles withholds that many from the publisher's pool. Copy out what the cycle needs and drop the vector.</li>
 </ul>
 <h3 id="usage-example_3">Usage example<a class="headerlink" href="#usage-example_3" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;autoware/agnocast_wrapper/polling_subscriber.hpp&gt;</span>
