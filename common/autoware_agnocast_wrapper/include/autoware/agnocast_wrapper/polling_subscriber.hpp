@@ -78,7 +78,8 @@ inline void check_polling_qos(
     if (depth != 1) {
       reject(
         "history depth " + std::to_string(depth) +
-        " makes take_data() lag behind the newest message");
+        " makes take_data() lag behind the newest message, use depth 1 or "
+        "polling_policy::All to keep the queue");
     }
   }
 }
