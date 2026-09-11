@@ -197,10 +197,10 @@ template <typename MessageT>
 class AgnocastPollingPolicy<MessageT, polling_policy::All>
 {
 public:
-  std::vector<typename MessageT::ConstSharedPtr> take_data(
+  std::vector<std::shared_ptr<const MessageT>> take_data(
     agnocast::TakeSubscription<MessageT> & subscriber)
   {
-    std::vector<typename MessageT::ConstSharedPtr> data;
+    std::vector<std::shared_ptr<const MessageT>> data;
     while (auto taken = detail::to_std_shared_ptr(subscriber.take())) {
       data.push_back(std::move(taken));
     }
