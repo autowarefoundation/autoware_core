@@ -577,6 +577,7 @@ The `add()` / `removeByName()` / `setHardwareID()` / `setHardwareIDf()` / `broad
 - `Latest` and `Newest` behave identically across backends, and so does `All` while the publisher's history depth is at or above the subscriber's. Below that the agnocast backend queues only the publisher's depth, where the rclcpp backend queues the subscriber's.
 - `create_polling_subscriber()` throws `std::invalid_argument` for `KeepAll` and for history depth 0, which agnocast cannot serve. `Latest` and `Newest` additionally require depth 1, as their `autoware_utils_rclcpp` counterparts do; `All` accepts any other depth.
 - The returned `std::shared_ptr` may be held across cycles, but in agnocast mode it must not outlive the polling subscriber (see [Type spellings](#type-spellings)). With `All` this applies to every element of the vector.
+- Holding one also holds shared memory: in agnocast mode each pins an entry the publisher cannot reclaim, so a deep `All` queue kept across cycles withholds that many from the publisher's pool. Copy out what the cycle needs and drop the vector.
 
 ### Usage example
 
