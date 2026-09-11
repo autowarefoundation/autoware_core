@@ -642,7 +642,8 @@ TEST_F(
     start_pose, goal_pose, &path_lanelets, false);
 
   EXPECT_TRUE(success);
-  EXPECT_FALSE(path_lanelets.empty());
+  ASSERT_FALSE(path_lanelets.empty());
+  EXPECT_EQ(path_lanelets.front().id(), 5072);
 }
 
 // Test create map segments from lanelet or area path returns valid segment when given area.
@@ -679,7 +680,8 @@ TEST_F(TestRouteHandler, getShoulderLaneletSequenceReturnsExpectedSequenceWhenOn
   const auto & shoulder_lane = shoulder_lanelets.front();
 
   auto seq = route_handler_->getShoulderLaneletSequence(shoulder_lane, pose, 10.0, 10.0);
-  EXPECT_FALSE(seq.empty());
+  ASSERT_FALSE(seq.empty());
+  EXPECT_EQ(seq.front().id(), 359);
 }
 
 // Expects getting right lanelet returns expected lanelet when neighbor exists.
@@ -721,8 +723,8 @@ TEST_F(TestRouteHandler, getAllLeftSharedLinestringLaneletsReturnsValidLaneletsO
     route_handler_->getAllLeftSharedLinestringLanelets(ref_lane, true, true);
   auto left_shared_exclude =
     route_handler_->getAllLeftSharedLinestringLanelets(ref_lane, false, false);
-  EXPECT_TRUE(left_shared_include.empty() || !left_shared_include.empty());
-  EXPECT_TRUE(left_shared_exclude.empty() || !left_shared_exclude.empty());
+  EXPECT_TRUE(left_shared_include.empty());
+  EXPECT_TRUE(left_shared_exclude.empty());
 }
 
 // Expects getting all right shared linestring lanelets returns valid lanelets on standard map.
@@ -734,8 +736,10 @@ TEST_F(TestRouteHandler, getAllRightSharedLinestringLaneletsReturnsValidLanelets
     route_handler_->getAllRightSharedLinestringLanelets(ref_lane, true, true);
   auto right_shared_exclude =
     route_handler_->getAllRightSharedLinestringLanelets(ref_lane, false, false);
-  EXPECT_TRUE(right_shared_include.empty() || !right_shared_include.empty());
-  EXPECT_TRUE(right_shared_exclude.empty() || !right_shared_exclude.empty());
+  ASSERT_FALSE(right_shared_include.empty());
+  EXPECT_EQ(right_shared_include.front().id(), 9590);
+  ASSERT_FALSE(right_shared_exclude.empty());
+  EXPECT_EQ(right_shared_exclude.front().id(), 9590);
 }
 
 // Expects getting preceding lanelet sequence returns valid sequence for reference lane.
@@ -744,7 +748,8 @@ TEST_F(TestRouteHandler, getPrecedingLaneletSequenceReturnsValidSequenceForRefer
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto sequence = route_handler_->getPrecedingLaneletSequence(ref_lane, 50.0);
-  EXPECT_FALSE(sequence.empty());
+  ASSERT_FALSE(sequence.empty());
+  EXPECT_EQ(sequence.front().front().id(), 4755);
 }
 
 // Expects getting previous lanelets returns expected previous lanes.
@@ -753,7 +758,8 @@ TEST_F(TestRouteHandler, getPreviousLaneletsReturnsExpectedPreviousLanes)
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto prev_lanes = route_handler_->getPreviousLanelets(ref_lane);
-  EXPECT_FALSE(prev_lanes.empty());
+  ASSERT_FALSE(prev_lanes.empty());
+  EXPECT_EQ(prev_lanes.front().id(), 4760);
 }
 
 // Expects getting next lanelets returns expected next lanes.
@@ -762,7 +768,8 @@ TEST_F(TestRouteHandler, getNextLaneletsReturnsExpectedNextLanes)
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto next_lanes = route_handler_->getNextLanelets(ref_lane);
-  EXPECT_FALSE(next_lanes.empty());
+  ASSERT_FALSE(next_lanes.empty());
+  EXPECT_EQ(next_lanes.front().id(), 4770);
 }
 
 // Expects getting lane change target except preferred lane returns valid target.
@@ -775,8 +782,9 @@ TEST_F(TestRouteHandler, getLaneChangeTargetExceptPreferredLaneReturnsValidTarge
     route_handler_->getLaneChangeTargetExceptPreferredLane(lane_vector, Direction::RIGHT);
   auto left_target =
     route_handler_->getLaneChangeTargetExceptPreferredLane(lane_vector, Direction::LEFT);
-  EXPECT_TRUE(right_target.has_value() || !right_target.has_value());
-  EXPECT_TRUE(left_target.has_value() || !left_target.has_value());
+  ASSERT_TRUE(right_target.has_value());
+  EXPECT_EQ(right_target.value().id(), 9590);
+  EXPECT_FALSE(left_target.has_value());
 }
 
 // Expects getting lanes after goal returns expected lanelets when goal is set.
@@ -784,7 +792,8 @@ TEST_F(TestRouteHandler, getLanesAfterGoalReturnsExpectedLaneletsWhenGoalIsSet)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
   auto lanes_after = route_handler_->getLanesAfterGoal(10.0);
-  EXPECT_TRUE(lanes_after.empty() || !lanes_after.empty());
+  ASSERT_FALSE(lanes_after.empty());
+  EXPECT_EQ(lanes_after.front().id(), 5092);
 }
 
 // Expects getting preferred lanelets returns configured preferred lanes.
@@ -792,7 +801,8 @@ TEST_F(TestRouteHandler, getPreferredLaneletsReturnsConfiguredPreferredLanes)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
   auto pref_lanes = route_handler_->getPreferredLanelets();
-  EXPECT_FALSE(pref_lanes.empty());
+  ASSERT_FALSE(pref_lanes.empty());
+  EXPECT_EQ(pref_lanes.front().id(), 4765);
 }
 
 // Expects getting route header and uuid returns valid metadata.
@@ -801,7 +811,7 @@ TEST_F(TestRouteHandler, getRouteHeaderAndUuidReturnsValidMetadata)
   ASSERT_TRUE(route_handler_->isHandlerReady());
   auto header = route_handler_->getRouteHeader();
   auto uuid = route_handler_->getRouteUuid();
-  EXPECT_TRUE(header.frame_id.empty() || !header.frame_id.empty());
+  EXPECT_TRUE(header.frame_id.empty());
   EXPECT_GT(uuid.uuid.size(), 0);
 }
 
@@ -844,7 +854,8 @@ TEST_F(TestRouteHandler, getLaneChangeableNeighborsReturnsExpectedNeighbors)
   ASSERT_TRUE(route_handler_->isHandlerReady());
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   auto neighbors = route_handler_->getLaneChangeableNeighbors(ref_lane);
-  EXPECT_FALSE(neighbors.empty());
+  ASSERT_FALSE(neighbors.empty());
+  EXPECT_EQ(neighbors.front().id(), 4765);
 }
 
 // Test create map segments returns valid segments from path lanelets.
@@ -854,7 +865,8 @@ TEST_F(TestRouteHandler, createMapSegmentsReturnsValidSegmentsFromPathLanelets)
   const auto ref_lane = route_handler_->getLaneletsFromId(4765);
   lanelet::ConstLanelets lane_vector = {ref_lane};
   auto segments = route_handler_->createMapSegments(lane_vector);
-  EXPECT_FALSE(segments.empty());
+  ASSERT_FALSE(segments.empty());
+  EXPECT_EQ(segments.front().preferred_primitive.id, 4765);
 }
 
 // Test plan path lanelets between checkpoints with area overload returns valid path.
@@ -870,7 +882,8 @@ TEST_F(TestRouteHandler, planPathLaneletsBetweenCheckpointsWithAreaOverloadRetur
     route_handler_->planPathLaneletsBetweenCheckpoints(start_pose, goal_pose, &path_areas, false);
 
   ASSERT_TRUE(success);
-  EXPECT_FALSE(path_areas.empty());
+  ASSERT_FALSE(path_areas.empty());
+  EXPECT_EQ(path_areas.front().id(), 4765);
 }
 
 // Expects getting shoulder lanelet sequence 2 returns expected sequence when on shoulder lane.
@@ -887,6 +900,7 @@ TEST_F(TestRouteHandler, getShoulderLaneletSequence2ReturnsExpectedSequenceWhenO
   const auto & shoulder_lane = shoulder_lanelets.front();
 
   auto seq = route_handler_->get_shoulder_lanelet_sequence(shoulder_lane, 10.0, 10.0);
-  EXPECT_FALSE(seq.empty());
+  ASSERT_FALSE(seq.empty());
+  EXPECT_EQ(seq.front().id(), 359);
 }
 }  // namespace autoware::route_handler::test
