@@ -22,8 +22,8 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
-#include <type_traits>
 #include <utility>
+#include <vector>
 
 #ifdef USE_AGNOCAST_ENABLED
 #include "autoware/agnocast_wrapper/message_ptr.hpp"
@@ -36,39 +36,74 @@ namespace autoware::agnocast_wrapper::polling
 
 namespace polling_policy = autoware_utils_rclcpp::polling_policy;
 
+/// @brief What take_data() returns, taken from the autoware_utils_rclcpp policy itself so that the
+/// two cannot drift apart: a single message for Latest and Newest, a vector for All.
 template <typename MessageT, template <typename> class PollingPolicy>
-inline constexpr bool polling_policy_supported_v =
-  !std::is_same_v<PollingPolicy<MessageT>, polling_policy::All<MessageT>>;
+using polling_take_data_t = decltype(std::declval<PollingPolicy<MessageT> &>().take_data());
+
+namespace detail
+{
+
+/// @brief Whether the agnocast backend has a counterpart for this autoware_utils_rclcpp policy.
+template <template <typename> class PollingPolicy>
+inline constexpr bool polling_policy_supported_v = false;
+template <>
+inline constexpr bool polling_policy_supported_v<polling_policy::Latest> = true;
+template <>
+inline constexpr bool polling_policy_supported_v<polling_policy::Newest> = true;
+template <>
+inline constexpr bool polling_policy_supported_v<polling_policy::All> = true;
+
+template <template <typename> class PollingPolicy>
+inline constexpr bool polling_policy_is_all_v = false;
+template <>
+inline constexpr bool polling_policy_is_all_v<polling_policy::All> = true;
 
 /// @brief Reject a QoS a polling subscriber cannot serve.
-/// @throws std::invalid_argument if the history depth is not 1. A deeper queue makes take_data()
-/// lag behind the newest message, which is why autoware_utils_rclcpp's policies reject it; depth 0
-/// (KeepAll, or KeepLast(0)) is rejected here as well because the agnocast backend then never
-/// delivers while the ROS 2 backend does.
-inline void check_polling_qos(const rclcpp::QoS & qos, const std::string & topic_name)
+/// @throws std::invalid_argument for KeepAll, which agnocast rejects by exiting the process, and
+/// for depth 0, which the agnocast backend silently never delivers. Latest and Newest additionally
+/// reject a deeper queue, as their autoware_utils_rclcpp counterparts do, because take_data() would
+/// lag behind the newest message; All takes whatever the queue holds and so accepts any depth.
+template <template <typename> class PollingPolicy>
+void check_polling_qos(const rclcpp::QoS & qos, const std::string & topic_name)
 {
-  const auto depth = qos.get_rmw_qos_profile().depth;
-  if (depth != 1) {
+  const auto reject = [&topic_name](const std::string & reason) {
     throw std::invalid_argument(
-      "polling::create_polling_subscriber(" + topic_name + "): history depth " +
-      std::to_string(depth) + " is not supported, take_data() needs a single-depth queue");
+      "polling::create_polling_subscriber(" + topic_name + "): " + reason);
+  };
+
+  if (qos.history() == rclcpp::HistoryPolicy::KeepAll) {
+    reject("KeepAll is not supported, use KeepLast");
+  }
+
+  const auto depth = qos.get_rmw_qos_profile().depth;
+  if (depth == 0) {
+    reject("history depth 0 delivers nothing");
+  }
+
+  if constexpr (!polling_policy_is_all_v<PollingPolicy>) {
+    if (depth != 1) {
+      reject(
+        "history depth " + std::to_string(depth) +
+        " makes take_data() lag behind the newest message");
+    }
   }
 }
 
-/// @brief Backend-agnostic polling subscriber. take_data() returns a plain
-/// std::shared_ptr<const MessageT> regardless of ENABLE_AGNOCAST, and is the only policy method
-/// exposed: the agnocast take path carries no source timestamp, so there is no
-/// last_taken_data_timestamp().
+}  // namespace detail
+
+/// @brief Backend-agnostic polling subscriber. take_data() behaves the same regardless of
+/// ENABLE_AGNOCAST, and is the only policy method exposed: the agnocast take path carries no source
+/// timestamp, so there is no last_taken_data_timestamp().
 template <typename MessageT, template <typename> class PollingPolicy = polling_policy::Latest>
 class PollingSubscriber
 {
 public:
   static_assert(
-    polling_policy_supported_v<MessageT, PollingPolicy>,
-    "polling_policy::All is not supported by "
-    "autoware::agnocast_wrapper::polling::create_polling_subscriber "
-    "(take_data() returns a single message, not a vector). Use polling_policy::Latest or "
-    "polling_policy::Newest.");
+    detail::polling_policy_supported_v<PollingPolicy>,
+    "This polling policy is not supported by "
+    "autoware::agnocast_wrapper::polling::create_polling_subscriber. Use polling_policy::Latest, "
+    "polling_policy::Newest or polling_policy::All.");
 
   using SharedPtr = std::shared_ptr<PollingSubscriber<MessageT, PollingPolicy>>;
 
@@ -76,7 +111,7 @@ public:
 
   /// @note Not synchronized, like autoware_utils_rclcpp's polling subscriber: call it from a
   /// single thread, or from callbacks in one mutually exclusive callback group.
-  virtual std::shared_ptr<const MessageT> take_data() = 0;
+  virtual polling_take_data_t<MessageT, PollingPolicy> take_data() = 0;
 
   /// Topic name after remapping.
   virtual const char * get_topic_name() const = 0;
@@ -97,7 +132,10 @@ public:
   {
   }
 
-  std::shared_ptr<const MessageT> take_data() override { return subscriber_->take_data(); }
+  polling_take_data_t<MessageT, PollingPolicy> take_data() override
+  {
+    return subscriber_->take_data();
+  }
 
   const char * get_topic_name() const override
   {
@@ -114,12 +152,15 @@ template <typename MessageT, template <typename> class PollingPolicy>
 class AgnocastPollingPolicy
 {
   static_assert(
-    polling_policy_supported_v<MessageT, PollingPolicy>,
-    "This polling policy has no agnocast counterpart. Use polling_policy::Latest or "
-    "polling_policy::Newest.");
+    detail::polling_policy_supported_v<PollingPolicy>,
+    "This polling policy has no agnocast counterpart. Use polling_policy::Latest, "
+    "polling_policy::Newest or polling_policy::All.");
 
 public:
-  std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> &) { return {}; }
+  polling_take_data_t<MessageT, PollingPolicy> take_data(agnocast::TakeSubscription<MessageT> &)
+  {
+    return {};
+  }
 };
 
 /// @brief Counterpart of autoware_utils_rclcpp::polling_policy::Latest<MessageT>::take_data().
@@ -133,7 +174,7 @@ class AgnocastPollingPolicy<MessageT, polling_policy::Latest>
 public:
   std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> & subscriber)
   {
-    if (auto new_data = detail::to_std_shared_ptr(subscriber.take(false))) {
+    if (auto new_data = agnocast_wrapper::detail::to_std_shared_ptr(subscriber.take())) {
       data_ = std::move(new_data);
     }
     return data_;
@@ -147,7 +188,25 @@ class AgnocastPollingPolicy<MessageT, polling_policy::Newest>
 public:
   std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> & subscriber)
   {
-    return detail::to_std_shared_ptr(subscriber.take(false));
+    return agnocast_wrapper::detail::to_std_shared_ptr(subscriber.take());
+  }
+};
+
+/// @brief Counterpart of autoware_utils_rclcpp::polling_policy::All<MessageT>::take_data().
+/// Where the ROS 2 policy drains the rmw queue, this drains the agnocast take window, so every
+/// message in the returned vector pins an agnocast entry until the caller drops it.
+template <typename MessageT>
+class AgnocastPollingPolicy<MessageT, polling_policy::All>
+{
+public:
+  std::vector<typename MessageT::ConstSharedPtr> take_data(
+    agnocast::TakeSubscription<MessageT> & subscriber)
+  {
+    std::vector<typename MessageT::ConstSharedPtr> data;
+    while (auto taken = agnocast_wrapper::detail::to_std_shared_ptr(subscriber.take())) {
+      data.push_back(std::move(taken));
+    }
+    return data;
   }
 };
 
@@ -166,7 +225,10 @@ public:
   {
   }
 
-  std::shared_ptr<const MessageT> take_data() override { return policy_.take_data(*subscriber_); }
+  polling_take_data_t<MessageT, PollingPolicy> take_data() override
+  {
+    return policy_.take_data(*subscriber_);
+  }
 
   const char * get_topic_name() const override { return subscriber_->get_topic_name(); }
 };
@@ -178,7 +240,7 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
   autoware::agnocast_wrapper::Node * node, const std::string & topic_name,
   const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
-  check_polling_qos(qos, topic_name);
+  detail::check_polling_qos<PollingPolicy>(qos, topic_name);
 
   if (use_agnocast()) {
     return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
@@ -197,7 +259,7 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
   autoware::agnocast_wrapper::Node * node, const std::string & topic_name,
   const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
-  check_polling_qos(qos, topic_name);
+  detail::check_polling_qos<PollingPolicy>(qos, topic_name);
 
   return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
     node->get_rclcpp_node().get(), topic_name, qos);

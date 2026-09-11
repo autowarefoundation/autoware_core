@@ -16,8 +16,8 @@
 // (autoware_utils_rclcpp/test/cases/polling_subscriber.cpp). They are written against the
 // backend-agnostic interface, so the same expectations cover the ROS 2 and the agnocast backend.
 //
-// The All-policy cases and the last_taken_data_timestamp() assertions are not ported: neither has
-// a counterpart in the wrapper, for the reasons given in polling_subscriber.hpp.
+// The last_taken_data_timestamp() assertions are not ported: the wrapper has no counterpart, for
+// the reason given in polling_subscriber.hpp.
 
 #include "autoware/agnocast_wrapper/polling_subscriber.hpp"
 
@@ -33,6 +33,7 @@
 #include <memory>
 #include <stdexcept>
 #include <thread>
+#include <vector>
 
 namespace
 {
@@ -44,6 +45,7 @@ using std_msgs::msg::String;
 
 constexpr auto discovery_timeout = std::chrono::seconds(10);
 constexpr auto poll_interval = std::chrono::milliseconds(10);
+constexpr auto delivery_grace = std::chrono::milliseconds(100);
 
 class PollingSubscriberTest : public testing::Test
 {
@@ -103,6 +105,20 @@ protected:
     return nullptr;
   }
 
+  /// All returns a vector, so poll for a non-empty result rather than for a non-null one.
+  template <typename SubscriberT>
+  static std::vector<String::ConstSharedPtr> take_until_non_empty(const SubscriberT & subscriber)
+  {
+    const auto deadline = std::chrono::steady_clock::now() + discovery_timeout;
+    while (std::chrono::steady_clock::now() < deadline) {
+      if (auto taken = subscriber->take_data(); !taken.empty()) {
+        return taken;
+      }
+      std::this_thread::sleep_for(poll_interval);
+    }
+    return {};
+  }
+
   template <typename PublisherT, typename SubscriberT>
   static std::shared_ptr<const String> publish_and_take(
     const PublisherT & publisher, const SubscriberT & subscriber, const String & message)
@@ -138,9 +154,32 @@ TEST_F(PollingSubscriberTest, CheckQosDepthZeroThrows)
     std::invalid_argument);
 
   EXPECT_THROW(
+    (polling::create_polling_subscriber<String, polling::polling_policy::All>(
+      node.get(), "/test/all_zero", 0)),
+    std::invalid_argument);
+}
+
+TEST_F(PollingSubscriberTest, CheckQosKeepAllThrows)
+{
+  const auto node = std::make_shared<Node>("test_check_qos_keep_all_throw");
+
+  EXPECT_THROW(
     polling::create_polling_subscriber<String>(
       node.get(), "/test/latest_keep_all", rclcpp::QoS(rclcpp::KeepAll())),
     std::invalid_argument);
+
+  EXPECT_THROW(
+    (polling::create_polling_subscriber<String, polling::polling_policy::All>(
+      node.get(), "/test/all_keep_all", rclcpp::QoS(rclcpp::KeepAll()))),
+    std::invalid_argument);
+}
+
+TEST_F(PollingSubscriberTest, AllAcceptsADeeperQos)
+{
+  const auto node = std::make_shared<Node>("test_check_qos_all_deep");
+
+  EXPECT_NO_THROW((polling::create_polling_subscriber<String, polling::polling_policy::All>(
+    node.get(), "/test/all_deep", rclcpp::QoS{10})));
 }
 
 TEST_F(PollingSubscriberTest, CheckQosDepthOneDoesNotThrow)
@@ -225,6 +264,63 @@ TEST_F(PollingSubscriberTest, NewestReturnsNullWithoutNewMessage)
   ASSERT_NE(publish_and_take(pub, sub, pub_msg), nullptr);
 
   EXPECT_EQ(sub->take_data(), nullptr);
+}
+
+TEST_F(PollingSubscriberTest, AllStartsEmpty)
+{
+  const auto node = std::make_shared<Node>("test_all_initial");
+
+  const auto sub = polling::create_polling_subscriber<String, polling::polling_policy::All>(
+    node.get(), "/test/all_initial", 1);
+  EXPECT_TRUE(sub->take_data().empty());
+}
+
+TEST_F(PollingSubscriberTest, AllDeliversAPublishedMessage)
+{
+  const auto pub_node = std::make_shared<Node>("pub_node_all");
+  const auto sub_node = std::make_shared<Node>("sub_node_all");
+
+  const auto pub = pub_node->create_publisher<String>("/test/all_delivery", rclcpp::QoS{10});
+  const auto sub = polling::create_polling_subscriber<String, polling::polling_policy::All>(
+    sub_node.get(), "/test/all_delivery", rclcpp::QoS{10});
+
+  String pub_msg;
+  pub_msg.data = "test-message";
+  ASSERT_TRUE(wait_for_subscriber(pub));
+  pub->publish(pub_msg);
+
+  const auto msgs = take_until_non_empty(sub);
+  ASSERT_EQ(msgs.size(), 1u);
+  EXPECT_EQ(msgs.front()->data, pub_msg.data);
+
+  EXPECT_TRUE(sub->take_data().empty());
+}
+
+TEST_F(PollingSubscriberTest, AllReturnsEveryPendingMessageInOneCall)
+{
+  const auto pub_node = std::make_shared<Node>("pub_node_all_batch");
+  const auto sub_node = std::make_shared<Node>("sub_node_all_batch");
+
+  const auto pub = pub_node->create_publisher<String>("/test/all_batch", rclcpp::QoS{10});
+  const auto sub = polling::create_polling_subscriber<String, polling::polling_policy::All>(
+    sub_node.get(), "/test/all_batch", rclcpp::QoS{10});
+
+  ASSERT_TRUE(wait_for_subscriber(pub));
+
+  for (const auto & text : {"first", "second"}) {
+    String pub_msg;
+    pub_msg.data = text;
+    pub->publish(pub_msg);
+  }
+
+  // Nothing takes the pair in the meantime, so waiting this far past what delivery needs makes a
+  // short result the policy handing back less than everything pending, not delivery still running.
+  std::this_thread::sleep_for(delivery_grace);
+
+  const auto msgs = sub->take_data();
+  ASSERT_EQ(msgs.size(), 2u);
+  EXPECT_EQ(msgs[0]->data, "first");
+  EXPECT_EQ(msgs[1]->data, "second");
 }
 
 }  // namespace
