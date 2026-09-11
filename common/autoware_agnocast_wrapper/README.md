@@ -570,12 +570,12 @@ The `add()` / `removeByName()` / `setHardwareID()` / `setHardwareIDf()` / `broad
 
 ### `take_data()` contract
 
-- What a call returns is governed by the **policy tag** and is identical across backends:
+- What a call returns is governed by the **policy tag**:
   - `polling_policy::Latest` (default): the latest message, re-delivered until a newer one arrives, or `nullptr` when none has arrived.
   - `polling_policy::Newest`: the latest message, then `nullptr` until a new one arrives.
-  - `polling_policy::All`: every message pending at the time of the call, oldest first, or an empty vector.
-- `create_polling_subscriber()` throws `std::invalid_argument` for `KeepAll` and for history depth 0, which agnocast cannot serve. `Latest` and `Newest` additionally require depth 1, as their `autoware_utils_rclcpp` counterparts do; `All` accepts any depth.
-- What is pending for `All` is bounded by the publisher's history depth as well in agnocast mode, where in rclcpp mode the subscriber's depth alone bounds it.
+  - `polling_policy::All`: the newest depth messages not yet taken, oldest first, or an empty vector.
+- `Latest` and `Newest` behave identically across backends, and so does `All` while the publisher's history depth is at or above the subscriber's. Below that the agnocast backend queues only the publisher's depth, where the rclcpp backend queues the subscriber's.
+- `create_polling_subscriber()` throws `std::invalid_argument` for `KeepAll` and for history depth 0, which agnocast cannot serve. `Latest` and `Newest` additionally require depth 1, as their `autoware_utils_rclcpp` counterparts do; `All` accepts any other depth.
 - The returned `std::shared_ptr` may be held across cycles, but in agnocast mode it must not outlive the polling subscriber (see [Type spellings](#type-spellings)). With `All` this applies to every element of the vector.
 
 ### Usage example
