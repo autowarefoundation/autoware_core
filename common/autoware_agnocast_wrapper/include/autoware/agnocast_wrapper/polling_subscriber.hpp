@@ -32,28 +32,20 @@
 #include <agnocast/agnocast.hpp>
 #endif
 
-namespace autoware::agnocast_wrapper::polling
-{
-
-namespace polling_policy = autoware_utils_rclcpp::polling_policy;
-
-/// @brief What take_data() returns, taken from the autoware_utils_rclcpp policy itself so that the
-/// two cannot drift apart: a single message for Latest and Newest, a vector for All.
-template <typename MessageT, template <typename> class PollingPolicy>
-using polling_take_data_t = decltype(std::declval<PollingPolicy<MessageT> &>().take_data());
-
-namespace detail
+namespace autoware::agnocast_wrapper::detail
 {
 
 /// @brief Whether the agnocast backend has a counterpart for this autoware_utils_rclcpp policy.
 template <template <typename> class PollingPolicy>
 inline constexpr bool polling_policy_supported_v = false;
 template <>
-inline constexpr bool polling_policy_supported_v<polling_policy::Latest> = true;
+inline constexpr bool polling_policy_supported_v<autoware_utils_rclcpp::polling_policy::Latest> =
+  true;
 template <>
-inline constexpr bool polling_policy_supported_v<polling_policy::Newest> = true;
+inline constexpr bool polling_policy_supported_v<autoware_utils_rclcpp::polling_policy::Newest> =
+  true;
 template <>
-inline constexpr bool polling_policy_supported_v<polling_policy::All> = true;
+inline constexpr bool polling_policy_supported_v<autoware_utils_rclcpp::polling_policy::All> = true;
 
 /// @brief Never true, but dependent on the template arguments, so a static_assert using it fires
 /// when the enclosing template is instantiated rather than when it is declared.
@@ -91,7 +83,17 @@ inline void check_polling_qos(
   }
 }
 
-}  // namespace detail
+}  // namespace autoware::agnocast_wrapper::detail
+
+namespace autoware::agnocast_wrapper::polling
+{
+
+namespace polling_policy = autoware_utils_rclcpp::polling_policy;
+
+/// @brief What take_data() returns, taken from the autoware_utils_rclcpp policy itself so that the
+/// two cannot drift apart: a single message for Latest and Newest, a vector for All.
+template <typename MessageT, template <typename> class PollingPolicy>
+using polling_take_data_t = decltype(std::declval<PollingPolicy<MessageT> &>().take_data());
 
 /// @brief Backend-agnostic polling subscriber. take_data() behaves the same regardless of
 /// ENABLE_AGNOCAST, and is the only policy method exposed: the agnocast take path carries no source
@@ -170,7 +172,7 @@ class AgnocastPollingPolicy<MessageT, polling_policy::Latest>
 public:
   std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> & subscriber)
   {
-    if (auto new_data = agnocast_wrapper::detail::to_std_shared_ptr(subscriber.take())) {
+    if (auto new_data = detail::to_std_shared_ptr(subscriber.take())) {
       data_ = std::move(new_data);
     }
     return data_;
@@ -184,7 +186,7 @@ class AgnocastPollingPolicy<MessageT, polling_policy::Newest>
 public:
   std::shared_ptr<const MessageT> take_data(agnocast::TakeSubscription<MessageT> & subscriber)
   {
-    return agnocast_wrapper::detail::to_std_shared_ptr(subscriber.take());
+    return detail::to_std_shared_ptr(subscriber.take());
   }
 };
 
@@ -199,7 +201,7 @@ public:
     agnocast::TakeSubscription<MessageT> & subscriber)
   {
     std::vector<typename MessageT::ConstSharedPtr> data;
-    while (auto taken = agnocast_wrapper::detail::to_std_shared_ptr(subscriber.take())) {
+    while (auto taken = detail::to_std_shared_ptr(subscriber.take())) {
       data.push_back(std::move(taken));
     }
     return data;
