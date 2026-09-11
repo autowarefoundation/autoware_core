@@ -49,35 +49,21 @@ if(BUILD_TESTING)
   )
 
   if(NOT "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
+    # Covers what only the node can produce: the TF lookup, the publish topology, the diagnostics
+    # wiring and anything that depends on the node clock.
     ament_add_ros_isolated_gtest(test_gyro_odometer_node
       test/test_gyro_odometer_node.cpp
     )
     ament_target_dependencies(test_gyro_odometer_node
       rclcpp
+      rosgraph_msgs
+      tf2_ros
     )
     target_link_libraries(test_gyro_odometer_node
       ${PROJECT_NAME}
       ${PROJECT_NAME}_ros # ROS-based test can be executed only when agnocast is disabled
     )
     target_include_directories(test_gyro_odometer_node PRIVATE
-      src
-    )
-
-    # Pins the behaviour observable on the node's topics, so that it stays available as an oracle
-    # while the implementation behind those topics is restructured.
-    ament_add_ros_isolated_gtest(test_gyro_odometer_node_characterization
-      test/test_gyro_odometer_node_characterization.cpp
-    )
-    ament_target_dependencies(test_gyro_odometer_node_characterization
-      rclcpp
-      rosgraph_msgs
-      tf2_ros
-    )
-    target_link_libraries(test_gyro_odometer_node_characterization
-      ${PROJECT_NAME}
-      ${PROJECT_NAME}_ros # ROS-based test can be executed only when agnocast is disabled
-    )
-    target_include_directories(test_gyro_odometer_node_characterization PRIVATE
       src
     )
   endif()
