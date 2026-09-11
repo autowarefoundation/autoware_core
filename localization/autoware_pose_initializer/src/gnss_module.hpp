@@ -20,6 +20,8 @@
 
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 
+#include <mutex>
+
 namespace autoware::pose_initializer
 {
 class GnssModule
@@ -37,6 +39,10 @@ private:
   autoware::map_height_fitter::MapHeightFitter fitter_;
   rclcpp::Clock::SharedPtr clock_;
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr sub_gnss_pose_;
+
+  /// Guards `pose_`, which the subscription callback writes and get_pose() reads from a different
+  /// callback group.
+  std::mutex pose_mutex_;
   PoseWithCovarianceStamped::ConstSharedPtr pose_;
   double timeout_;
 };

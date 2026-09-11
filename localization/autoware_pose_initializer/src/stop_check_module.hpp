@@ -21,6 +21,8 @@
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 
+#include <mutex>
+
 namespace autoware::pose_initializer
 {
 class StopCheckModule : public autoware::motion_utils::VehicleStopCheckerBase
@@ -28,11 +30,21 @@ class StopCheckModule : public autoware::motion_utils::VehicleStopCheckerBase
 public:
   StopCheckModule(rclcpp::Node * node, double buffer_duration);
 
+  [[nodiscard]] bool is_vehicle_stopped(double stop_duration) const;
+
 private:
   using TwistWithCovarianceStamped = geometry_msgs::msg::TwistWithCovarianceStamped;
   using TwistStamped = geometry_msgs::msg::TwistStamped;
+
+  /// Reachable only through is_vehicle_stopped(), which takes `twist_mutex_`.
+  using VehicleStopCheckerBase::isVehicleStopped;
+
   rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr sub_twist_;
   void on_twist(TwistWithCovarianceStamped::ConstSharedPtr msg);
+
+  /// Guards the twist buffer of the base class, which the subscription callback fills and
+  /// is_vehicle_stopped() reads from a different callback group.
+  mutable std::mutex twist_mutex_;
 };
 }  // namespace autoware::pose_initializer
 

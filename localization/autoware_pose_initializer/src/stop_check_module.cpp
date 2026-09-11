@@ -14,6 +14,8 @@
 
 #include "stop_check_module.hpp"
 
+#include <mutex>
+
 namespace autoware::pose_initializer
 {
 StopCheckModule::StopCheckModule(rclcpp::Node * node, double buffer_duration)
@@ -23,11 +25,19 @@ StopCheckModule::StopCheckModule(rclcpp::Node * node, double buffer_duration)
     "stop_check_twist", 1, std::bind(&StopCheckModule::on_twist, this, std::placeholders::_1));
 }
 
+bool StopCheckModule::is_vehicle_stopped(const double stop_duration) const
+{
+  std::lock_guard<std::mutex> lock(twist_mutex_);
+  return isVehicleStopped(stop_duration);
+}
+
 void StopCheckModule::on_twist(TwistWithCovarianceStamped::ConstSharedPtr msg)
 {
   TwistStamped twist;
   twist.header = msg->header;
   twist.twist = msg->twist.twist;
+
+  std::lock_guard<std::mutex> lock(twist_mutex_);
   addTwist(twist);
 }
 }  // namespace autoware::pose_initializer

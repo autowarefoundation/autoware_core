@@ -21,6 +21,7 @@
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 
 #include <memory>
+#include <mutex>
 
 namespace autoware::pose_initializer
 {
@@ -35,6 +36,7 @@ GnssModule::GnssModule(rclcpp::Node * node)
 
 void GnssModule::on_pose(PoseWithCovarianceStamped::ConstSharedPtr msg)
 {
+  std::lock_guard<std::mutex> lock(pose_mutex_);
   pose_ = msg;
 }
 
@@ -42,7 +44,13 @@ geometry_msgs::msg::PoseWithCovarianceStamped GnssModule::get_pose()
 {
   using Initialize = autoware::component_interface_specs::localization::Initialize;
 
-  if (!pose_) {
+  PoseWithCovarianceStamped::ConstSharedPtr pose_ptr;
+  {
+    std::lock_guard<std::mutex> lock(pose_mutex_);
+    pose_ptr = pose_;
+  }
+
+  if (!pose_ptr) {
     autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
     respose_status.success = false;
     respose_status.code = Initialize::Service::Response::ERROR_GNSS;
@@ -50,7 +58,7 @@ geometry_msgs::msg::PoseWithCovarianceStamped GnssModule::get_pose()
     throw respose_status;
   }
 
-  if (is_pose_stale(rclcpp::Time(pose_->header.stamp), clock_->now(), timeout_)) {
+  if (is_pose_stale(rclcpp::Time(pose_ptr->header.stamp), clock_->now(), timeout_)) {
     autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
     respose_status.success = false;
     respose_status.code = Initialize::Service::Response::ERROR_GNSS;
@@ -58,7 +66,7 @@ geometry_msgs::msg::PoseWithCovarianceStamped GnssModule::get_pose()
     throw respose_status;
   }
 
-  PoseWithCovarianceStamped pose = *pose_;
+  PoseWithCovarianceStamped pose = *pose_ptr;
   const auto fitted = fitter_.fit(pose.pose.pose.position, pose.header.frame_id);
   if (fitted) {
     pose.pose.pose.position = fitted.value();
