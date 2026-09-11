@@ -40,7 +40,8 @@ std::vector<Interval> find_intervals_impl(
         start = bases.at(i);  // Start a new interval}
       }
       is_started = true;  // Set the flag to indicate the interval has started
-    } else if (is_started && !constraint(bases.at(i))) {
+    }
+    if (is_started && !constraint(bases.at(i))) {
       // End the current interval if the constraint fails or it's the last element
       double end = autoware::experimental::trajectory::detail::upper_bound_by_predicate(
         bases.at(i - 1), bases.at(i), constraint, static_cast<size_t>(max_iter));
