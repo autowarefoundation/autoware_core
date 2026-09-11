@@ -147,7 +147,7 @@ Once identified, proceed to the corresponding review procedure below.
 
 - [ ] Member variable types: `rclcpp::Publisher<M>::SharedPtr` → `AUTOWARE_PUBLISHER_PTR(M)` etc.
 
-- [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc.
+- [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc. (a type-erased topic uses `AUTOWARE_CREATE_GENERIC_PUBLISHER3/4` / `AUTOWARE_CREATE_GENERIC_SUBSCRIPTION` instead — see Part 2 Section 3)
 
 - [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
@@ -302,7 +302,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Member variable types: `AUTOWARE_*_PTR` macros (e.g. `AUTOWARE_PUBLISHER_PTR(M)`)
 
-- [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
+- [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` (and, for a type-erased topic, `create_generic_publisher` / `create_generic_subscription`) directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
 - [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
@@ -408,11 +408,13 @@ All macros below are defined in [`macros.hpp`](../include/autoware/agnocast_wrap
 
 ### Publisher/Subscriber Types
 
-| Macro                             | ENABLE_AGNOCAST=1 (Agnocast)    | ENABLE_AGNOCAST=0 (ROS 2)               |
-| --------------------------------- | ------------------------------- | --------------------------------------- |
-| `AUTOWARE_PUBLISHER_PTR(MsgT)`    | `Publisher<MsgT>::SharedPtr`    | `rclcpp::Publisher<MsgT>::SharedPtr`    |
-| `AUTOWARE_SUBSCRIPTION_PTR(MsgT)` | `Subscription<MsgT>::SharedPtr` | `rclcpp::Subscription<MsgT>::SharedPtr` |
-| `AUTOWARE_TIMER_PTR`              | `Timer::SharedPtr`              | `rclcpp::TimerBase::SharedPtr`          |
+| Macro                               | ENABLE_AGNOCAST=1 (Agnocast)     | ENABLE_AGNOCAST=0 (ROS 2)                |
+| ----------------------------------- | -------------------------------- | ---------------------------------------- |
+| `AUTOWARE_PUBLISHER_PTR(MsgT)`      | `Publisher<MsgT>::SharedPtr`     | `rclcpp::Publisher<MsgT>::SharedPtr`     |
+| `AUTOWARE_SUBSCRIPTION_PTR(MsgT)`   | `Subscription<MsgT>::SharedPtr`  | `rclcpp::Subscription<MsgT>::SharedPtr`  |
+| `AUTOWARE_TIMER_PTR`                | `Timer::SharedPtr`               | `rclcpp::TimerBase::SharedPtr`           |
+| `AUTOWARE_GENERIC_PUBLISHER_PTR`    | `GenericPublisher::SharedPtr`    | `rclcpp::GenericPublisher::SharedPtr`    |
+| `AUTOWARE_GENERIC_SUBSCRIPTION_PTR` | `GenericSubscription::SharedPtr` | `rclcpp::GenericSubscription::SharedPtr` |
 
 &nbsp;
 
@@ -465,6 +467,33 @@ Clients and services follow the same pattern, with the numeric suffix selecting 
 
 - `AUTOWARE_CREATE_CLIENT1/2/3(service_type, service_name[, qos[, group]])` (+ `_ON_NODE` variants)
 - `AUTOWARE_CREATE_SERVICE2/3/4(service_type, service_name, callback[, qos[, group]])` (+ `_ON_NODE` variants)
+
+&nbsp;
+
+### Generic (type-erased) Publisher/Subscriber Creation
+
+There is no `MessageT` to pass as a macro argument here — the topic type is a runtime string
+instead — so these have their own macros rather than reusing `AUTOWARE_CREATE_PUBLISHER*`/
+`AUTOWARE_CREATE_SUBSCRIPTION`:
+
+| Macro                                                                             | ENABLE_AGNOCAST=1 (Agnocast)                         | ENABLE_AGNOCAST=0 (ROS 2)                |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------- |
+| `AUTOWARE_CREATE_GENERIC_PUBLISHER3(topic, topic_type, qos)`                      | `agnocast_wrapper::create_generic_publisher(...)`    | `this->create_generic_publisher(...)`    |
+| `AUTOWARE_CREATE_GENERIC_PUBLISHER4(topic, topic_type, qos, options)`             | `agnocast_wrapper::create_generic_publisher(...)`    | `this->create_generic_publisher(...)`    |
+| `AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(topic, topic_type, qos, callback, options)` | `agnocast_wrapper::create_generic_subscription(...)` | `this->create_generic_subscription(...)` |
+
+Each has an `_ON_NODE` variant taking the node explicitly as the first argument, same as the typed
+publisher/subscription macros above.
+
+Review points specific to the generic surface:
+
+- [ ] The subscription callback takes exactly `std::shared_ptr<const rclcpp::SerializedMessage>` —
+      there is no `message_ptr` or zero-copy overload, since a type-erased message has no
+      compile-time type to allocate in place.
+- [ ] `options.qos_overriding_options` is left default, on both the publisher and the
+      subscription. A non-empty value throws `std::invalid_argument` at construction: rclcpp's
+      generic publisher/subscription silently ignore it while Agnocast's apply it, so honoring it
+      would behave differently per backend.
 
 &nbsp;
 

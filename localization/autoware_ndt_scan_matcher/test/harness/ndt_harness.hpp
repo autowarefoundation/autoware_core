@@ -129,7 +129,7 @@ public:
 
     node_executor_ =
       std::make_unique<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions{}, 4);
-    node_executor_->add_node(node_);
+    node_executor_->add_node(node_->get_node_base_interface());
     node_thread_ = std::thread([this] { node_executor_->spin(); });
     wait_until_spinning(*node_executor_);
 
