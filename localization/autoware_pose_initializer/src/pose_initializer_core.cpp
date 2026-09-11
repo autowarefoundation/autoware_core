@@ -94,6 +94,8 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
     initial_pose.orientation.z = initial_pose_array[5];
     initial_pose.orientation.w = initial_pose_array[6];
 
+    change_state(State::Message::INITIALIZING);
+
     // Blocks on the trigger service responses, so it can only run once the executor is spinning.
     // group_srv_ keeps it off the callback group that has to deliver those responses.
     // It also has to stay there so it cannot interleave with on_initialize().
