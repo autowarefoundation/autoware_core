@@ -1,0 +1,65 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: RoutingAdaptor.node
+package:
+  name: autoware_adapi_adaptors
+  provider: autoware
+launch:
+  plugin: autoware::adapi_adaptors::RoutingAdaptor
+  executable: routing_adaptor_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: fixed_goal
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: ~/input/fixed_goal
+  - name: rough_goal
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: ~/input/rough_goal
+  - name: reroute
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: ~/input/reroute
+  - name: waypoint
+    message_type: geometry_msgs/msg/PoseStamped
+    remap_target: ~/input/waypoint
+  - name: route_state
+    message_type: autoware_adapi_v1_msgs/msg/RouteState
+    global: /api/routing/state
+publishers: []
+clients:
+  - name: set_route_points
+    message_type: autoware_adapi_v1_msgs/srv/SetRoutePoints
+    global: /api/routing/set_route_points
+  - name: change_route_points
+    message_type: autoware_adapi_v1_msgs/srv/SetRoutePoints
+    global: /api/routing/change_route_points
+  - name: clear_route
+    message_type: autoware_adapi_v1_msgs/srv/ClearRoute
+    global: /api/routing/clear_route
+# parameters
+param_files: []
+param_values: []
+# processes
+processes:
+  - name: stage_route_request
+    trigger_conditions:
+      - or:
+          - on_input: fixed_goal
+          - on_input: rough_goal
+          - on_input: waypoint
+    outcomes:
+      - to_trigger: request_route
+  - name: request_route
+    trigger_conditions:
+      - on_trigger: stage_route_request
+      - periodic: 5.0 # Hz
+    outcomes: []
+  - name: request_reroute
+    trigger_conditions:
+      - on_input: reroute
+    outcomes: []
+  - name: track_route_state
+    trigger_conditions:
+      - on_input: route_state
+    outcomes:
+      - terminal:
