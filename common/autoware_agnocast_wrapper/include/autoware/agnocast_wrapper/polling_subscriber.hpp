@@ -22,6 +22,7 @@
 #include <memory>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -54,18 +55,18 @@ inline constexpr bool polling_policy_supported_v<polling_policy::Newest> = true;
 template <>
 inline constexpr bool polling_policy_supported_v<polling_policy::All> = true;
 
-template <template <typename> class PollingPolicy>
-inline constexpr bool polling_policy_is_all_v = false;
-template <>
-inline constexpr bool polling_policy_is_all_v<polling_policy::All> = true;
+/// @brief Never true, but dependent on the template arguments, so a static_assert using it fires
+/// when the enclosing template is instantiated rather than when it is declared.
+template <typename MessageT, template <typename> class PollingPolicy>
+inline constexpr bool always_false_v = false;
 
 /// @brief Reject a QoS a polling subscriber cannot serve.
+/// @param require_single_depth Also reject a depth other than 1, because take_data() would lag
+/// behind the newest message. All takes whatever the queue holds and passes false.
 /// @throws std::invalid_argument for KeepAll, which agnocast rejects by exiting the process, and
-/// for depth 0, which the agnocast backend silently never delivers. Latest and Newest additionally
-/// reject a deeper queue, as their autoware_utils_rclcpp counterparts do, because take_data() would
-/// lag behind the newest message; All takes whatever the queue holds and so accepts any depth.
-template <template <typename> class PollingPolicy>
-void check_polling_qos(const rclcpp::QoS & qos, const std::string & topic_name)
+/// for depth 0, which the agnocast backend silently never delivers.
+inline void check_polling_qos(
+  const rclcpp::QoS & qos, const std::string & topic_name, const bool require_single_depth)
 {
   const auto reject = [&topic_name](const std::string & reason) {
     throw std::invalid_argument(
@@ -81,7 +82,7 @@ void check_polling_qos(const rclcpp::QoS & qos, const std::string & topic_name)
     reject("history depth 0 delivers nothing");
   }
 
-  if constexpr (!polling_policy_is_all_v<PollingPolicy>) {
+  if (require_single_depth) {
     if (depth != 1) {
       reject(
         "history depth " + std::to_string(depth) +
@@ -147,20 +148,15 @@ public:
 
 /// @brief Agnocast-side counterpart of an autoware_utils_rclcpp polling policy.
 /// Defined rather than left declared so that a policy without a counterpart is rejected here
-/// instead of by an incomplete-type error on AgnocastPollingSubscriber::policy_.
+/// instead of by an incomplete-type error on AgnocastPollingSubscriber::policy_. It carries no
+/// take_data(): a specialization is the only thing that can serve one.
 template <typename MessageT, template <typename> class PollingPolicy>
 class AgnocastPollingPolicy
 {
   static_assert(
-    detail::polling_policy_supported_v<PollingPolicy>,
+    detail::always_false_v<MessageT, PollingPolicy>,
     "This polling policy has no agnocast counterpart. Use polling_policy::Latest, "
     "polling_policy::Newest or polling_policy::All.");
-
-public:
-  polling_take_data_t<MessageT, PollingPolicy> take_data(agnocast::TakeSubscription<MessageT> &)
-  {
-    return {};
-  }
 };
 
 /// @brief Counterpart of autoware_utils_rclcpp::polling_policy::Latest<MessageT>::take_data().
@@ -240,7 +236,8 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
   autoware::agnocast_wrapper::Node * node, const std::string & topic_name,
   const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
-  detail::check_polling_qos<PollingPolicy>(qos, topic_name);
+  detail::check_polling_qos(
+    qos, topic_name, !std::is_same_v<PollingPolicy<MessageT>, polling_policy::All<MessageT>>);
 
   if (use_agnocast()) {
     return std::make_shared<AgnocastPollingSubscriber<MessageT, PollingPolicy>>(
@@ -259,7 +256,8 @@ typename PollingSubscriber<MessageT, PollingPolicy>::SharedPtr create_polling_su
   autoware::agnocast_wrapper::Node * node, const std::string & topic_name,
   const rclcpp::QoS & qos = rclcpp::QoS{1})
 {
-  detail::check_polling_qos<PollingPolicy>(qos, topic_name);
+  detail::check_polling_qos(
+    qos, topic_name, !std::is_same_v<PollingPolicy<MessageT>, polling_policy::All<MessageT>>);
 
   return std::make_shared<ROS2PollingSubscriber<MessageT, PollingPolicy>>(
     node->get_rclcpp_node().get(), topic_name, qos);
