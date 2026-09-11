@@ -32,6 +32,11 @@ if(BUILD_TESTING)
   ament_lint_auto_find_test_dependencies()
   add_testcase(test/test_copy_vector_to_array.cpp)
   add_testcase(test/test_localization_util.cpp)
+
+  ament_add_gtest(test_pose_initializer_node_integration test/test_pose_initializer_node_integration.cpp)
+  target_include_directories(test_pose_initializer_node_integration PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+  target_link_libraries(test_pose_initializer_node_integration ${PROJECT_NAME})
+  ament_target_dependencies(test_pose_initializer_node_integration ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
 endif()
 
 autoware_ament_auto_package(
