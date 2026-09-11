@@ -1,4 +1,6 @@
 <launch>
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
+
   <arg name="param_file" default="$(find-pkg-share autoware_ndt_scan_matcher)/config/ndt_scan_matcher.param.yaml"/>
 
   <!-- Topics -->
@@ -15,6 +17,7 @@
   <arg name="node_name" default="ndt_scan_matcher" description="Use a different name for this node"/>
 
   <node pkg="autoware_ndt_scan_matcher" exec="autoware_ndt_scan_matcher_node" name="$(var node_name)" output="both">
+    <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
     <remap from="points_raw" to="$(var input_pointcloud)"/>
     <remap from="ekf_pose_with_covariance" to="$(var input_initial_pose_topic)"/>
     <remap from="regularization_pose_with_covariance" to="$(var input_regularization_pose_topic)"/>
