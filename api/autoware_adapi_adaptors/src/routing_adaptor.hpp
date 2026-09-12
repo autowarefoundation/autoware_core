@@ -39,7 +39,6 @@ private:
   using ChangeRoutePoints = autoware::adapi_specs::routing::ChangeRoutePoints;
   using ClearRoute = autoware::adapi_specs::routing::ClearRoute;
   using RouteState = autoware::adapi_specs::routing::RouteState;
-  // NodeAdaptor does not deduce NodeT from its constructor argument.
   using NodeT = autoware::agnocast_wrapper::Node;
   template <class SpecT>
   using Cli = autoware::component_interface_utils::Client<SpecT, NodeT>;

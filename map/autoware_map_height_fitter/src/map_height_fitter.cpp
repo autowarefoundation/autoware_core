@@ -53,7 +53,6 @@ struct MapHeightFitter::Impl
   std::optional<Point> fit(const Point & position, const std::string & frame);
 
   tf2::BufferCore tf2_buffer_;
-  // An AgnocastOnly executor does not spin a plain tf2_ros::TransformListener.
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
   std::string map_frame_;
   autoware::agnocast_wrapper::Node * node_;

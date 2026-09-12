@@ -35,7 +35,6 @@ public:
 private:
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
   using Initialize = autoware::adapi_specs::localization::Initialize;
-  // NodeAdaptor does not deduce NodeT from its constructor argument.
   using NodeT = autoware::agnocast_wrapper::Node;
   autoware::component_interface_utils::NodeAdaptor<NodeT> adaptor_{this};
   AUTOWARE_SUBSCRIPTION_PTR(PoseWithCovarianceStamped) sub_initial_pose_;
