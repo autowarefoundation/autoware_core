@@ -1281,6 +1281,7 @@ TEST_F(GnssPoserCharacterization, InsOrientation_UsesLatestMessageAndSquaredRmse
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
   expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(M_PI / 2.0));
+  // 0.1^2 = 0.01, 0.2^2 = 0.04, 0.3^2 = 0.09
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_roll_roll], 0.01, rmse_squared_tolerance);
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_pitch_pitch], 0.04, rmse_squared_tolerance);
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_yaw_yaw], 0.09, rmse_squared_tolerance);
@@ -1290,6 +1291,7 @@ TEST_F(GnssPoserCharacterization, InsOrientation_UsesLatestMessageAndSquaredRmse
   send_fix(make_reference_fix());
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), -M_PI / 4.0, angle_tolerance);
+  // 0.5^2 = 0.25, 0.6^2 = 0.36, 0.7^2 = 0.49
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_roll_roll], 0.25, rmse_squared_tolerance);
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_pitch_pitch], 0.36, rmse_squared_tolerance);
   EXPECT_NEAR(last_pose_cov().pose.covariance[cov_yaw_yaw], 0.49, rmse_squared_tolerance);
@@ -1318,6 +1320,7 @@ TEST_F(GnssPoserCharacterization, InsOrientation_NoMessageYet_IdentityAndUnitCov
   EXPECT_TRUE(last_fixed().data);
   expect_point_near(last_pose().pose.position, project_antenna(fix, projector));
   expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(0.0));
+  // 1.0 comes from the constructor's placeholder rmse and is squared: 1.0^2 = 1.0.
   EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_roll_roll], 1.0);
   EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_pitch_pitch], 1.0);
   EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_yaw_yaw], 1.0);
@@ -1359,6 +1362,7 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_FirstFixIdentity_ThenYawFrom
   send_fix(fix1);
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(0.0));
+  // use_gnss_ins_orientation = false always writes the constants 0.1 / 0.1 / 1.0.
   EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_roll_roll], 0.1);
   EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_pitch_pitch], 0.1);
   EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_yaw_yaw], 1.0);
@@ -1676,7 +1680,8 @@ TEST_F(GnssPoserCharacterization, Covariance_PositionDiagonalFromFixUnlessTypeUn
   send_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
 
   auto fix = make_reference_fix();
-  // Off-diagonal entries of the input are never propagated.
+  // Only the diagonal (2.0, 3.0, 4.0) is propagated; off-diagonal entries such as 0.5 never are,
+  // in any branch.
   fix.position_covariance = {2.0, 0.5, 0.6, 0.5, 3.0, 0.7, 0.6, 0.7, 4.0};
 
   const std::vector<NavSatFix::_position_covariance_type_type> known_types = {
@@ -1698,6 +1703,8 @@ TEST_F(GnssPoserCharacterization, Covariance_PositionDiagonalFromFixUnlessTypeUn
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(++count));
   {
     const auto & cov = last_pose_cov().pose.covariance;
+    // 10.0 is hard-coded in the node:
+    // https://github.com/autowarefoundation/autoware_core/blob/904b5901488f24e13ae5c3add950b2b9985e1407/sensing/autoware_gnss_poser/src/gnss_poser_node.cpp#L192-L197
     EXPECT_DOUBLE_EQ(cov[cov_xx], 10.0);
     EXPECT_DOUBLE_EQ(cov[cov_yy], 10.0);
     EXPECT_DOUBLE_EQ(cov[cov_zz], 10.0);
