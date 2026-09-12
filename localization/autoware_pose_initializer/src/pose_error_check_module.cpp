@@ -18,7 +18,7 @@
 
 namespace autoware::pose_initializer
 {
-PoseErrorCheckModule::PoseErrorCheckModule(rclcpp::Node * node) : node_(node)
+PoseErrorCheckModule::PoseErrorCheckModule(autoware::agnocast_wrapper::Node * node) : node_(node)
 {
   pose_error_threshold_ = node_->declare_parameter<double>("pose_error_threshold");
 }

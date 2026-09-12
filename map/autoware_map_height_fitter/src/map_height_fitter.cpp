@@ -16,9 +16,12 @@
 
 #include "map_height_fitter_kernel.hpp"
 
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/agnocast_wrapper/parameter_client.hpp>
+#include <autoware/agnocast_wrapper/tf2.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/qos_utils/qos_compatibility.hpp>
-#include <tf2_ros/transform_listener.hpp>
 
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_map_msgs/srv/get_partial_point_cloud_map.hpp>
@@ -42,7 +45,7 @@ struct MapHeightFitter::Impl
 {
   static constexpr char enable_partial_load[] = "enable_partial_load";
 
-  explicit Impl(rclcpp::Node * node);
+  explicit Impl(autoware::agnocast_wrapper::Node * node);
   void on_pcd_map(const sensor_msgs::msg::PointCloud2::ConstSharedPtr msg);
   void on_vector_map(const autoware_map_msgs::msg::LaneletMapBin::ConstSharedPtr msg);
   bool get_partial_point_cloud_map(const Point & point);
@@ -50,9 +53,9 @@ struct MapHeightFitter::Impl
   std::optional<Point> fit(const Point & position, const std::string & frame);
 
   tf2::BufferCore tf2_buffer_;
-  tf2_ros::TransformListener tf2_listener_;
+  autoware::agnocast_wrapper::TransformListener tf2_listener_;
   std::string map_frame_;
-  rclcpp::Node * node_;
+  autoware::agnocast_wrapper::Node * node_;
 
   std::string fit_target_;
 
@@ -60,16 +63,17 @@ struct MapHeightFitter::Impl
   rclcpp::CallbackGroup::SharedPtr group_;
   pcl::PointCloud<pcl::PointXYZ>::Ptr map_cloud_;
   pcl::KdTreeFLANN<pcl::PointXYZ> map_cloud_kdtree_;
-  rclcpp::Client<autoware_map_msgs::srv::GetPartialPointCloudMap>::SharedPtr cli_pcd_map_;
-  rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr sub_pcd_map_;
-  rclcpp::AsyncParametersClient::SharedPtr params_pcd_map_loader_;
+  AUTOWARE_CLIENT_PTR(autoware_map_msgs::srv::GetPartialPointCloudMap) cli_pcd_map_;
+  AUTOWARE_SUBSCRIPTION_PTR(sensor_msgs::msg::PointCloud2) sub_pcd_map_;
+  std::unique_ptr<autoware::agnocast_wrapper::AsyncParametersClient> params_pcd_map_loader_;
 
   // for fitting by vector_map_loader
   lanelet::LaneletMapPtr vector_map_;
-  rclcpp::Subscription<autoware_map_msgs::msg::LaneletMapBin>::SharedPtr sub_vector_map_;
+  AUTOWARE_SUBSCRIPTION_PTR(autoware_map_msgs::msg::LaneletMapBin) sub_vector_map_;
 };
 
-MapHeightFitter::Impl::Impl(rclcpp::Node * node) : tf2_listener_(tf2_buffer_), node_(node)
+MapHeightFitter::Impl::Impl(autoware::agnocast_wrapper::Node * node)
+: tf2_listener_(tf2_buffer_, *node), node_(node)
 {
   fit_target_ = node->declare_parameter<std::string>("map_height_fitter.target");
   if (fit_target_ == "pointcloud_map") {
@@ -96,7 +100,8 @@ MapHeightFitter::Impl::Impl(rclcpp::Node * node) : tf2_listener_(tf2_buffer_), n
 
     const auto map_loader_name =
       node->declare_parameter<std::string>("map_height_fitter.map_loader_name");
-    params_pcd_map_loader_ = rclcpp::AsyncParametersClient::make_shared(node, map_loader_name);
+    params_pcd_map_loader_ =
+      std::make_unique<autoware::agnocast_wrapper::AsyncParametersClient>(node, map_loader_name);
     params_pcd_map_loader_->wait_for_service();
     params_pcd_map_loader_->get_parameters({enable_partial_load}, callback);
 
@@ -268,7 +273,7 @@ std::optional<Point> MapHeightFitter::Impl::fit(const Point & position, const st
   return point;
 }
 
-MapHeightFitter::MapHeightFitter(rclcpp::Node * node)
+MapHeightFitter::MapHeightFitter(autoware::agnocast_wrapper::Node * node)
 {
   impl_ = std::make_unique<Impl>(node);
 }

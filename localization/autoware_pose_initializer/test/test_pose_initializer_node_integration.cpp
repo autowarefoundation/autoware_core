@@ -129,7 +129,7 @@ protected:
     // Force executor to use 8 threads to prevent future.get() deadlocks
     exec_ =
       std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(), 8);
-    exec_->add_node(node_);
+    exec_->add_node(node_->get_node_base_interface());
     exec_->add_node(harness_);
     exec_thread_ = std::thread([this]() { exec_->spin(); });
 
@@ -446,7 +446,7 @@ protected:
 
     exec_ =
       std::make_shared<rclcpp::executors::MultiThreadedExecutor>(rclcpp::ExecutorOptions(), 8);
-    exec_->add_node(node_);
+    exec_->add_node(node_->get_node_base_interface());
     exec_->add_node(harness_);
     exec_thread_ = std::thread([this]() { exec_->spin(); });
   }
@@ -571,14 +571,15 @@ TEST(PoseInitializerCallbackGroupTest, StartupTimerSharesTheInitializeServiceGro
     std::make_shared<PoseInitializer>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0}));
 
   rclcpp::CallbackGroup::SharedPtr service_group;
-  node->for_each_callback_group([&](const rclcpp::CallbackGroup::SharedPtr group) {
-    group->find_service_ptrs_if([&](const rclcpp::ServiceBase::SharedPtr & service) {
-      if (std::string(service->get_service_name()) == "/localization/initialize") {
-        service_group = group;
-      }
-      return false;  // Visit them all
+  node->get_node_base_interface()->for_each_callback_group(
+    [&](const rclcpp::CallbackGroup::SharedPtr group) {
+      group->find_service_ptrs_if([&](const rclcpp::ServiceBase::SharedPtr & service) {
+        if (std::string(service->get_service_name()) == "/localization/initialize") {
+          service_group = group;
+        }
+        return false;  // Visit them all
+      });
     });
-  });
   ASSERT_TRUE(service_group) << "No callback group serves /localization/initialize";
 
   EXPECT_EQ(service_group->type(), rclcpp::CallbackGroupType::MutuallyExclusive)

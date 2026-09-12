@@ -26,7 +26,8 @@ namespace autoware::pose_initializer
 using Initialize = autoware::component_interface_specs::localization::Initialize;
 
 LocalizationTriggerModule::LocalizationTriggerModule(
-  rclcpp::Node * node, const std::string & service_name, const std::string & label)
+  autoware::agnocast_wrapper::Node * node, const std::string & service_name,
+  const std::string & label)
 : node_(node), label_(label)
 {
   client_trigger_ = node_->create_client<SetBool>(service_name);

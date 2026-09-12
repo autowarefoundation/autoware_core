@@ -1,4 +1,6 @@
 <launch>
+  <!-- Set `ld_preload_value` -->
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
   <arg name="config_file" default="$(find-pkg-share autoware_pose_initializer)/config/pose_initializer.param.yaml"/>
   <arg name="user_defined_initial_pose/enable" default="false"/>
   <arg name="user_defined_initial_pose/pose" default="[0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]"/>
@@ -13,6 +15,7 @@
   <arg name="stop_check_twist_topic" default="/sensing/vehicle_velocity_converter/twist_with_covariance"/>
 
   <node pkg="autoware_pose_initializer" exec="autoware_pose_initializer_node" output="both">
+    <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
     <param from="$(var config_file)" allow_substs="true"/>
     <param name="user_defined_initial_pose/enable" value="$(var user_defined_initial_pose/enable)"/>
     <param name="user_defined_initial_pose/pose" value="$(var user_defined_initial_pose/pose)"/>
