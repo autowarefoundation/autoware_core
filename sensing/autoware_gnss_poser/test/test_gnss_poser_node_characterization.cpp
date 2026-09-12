@@ -29,11 +29,14 @@
 
 #include "gnss_poser_node.hpp"
 
+#include <autoware/geography_utils/height.hpp>
+#include <autoware/geography_utils/projection.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
+#include <geographic_msgs/msg/geo_point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
@@ -43,7 +46,9 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <cassert>
 #include <chrono>
+#include <cmath>
 #include <exception>
 #include <functional>
 #include <memory>
@@ -58,6 +63,7 @@ namespace
 using autoware_internal_debug_msgs::msg::BoolStamped;
 using autoware_map_msgs::msg::MapProjectorInfo;
 using autoware_sensing_msgs::msg::GnssInsOrientationStamped;
+using geometry_msgs::msg::Point;
 using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::PoseWithCovarianceStamped;
 using geometry_msgs::msg::TransformStamped;
@@ -74,6 +80,24 @@ constexpr double reference_latitude = 35.62426;
 constexpr double reference_longitude = 139.74252;
 constexpr double reference_altitude = 10.0;
 constexpr const char * reference_mgrs_grid = "54SUE";
+// Cases that need several fixes offset them by multiples of 0.001 degrees: about 111 m in latitude
+// and 90 m in longitude at this latitude, so the fixes project to clearly distinct positions and
+// every output can be matched to the fix it came from.
+
+// Golden values: MGRS(54SUE) projection of (reference_latitude, reference_longitude,
+// reference_altitude) as observed from the node output (identity antenna->base TF, WGS84 vertical
+// datum). Recorded on 2026-09-03 with the GeographicLib/lanelet2 versions bundled in the autoware
+// core-devel jazzy image.
+constexpr double golden_x = 86128.181788819958;
+constexpr double golden_y = 43002.610125367064;
+constexpr double golden_z = reference_altitude;
+constexpr double golden_tolerance = 1e-4;  // [m]
+// EGM2008 geoid height at the reference point, from GeographicLib's GeoidEval on the egm2008-1
+// dataset: independent of the node and of autoware_geography_utils.
+constexpr double reference_geoid_height = 36.12;  // [m]
+// The library and GeoidEval interpolate the same grid; 1 cm covers their difference while any
+// missing (0 m) or wrongly signed (+36 m) conversion is far outside.
+constexpr double geoid_height_tolerance = 0.01;  // [m]
 
 // A deterministic, clearly artificial header stamp so that "stamp copied from input" and
 // "stamp taken from the node clock" can be told apart.
@@ -88,6 +112,9 @@ constexpr std::chrono::milliseconds delivery_budget{200};
 constexpr std::chrono::milliseconds wait_budget{3000};
 // Wall-clock budget for pub/sub discovery between the peer and the node under test.
 constexpr std::chrono::milliseconds discovery_budget{10000};
+
+// Row-major 6x6 covariance index of the x-x entry.
+constexpr std::size_t cov_xx = 0;
 
 struct NodeParams
 {
@@ -181,6 +208,95 @@ MapProjectorInfo make_local_projector_info()
   msg.projector_type = MapProjectorInfo::LOCAL;
   msg.vertical_datum = MapProjectorInfo::WGS84;
   return msg;
+}
+
+MapProjectorInfo make_local_cartesian_utm_projector_info(
+  double origin_lat, double origin_lon, double origin_alt)
+{
+  MapProjectorInfo msg;
+  msg.projector_type = MapProjectorInfo::LOCAL_CARTESIAN_UTM;
+  msg.vertical_datum = MapProjectorInfo::WGS84;
+  msg.map_origin.latitude = origin_lat;
+  msg.map_origin.longitude = origin_lon;
+  msg.map_origin.altitude = origin_alt;
+  return msg;
+}
+
+// Antenna position the node is expected to derive from a NavSatFix, computed with the same
+// library the node uses (autoware_geography_utils). Used to build exact expectations for the
+// buffering / orientation / TF composition logic, which is what these tests characterize.
+Point project_antenna(const NavSatFix & fix, const MapProjectorInfo & projector_info)
+{
+  geographic_msgs::msg::GeoPoint geo_point;
+  geo_point.latitude = fix.latitude;
+  geo_point.longitude = fix.longitude;
+  geo_point.altitude = fix.altitude;
+  Point position = autoware::geography_utils::project_forward(geo_point, projector_info);
+  position.z = autoware::geography_utils::convert_height(
+    position.z, geo_point.latitude, geo_point.longitude, MapProjectorInfo::WGS84,
+    projector_info.vertical_datum);
+  return position;
+}
+
+Point make_point(double x, double y, double z)
+{
+  Point p;
+  p.x = x;
+  p.y = y;
+  p.z = z;
+  return p;
+}
+
+Point mean_of(const std::vector<Point> & points)
+{
+  assert(!points.empty() && "mean_of requires at least one point");
+  Point mean = make_point(0.0, 0.0, 0.0);
+  for (const auto & p : points) {
+    mean.x += p.x;
+    mean.y += p.y;
+    mean.z += p.z;
+  }
+  const auto n = static_cast<double>(points.size());
+  return make_point(mean.x / n, mean.y / n, mean.z / n);
+}
+
+double median_of(std::vector<double> values)
+{
+  assert(!values.empty() && "median_of requires at least one value");
+  std::sort(values.begin(), values.end());
+  const std::size_t mid = values.size() / 2;
+  return (values.size() % 2 == 1) ? values[mid] : (values[mid] + values[mid - 1]) / 2.0;
+}
+
+// Component-wise median (this is what the node computes, NOT the median sample).
+Point component_wise_median_of(const std::vector<Point> & points)
+{
+  std::vector<double> xs;
+  std::vector<double> ys;
+  std::vector<double> zs;
+  for (const auto & p : points) {
+    xs.push_back(p.x);
+    ys.push_back(p.y);
+    zs.push_back(p.z);
+  }
+  return make_point(median_of(xs), median_of(ys), median_of(zs));
+}
+
+void expect_point_near(const Point & actual, const Point & expected, double tol = 1e-6)
+{
+  EXPECT_NEAR(actual.x, expected.x, tol);
+  EXPECT_NEAR(actual.y, expected.y, tol);
+  EXPECT_NEAR(actual.z, expected.z, tol);
+}
+
+bool is_egm2008_dataset_available()
+{
+  try {
+    autoware::geography_utils::convert_wgs84_to_egm2008(0.0, 0.0, 0.0);
+    return true;
+  } catch (const std::runtime_error &) {
+    return false;
+  }
 }
 
 // ---------------------------------------------------------------------------------------
@@ -349,7 +465,9 @@ protected:
   }
 
   const PoseStamped & last_pose() const { return peer_->poses.back(); }
+  const PoseWithCovarianceStamped & last_pose_cov() const { return peer_->pose_cov_msgs.back(); }
   const BoolStamped & last_fixed() const { return peer_->fixed_flags.back(); }
+  const TransformStamped & last_tf() const { return peer_->broadcast_tfs.back(); }
 
   std::shared_ptr<PeerNode> peer_;
   std::shared_ptr<autoware::gnss_poser::GNSSPoser> node_;
@@ -617,6 +735,400 @@ TEST_F(GnssPoserCharacterization, GnssFixed_StampIsNodeClockNotFixHeaderStamp)
   EXPECT_NE(last_fixed().stamp, fix_stamp());
   EXPECT_GE(stamp.nanoseconds(), before.nanoseconds());
   EXPECT_LE(stamp.nanoseconds(), after.nanoseconds());
+}
+
+// =======================================================================================
+// 3. Position pipeline with gnss_pose_pub_method = 0 (instantaneous)
+// =======================================================================================
+
+// With gnss_pose_pub_method = 0, `gnss_pose` is the MGRS projection of the fix as-is: header stamp
+// copied from the fix, `frame_id` = map_frame, `z` = altitude (WGS84 -> WGS84 is the identity), and
+// `gnss_pose_cov` carries the same header and pose. The coordinates are pinned twice: as golden
+// values recorded from the current implementation, and as the output of the same library call the
+// node makes.
+//
+// No antenna -> base_link TF is available here, so the antenna position is published unchanged;
+// that fallback, and the composition when a TF exists, are pinned by the TF cases. Orientation is
+// left to the orientation cases.
+TEST_F(GnssPoserCharacterization, MethodInstant_PublishesProjectedAntennaPosition)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 0;
+  params.map_frame = "my_map";  // non-default, so that frame_id is shown to come from the parameter
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info();
+  send_projector_info(projector);
+
+  const auto fix = make_reference_fix();
+  send_fix(fix);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+
+  const auto & pose = last_pose();
+  EXPECT_EQ(pose.header.frame_id, "my_map");
+  EXPECT_EQ(pose.header.stamp, fix.header.stamp);
+  // Golden values recorded from the current implementation: a change in the library shows here.
+  expect_point_near(pose.pose.position, make_point(golden_x, golden_y, golden_z), golden_tolerance);
+  // The same library call the node composes: a change in how the node calls it shows here.
+  expect_point_near(pose.pose.position, project_antenna(fix, projector), 1e-9);
+  // z is the altitude passed through untouched (MGRS ignores it, WGS84 -> WGS84 is the identity).
+  EXPECT_DOUBLE_EQ(pose.pose.position.z, reference_altitude);
+
+  // gnss_pose_cov carries a copy of the same header and pose, hence exact equality.
+  const auto & pose_cov = last_pose_cov();
+  EXPECT_EQ(pose_cov.header, pose.header);
+  EXPECT_EQ(pose_cov.pose.pose, pose.pose);
+}
+
+// With method 0 the buffer is never used: whatever `buff_epoch` says, every fix yields its own
+// instantaneous position.
+TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_StillPublishesEveryFixInstantly)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 0;
+  params.buff_epoch = 5;  // ignored for method 0
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info();
+  send_projector_info(projector);
+
+  // Three fixes about 100 m apart (see the note at the reference constants), so that each output
+  // can be checked against its own fix and not a neighbor.
+  const std::vector<NavSatFix> fixes = {
+    make_fix(reference_latitude, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 1.0)};
+  for (std::size_t i = 0; i < fixes.size(); ++i) {
+    send_fix(fixes[i]);
+    ASSERT_NO_FATAL_FAILURE(wait_for_outputs(i + 1));
+    expect_point_near(last_pose().pose.position, project_antenna(fixes[i], projector), 1e-9);
+  }
+  EXPECT_EQ(peer_->poses.size(), 3U);
+}
+
+// The projector's `vertical_datum` is honored: with EGM2008 the WGS84 ellipsoidal altitude is
+// converted to an orthometric height, i.e. lowered by the geoid height (about 36 m at the reference
+// point), while x and y are the MGRS coordinates as before. The expectation is independent ground
+// truth (the golden coordinates and GeoidEval's geoid height). Skipped when the geoid dataset is
+// not installed.
+TEST_F(GnssPoserCharacterization, MethodInstant_Egm2008VerticalDatum_ConvertsHeightFromWgs84)
+{
+  if (!is_egm2008_dataset_available()) {
+    GTEST_SKIP() << "egm2008-1 geoid dataset is not installed";
+  }
+  NodeParams params;
+  params.gnss_pose_pub_method = 0;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info(reference_mgrs_grid, MapProjectorInfo::EGM2008);
+  send_projector_info(projector);
+
+  const auto fix = make_reference_fix();
+  send_fix(fix);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+
+  expect_point_near(
+    last_pose().pose.position,
+    make_point(golden_x, golden_y, reference_altitude - reference_geoid_height),
+    geoid_height_tolerance);
+}
+
+// Projector info is forwarded to the projection library as-is: with LOCAL_CARTESIAN_UTM the map
+// origin is honored, so a fix at the origin lands at (0, 0, altitude - origin altitude).
+TEST_F(GnssPoserCharacterization, MethodInstant_LocalCartesianUtmProjector_UsesMapOrigin)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 0;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  // Origin == reference point => antenna at (0, 0, alt - origin_alt).
+  const auto projector =
+    make_local_cartesian_utm_projector_info(reference_latitude, reference_longitude, -10.0);
+  send_projector_info(projector);
+
+  const auto fix = make_reference_fix();
+  send_fix(fix);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+
+  // Literal expectation: the fix sits on the origin, so only the altitude offset remains.
+  expect_point_near(
+    last_pose().pose.position, make_point(0.0, 0.0, reference_altitude - (-10.0)), 1e-6);
+}
+
+// =======================================================================================
+// 4. Position buffering (gnss_pose_pub_method = 1 average / 2 median / other)
+// =======================================================================================
+
+// With method 1 nothing is published until `buff_epoch` fixes have been buffered (each of them
+// still publishes `gnss_fixed`); from then on every fix publishes the mean of the last `buff_epoch`
+// positions as a sliding window.
+TEST_F(GnssPoserCharacterization, MethodAverage_WaitsForFullBufferThenSlidingWindowMean)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 1;
+  params.buff_epoch = 3;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info();
+  send_projector_info(projector);
+
+  const std::vector<NavSatFix> fixes = {
+    make_fix(reference_latitude, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude + 20.0),
+    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 10.0),
+    make_fix(reference_latitude + 0.003, reference_longitude + 0.003, reference_altitude + 30.0)};
+  std::vector<Point> antenna;
+  for (const auto & fix : fixes) {
+    antenna.push_back(project_antenna(fix, projector));
+  }
+
+  // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
+  send_fix(fixes[0]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  send_fix(fixes[1]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
+  expect_output_counts(2, 0, 0, 0);
+
+  // Fix 3 completes the buffer: the third gnss_fixed comes with the first pose, the mean of 1..3.
+  send_fix(fixes[2]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  expect_output_counts(3, 1, 1, 1);
+  expect_point_near(last_pose().pose.position, mean_of({antenna[0], antenna[1], antenna[2]}));
+
+  // Fix 4 slides the window: the mean of 2..4, the oldest sample dropped.
+  send_fix(fixes[3]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
+  expect_output_counts(4, 2, 2, 2);
+  expect_point_near(last_pose().pose.position, mean_of({antenna[1], antenna[2], antenna[3]}));
+}
+
+// With method 2 the median is taken per coordinate, so the result is in general not any of the
+// input samples. The full-buffer gate and the sliding window apply as for the mean.
+TEST_F(GnssPoserCharacterization, MethodMedian_OddBuffer_ComponentWiseMedian)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 2;
+  params.buff_epoch = 3;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info();
+  send_projector_info(projector);
+
+  // Chosen so that the median of x, of y and of z each come from a different sample, which is what
+  // makes the case discriminating: a "median sample" implementation would return one of the inputs.
+  const std::vector<NavSatFix> fixes = {
+    make_fix(reference_latitude, reference_longitude, reference_altitude + 20.0),
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude),
+    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 10.0),
+    make_fix(reference_latitude + 0.003, reference_longitude + 0.003, reference_altitude + 30.0)};
+  std::vector<Point> antenna;
+  for (const auto & fix : fixes) {
+    antenna.push_back(project_antenna(fix, projector));
+  }
+  const auto expected_123 = component_wise_median_of({antenna[0], antenna[1], antenna[2]});
+  for (const auto & sample : antenna) {
+    ASSERT_FALSE(
+      std::abs(sample.x - expected_123.x) < 1e-6 && std::abs(sample.y - expected_123.y) < 1e-6 &&
+      std::abs(sample.z - expected_123.z) < 1e-6)
+      << "fixture data: the component-wise median must not coincide with a sample";
+  }
+
+  // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
+  send_fix(fixes[0]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  send_fix(fixes[1]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
+  expect_output_counts(2, 0, 0, 0);
+
+  // Fix 3 completes the buffer: the component-wise median of 1..3.
+  send_fix(fixes[2]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  expect_output_counts(3, 1, 1, 1);
+  expect_point_near(last_pose().pose.position, expected_123);
+
+  // Fix 4 slides the window: the median of 2..4.
+  send_fix(fixes[3]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
+  expect_output_counts(4, 2, 2, 2);
+  expect_point_near(
+    last_pose().pose.position, component_wise_median_of({antenna[1], antenna[2], antenna[3]}));
+}
+
+// An even buffer size averages the two central values of each coordinate: `get_median_position`
+// has a separate branch for it. The formula itself is covered by the helper-level unit test in
+// test_gnss_poser_node.cpp; this case pins that an even `buff_epoch` reaches that branch through
+// the node, which keeps the behavior guarded while the helper is moved out of the node.
+TEST_F(GnssPoserCharacterization, MethodMedian_EvenBuffer_AveragesTwoCentralValues)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 2;
+  params.buff_epoch = 4;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info();
+  send_projector_info(projector);
+
+  const std::vector<NavSatFix> fixes = {
+    make_fix(reference_latitude, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.003, reference_longitude + 0.001, reference_altitude + 30.0),
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.003, reference_altitude + 10.0),
+    make_fix(reference_latitude + 0.002, reference_longitude + 0.002, reference_altitude + 20.0)};
+  std::vector<Point> antenna;
+  for (const auto & fix : fixes) {
+    antenna.push_back(project_antenna(fix, projector));
+  }
+
+  for (std::size_t i = 0; i < 3; ++i) {
+    send_fix(fixes[i]);
+    ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(i + 1));
+  }
+  EXPECT_TRUE(peer_->poses.empty());
+
+  send_fix(fixes[3]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  expect_point_near(last_pose().pose.position, component_wise_median_of(antenna));
+}
+
+// A `gnss_pose_pub_method` outside the documented 0..2 is accepted: any non-zero value enables
+// buffering and any value other than 1 selects the median.
+//
+// NOTE(characterization): the schema documents the range but the node never validates it. Frozen
+// here so that adding validation is an explicit decision (and a change to this case), not a side
+// effect of the refactoring.
+TEST_F(GnssPoserCharacterization, MethodUnknown_BehavesLikeMedian)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 3;
+  params.buff_epoch = 3;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info();
+  send_projector_info(projector);
+
+  const std::vector<NavSatFix> fixes = {
+    make_fix(reference_latitude, reference_longitude, reference_altitude + 20.0),
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude),
+    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 10.0)};
+  std::vector<Point> antenna;
+  for (const auto & fix : fixes) {
+    antenna.push_back(project_antenna(fix, projector));
+  }
+
+  send_fix(fixes[0]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  send_fix(fixes[1]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
+  EXPECT_TRUE(peer_->poses.empty());  // buffering is active (unlike method 0)
+
+  send_fix(fixes[2]);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  expect_point_near(last_pose().pose.position, component_wise_median_of(antenna));
+}
+
+// Non-fixed messages neither fill nor clear the position buffer: two accepted fixes around one
+// NO_FIX still produce the mean of exactly those two.
+TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByNonFixedMessages)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 1;
+  params.buff_epoch = 2;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info();
+  send_projector_info(projector);
+
+  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
+  const auto no_fix = make_fix(
+    reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0,
+    NavSatStatus::STATUS_NO_FIX);
+  const auto fix2 =
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0);
+
+  send_fix(fix1);
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  send_fix(no_fix);  // published gnss_fixed=false, nothing else
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
+  EXPECT_TRUE(peer_->poses.empty());
+
+  send_fix(fix2);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  expect_point_near(
+    last_pose().pose.position,
+    mean_of({project_antenna(fix1, projector), project_antenna(fix2, projector)}));
+}
+
+// Fixes dropped at the projector gates (no projector info yet, or LOCAL) never reach the position
+// buffer: after two dropped fixes, the first accepted one still fills only one of the two slots.
+// Pins the order "gates first, then buffer", which a refactoring could plausibly swap.
+TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByGatedFixes)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 1;
+  params.buff_epoch = 2;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  const auto projector = make_mgrs_projector_info();
+
+  const auto dropped_no_info =
+    make_fix(reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0);
+  const auto dropped_local =
+    make_fix(reference_latitude - 0.01, reference_longitude - 0.01, reference_altitude - 100.0);
+  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
+  const auto fix2 =
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0);
+
+  send_fix(dropped_no_info);  // no projector info yet
+  send_projector_info(make_local_projector_info());
+  send_fix(dropped_local);  // LOCAL projector
+  expect_output_counts(0, 0, 0, 0);
+
+  send_projector_info(projector);
+  send_fix(fix1);
+  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  expect_output_counts(1, 0, 0, 0);  // one slot filled, not full
+
+  send_fix(fix2);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  expect_point_near(
+    last_pose().pose.position,
+    mean_of({project_antenna(fix1, projector), project_antenna(fix2, projector)}));
+}
+
+// `buff_epoch = 0` with the average publishes NaN coordinates on every output: a zero-capacity
+// buffer is always "full", and the mean of nothing is 0/0. The node does not notice: `gnss_fixed`
+// is true, `gnss_pose_cov` still carries the receiver's position covariance next to the NaN
+// position, and the TF broadcast is NaN as well.
+//
+// NOTE(characterization): this is not a behavior to keep, it is one to be aware of. README says
+// buff_epoch = 0 makes the method lose effect; it does not, and no consumer is told. The median
+// counterpart (method 2, buff_epoch 0) throws std::out_of_range inside the callback and is
+// deliberately not pinned. Rejecting buff_epoch = 0 at construction is a refactoring-phase change.
+TEST_F(GnssPoserCharacterization, MethodAverage_BuffEpochZero_PublishesNaNPosition)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 1;
+  params.buff_epoch = 0;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  send_projector_info(make_mgrs_projector_info());
+
+  send_fix(make_reference_fix());
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  expect_output_counts(1, 1, 1, 1);
+  EXPECT_TRUE(last_fixed().data);
+  const auto is_nan_point = [](const auto & p) {
+    return std::isnan(p.x) && std::isnan(p.y) && std::isnan(p.z);
+  };
+  EXPECT_TRUE(is_nan_point(last_pose().pose.position));
+  EXPECT_TRUE(is_nan_point(last_pose_cov().pose.pose.position));
+  EXPECT_TRUE(is_nan_point(last_tf().transform.translation));
+  // The covariance still claims the receiver's accuracy for a position that is NaN.
+  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_xx], 1.0);
+}
+
+// `buff_epoch = 0` with method 0 is harmless, because the buffer is never touched.
+TEST_F(GnssPoserCharacterization, MethodInstant_BuffEpochZero_IsHarmless)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = 0;
+  params.buff_epoch = 0;
+  ASSERT_NO_FATAL_FAILURE(build_node(params));
+  send_projector_info(make_mgrs_projector_info());
+
+  const auto fix = make_reference_fix();
+  send_fix(fix);
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  expect_point_near(
+    last_pose().pose.position, project_antenna(fix, make_mgrs_projector_info()), 1e-9);
 }
 
 int main(int argc, char ** argv)

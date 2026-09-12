@@ -39,7 +39,7 @@ public:
     autoware::agnocast_wrapper::Node * node, const std::string & service_name,
     const std::string & label);
   void wait_for_service();
-  void send_request(bool flag, bool need_spin = false) const;
+  void send_request(bool flag) const;
 
 private:
   autoware::agnocast_wrapper::Node * node_;
