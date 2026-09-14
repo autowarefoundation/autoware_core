@@ -12,12 +12,12 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/gnss_module.hpp"
-#include "../src/localization_module.hpp"
-#include "../src/localization_trigger_module.hpp"
-#include "../src/pose_error_check_module.hpp"
-#include "../src/pose_initializer_core.hpp"
-#include "../src/stop_check_module.hpp"
+#include "../src/utils/gnss_module.hpp"
+#include "../src/utils/localization_module.hpp"
+#include "../src/utils/localization_trigger_module.hpp"
+#include "../src/utils/pose_error_check_module.hpp"
+#include "../src/pose_initializer_node.hpp"
+#include "../src/utils/stop_check_module.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
@@ -39,6 +39,7 @@
 #include <thread>
 #include <vector>
 
+using autoware::pose_initializer::PoseInitializerNode;
 using autoware::pose_initializer::PoseInitializer;
 using InitializeLocalization = autoware_localization_msgs::srv::InitializeLocalization;
 using RequestPoseAlignment = autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped;
@@ -87,7 +88,7 @@ protected:
   {
     // rclcpp init once for whole test binary via RosEnv below.
 
-    node_ = std::make_shared<PoseInitializer>(make_node_options());
+    node_ = std::make_shared<PoseInitializerNode>(make_node_options());
     harness_ = std::make_shared<rclcpp::Node>("test_harness");
 
     // Harness pub/sub
@@ -179,7 +180,7 @@ protected:
     }
   }
 
-  std::shared_ptr<PoseInitializer> node_;
+  std::shared_ptr<PoseInitializerNode> node_;
   std::shared_ptr<rclcpp::Node> harness_;
   std::shared_ptr<rclcpp::executors::MultiThreadedExecutor> exec_;
   std::thread exec_thread_;
@@ -438,7 +439,7 @@ protected:
 
   void start_node(const std::vector<double> & initial_pose)
   {
-    node_ = std::make_shared<PoseInitializer>(make_node_options(true, initial_pose));
+    node_ = std::make_shared<PoseInitializerNode>(make_node_options(true, initial_pose));
 
     // `pose_reset` is volatile and the node publishes on it milliseconds into the spin, so the
     // harness has to be matched before then or the sample is dropped.
@@ -464,7 +465,7 @@ protected:
     return false;
   }
 
-  std::shared_ptr<PoseInitializer> node_;
+  std::shared_ptr<PoseInitializerNode> node_;
   std::shared_ptr<rclcpp::Node> harness_;
   std::shared_ptr<rclcpp::executors::MultiThreadedExecutor> exec_;
   std::thread exec_thread_;
@@ -551,7 +552,7 @@ TEST_F(PoseInitializerUserDefinedInitialPoseTest, UserDefinedInitTriggerFailsSta
 TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsPoseOfWrongSize)
 {
   EXPECT_THROW(
-    std::make_shared<PoseInitializer>(make_node_options(true, {1.0, 2.0, 3.0})),
+    std::make_shared<PoseInitializerNode>(make_node_options(true, {1.0, 2.0, 3.0})),
     std::invalid_argument);
 }
 
@@ -559,7 +560,7 @@ TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsPoseOfWrongSize)
 TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsZeroQuaternion)
 {
   EXPECT_THROW(
-    std::make_shared<PoseInitializer>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0})),
+    std::make_shared<PoseInitializerNode>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0})),
     std::invalid_argument);
 }
 
@@ -568,7 +569,7 @@ TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsZeroQuaternion)
 TEST(PoseInitializerCallbackGroupTest, StartupTimerSharesTheInitializeServiceGroup)
 {
   const auto node =
-    std::make_shared<PoseInitializer>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0}));
+    std::make_shared<PoseInitializerNode>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0}));
 
   rclcpp::CallbackGroup::SharedPtr service_group;
   node->get_node_base_interface()->for_each_callback_group(
