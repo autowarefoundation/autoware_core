@@ -87,8 +87,7 @@ InitializationResult PoseInitializer::evaluate_auto_pose(
 }
 
 InitializationResult PoseInitializer::evaluate_direct_pose(
-  const PoseWithCovarianceStamped & pose,
-  const std::array<double, 36> & output_pose_covariance)
+  const PoseWithCovarianceStamped & pose, const std::array<double, 36> & output_pose_covariance)
 {
   InitializationResult result;
   PoseWithCovarianceStamped reset_pose = pose;
@@ -99,4 +98,3 @@ InitializationResult PoseInitializer::evaluate_direct_pose(
   return result;
 }
 }  // namespace autoware::pose_initializer
-

@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "../src/pose_initializer_node.hpp"
 #include "../src/utils/gnss_module.hpp"
 #include "../src/utils/localization_module.hpp"
 #include "../src/utils/localization_trigger_module.hpp"
 #include "../src/utils/pose_error_check_module.hpp"
-#include "../src/pose_initializer_node.hpp"
 #include "../src/utils/stop_check_module.hpp"
 
 #include <rclcpp/rclcpp.hpp>
@@ -39,8 +39,8 @@
 #include <thread>
 #include <vector>
 
-using autoware::pose_initializer::PoseInitializerNode;
 using autoware::pose_initializer::PoseInitializer;
+using autoware::pose_initializer::PoseInitializerNode;
 using InitializeLocalization = autoware_localization_msgs::srv::InitializeLocalization;
 using RequestPoseAlignment = autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped;
 using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
@@ -560,7 +560,8 @@ TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsPoseOfWrongSize)
 TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsZeroQuaternion)
 {
   EXPECT_THROW(
-    std::make_shared<PoseInitializerNode>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0})),
+    std::make_shared<PoseInitializerNode>(
+      make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 0.0})),
     std::invalid_argument);
 }
 
@@ -568,8 +569,8 @@ TEST_F(PoseInitializerUserDefinedInitialPoseTest, RejectsZeroQuaternion)
 // serves /localization/initialize, so the startup path and an Initialize request cannot interleave.
 TEST(PoseInitializerCallbackGroupTest, StartupTimerSharesTheInitializeServiceGroup)
 {
-  const auto node =
-    std::make_shared<PoseInitializerNode>(make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0}));
+  const auto node = std::make_shared<PoseInitializerNode>(
+    make_node_options(true, {1.0, 2.0, 3.0, 0.0, 0.0, 0.0, 1.0}));
 
   rclcpp::CallbackGroup::SharedPtr service_group;
   node->get_node_base_interface()->for_each_callback_group(

@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef GNSS_MODULE_HPP_
-#define GNSS_MODULE_HPP_
+#ifndef UTILS__GNSS_MODULE_HPP_
+#define UTILS__GNSS_MODULE_HPP_
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
@@ -44,4 +44,4 @@ private:
 };
 }  // namespace autoware::pose_initializer
 
-#endif  // GNSS_MODULE_HPP_
+#endif  // UTILS__GNSS_MODULE_HPP_

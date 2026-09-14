@@ -60,7 +60,7 @@ private:
   State::Message state_;
   std::array<double, 36> output_pose_covariance_{};
   std::array<double, 36> gnss_particle_covariance_{};
-  
+
   std::unique_ptr<GnssModule> gnss_;
   std::unique_ptr<LocalizationModule> ndt_;
   std::unique_ptr<LocalizationModule> yabloc_;
@@ -87,4 +87,3 @@ private:
 }  // namespace autoware::pose_initializer
 
 #endif  // POSE_INITIALIZER_NODE_HPP_
-

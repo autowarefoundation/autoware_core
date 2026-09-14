@@ -14,13 +14,13 @@
 
 #include "pose_initializer_node.hpp"
 
+#include "pose_initializer.hpp"
 #include "utils/copy_vector_to_array.hpp"
 #include "utils/gnss_module.hpp"
 #include "utils/localization_module.hpp"
 #include "utils/localization_trigger_module.hpp"
 #include "utils/pose_error_check_module.hpp"
 #include "utils/stop_check_module.hpp"
-#include "pose_initializer.hpp"
 
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
 #include <autoware_common_msgs/msg/response_status.hpp>
@@ -83,7 +83,7 @@ PoseInitializerNode::PoseInitializerNode(const rclcpp::NodeOptions & options)
     try {
       initial_pose = PoseInitializer::validate_user_defined_initial_pose(initial_pose_array);
     } catch (const std::invalid_argument & e) {
-      throw; // Fail fast
+      throw;  // Fail fast
     }
 
     change_state(State::Message::INITIALIZING);
@@ -178,32 +178,36 @@ void PoseInitializerNode::on_initialize(
 
       std::optional<PoseWithCovarianceStamped> latest_gnss_pose;
       std::optional<double> pose_error_threshold;
-      
-      // To strictly preserve legacy behavior, we run PoseErrorCheckModule here so it logs using its own mechanism.
+
+      // To strictly preserve legacy behavior, we run PoseErrorCheckModule here so it logs using its
+      // own mechanism.
       if (pose_error_check_ && gnss_) {
         latest_gnss_pose = get_gnss_pose();
         double dummy_gnss_error_2d;
         // PoseErrorCheckModule logs internally if the error is large.
         pose_error_check_->check_pose_error(
           latest_gnss_pose.value().pose.pose, pose.pose.pose, dummy_gnss_error_2d);
-        
-        // We still provide the threshold to the core module to construct the diagnostic status properly.
+
+        // We still provide the threshold to the core module to construct the diagnostic status
+        // properly.
         pose_error_threshold = get_parameter("pose_error_threshold").as_double();
       }
 
-      const auto result = PoseInitializer::evaluate_auto_pose(pose, reliable, latest_gnss_pose, output_pose_covariance_, pose_error_threshold);
+      const auto result = PoseInitializer::evaluate_auto_pose(
+        pose, reliable, latest_gnss_pose, output_pose_covariance_, pose_error_threshold);
 
       diagnostics_pose_reliable_->clear();
 
       if (result.diagnostics.has_value()) {
         const auto & diag = result.diagnostics.value();
-        
+
         if (diag.gnss_error_2d.has_value()) {
-          diagnostics_pose_reliable_->add_key_value("gnss_pose_error_2d", diag.gnss_error_2d.value());
+          diagnostics_pose_reliable_->add_key_value(
+            "gnss_pose_error_2d", diag.gnss_error_2d.value());
           diagnostics_pose_reliable_->add_key_value(
             "is_gnss_pose_error_small", diag.is_gnss_pose_error_small.value());
         }
-        
+
         // Output warnings
         for (const auto & warn : result.warnings) {
           if (warn.throttle_ms == 0) {
@@ -211,7 +215,7 @@ void PoseInitializerNode::on_initialize(
               diagnostic_msgs::msg::DiagnosticStatus::WARN, warn.text);
           }
         }
-        
+
         diagnostics_pose_reliable_->add_key_value("is_initial_pose_reliable", diag.is_reliable);
         if (!diag.is_reliable) {
           std::stringstream message;
@@ -220,7 +224,7 @@ void PoseInitializerNode::on_initialize(
             diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
         }
       }
-      
+
       diagnostics_pose_reliable_->publish(this->now());
 
       if (result.reset_pose.has_value()) {
@@ -234,7 +238,8 @@ void PoseInitializerNode::on_initialize(
     } else if (req->method == Initialize::Service::Request::DIRECT) {
       if (req->pose_with_covariance.empty()) {
         std::stringstream message;
-        message << "No input pose_with_covariance. If you want to use DIRECT method, please input pose_with_covariance.";
+        message << "No input pose_with_covariance. If you want to use DIRECT method, please input "
+                   "pose_with_covariance.";
         RCLCPP_ERROR_STREAM(get_logger(), message.str());
         autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
         respose_status.success = false;
@@ -242,9 +247,10 @@ void PoseInitializerNode::on_initialize(
         respose_status.message = message.str();
         throw respose_status;
       }
-      
-      const auto result = PoseInitializer::evaluate_direct_pose(req->pose_with_covariance.front(), output_pose_covariance_);
-      
+
+      const auto result = PoseInitializer::evaluate_direct_pose(
+        req->pose_with_covariance.front(), output_pose_covariance_);
+
       set_user_defined_initial_pose(result.reset_pose.value().pose.pose);
       res->status.success = true;
     } else {

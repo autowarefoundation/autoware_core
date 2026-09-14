@@ -75,5 +75,4 @@ public:
 
 }  // namespace autoware::pose_initializer
 
-
 #endif  // POSE_INITIALIZER_HPP_
