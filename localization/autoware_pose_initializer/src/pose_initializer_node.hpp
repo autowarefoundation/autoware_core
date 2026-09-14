@@ -12,8 +12,10 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef POSE_INITIALIZER_CORE_HPP_
-#define POSE_INITIALIZER_CORE_HPP_
+#ifndef POSE_INITIALIZER_NODE_HPP_
+#define POSE_INITIALIZER_NODE_HPP_
+
+#include "pose_initializer.hpp"
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
@@ -38,10 +40,10 @@ class LocalizationModule;
 class GnssModule;
 class LocalizationTriggerModule;
 
-class PoseInitializer : public autoware::agnocast_wrapper::Node
+class PoseInitializerNode : public autoware::agnocast_wrapper::Node
 {
 public:
-  explicit PoseInitializer(const rclcpp::NodeOptions & options);
+  explicit PoseInitializerNode(const rclcpp::NodeOptions & options);
 
 private:
   using Initialize = autoware::component_interface_specs::localization::Initialize;
@@ -58,6 +60,7 @@ private:
   State::Message state_;
   std::array<double, 36> output_pose_covariance_{};
   std::array<double, 36> gnss_particle_covariance_{};
+  
   std::unique_ptr<GnssModule> gnss_;
   std::unique_ptr<LocalizationModule> ndt_;
   std::unique_ptr<LocalizationModule> yabloc_;
@@ -83,4 +86,5 @@ private:
 };
 }  // namespace autoware::pose_initializer
 
-#endif  // POSE_INITIALIZER_CORE_HPP_
+#endif  // POSE_INITIALIZER_NODE_HPP_
+
