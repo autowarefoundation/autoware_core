@@ -85,22 +85,10 @@ InitializationResult PoseInitializer::evaluate_auto_pose(
 }
 
 InitializationResult PoseInitializer::evaluate_direct_pose(
-  const std::vector<PoseWithCovarianceStamped> & request_poses,
   const PoseWithCovarianceStamped & pose,
   const std::array<double, 36> & output_pose_covariance)
 {
   InitializationResult result;
-  if (request_poses.empty()) {
-    result.is_success = false;
-    // autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR is 1, as used in original code
-    result.error_code = 1;
-    result.error_message =
-      "No input pose_with_covariance. If you want to use DIRECT method, please input "
-      "pose_with_covariance.";
-    return result;
-  }
-
-  PoseWithCovarianceStamped reset_pose = request_poses.front();
   PoseWithCovarianceStamped reset_pose = pose;
   reset_pose.pose.covariance = output_pose_covariance;
   result.reset_pose = reset_pose;
@@ -108,6 +96,5 @@ InitializationResult PoseInitializer::evaluate_direct_pose(
 
   return result;
 }
-
 }  // namespace autoware::pose_initializer
 

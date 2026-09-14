@@ -232,21 +232,12 @@ void PoseInitializerNode::on_initialize(
       change_state(State::Message::INITIALIZED);
 
     } else if (req->method == Initialize::Service::Request::DIRECT) {
-      
-      std::vector<geometry_msgs::msg::PoseWithCovarianceStamped> vec(req->pose_with_covariance.begin(), req->pose_with_covariance.end());
-      const auto result = PoseInitializer::evaluate_direct_pose(vec, output_pose_covariance_);
-      
-      if (!result.is_success) {
-        RCLCPP_ERROR_STREAM(get_logger(), result.error_message);
       if (req->pose_with_covariance.empty()) {
         std::stringstream message;
-        message << "No input pose_with_covariance. If you want to use DIRECT method, please input "
-                   "pose_with_covariance.";
+        message << "No input pose_with_covariance. If you want to use DIRECT method, please input pose_with_covariance.";
         RCLCPP_ERROR_STREAM(get_logger(), message.str());
         autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
         respose_status.success = false;
-        respose_status.code = result.error_code;
-        respose_status.message = result.error_message;
         respose_status.code = autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR;
         respose_status.message = message.str();
         throw respose_status;
@@ -256,7 +247,6 @@ void PoseInitializerNode::on_initialize(
       
       set_user_defined_initial_pose(result.reset_pose.value().pose.pose);
       res->status.success = true;
-
     } else {
       std::stringstream message;
       message << "Unknown method type (=" << std::to_string(req->method) << ")";
