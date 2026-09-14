@@ -29,5 +29,4 @@
   <let name="container_executable" value="component_container_mt" if="$(eval &quot;'$(var use_agnocast)' != '1' and '$(var use_multithread)' == 'true'&quot;)"/>
   <let name="container_executable" value="agnocast_component_container" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' != 'true'&quot;)"/>
   <let name="container_executable" value="agnocast_component_container_cie" if="$(eval &quot;'$(var use_agnocast)' == '1' and '$(var use_multithread)' == 'true'&quot;)"/>
-
 </launch>
