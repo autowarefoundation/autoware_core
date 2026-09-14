@@ -21,6 +21,8 @@
 
 namespace autoware::pose_initializer
 {
+constexpr float near_tol = 1e-6F;
+
 Pose PoseInitializer::validate_user_defined_initial_pose(
   const std::vector<double> & initial_pose_array)
 {
@@ -30,8 +32,8 @@ Pose PoseInitializer::validate_user_defined_initial_pose(
       std::to_string(initial_pose_array.size()) + ". It must be 7.");
   }
   if (
-    std::abs(initial_pose_array[3]) < 1e-6 && std::abs(initial_pose_array[4]) < 1e-6 &&
-    std::abs(initial_pose_array[5]) < 1e-6 && std::abs(initial_pose_array[6]) < 1e-6) {
+    std::abs(initial_pose_array[3]) < near_tol && std::abs(initial_pose_array[4]) < near_tol &&
+    std::abs(initial_pose_array[5]) < near_tol && std::abs(initial_pose_array[6]) < near_tol) {
     throw std::invalid_argument("Input quaternion is invalid. All elements are close to zero.");
   }
 
