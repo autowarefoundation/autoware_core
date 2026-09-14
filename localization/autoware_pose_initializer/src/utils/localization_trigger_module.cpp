@@ -20,6 +20,7 @@
 
 #include <memory>
 #include <string>
+#include <utility>
 
 namespace autoware::pose_initializer
 {
