@@ -61,7 +61,7 @@ void LocalizationTriggerModule::send_request(bool flag) const
     throw respose_status;
   }
 
-  auto future = client_trigger_->async_send_request(req);
+  auto future = client_trigger_->async_send_request(std::move(req));
 
   if (future.get()->success) {
     RCLCPP_INFO(node_->get_logger(), "%s %s succeeded", label_.c_str(), command_name.c_str());

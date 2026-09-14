@@ -48,7 +48,7 @@ std::tuple<PoseWithCovarianceStamped, bool> LocalizationModule::align_pose(
   }
 
   RCLCPP_INFO(logger_, "Call align server.");
-  const auto res = cli_align_->async_send_request(req).get();
+  const auto res = cli_align_->async_send_request(std::move(req)).get();
   if (!res->success) {
     autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
     respose_status.success = false;
