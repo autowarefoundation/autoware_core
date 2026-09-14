@@ -211,10 +211,7 @@ std::optional<lanelet::ConstLanelet> get_closest_lanelet(
 
   // find by angle; direction_change lanelets also accept reverse alignment
   double min_angle = std::numeric_limits<double>::max();
-  std::optional<lanelet::ConstLanelet> closest_lanelet;
-  if (!candidate_lanelets.empty()) {
-    closest_lanelet = candidate_lanelets.front();
-  }
+  std::optional<lanelet::ConstLanelet> closest_lanelet{};
   for (const auto & llt : candidate_lanelets) {
     const lanelet::ConstLineString3d segment = get_closest_segment(llt.centerline(), search_point);
     if (segment.empty()) {
