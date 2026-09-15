@@ -867,15 +867,15 @@ component container (see the [Context notes](#context-notes)).
 
 ### Parameters
 
-| Parameter         | Type    | Description                                                            |
-| ----------------- | ------- | ---------------------------------------------------------------------- |
-| `topic`           | string  | The input topic to subscribe to                                        |
-| `remap_topic`     | string  | The output topic to publish to                                         |
-| `topic_type`      | string  | The type of the relayed messages, e.g. `std_msgs/msg/Float32`         |
-| `msgs_per_sec`    | double  | The upper bound (Hz) on the output rate                                |
-| `qos_depth`       | integer | QoS depth for the subscription and the publication (default: `1`)     |
-| `transient_local` | boolean | Enables transient local QoS (default: `false`)                         |
-| `best_effort`     | boolean | Enables best-effort QoS (default: `false`)                             |
+| Parameter         | Type    | Description                                                       |
+| ----------------- | ------- | ----------------------------------------------------------------- |
+| `topic`           | string  | The input topic to subscribe to                                   |
+| `remap_topic`     | string  | The output topic to publish to                                    |
+| `topic_type`      | string  | The type of the relayed messages, e.g. `std_msgs/msg/Float32`     |
+| `msgs_per_sec`    | double  | The upper bound (Hz) on the output rate                           |
+| `qos_depth`       | integer | QoS depth for the subscription and the publication (default: `1`) |
+| `transient_local` | boolean | Enables transient local QoS (default: `false`)                    |
+| `best_effort`     | boolean | Enables best-effort QoS (default: `false`)                        |
 
 ### Usage example
 
