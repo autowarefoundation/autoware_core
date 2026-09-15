@@ -180,10 +180,11 @@ interpolator::InterpolationResult TimeDistanceMapping::build(
     distance_bases_.emplace_back(distance_bases.at(i));
   }
 
-  if (const auto result = detail::build_with_fallback(
-        interpolator_, time_bases_, distance_bases_,
-        [] { return std::make_shared<interpolator::NearestNeighbor<double>>(); });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      interpolator_, time_bases_, distance_bases_,
+      [] { return std::make_shared<interpolator::NearestNeighbor<double>>(); });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{
         "failed to interpolate TemporalTrajectory::time_to_distance"} +
