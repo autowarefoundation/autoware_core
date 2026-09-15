@@ -36,6 +36,12 @@ inline constexpr const char * map_frame = "map";
 inline constexpr const char * base_link_frame = "base_link";
 inline constexpr const char * sensor_frame = "sensor_frame";
 
+/// @brief The child frame of the TF the node broadcasts, set through `frame.ndt_base_frame`.
+///
+/// Distinct from `base_link_frame` on purpose: a case that checks the broadcast TF must not pass
+/// just because some other `map -> base_link` transform exists.
+inline constexpr const char * ndt_base_link_frame = "ndt_base_link";
+
 /// @brief Diagnostic status names published by the node under test.
 inline constexpr const char * scan_matching_status = "ndt_scan_matcher: scan_matching_status";
 inline constexpr const char * initial_pose_status =
