@@ -850,3 +850,48 @@ def generate_launch_description():
 The same `use_agnocast` override works here too, via `launch_arguments={"use_agnocast": "0"}.items()`.
 
 This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.
+
+## Topic Throttle Node
+
+`autoware_topic_throttle_node` (`autoware::agnocast_wrapper::TopicThrottle`) relays a topic of any
+type while dropping the messages that arrive before the period implied by `msgs_per_sec` has
+elapsed, so the output rate stays at or below it.
+
+It replaces `topic_tools::ThrottleNode` on an Agnocast pipeline. That node discovers the type and
+QoS of its input through the ROS 2 graph, which Agnocast does not serve — its
+`NodeGraph::get_publishers_info_by_topic()` throws — so both are taken as parameters here instead.
+
+The node derives from `agnocast_wrapper::Node` and is registered with an `AgnocastOnly` executor,
+so it has to run as its own executable: a node that needs the Agnocast context finds none inside a
+component container (see the [Context notes](#context-notes)).
+
+### Parameters
+
+| Parameter         | Type    | Description                                                            |
+| ----------------- | ------- | ---------------------------------------------------------------------- |
+| `topic`           | string  | The input topic to subscribe to                                        |
+| `remap_topic`     | string  | The output topic to publish to                                         |
+| `topic_type`      | string  | The type of the relayed messages, e.g. `std_msgs/msg/Float32`         |
+| `msgs_per_sec`    | double  | The upper bound (Hz) on the output rate                                |
+| `qos_depth`       | integer | QoS depth for the subscription and the publication (default: `1`)     |
+| `transient_local` | boolean | Enables transient local QoS (default: `false`)                         |
+| `best_effort`     | boolean | Enables best-effort QoS (default: `false`)                             |
+
+### Usage example
+
+```xml
+<node pkg="autoware_agnocast_wrapper" exec="autoware_topic_throttle_node" name="steering_angle_throttler" output="screen">
+  <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
+  <param name="topic" value="/vehicle/status/steering_status_scalar"/>
+  <param name="remap_topic" value="/vehicle/status/steering_status_scalar_throttled"/>
+  <param name="topic_type" value="std_msgs/msg/Float32"/>
+  <param name="msgs_per_sec" value="25.0"/>
+</node>
+```
+
+### Limitations
+
+- Only messages are dropped, so the output rate is at most `msgs_per_sec` and follows the input
+  timing. It is not resampled to a fixed rate.
+- The QoS is not discovered from the input publisher: a publisher offering best-effort needs
+  `best_effort` set here, or the subscription receives nothing.

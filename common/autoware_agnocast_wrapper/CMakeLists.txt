@@ -55,6 +55,27 @@ else()
   )
 endif()
 
+# The throttle node lives here because it exists to replace topic_tools::ThrottleNode, whose graph
+# discovery Agnocast cannot serve. Registering it with the package's own macro means including that
+# macro directly: the CONFIG_EXTRAS that would set it up is only consumed by downstream packages.
+set(autoware_agnocast_wrapper_DIR "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+include("${autoware_agnocast_wrapper_DIR}/agnocast_wrapper_config_extras.cmake")
+
+ament_auto_add_library(topic_throttle_node SHARED
+  src/topic_throttle_node.cpp
+)
+target_link_libraries(topic_throttle_node ${PROJECT_NAME})
+
+autoware_agnocast_wrapper_register_node(topic_throttle_node
+  PLUGIN "autoware::agnocast_wrapper::TopicThrottle"
+  EXECUTABLE autoware_topic_throttle_node
+  ROS2_EXECUTOR SingleThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlySingleThreadedExecutor
+)
+# The generated main logs through glog, which downstream packages pick up from this package's
+# exported libraries — not available to the package itself.
+target_link_libraries(autoware_topic_throttle_node glog::glog)
+
 ament_export_include_directories(
   include
 )
