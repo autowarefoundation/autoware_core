@@ -82,13 +82,17 @@ geometry_msgs::msg::Pose compose_base_link_pose(
 }
 
 std::array<double, 36> make_pose_covariance(
-  const sensor_msgs::msg::NavSatFix & fix, const std::array<double, 3> & rotation_variances)
+  const sensor_msgs::msg::NavSatFix & fix, const std::array<double, 3> & rotation_variances,
+  const std::array<double, 3> & unknown_position_variances)
 {
   std::array<double, 36> covariance{};
   constexpr std::size_t diagonal_stride = 7;
-  covariance[diagonal_stride * 0] = can_get_covariance(fix) ? fix.position_covariance[0] : 10.0;
-  covariance[diagonal_stride * 1] = can_get_covariance(fix) ? fix.position_covariance[4] : 10.0;
-  covariance[diagonal_stride * 2] = can_get_covariance(fix) ? fix.position_covariance[8] : 10.0;
+  covariance[diagonal_stride * 0] =
+    can_get_covariance(fix) ? fix.position_covariance[0] : unknown_position_variances[0];
+  covariance[diagonal_stride * 1] =
+    can_get_covariance(fix) ? fix.position_covariance[4] : unknown_position_variances[1];
+  covariance[diagonal_stride * 2] =
+    can_get_covariance(fix) ? fix.position_covariance[8] : unknown_position_variances[2];
   covariance[diagonal_stride * 3] = rotation_variances[0];
   covariance[diagonal_stride * 4] = rotation_variances[1];
   covariance[diagonal_stride * 5] = rotation_variances[2];
@@ -96,8 +100,12 @@ std::array<double, 36> make_pose_covariance(
 }
 }  // namespace
 
-GnssPoser::GnssPoser(const GnssPoserParams & params, TransformLookup lookup_antenna_to_base_link)
-: params_(params), lookup_antenna_to_base_link_(std::move(lookup_antenna_to_base_link))
+GnssPoser::GnssPoser(
+  const GnssPoserParams & params, TransformLookup lookup_antenna_to_base_link,
+  const GnssPoserCovarianceDefaults & covariance_defaults)
+: params_(params),
+  lookup_antenna_to_base_link_(std::move(lookup_antenna_to_base_link)),
+  covariance_defaults_(covariance_defaults)
 {
   if (params.buff_epoch < 1) {
     throw std::invalid_argument(
@@ -106,9 +114,10 @@ GnssPoser::GnssPoser(const GnssPoserParams & params, TransformLookup lookup_ante
   position_buffer_.set_capacity(params.buff_epoch);
 
   // Stand-in until the first INS message arrives (not to publish zero value covariances).
-  ins_orientation_.rmse_rotation_x = 1.0;
-  ins_orientation_.rmse_rotation_y = 1.0;
-  ins_orientation_.rmse_rotation_z = 1.0;
+  const auto placeholder_rmse = static_cast<float>(covariance_defaults_.ins_placeholder_rmse);
+  ins_orientation_.rmse_rotation_x = placeholder_rmse;
+  ins_orientation_.rmse_rotation_y = placeholder_rmse;
+  ins_orientation_.rmse_rotation_z = placeholder_rmse;
 }
 
 void GnssPoser::set_projector_info(const autoware_map_msgs::msg::MapProjectorInfo & projector_info)
@@ -187,15 +196,14 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
     rotation_variances[1] = std::pow(ins_orientation_.rmse_rotation_y, 2);
     rotation_variances[2] = std::pow(ins_orientation_.rmse_rotation_z, 2);
   } else {
-    rotation_variances[0] = 0.1;
-    rotation_variances[1] = 0.1;
-    rotation_variances[2] = 1.0;
+    rotation_variances = covariance_defaults_.motion_rotation_variances;
   }
 
   geometry_msgs::msg::PoseWithCovariance gnss_base_pose_with_covariance;
   gnss_base_pose_with_covariance.pose =
     compose_base_link_pose(gnss_antenna_pose, antenna_to_base_link);
-  gnss_base_pose_with_covariance.covariance = make_pose_covariance(fix, rotation_variances);
+  gnss_base_pose_with_covariance.covariance =
+    make_pose_covariance(fix, rotation_variances, covariance_defaults_.unknown_position_variances);
   return {Outcome::Published, gnss_base_pose_with_covariance};
 }
 
