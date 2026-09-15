@@ -12,16 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "pose_initializer_core.hpp"
+#include "pose_initializer_node.hpp"
 
-#include "copy_vector_to_array.hpp"
-#include "gnss_module.hpp"
-#include "localization_module.hpp"
-#include "localization_trigger_module.hpp"
-#include "pose_error_check_module.hpp"
-#include "stop_check_module.hpp"
+#include "pose_initializer.hpp"
+#include "utils/copy_vector_to_array.hpp"
+#include "utils/gnss_module.hpp"
+#include "utils/localization_module.hpp"
+#include "utils/localization_trigger_module.hpp"
+#include "utils/pose_error_check_module.hpp"
+#include "utils/stop_check_module.hpp"
 
 #include <autoware_adapi_v1_msgs/msg/response_status.hpp>
+#include <autoware_common_msgs/msg/response_status.hpp>
 
 #include <chrono>
 #include <memory>
@@ -30,14 +32,14 @@
 
 namespace autoware::pose_initializer
 {
-PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
+PoseInitializerNode::PoseInitializerNode(const rclcpp::NodeOptions & options)
 : autoware::agnocast_wrapper::Node("pose_initializer", options),
   group_srv_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
   pub_reset_(create_publisher<PoseWithCovarianceStamped>("pose_reset", 1))
 {
   pub_state_ = adaptor_.create_publisher<State>();
   srv_initialize_ =
-    adaptor_.create_service<Initialize>(this, &PoseInitializer::on_initialize, group_srv_);
+    adaptor_.create_service<Initialize>(this, &PoseInitializerNode::on_initialize, group_srv_);
 
   output_pose_covariance_ = get_covariance_parameter(this, "output_pose_covariance");
   gnss_particle_covariance_ = get_covariance_parameter(this, "gnss_particle_covariance");
@@ -76,25 +78,13 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
   if (declare_parameter<bool>("user_defined_initial_pose.enable")) {
     const auto initial_pose_array =
       declare_parameter<std::vector<double>>("user_defined_initial_pose.pose");
-    if (initial_pose_array.size() != 7) {
-      throw std::invalid_argument(
-        "Could not set user defined initial pose. The size of initial_pose is " +
-        std::to_string(initial_pose_array.size()) + ". It must be 7.");
-    }
-    if (
-      std::abs(initial_pose_array[3]) < 1e-6 && std::abs(initial_pose_array[4]) < 1e-6 &&
-      std::abs(initial_pose_array[5]) < 1e-6 && std::abs(initial_pose_array[6]) < 1e-6) {
-      throw std::invalid_argument("Input quaternion is invalid. All elements are close to zero.");
-    }
 
     geometry_msgs::msg::Pose initial_pose;
-    initial_pose.position.x = initial_pose_array[0];
-    initial_pose.position.y = initial_pose_array[1];
-    initial_pose.position.z = initial_pose_array[2];
-    initial_pose.orientation.x = initial_pose_array[3];
-    initial_pose.orientation.y = initial_pose_array[4];
-    initial_pose.orientation.z = initial_pose_array[5];
-    initial_pose.orientation.w = initial_pose_array[6];
+    try {
+      initial_pose = PoseInitializer::validate_user_defined_initial_pose(initial_pose_array);
+    } catch (const std::invalid_argument & e) {
+      throw;  // Fail fast
+    }
 
     change_state(State::Message::INITIALIZING);
 
@@ -111,14 +101,14 @@ PoseInitializer::PoseInitializer(const rclcpp::NodeOptions & options)
   }
 }
 
-void PoseInitializer::change_state(State::Message::_state_type state)
+void PoseInitializerNode::change_state(State::Message::_state_type state)
 {
   state_.stamp = now();
   state_.state = state;
   pub_state_->publish(state_);
 }
 
-void PoseInitializer::change_node_trigger(bool flag)
+void PoseInitializerNode::change_node_trigger(bool flag)
 {
   try {
     if (ekf_localization_trigger_) {
@@ -134,7 +124,7 @@ void PoseInitializer::change_node_trigger(bool flag)
   }
 }
 
-void PoseInitializer::set_user_defined_initial_pose(const geometry_msgs::msg::Pose initial_pose)
+void PoseInitializerNode::set_user_defined_initial_pose(const geometry_msgs::msg::Pose initial_pose)
 {
   try {
     change_state(State::Message::INITIALIZING);
@@ -157,7 +147,7 @@ void PoseInitializer::set_user_defined_initial_pose(const geometry_msgs::msg::Po
   }
 }
 
-void PoseInitializer::on_initialize(
+void PoseInitializerNode::on_initialize(
   const Initialize::Service::Request::SharedPtr req,
   const Initialize::Service::Response::SharedPtr res)
 {
@@ -186,41 +176,63 @@ void PoseInitializer::on_initialize(
         std::tie(pose, reliable) = yabloc_->align_pose(pose);
       }
 
+      std::optional<PoseWithCovarianceStamped> latest_gnss_pose;
+      std::optional<double> pose_error_threshold;
+
+      // To strictly preserve legacy behavior, we run PoseErrorCheckModule here so it logs using its
+      // own mechanism.
+      if (pose_error_check_ && gnss_) {
+        latest_gnss_pose = get_gnss_pose();
+        double dummy_gnss_error_2d;
+        // PoseErrorCheckModule logs internally if the error is large.
+        pose_error_check_->check_pose_error(
+          latest_gnss_pose.value().pose.pose, pose.pose.pose, dummy_gnss_error_2d);
+
+        // We still provide the threshold to the core module to construct the diagnostic status
+        // properly.
+        pose_error_threshold = get_parameter("pose_error_threshold").as_double();
+      }
+
+      const auto result = PoseInitializer::evaluate_auto_pose(
+        pose, reliable, latest_gnss_pose, output_pose_covariance_, pose_error_threshold);
+
       diagnostics_pose_reliable_->clear();
 
-      // check pose error between gnss pose and initial pose result
-      if (pose_error_check_ && gnss_) {
-        const auto latest_gnss_pose = get_gnss_pose();
+      if (result.diagnostics.has_value()) {
+        const auto & diag = result.diagnostics.value();
 
-        double gnss_error_2d;
-        const bool is_gnss_pose_error_small = pose_error_check_->check_pose_error(
-          latest_gnss_pose.pose.pose, pose.pose.pose, gnss_error_2d);
+        if (diag.gnss_error_2d.has_value()) {
+          diagnostics_pose_reliable_->add_key_value(
+            "gnss_pose_error_2d", diag.gnss_error_2d.value());
+          diagnostics_pose_reliable_->add_key_value(
+            "is_gnss_pose_error_small", diag.is_gnss_pose_error_small.value());
+        }
 
-        diagnostics_pose_reliable_->add_key_value("gnss_pose_error_2d", gnss_error_2d);
-        diagnostics_pose_reliable_->add_key_value(
-          "is_gnss_pose_error_small", is_gnss_pose_error_small);
-        if (!is_gnss_pose_error_small) {
+        // Output warnings
+        for (const auto & warn : result.warnings) {
+          if (warn.throttle_ms == 0) {
+            diagnostics_pose_reliable_->update_level_and_message(
+              diagnostic_msgs::msg::DiagnosticStatus::WARN, warn.text);
+          }
+        }
+
+        diagnostics_pose_reliable_->add_key_value("is_initial_pose_reliable", diag.is_reliable);
+        if (!diag.is_reliable) {
           std::stringstream message;
-          message << " Large error between Initial Pose and GNSS Pose.";
+          message << "Initial Pose Estimation is Unstable.";
           diagnostics_pose_reliable_->update_level_and_message(
-            diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+            diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
         }
       }
-      // check initial pose result and publish diagnostics
-      diagnostics_pose_reliable_->add_key_value("is_initial_pose_reliable", reliable);
-      if (!reliable) {
-        std::stringstream message;
-        message << "Initial Pose Estimation is Unstable.";
-        diagnostics_pose_reliable_->update_level_and_message(
-          diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
-      }
+
       diagnostics_pose_reliable_->publish(this->now());
 
-      pose.pose.covariance = output_pose_covariance_;
-      pub_reset_->publish(pose);
+      if (result.reset_pose.has_value()) {
+        pub_reset_->publish(result.reset_pose.value());
+      }
 
       change_node_trigger(true);
-      res->status.success = true;
+      res->status.success = result.is_success;
       change_state(State::Message::INITIALIZED);
 
     } else if (req->method == Initialize::Service::Request::DIRECT) {
@@ -235,10 +247,12 @@ void PoseInitializer::on_initialize(
         respose_status.message = message.str();
         throw respose_status;
       }
-      auto pose = req->pose_with_covariance.front().pose.pose;
-      set_user_defined_initial_pose(pose);
-      res->status.success = true;
 
+      const auto result = PoseInitializer::evaluate_direct_pose(
+        req->pose_with_covariance.front(), output_pose_covariance_);
+
+      set_user_defined_initial_pose(result.reset_pose.value().pose.pose);
+      res->status.success = true;
     } else {
       std::stringstream message;
       message << "Unknown method type (=" << std::to_string(req->method) << ")";
@@ -257,7 +271,7 @@ void PoseInitializer::on_initialize(
   }
 }
 
-geometry_msgs::msg::PoseWithCovarianceStamped PoseInitializer::get_gnss_pose()
+geometry_msgs::msg::PoseWithCovarianceStamped PoseInitializerNode::get_gnss_pose()
 {
   if (gnss_) {
     PoseWithCovarianceStamped pose = gnss_->get_pose();
@@ -273,4 +287,4 @@ geometry_msgs::msg::PoseWithCovarianceStamped PoseInitializer::get_gnss_pose()
 }  // namespace autoware::pose_initializer
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::pose_initializer::PoseInitializer)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::pose_initializer::PoseInitializerNode)
