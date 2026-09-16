@@ -27,6 +27,7 @@ class PoseErrorCheckModule
 {
 public:
   explicit PoseErrorCheckModule(autoware::agnocast_wrapper::Node * node);
+  double get_pose_error_threshold() const { return pose_error_threshold_; }
   bool check_pose_error(
     const geometry_msgs::msg::Pose & reference_pose, const geometry_msgs::msg::Pose & result_pose,
     double & error_2d);
