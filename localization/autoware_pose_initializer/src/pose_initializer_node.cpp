@@ -248,7 +248,6 @@ void PoseInitializerNode::on_initialize(
         throw respose_status;
       }
 
-
       set_user_defined_initial_pose(req->pose_with_covariance.front().pose.pose);
       res->status.success = true;
     } else {

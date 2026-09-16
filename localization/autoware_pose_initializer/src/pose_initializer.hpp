@@ -66,7 +66,6 @@ public:
     const std::optional<PoseWithCovarianceStamped> & gnss_pose,
     const std::array<double, 36> & output_pose_covariance,
     const std::optional<double> & pose_error_threshold);
-
 };
 
 }  // namespace autoware::pose_initializer
