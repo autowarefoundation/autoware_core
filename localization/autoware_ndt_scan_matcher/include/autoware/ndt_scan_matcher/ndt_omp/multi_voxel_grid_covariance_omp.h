@@ -258,7 +258,6 @@ public:
   /** \brief Search for all the nearest occupied voxels of the query point in a given radius.
    * \note Only voxels containing a sufficient number of points are used.
    * \param[in] point the given query point
-   * \param[in] radius the radius of the sphere bounding all of p_q's neighbors
    * \param[out] k_leaves the resultant leaves of the neighboring points
    * \param[in] max_nn
    * \return number of neighbors found
@@ -270,7 +269,6 @@ public:
    * \note Only voxels containing a sufficient number of points are used.
    * \param[in] cloud the given query point
    * \param[in] index a valid index in cloud representing a valid (i.e., finite) query point
-   * \param[in] radius the radius of the sphere bounding all of p_q's neighbors
    * \param[out] k_leaves the resultant leaves of the neighboring points
    * \param[in] max_nn
    * \return number of neighbors found
