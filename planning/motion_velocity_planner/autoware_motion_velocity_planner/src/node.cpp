@@ -437,10 +437,8 @@ rcl_interfaces::msg::SetParametersResult MotionVelocityPlannerNode::on_set_param
 {
   using autoware_utils_rclcpp::update_param;
 
-  {
-    std::unique_lock<std::mutex> lk(mutex_);  // for planner_manager_
-    planner_manager_.update_module_parameters(parameters);
-  }
+  std::unique_lock<std::mutex> lk(mutex_);
+  planner_manager_.update_module_parameters(parameters);
 
   update_param(parameters, "smooth_velocity_before_planning", smooth_velocity_before_planning_);
   update_param(parameters, "ego_nearest_dist_threshold", planner_data_->ego_nearest_dist_threshold);
