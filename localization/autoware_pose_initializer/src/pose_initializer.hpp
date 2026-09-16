@@ -67,10 +67,6 @@ public:
     const std::array<double, 36> & output_pose_covariance,
     const std::optional<double> & pose_error_threshold);
 
-  // Evaluate the direct initialization request
-  static InitializationResult evaluate_direct_pose(
-    const geometry_msgs::msg::PoseWithCovarianceStamped & pose,
-    const std::array<double, 36> & output_pose_covariance);
 };
 
 }  // namespace autoware::pose_initializer

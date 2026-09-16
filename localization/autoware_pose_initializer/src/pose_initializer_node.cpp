@@ -190,7 +190,7 @@ void PoseInitializerNode::on_initialize(
 
         // We still provide the threshold to the core module to construct the diagnostic status
         // properly.
-        pose_error_threshold = get_parameter("pose_error_threshold").as_double();
+        pose_error_threshold = pose_error_check_->get_pose_error_threshold();
       }
 
       const auto result = PoseInitializer::evaluate_auto_pose(
@@ -248,10 +248,8 @@ void PoseInitializerNode::on_initialize(
         throw respose_status;
       }
 
-      const auto result = PoseInitializer::evaluate_direct_pose(
-        req->pose_with_covariance.front(), output_pose_covariance_);
 
-      set_user_defined_initial_pose(result.reset_pose.value().pose.pose);
+      set_user_defined_initial_pose(req->pose_with_covariance.front().pose.pose);
       res->status.success = true;
     } else {
       std::stringstream message;
