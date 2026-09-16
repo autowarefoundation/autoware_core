@@ -60,10 +60,14 @@
 namespace nanoflann
 {
 
-#ifdef ROS_DISTRO_HUMBLE
+// nanoflann 1.5.0 renamed SearchParams to SearchParameters and replaced the
+// std::pair radius-search result type with ResultItem. Branch on the library's
+// own version macro rather than ROS_DISTRO_* so that this installed header stays
+// self-contained for downstream packages that do not call autoware_package().
+#if NANOFLANN_VERSION < 0x150
 template <typename IndexType, typename DistanceType>
-using SearchResultItem = typename std::pair<IndexType, DistanceType>;
-#elif defined(ROS_DISTRO_JAZZY)
+using SearchResultItem = std::pair<IndexType, DistanceType>;
+#else
 using SearchParams = SearchParameters;
 template <typename IndexType, typename DistanceType>
 using SearchResultItem = ResultItem<IndexType, DistanceType>;
