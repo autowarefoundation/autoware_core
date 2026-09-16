@@ -80,6 +80,25 @@ namespace autoware::agnocast_wrapper
 ///            shared_ptr without throwing.
 class Node : public std::enable_shared_from_this<Node>
 {
+  // Declared before every member function below (including the public ones) so visit_node()'s
+  // decltype(auto) return type is deduced from its own body before an ordinary (non-template)
+  // member function such as create_generic_publisher() below needs to call it — see the comment
+  // there for the compile-order pitfall this avoids.
+  using NodeVariant = std::variant<std::shared_ptr<rclcpp::Node>, std::shared_ptr<agnocast::Node>>;
+  NodeVariant node_;
+
+  template <typename Visitor>
+  decltype(auto) visit_node(Visitor && vis)
+  {
+    return std::visit(std::forward<Visitor>(vis), node_);
+  }
+
+  template <typename Visitor>
+  decltype(auto) visit_node(Visitor && vis) const
+  {
+    return std::visit(std::forward<Visitor>(vis), node_);
+  }
+
 public:
   using SharedPtr = std::shared_ptr<Node>;
 
@@ -237,6 +256,32 @@ public:
     return create_publisher<MessageT>(topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
+  // ===== Generic (type-erased) publisher =====
+  /// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+  ///         loaded (see GenericPublisher).
+  GenericPublisher::SharedPtr create_generic_publisher(
+    const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
+    const agnocast::PublisherOptions & options = agnocast::PublisherOptions{})
+  {
+    return visit_node([&](auto & n) -> GenericPublisher::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastGenericPublisher>(
+          n.get(), topic_name, topic_type, qos, options);
+      } else {
+        return std::make_shared<ROS2GenericPublisher>(
+          n.get(), topic_name, topic_type, qos, options);
+      }
+    });
+  }
+
+  GenericPublisher::SharedPtr create_generic_publisher(
+    const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth)
+  {
+    return create_generic_publisher(
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
+  }
+
   // ===== Subscription =====
   // create_subscription(topic, qos, options) must select the callback-less overload below.
   // Without this guard, Func deduces to SubscriptionOptions and the callback overload wins,
@@ -288,6 +333,36 @@ public:
         return std::make_shared<ROS2Subscription<MessageT>>(n.get(), topic_name, qos, options);
       }
     });
+  }
+
+  // ===== Generic (type-erased) subscription =====
+  /// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+  ///         loaded (see GenericSubscription).
+  GenericSubscription::SharedPtr create_generic_subscription(
+    const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
+    GenericSubscriptionCallback callback,
+    const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
+  {
+    return visit_node([&](auto & n) -> GenericSubscription::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastGenericSubscription>(
+          n.get(), topic_name, topic_type, qos, std::move(callback), options);
+      } else {
+        return std::make_shared<ROS2GenericSubscription>(
+          n.get(), topic_name, topic_type, qos, std::move(callback), options);
+      }
+    });
+  }
+
+  GenericSubscription::SharedPtr create_generic_subscription(
+    const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth,
+    GenericSubscriptionCallback callback,
+    const agnocast::SubscriptionOptions & options = agnocast::SubscriptionOptions{})
+  {
+    return create_generic_subscription(
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::move(callback),
+      options);
   }
 
   // ===== Client / Service =====
@@ -450,22 +525,6 @@ public:
     throw std::runtime_error(
       "get_rclcpp_node() called but the node is in agnocast mode. "
       "Check !use_agnocast() before calling this method.");
-  }
-
-private:
-  using NodeVariant = std::variant<std::shared_ptr<rclcpp::Node>, std::shared_ptr<agnocast::Node>>;
-  NodeVariant node_;
-
-  template <typename Visitor>
-  decltype(auto) visit_node(Visitor && vis)
-  {
-    return std::visit(std::forward<Visitor>(vis), node_);
-  }
-
-  template <typename Visitor>
-  decltype(auto) visit_node(Visitor && vis) const
-  {
-    return std::visit(std::forward<Visitor>(vis), node_);
   }
 };
 
@@ -720,6 +779,25 @@ public:
       topic_name, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
   }
 
+  // ===== Generic (type-erased) publisher =====
+  /// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+  ///         loaded (rclcpp::create_generic_publisher() documents the same behavior).
+  rclcpp::GenericPublisher::SharedPtr create_generic_publisher(
+    const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
+    const rclcpp::PublisherOptions & options = rclcpp::PublisherOptions{})
+  {
+    detail::check_generic_publisher_qos_overriding_options(
+      options.qos_overriding_options, topic_name);
+    return node_->create_generic_publisher(topic_name, topic_type, qos, options);
+  }
+
+  rclcpp::GenericPublisher::SharedPtr create_generic_publisher(
+    const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth)
+  {
+    return node_->create_generic_publisher(
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)));
+  }
+
   // ===== Subscription =====
   // create_subscription(topic, qos, options) must select the callback-less overload below.
   // Without this guard, Func deduces to SubscriptionOptions and the callback overload wins,
@@ -771,6 +849,32 @@ public:
     polling_options.use_intra_process_comm = rclcpp::IntraProcessSetting::Disable;
     return node_->create_subscription<MessageT>(
       topic_name, qos, [](std::unique_ptr<MessageT>) { assert(false); }, polling_options);
+  }
+
+  // ===== Generic (type-erased) subscription =====
+  /// @throws std::runtime_error if topic_type is unknown or its typesupport library cannot be
+  ///         loaded (rclcpp::create_generic_subscription() documents the same behavior).
+  rclcpp::GenericSubscription::SharedPtr create_generic_subscription(
+    const std::string & topic_name, const std::string & topic_type, const rclcpp::QoS & qos,
+    GenericSubscriptionCallback callback,
+    const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
+  {
+    detail::check_generic_subscription_qos_overriding_options(
+      options.qos_overriding_options, topic_name);
+    return node_->create_generic_subscription(
+      topic_name, topic_type, qos, std::move(callback), options);
+  }
+
+  rclcpp::GenericSubscription::SharedPtr create_generic_subscription(
+    const std::string & topic_name, const std::string & topic_type, size_t qos_history_depth,
+    GenericSubscriptionCallback callback,
+    const rclcpp::SubscriptionOptions & options = rclcpp::SubscriptionOptions{})
+  {
+    // Delegate to the QoS-taking overload above rather than calling node_ directly, so this
+    // overload goes through its check_generic_subscription_qos_overriding_options() call too.
+    return create_generic_subscription(
+      topic_name, topic_type, rclcpp::QoS(rclcpp::KeepLast(qos_history_depth)), std::move(callback),
+      options);
   }
 
   // ===== Client =====

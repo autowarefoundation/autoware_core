@@ -17,6 +17,8 @@
 // Aggregate header: the intended include entry point for the wrapper surface.
 
 #include "autoware/agnocast_wrapper/client.hpp"
+#include "autoware/agnocast_wrapper/generic_publisher.hpp"
+#include "autoware/agnocast_wrapper/generic_subscription.hpp"
 #include "autoware/agnocast_wrapper/macros.hpp"
 #include "autoware/agnocast_wrapper/message_ptr.hpp"
 #include "autoware/agnocast_wrapper/publisher.hpp"

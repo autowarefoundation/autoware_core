@@ -14,6 +14,12 @@ launch:
 
 # interfaces
 subscribers:
+  - name: map_projector_info
+    message_type: autoware_map_msgs/msg/MapProjectorInfo
+    remap_target: /map/map_projector_info
+    qos:
+      reliability: reliable
+      durability: transient_local
   - name: fix
     message_type: sensor_msgs/msg/NavSatFix
     remap_target: fix
@@ -48,6 +54,7 @@ param_files:
 
 param_values:
   - name: use_gnss_ins_orientation
+    type: bool
     default: true
 
 # processes

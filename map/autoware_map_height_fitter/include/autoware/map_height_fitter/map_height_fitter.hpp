@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__MAP_HEIGHT_FITTER__MAP_HEIGHT_FITTER_HPP_
 #define AUTOWARE__MAP_HEIGHT_FITTER__MAP_HEIGHT_FITTER_HPP_
 
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/point.hpp>
@@ -31,7 +32,7 @@ using geometry_msgs::msg::Point;
 class MapHeightFitter final
 {
 public:
-  explicit MapHeightFitter(rclcpp::Node * node);
+  explicit MapHeightFitter(autoware::agnocast_wrapper::Node * node);
   ~MapHeightFitter();
   MapHeightFitter(const MapHeightFitter &) = delete;
   MapHeightFitter & operator=(const MapHeightFitter &) = delete;

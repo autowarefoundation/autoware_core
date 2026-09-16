@@ -1,4 +1,4 @@
-// Copyright 2023 TIER IV, Inc.
+// Copyright 2026 Autoware Foundation
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -14,54 +14,111 @@
 
 #include "gyro_odometer_node.hpp"
 
+#include <builtin_interfaces/msg/time.hpp>
 #include <rclcpp/rclcpp.hpp>
+#include <tf2_ros/static_transform_broadcaster.hpp>
+
+#include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <geometry_msgs/msg/twist_stamped.hpp>
+#include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
+#include <rosgraph_msgs/msg/clock.hpp>
+#include <sensor_msgs/msg/imu.hpp>
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <chrono>
+#include <functional>
 #include <memory>
-#include <mutex>
-#include <thread>
+#include <optional>
+#include <string>
 
-/*
- * This test checks if twist is published from gyro_odometer
- */
-using geometry_msgs::msg::TwistWithCovarianceStamped;
-using sensor_msgs::msg::Imu;
-
+namespace autoware::gyro_odometer
+{
 namespace
 {
-Imu generate_sample_imu()
+
+using diagnostic_msgs::msg::DiagnosticArray;
+using geometry_msgs::msg::TwistStamped;
+using geometry_msgs::msg::TwistWithCovarianceStamped;
+using sensor_msgs::msg::Imu;
+using COV_IDX_XYZ = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
+using COV_IDX_XYZRPY = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+
+// The diagnostics timer period. Advancing the simulated clock by this much is what makes the node
+// emit one diagnostics message.
+constexpr std::chrono::milliseconds diagnostics_period{100};
+// Wall-clock budget for the loopback delivery of a single published message. Only one message is
+// ever in flight, so this only has to cover the delivery itself.
+constexpr std::chrono::milliseconds delivery_budget{50};
+// Wall-clock budget for anything the test actively waits on.
+constexpr std::chrono::milliseconds wait_budget{2000};
+
+// ---------------------------------------------------------------------------
+// Input builders
+//
+// These describe the messages only, with no notion of how they reach the fusion. A suite that
+// drives the fusion directly instead of over topics can build its inputs with the same calls.
+// ---------------------------------------------------------------------------
+
+builtin_interfaces::msg::Time make_stamp(int32_t sec, uint32_t nanosec)
+{
+  builtin_interfaces::msg::Time stamp;
+  stamp.sec = sec;
+  stamp.nanosec = nanosec;
+  return stamp;
+}
+
+Imu make_imu(
+  const builtin_interfaces::msg::Time & stamp, const std::string & frame_id, double wx, double wy,
+  double wz, double cov_xx, double cov_yy, double cov_zz)
 {
   Imu imu;
-  imu.header.frame_id = "base_link";
-  imu.angular_velocity.x = 0.1;
-  imu.angular_velocity.y = 0.2;
-  imu.angular_velocity.z = 0.3;
+  imu.header.stamp = stamp;
+  imu.header.frame_id = frame_id;
+  imu.angular_velocity.x = wx;
+  imu.angular_velocity.y = wy;
+  imu.angular_velocity.z = wz;
+  imu.angular_velocity_covariance[COV_IDX_XYZ::X_X] = cov_xx;
+  imu.angular_velocity_covariance[COV_IDX_XYZ::Y_Y] = cov_yy;
+  imu.angular_velocity_covariance[COV_IDX_XYZ::Z_Z] = cov_zz;
   return imu;
 }
 
-TwistWithCovarianceStamped generate_sample_velocity()
+TwistWithCovarianceStamped make_vehicle_twist(
+  const builtin_interfaces::msg::Time & stamp, double vx, double cov_xx)
 {
   TwistWithCovarianceStamped twist;
+  twist.header.stamp = stamp;
   twist.header.frame_id = "base_link";
-  twist.twist.twist.linear.x = 1.0;
+  twist.twist.twist.linear.x = vx;
+  twist.twist.covariance[COV_IDX_XYZRPY::X_X] = cov_xx;
   return twist;
 }
 
-rclcpp::NodeOptions get_node_options_with_default_params()
+// ---------------------------------------------------------------------------
+// Observations
+//
+// FusedOutput mirrors the four messages one fusion produces. Of the diagnostics only the reported
+// level is kept: the wording of the message and the reported values belong to the decision the
+// diagnostics suite already covers.
+// ---------------------------------------------------------------------------
+
+struct FusedOutput
 {
-  rclcpp::NodeOptions node_options;
+  TwistStamped twist_raw;
+  TwistWithCovarianceStamped twist_with_covariance_raw;
+  TwistStamped twist;
+  TwistWithCovarianceStamped twist_with_covariance;
+};
 
-  // for gyro_odometer
-  node_options.append_parameter_override("output_frame", "base_link");
-  node_options.append_parameter_override("message_timeout_sec", 1e12);
-  return node_options;
-}
-}  // namespace
-
-// Drives the node over real publish/subscribe so each test body stays a plain Arrange/Act/Assert:
-// the fixture owns the ROS context, the executor thread and the test-side pub/sub wiring.
+// Drives the node over its real topics while keeping every step of the scenario ordered.
+//
+// There is no background spin: the test thread itself pumps the executor, and only ever one
+// message is in flight, so the node cannot observe the two input topics in an order the scenario
+// did not ask for. Time is simulated and only moves when the scenario moves it, which is also what
+// makes the diagnostics timer fire at a point the scenario chooses.
 class GyroOdometerNodeTest : public ::testing::Test
 {
 protected:
@@ -70,118 +127,360 @@ protected:
     rclcpp::init(0, nullptr);
 
     executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
+    driver_node_ = std::make_shared<rclcpp::Node>("gyro_odometer_characterization_driver");
 
-    test_control_node_ = std::make_shared<rclcpp::Node>("test_control_node");
-    twist_subscription_ = test_control_node_->create_subscription<TwistWithCovarianceStamped>(
-      "/twist_with_covariance", 1, [this](const TwistWithCovarianceStamped::SharedPtr message) {
-        std::lock_guard<std::mutex> lock(message_mutex_);
-        received_twist_ = message;
+    clock_pub_ =
+      driver_node_->create_publisher<rosgraph_msgs::msg::Clock>("/clock", rclcpp::ClockQoS());
+    imu_pub_ = driver_node_->create_publisher<Imu>("imu", rclcpp::QoS{10});
+    vehicle_twist_pub_ = driver_node_->create_publisher<TwistWithCovarianceStamped>(
+      "vehicle/twist_with_covariance", rclcpp::QoS{10});
+
+    twist_raw_sub_ = driver_node_->create_subscription<TwistStamped>(
+      "twist_raw", rclcpp::QoS{10},
+      [this](const TwistStamped::SharedPtr msg) { twist_raw_ = *msg; });
+    twist_with_covariance_raw_sub_ = driver_node_->create_subscription<TwistWithCovarianceStamped>(
+      "twist_with_covariance_raw", rclcpp::QoS{10},
+      [this](const TwistWithCovarianceStamped::SharedPtr msg) {
+        twist_with_covariance_raw_ = *msg;
       });
-    imu_publisher_ = test_control_node_->create_publisher<Imu>(
-      "/imu", rclcpp::QoS{1}.reliable().transient_local());
-    vehicle_twist_publisher_ = test_control_node_->create_publisher<TwistWithCovarianceStamped>(
-      "/vehicle/twist_with_covariance", rclcpp::QoS{1}.reliable().transient_local());
-    executor_->add_node(test_control_node_);
+    twist_sub_ = driver_node_->create_subscription<TwistStamped>(
+      "twist", rclcpp::QoS{10}, [this](const TwistStamped::SharedPtr msg) { twist_ = *msg; });
+    twist_with_covariance_sub_ = driver_node_->create_subscription<TwistWithCovarianceStamped>(
+      "twist_with_covariance", rclcpp::QoS{10},
+      [this](const TwistWithCovarianceStamped::SharedPtr msg) { twist_with_covariance_ = *msg; });
+
+    diagnostics_sub_ = driver_node_->create_subscription<DiagnosticArray>(
+      "/diagnostics", rclcpp::QoS{10}, [this](const DiagnosticArray::SharedPtr msg) {
+        for (const auto & status : msg->status) {
+          if (status.name.find("gyro_odometer_status") == std::string::npos) {
+            continue;
+          }
+          latest_diagnostics_level_ = status.level;
+          ++diagnostics_count_;
+        }
+      });
+
+    static_transform_broadcaster_ =
+      std::make_unique<tf2_ros::StaticTransformBroadcaster>(driver_node_);
+
+    executor_->add_node(driver_node_);
   }
 
   void TearDown() override
   {
-    if (executor_) {
-      executor_->cancel();
+    if (gyro_odometer_node_) {
+      executor_->remove_node(gyro_odometer_node_->get_node_base_interface());
     }
-    if (executor_thread_.joinable()) {
-      executor_thread_.join();
-    }
+    executor_->remove_node(driver_node_);
     rclcpp::shutdown();
   }
 
-  // Bring up the gyro_odometer node and start spinning both nodes.
-  bool start_gyro_odometer_node()
+  // Bring up the node under test and put the simulated clock at a known point.
+  void start_node(const std::string & output_frame, double message_timeout_sec)
   {
-    gyro_odometer_node_ = std::make_shared<autoware::gyro_odometer::GyroOdometerNode>(
-      get_node_options_with_default_params());
-    executor_->add_node(gyro_odometer_node_->get_node_base_interface());
-    executor_thread_ = std::thread([this]() { executor_->spin(); });
+    rclcpp::NodeOptions node_options;
+    node_options.append_parameter_override("output_frame", output_frame);
+    node_options.append_parameter_override("message_timeout_sec", message_timeout_sec);
+    node_options.append_parameter_override("use_sim_time", true);
 
-    const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-    while (std::chrono::steady_clock::now() < deadline) {
-      if (
-        imu_publisher_->get_subscription_count() > 0 &&
-        vehicle_twist_publisher_->get_subscription_count() > 0 &&
-        twist_subscription_->get_publisher_count() > 0) {
-        return true;
-      }
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-    }
-    return false;
+    gyro_odometer_node_ = std::make_shared<GyroOdometerNode>(node_options);
+    executor_->add_node(gyro_odometer_node_->get_node_base_interface());
+
+    set_now(rclcpp::Time(100, 0, RCL_ROS_TIME));
   }
 
-  TwistWithCovarianceStamped::SharedPtr received_twist()
+  // Move the simulated clock and do not return until the node has taken it up.
+  void set_now(const rclcpp::Time & now)
   {
-    std::lock_guard<std::mutex> lock(message_mutex_);
-    return received_twist_;
+    sim_now_ = now;
+
+    rosgraph_msgs::msg::Clock clock_msg;
+    clock_msg.clock = now;
+    clock_pub_->publish(clock_msg);
+
+    const bool taken_up = pump_until(
+      [this, now]() { return gyro_odometer_node_->get_clock()->now() >= now; }, wait_budget);
+    ASSERT_TRUE(taken_up) << "the node did not take up the simulated clock";
+  }
+
+  rclcpp::Time sim_now() const { return sim_now_; }
+
+  void send_vehicle_twist(const TwistWithCovarianceStamped & vehicle_twist)
+  {
+    vehicle_twist_pub_->publish(vehicle_twist);
+    pump(delivery_budget);
+  }
+
+  void send_imu(const Imu & imu)
+  {
+    imu_pub_->publish(imu);
+    pump(delivery_budget);
+  }
+
+  // Make a frame pair resolvable, with the rotation the node will apply to the queued samples.
+  void broadcast_static_transform(
+    const std::string & frame_id, const std::string & child_frame_id, double qx, double qy,
+    double qz, double qw)
+  {
+    geometry_msgs::msg::TransformStamped transform;
+    transform.header.stamp = sim_now_;
+    transform.header.frame_id = frame_id;
+    transform.child_frame_id = child_frame_id;
+    transform.transform.rotation.x = qx;
+    transform.transform.rotation.y = qy;
+    transform.transform.rotation.z = qz;
+    transform.transform.rotation.w = qw;
+    static_transform_broadcaster_->sendTransform(transform);
+    pump(delivery_budget);
+  }
+
+  // Consume whatever fusion output has been received since the last call.
+  std::optional<FusedOutput> take_output()
+  {
+    if (!twist_raw_ || !twist_with_covariance_raw_ || !twist_ || !twist_with_covariance_) {
+      return std::nullopt;
+    }
+    const FusedOutput output{
+      *twist_raw_, *twist_with_covariance_raw_, *twist_, *twist_with_covariance_};
+    twist_raw_.reset();
+    twist_with_covariance_raw_.reset();
+    twist_.reset();
+    twist_with_covariance_.reset();
+    return output;
+  }
+
+  // Let the diagnostics timer fire once and return the level it reported.
+  int8_t take_diagnostics_level()
+  {
+    const uint64_t before = diagnostics_count_;
+    set_now(sim_now_ + rclcpp::Duration(diagnostics_period));
+    const bool reported =
+      pump_until([this, before]() { return diagnostics_count_ > before; }, wait_budget);
+    EXPECT_TRUE(reported) << "the node did not report diagnostics";
+    return latest_diagnostics_level_;
+  }
+
+private:
+  void pump(std::chrono::milliseconds duration)
+  {
+    const auto deadline = std::chrono::steady_clock::now() + duration;
+    while (std::chrono::steady_clock::now() < deadline) {
+      executor_->spin_some(std::chrono::milliseconds(1));
+    }
+  }
+
+  bool pump_until(const std::function<bool()> & predicate, std::chrono::milliseconds timeout)
+  {
+    const auto deadline = std::chrono::steady_clock::now() + timeout;
+    while (std::chrono::steady_clock::now() < deadline) {
+      if (predicate()) {
+        return true;
+      }
+      executor_->spin_some(std::chrono::milliseconds(1));
+    }
+    return predicate();
   }
 
   std::unique_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
-  std::thread executor_thread_;
-  rclcpp::Node::SharedPtr test_control_node_;
-  rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr twist_subscription_;
-  rclcpp::Publisher<Imu>::SharedPtr imu_publisher_;
-  rclcpp::Publisher<TwistWithCovarianceStamped>::SharedPtr vehicle_twist_publisher_;
-  std::shared_ptr<autoware::gyro_odometer::GyroOdometerNode> gyro_odometer_node_;
+  rclcpp::Node::SharedPtr driver_node_;
+  std::shared_ptr<GyroOdometerNode> gyro_odometer_node_;
 
-  std::mutex message_mutex_;
-  TwistWithCovarianceStamped::SharedPtr received_twist_;
+  rclcpp::Publisher<rosgraph_msgs::msg::Clock>::SharedPtr clock_pub_;
+  rclcpp::Publisher<Imu>::SharedPtr imu_pub_;
+  rclcpp::Publisher<TwistWithCovarianceStamped>::SharedPtr vehicle_twist_pub_;
+
+  rclcpp::Subscription<TwistStamped>::SharedPtr twist_raw_sub_;
+  rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr twist_with_covariance_raw_sub_;
+  rclcpp::Subscription<TwistStamped>::SharedPtr twist_sub_;
+  rclcpp::Subscription<TwistWithCovarianceStamped>::SharedPtr twist_with_covariance_sub_;
+  rclcpp::Subscription<DiagnosticArray>::SharedPtr diagnostics_sub_;
+  std::unique_ptr<tf2_ros::StaticTransformBroadcaster> static_transform_broadcaster_;
+
+  std::optional<TwistStamped> twist_raw_;
+  std::optional<TwistWithCovarianceStamped> twist_with_covariance_raw_;
+  std::optional<TwistStamped> twist_;
+  std::optional<TwistWithCovarianceStamped> twist_with_covariance_;
+
+  int8_t latest_diagnostics_level_{0};
+  uint64_t diagnostics_count_{0};
+
+  rclcpp::Time sim_now_{0, 0, RCL_ROS_TIME};
 };
 
-// IMU & Velocity test
-// Verify that the gyro_odometer successfully publishes the fused twist message when both IMU and
-// velocity data are provided
-TEST_F(GyroOdometerNodeTest, TestGyroOdometerWithImuAndVelocity)
+}  // namespace
+
+// With nothing published, the node already reports at the highest severity.
+TEST_F(GyroOdometerNodeTest, NoInputReportsError)
 {
-  // Arrange
-  const Imu input_imu = generate_sample_imu();
-  const TwistWithCovarianceStamped input_velocity = generate_sample_velocity();
-  ASSERT_TRUE(start_gyro_odometer_node()) << "Topic discovery did not complete within 5 seconds";
+  start_node("base_link", 10.0);
 
-  // Act
-  // The node discards samples until both inputs arrive. Keep both inputs active until fusion.
-  const auto deadline = std::chrono::steady_clock::now() + std::chrono::seconds(5);
-  while (!received_twist() && std::chrono::steady_clock::now() < deadline) {
-    vehicle_twist_publisher_->publish(input_velocity);
-    imu_publisher_->publish(input_imu);
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
-
-  // Assert
-  const auto twist = received_twist();
-  ASSERT_NE(twist, nullptr) << "Twist message was not received within predefined time";
-
-  // The longitudinal velocity comes from the vehicle twist and the angular velocity from the IMU.
-  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.x, input_velocity.twist.twist.linear.x);
-  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.x, input_imu.angular_velocity.x);
-  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.y, input_imu.angular_velocity.y);
-  EXPECT_DOUBLE_EQ(twist->twist.twist.angular.z, input_imu.angular_velocity.z);
-
-  // The lateral and vertical velocities are not estimated, so they stay at zero.
-  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.y, 0.0);
-  EXPECT_DOUBLE_EQ(twist->twist.twist.linear.z, 0.0);
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 }
 
-// IMU-only test
-// Verify that the gyro_odometer does NOT publish any outputs when only IMU is provided
-TEST_F(GyroOdometerNodeTest, TestGyroOdometerImuOnly)
+// transform_covariance: the maximum diagonal term is written to every diagonal term, off-diagonals
+// are zeroed.
+TEST(GyroOdometerNode, TransformCovariancePicksMaxDiagonalAndZerosOffDiagonals)
 {
-  // Arrange
-  const Imu input_imu = generate_sample_imu();
-  ASSERT_TRUE(start_gyro_odometer_node()) << "Topic discovery did not complete within 5 seconds";
+  std::array<double, 9> cov = {};
+  cov[COV_IDX_XYZ::X_X] = 1.0;
+  cov[COV_IDX_XYZ::Y_Y] = 5.0;  // max
+  cov[COV_IDX_XYZ::Z_Z] = 3.0;
+  // pollute off-diagonals to make sure they are dropped
+  cov[COV_IDX_XYZ::X_Y] = 42.0;
+  cov[COV_IDX_XYZ::Z_X] = -7.0;
 
-  // Act
-  imu_publisher_->publish(input_imu);
+  const std::array<double, 9> out = transform_covariance(cov);
 
-  std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-  // Assert
-  const auto twist = received_twist();
-  ASSERT_EQ(twist, nullptr) << "Twist message was received when only IMU was provided";
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::X_X], 5.0);
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Y_Y], 5.0);
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Z_Z], 5.0);
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::X_Y], 0.0);
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::X_Z], 0.0);
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Y_X], 0.0);
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Y_Z], 0.0);
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Z_X], 0.0);
+  EXPECT_DOUBLE_EQ(out[COV_IDX_XYZ::Z_Y], 0.0);
 }
+
+// A completed pair puts the longitudinal velocity of the vehicle twist and the angular velocity of
+// the IMU on all four output topics.
+TEST_F(GyroOdometerNodeTest, CompletedPairIsPublishedOnAllFourTopics)
+{
+  start_node("base_link", 10.0);
+  const auto stamp = make_stamp(100, 0);
+
+  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+  send_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.02, 0.03));
+  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+
+  const auto output = take_output();
+  ASSERT_TRUE(output.has_value());
+
+  EXPECT_DOUBLE_EQ(output->twist_raw.twist.linear.x, 1.0);
+  EXPECT_DOUBLE_EQ(output->twist_raw.twist.angular.z, 0.3);
+  EXPECT_DOUBLE_EQ(output->twist.twist.linear.x, 1.0);
+  EXPECT_DOUBLE_EQ(output->twist.twist.angular.z, 0.3);
+
+  const auto & raw = output->twist_with_covariance_raw;
+  EXPECT_EQ(raw.header.frame_id, "base_link");
+  EXPECT_DOUBLE_EQ(raw.twist.twist.linear.x, 1.0);
+  EXPECT_DOUBLE_EQ(raw.twist.twist.angular.x, 0.1);
+  EXPECT_DOUBLE_EQ(raw.twist.twist.angular.y, 0.2);
+  EXPECT_DOUBLE_EQ(raw.twist.twist.angular.z, 0.3);
+  // The lateral and vertical velocities are not estimated, and say so through a large variance.
+  EXPECT_DOUBLE_EQ(raw.twist.twist.linear.y, 0.0);
+  EXPECT_DOUBLE_EQ(raw.twist.twist.linear.z, 0.0);
+  EXPECT_DOUBLE_EQ(raw.twist.covariance[COV_IDX_XYZRPY::Y_Y], 100000.0);
+  EXPECT_DOUBLE_EQ(raw.twist.covariance[COV_IDX_XYZRPY::Z_Z], 100000.0);
+  // The angular variance is the largest of the reported axes, applied to all three.
+  EXPECT_DOUBLE_EQ(raw.twist.covariance[COV_IDX_XYZRPY::ROLL_ROLL], 0.03);
+  EXPECT_DOUBLE_EQ(raw.twist.covariance[COV_IDX_XYZRPY::PITCH_PITCH], 0.03);
+  EXPECT_DOUBLE_EQ(raw.twist.covariance[COV_IDX_XYZRPY::YAW_YAW], 0.03);
+
+  EXPECT_EQ(output->twist_with_covariance.twist.covariance, raw.twist.covariance);
+}
+
+// An IMU frame that cannot be resolved into the output frame drops the pending data instead of
+// fusing it, and says so through the diagnostics.
+TEST_F(GyroOdometerNodeTest, UnresolvableImuFrameDropsPendingData)
+{
+  start_node("base_link", 10.0);
+  const auto stamp = make_stamp(100, 0);
+
+  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+  send_imu(make_imu(stamp, "imu_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+
+  EXPECT_FALSE(take_output().has_value());
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+}
+
+// A fusion that completes leaves nothing for the diagnostics to complain about.
+TEST_F(GyroOdometerNodeTest, CompletedFusionReportsOk)
+{
+  start_node("base_link", 10.0);
+  const auto stamp = make_stamp(100, 0);
+
+  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+  send_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+  ASSERT_TRUE(take_output().has_value());
+
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::OK);
+}
+
+// An unresolvable IMU sample arriving before any vehicle twist has to be survivable: there is no
+// vehicle twist yet whose age could be worked out, and the node still has to carry on reporting.
+TEST_F(GyroOdometerNodeTest, UnresolvableImuBeforeAnyVehicleTwistIsSurvivable)
+{
+  start_node("base_link", 10.0);
+  const auto stamp = make_stamp(100, 0);
+
+  send_imu(make_imu(stamp, "imu_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+}
+
+// The transform status describes the IMU sample that arrived most recently, whether or not there
+// was anything to fuse it against: a resolvable sample with no vehicle twist to meet leaves only
+// the missing vehicle twist to report, which is a warning rather than the transform failure.
+TEST_F(GyroOdometerNodeTest, ImuAloneStillReportsItsTransformStatus)
+{
+  start_node("base_link", 10.0);
+  const auto stamp = make_stamp(100, 0);
+
+  send_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+  send_imu(make_imu(stamp, "base_link", 0.1, 0.2, 0.3, 0.01, 0.01, 0.01));
+
+  EXPECT_EQ(take_diagnostics_level(), diagnostic_msgs::msg::DiagnosticStatus::WARN);
+}
+
+// With the IMU frame resolvable, the queued angular velocity is rotated by the looked-up transform
+// before it is fused.
+TEST_F(GyroOdometerNodeTest, ResolvableImuFrameRotatesTheAngularVelocity)
+{
+  start_node("base_link", 10.0);
+  const auto stamp = make_stamp(100, 0);
+
+  // A quarter turn about the vertical axis, which sends (x, y, z) to (-y, x, z).
+  constexpr double quarter_turn = 0.7071067811865476;
+  broadcast_static_transform("imu_link", "base_link", 0.0, 0.0, quarter_turn, quarter_turn);
+
+  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+  send_imu(make_imu(stamp, "imu_link", 0.1, 0.2, 0.3, 0.01, 0.02, 0.03));
+  send_vehicle_twist(make_vehicle_twist(stamp, 1.0, 4.0));
+
+  const auto output = take_output();
+  ASSERT_TRUE(output.has_value());
+  const auto & raw = output->twist_with_covariance_raw;
+
+  EXPECT_NEAR(raw.twist.twist.angular.x, -0.2, 1e-9);
+  EXPECT_NEAR(raw.twist.twist.angular.y, 0.1, 1e-9);
+  EXPECT_NEAR(raw.twist.twist.angular.z, 0.3, 1e-9);
+  // The samples are relabelled as belonging to the output frame.
+  EXPECT_EQ(raw.header.frame_id, "base_link");
+}
+
+// A vehicle twist waiting for its IMU counterpart survives an unresolvable sample in between: the
+// next resolvable sample fuses with it as if the unresolvable one had never been published.
+TEST_F(GyroOdometerNodeTest, PendingDataSurvivesAnUnresolvableImu)
+{
+  start_node("base_link", 10.0);
+  const auto stamp = make_stamp(100, 0);
+
+  send_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
+  send_imu(make_imu(stamp, "base_link", 0.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+  send_vehicle_twist(make_vehicle_twist(stamp, 0.0, 0.0));
+  ASSERT_TRUE(take_output().has_value()) << "priming did not reach a first fusion";
+
+  send_vehicle_twist(make_vehicle_twist(stamp, 7.0, 4.0));
+  send_imu(make_imu(stamp, "unresolvable_link", 10.0, 0.0, 0.0, 0.0, 0.0, 0.0));
+  send_imu(make_imu(stamp, "base_link", 0.0, 0.0, 0.3, 0.01, 0.01, 0.01));
+
+  const auto output = take_output();
+  ASSERT_TRUE(output.has_value());
+  EXPECT_DOUBLE_EQ(output->twist_with_covariance_raw.twist.twist.linear.x, 7.0);
+  EXPECT_DOUBLE_EQ(output->twist_with_covariance_raw.twist.twist.angular.x, 0.0);
+}
+
+}  // namespace autoware::gyro_odometer
