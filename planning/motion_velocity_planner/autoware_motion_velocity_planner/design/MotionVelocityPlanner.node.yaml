@@ -34,22 +34,24 @@ subscribers:
     remap_target: /planning/mission_planning/route
   - name: operation_mode_state
     message_type: autoware_adapi_v1_msgs/msg/OperationModeState
+    remap_target: /api/operation_mode/state
   - name: control_cmd
     message_type: autoware_control_msgs/msg/Control
+    remap_target: /control/command/control_cmd
   - name: predicted_trajectory
     message_type: autoware_planning_msgs/msg/Trajectory
+    remap_target: /control/trajectory_follower/lateral/predicted_trajectory
+  - name: steering_status
+    message_type: autoware_vehicle_msgs/msg/SteeringReport
+    remap_target: /vehicle/status/steering_status
 
 publishers:
   - name: trajectory
     message_type: autoware_planning_msgs/msg/Trajectory
   - name: velocity_limit
-    message_type: tier4_planning_msgs/msg/VelocityLimit
+    message_type: autoware_internal_planning_msgs/msg/VelocityLimit
   - name: clear_velocity_limit
-    message_type: tier4_planning_msgs/msg/VelocityLimitClearCommand
-  - name: stop_reasons
-    message_type: tier4_planning_msgs/msg/StopReasonArray
-  - name: velocity_factors
-    message_type: tier4_planning_msgs/msg/VelocityFactorArray
+    message_type: autoware_internal_planning_msgs/msg/VelocityLimitClearCommand
 
 # parameters
 param_files:
