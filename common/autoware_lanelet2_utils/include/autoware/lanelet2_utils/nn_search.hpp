@@ -111,7 +111,7 @@ public:
   explicit LaneletRTree(const lanelet::ConstLanelets & lanelets);
 
   std::optional<lanelet::ConstLanelet> get_closest_lanelet(
-    const geometry_msgs::msg::Pose search_pose) const;
+    const geometry_msgs::msg::Pose & search_pose) const;
 
   /**
    * @brief returns the closest(in 3d distance) lanelet to `search_pose` s.t. dist <=
