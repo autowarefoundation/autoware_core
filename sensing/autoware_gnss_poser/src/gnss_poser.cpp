@@ -49,6 +49,28 @@ bool can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg)
          sensor_msgs::msg::NavSatFix::COVARIANCE_TYPE_UNKNOWN;
 }
 
+autoware_internal_debug_msgs::msg::BoolStamped make_gnss_fixed(
+  const builtin_interfaces::msg::Time & stamp, const bool fixed)
+{
+  autoware_internal_debug_msgs::msg::BoolStamped message;
+  message.stamp = stamp;
+  message.data = fixed;
+  return message;
+}
+
+geometry_msgs::msg::TransformStamped make_transform_stamped(
+  const geometry_msgs::msg::PoseStamped & pose, const std::string & child_frame_id)
+{
+  geometry_msgs::msg::TransformStamped transform_stamped;
+  transform_stamped.header = pose.header;
+  transform_stamped.child_frame_id = child_frame_id;
+  transform_stamped.transform.translation.x = pose.pose.position.x;
+  transform_stamped.transform.translation.y = pose.pose.position.y;
+  transform_stamped.transform.translation.z = pose.pose.position.z;
+  transform_stamped.transform.rotation = pose.pose.orientation;
+  return transform_stamped;
+}
+
 geometry_msgs::msg::Point project_to_map(
   const sensor_msgs::msg::NavSatFix & fix,
   const autoware_map_msgs::msg::MapProjectorInfo & projector_info)
@@ -136,16 +158,18 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 {
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
-    return {Outcome::NoProjectorInfo, std::nullopt};
+    return {Outcome::NoProjectorInfo, std::nullopt, std::nullopt, std::nullopt, std::nullopt};
   }
 
   if (projector_info_.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL) {
-    return {Outcome::LocalProjector, std::nullopt};
+    return {Outcome::LocalProjector, std::nullopt, std::nullopt, std::nullopt, std::nullopt};
   }
 
   // check fixed topic
   if (!is_fixed(fix.status)) {
-    return {Outcome::NotFixed, std::nullopt};
+    return {
+      Outcome::NotFixed, make_gnss_fixed(fix.header.stamp, false), std::nullopt, std::nullopt,
+      std::nullopt};
   }
 
   // get position
@@ -160,7 +184,9 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
     // fill position buffer
     position_buffer_.push_front(position);
     if (!position_buffer_.full()) {
-      return {Outcome::Buffering, std::nullopt};
+      return {
+        Outcome::Buffering, make_gnss_fixed(fix.header.stamp, true), std::nullopt, std::nullopt,
+        std::nullopt};
     }
     // publish average pose or median pose of position buffer
     gnss_antenna_pose.position = (params_.gnss_pose_pub_method == GnssPosePubMethod::Average)
@@ -204,7 +230,19 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
     compose_base_link_pose(gnss_antenna_pose, antenna_to_base_link);
   gnss_base_pose_with_covariance.covariance =
     make_pose_covariance(fix, rotation_variances, covariance_defaults_.unknown_position_variances);
-  return {Outcome::Published, gnss_base_pose_with_covariance};
+
+  geometry_msgs::msg::PoseStamped pose;
+  pose.header.stamp = fix.header.stamp;
+  pose.header.frame_id = params_.map_frame;
+  pose.pose = gnss_base_pose_with_covariance.pose;
+
+  geometry_msgs::msg::PoseWithCovarianceStamped pose_cov;
+  pose_cov.header = pose.header;
+  pose_cov.pose = gnss_base_pose_with_covariance;
+
+  return {
+    Outcome::Published, make_gnss_fixed(fix.header.stamp, true), pose, pose_cov,
+    make_transform_stamped(pose, params_.gnss_base_frame)};
 }
 
 geometry_msgs::msg::Point get_median_position(

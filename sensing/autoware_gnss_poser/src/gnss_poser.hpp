@@ -16,13 +16,17 @@
 
 #include <builtin_interfaces/msg/time.hpp>
 
+#include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <geometry_msgs/msg/transform.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 
 #include <boost/circular_buffer.hpp>
@@ -47,6 +51,10 @@ struct GnssPoserParams
   GnssPosePubMethod gnss_pose_pub_method = GnssPosePubMethod::Instant;
   int buff_epoch = 1;
   bool use_gnss_ins_orientation = true;
+  /// frame_id of the published pose and of the transform to broadcast.
+  std::string map_frame = "map";
+  /// child_frame_id of the transform to broadcast.
+  std::string gnss_base_frame = "gnss_base_link";
 };
 
 // Covariance values the poser claims when its input carries none. gnss_poser has used them
@@ -105,15 +113,27 @@ public:
     LocalProjector,   ///< the map uses a local projector, so a GNSS fix cannot be converted
     NotFixed,         ///< the receiver reports no fix; its status is known but no pose is computed
     Buffering,        ///< the position buffer is not full yet (average and median methods)
-    Published,        ///< a pose was computed, see Result::pose_with_covariance
+    Published,        ///< a pose was computed, see Result::gnss_pose
   };
 
+  /// \brief What the fix produced, as the messages to publish.
+  ///
+  /// The messages are filled in completely, headers included, so that the caller only has to hand
+  /// them to a publisher: which frame a pose is in and which stamp it carries is part of the pose
+  /// computation, not of the plumbing. What is empty is not published, so the caller never has to
+  /// know which outcome produces which output; `outcome` is there to be logged and reported.
   struct Result
   {
     Outcome outcome;
-    /// The base_link pose in the map frame with its 6x6 covariance (only the diagonal is filled).
-    /// Set exactly when outcome is Outcome::Published.
-    std::optional<geometry_msgs::msg::PoseWithCovariance> pose_with_covariance;
+    /// The receiver's fix status. Empty for a fix that was rejected before the fixed check,
+    /// which says nothing about the receiver.
+    std::optional<autoware_internal_debug_msgs::msg::BoolStamped> gnss_fixed;
+    /// The base_link pose in the map frame.
+    std::optional<geometry_msgs::msg::PoseStamped> gnss_pose;
+    /// The same pose with its 6x6 covariance (only the diagonal is filled).
+    std::optional<geometry_msgs::msg::PoseWithCovarianceStamped> gnss_pose_cov;
+    /// The same pose as a transform, map_frame -> gnss_base_frame, ready to broadcast.
+    std::optional<geometry_msgs::msg::TransformStamped> transform;
   };
 
   void set_projector_info(const autoware_map_msgs::msg::MapProjectorInfo & projector_info);

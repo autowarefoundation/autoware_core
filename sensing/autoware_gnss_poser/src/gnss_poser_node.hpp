@@ -59,13 +59,8 @@ private:
   std::optional<geometry_msgs::msg::Transform> get_static_transform(
     const std::string & target_frame, const std::string & source_frame,
     const builtin_interfaces::msg::Time & stamp);
-  void publish_fixed(const builtin_interfaces::msg::Time & stamp, bool fixed);
-  void publish_pose(
-    const builtin_interfaces::msg::Time & stamp,
-    const geometry_msgs::msg::PoseWithCovariance & pose_with_covariance);
-  void publish_tf(
-    const std::string & frame_id, const std::string & child_frame_id,
-    const geometry_msgs::msg::PoseStamped & pose_msg);
+  // Publish the messages the pose computation produced.
+  void publish_data(const GnssPoser::Result & result);
 
   tf2::BufferCore tf2_buffer_;
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
@@ -81,8 +76,6 @@ private:
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::BoolStamped) fixed_pub_;
 
   const std::string base_frame_;
-  const std::string gnss_base_frame_;
-  const std::string map_frame_;
 
   GnssPoser gnss_poser_;
 };
