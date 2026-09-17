@@ -10,6 +10,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/interface.cpp
   src/localization.cpp
   src/routing.cpp
+  src/operation_mode.cpp
   src/utils/localization_conversion.cpp
   src/utils/route_conversion.cpp
 )
@@ -17,6 +18,13 @@ ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
 autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
+  PLUGIN "autoware::default_adapi::OperationModeNode"
+  EXECUTABLE operation_mode_node
+  ROS2_EXECUTOR MultiThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
+)
+
   PLUGIN "autoware::default_adapi::InterfaceNode"
   EXECUTABLE interface_node
   ROS2_EXECUTOR MultiThreadedExecutor
