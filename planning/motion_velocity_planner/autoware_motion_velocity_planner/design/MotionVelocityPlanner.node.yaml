@@ -48,6 +48,27 @@ subscribers:
 publishers:
   - name: trajectory
     message_type: autoware_planning_msgs/msg/Trajectory
+  - name: planning_factors/dynamic_obstacle_stop
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/dynamic_obstacle_stop
+  - name: planning_factors/obstacle_cruise
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/obstacle_cruise
+  - name: planning_factors/obstacle_slow_down
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/obstacle_slow_down
+  - name: planning_factors/obstacle_stop
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/obstacle_stop
+  - name: planning_factors/out_of_lane
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/out_of_lane
+  - name: planning_factors/road_user_stop
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/road_user_stop
+  - name: planning_factors/run_out
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/run_out
   - name: velocity_limit
     message_type: autoware_internal_planning_msgs/msg/VelocityLimit
   - name: clear_velocity_limit
