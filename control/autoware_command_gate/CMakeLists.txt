@@ -6,7 +6,6 @@ autoware_package()
 
 ament_auto_add_library(${PROJECT_NAME}_node SHARED
   src/autoware_command_gate.cpp
-  src/command_gate_mode_builder.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_node
@@ -27,7 +26,6 @@ if(BUILD_TESTING)
   find_package(rclcpp_components REQUIRED)
 
   ament_add_gtest(test_command_gate_mode_builder
-    test/unit/test_command_gate_mode_builder.cpp
   )
   target_link_libraries(test_command_gate_mode_builder
     ${PROJECT_NAME}_node
