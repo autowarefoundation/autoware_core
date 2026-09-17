@@ -19,7 +19,10 @@
 #include <rclcpp_components/register_node_macro.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
+#include <autoware_common_msgs/msg/response_status.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
+
+#include <string>
 
 namespace autoware::control::command_gate
 {
@@ -47,9 +50,12 @@ public:
     // Initial latch
     current_state_.mode = autoware_adapi_v1_msgs::msg::OperationModeState::STOP;
     current_state_.is_autoware_control_enabled = false;
+    current_state_.is_in_transition = false;
+    current_state_.is_stop_mode_available = true;
+    current_state_.is_autonomous_mode_available = true;
+    current_state_.is_local_mode_available = true;
+    current_state_.is_remote_mode_available = true;
 
-    // We publish initially with a timer or directly if now() is valid.
-    // However, it's better to publish it when a timer ticks or on the first loop.
     timer_ = rclcpp::create_timer(this, get_clock(), std::chrono::milliseconds(100), [this]() {
       if (!initial_published_) {
         publish_state();
@@ -62,18 +68,23 @@ public:
         const system::ChangeOperationMode::Service::Request::SharedPtr req,
         const system::ChangeOperationMode::Service::Response::SharedPtr res) {
         bool valid = true;
+        std::string message;
         switch (req->mode) {
           case system::ChangeOperationMode::Service::Request::STOP:
             current_state_.mode = autoware_adapi_v1_msgs::msg::OperationModeState::STOP;
+            message = "Switched to STOP";
             break;
           case system::ChangeOperationMode::Service::Request::AUTONOMOUS:
             current_state_.mode = autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS;
+            message = "Switched to AUTONOMOUS";
             break;
           case system::ChangeOperationMode::Service::Request::LOCAL:
             current_state_.mode = autoware_adapi_v1_msgs::msg::OperationModeState::LOCAL;
+            message = "Switched to LOCAL";
             break;
           case system::ChangeOperationMode::Service::Request::REMOTE:
             current_state_.mode = autoware_adapi_v1_msgs::msg::OperationModeState::REMOTE;
+            message = "Switched to REMOTE";
             break;
           default:
             valid = false;
@@ -82,10 +93,13 @@ public:
 
         if (valid) {
           res->status.success = true;
+          res->status.code = 0;
+          res->status.message = message;
           publish_state();
         } else {
           res->status.success = false;
-          res->status.message = "Invalid mode requested.";
+          res->status.code = autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR;
+          res->status.message = "Unknown operation mode requested.";
         }
       });
 
@@ -95,6 +109,9 @@ public:
         const system::ChangeAutowareControl::Service::Response::SharedPtr res) {
         current_state_.is_autoware_control_enabled = req->autoware_control;
         res->status.success = true;
+        res->status.code = 0;
+        res->status.message =
+          req->autoware_control ? "Autoware control enabled" : "Autoware control disabled";
         publish_state();
       });
   }
@@ -107,10 +124,18 @@ private:
 
     autoware_vehicle_msgs::msg::GearCommand gear_cmd;
     gear_cmd.stamp = current_state_.stamp;
-    if (current_state_.mode == autoware_adapi_v1_msgs::msg::OperationModeState::STOP) {
-      gear_cmd.command = autoware_vehicle_msgs::msg::GearCommand::PARK;
-    } else {
-      gear_cmd.command = autoware_vehicle_msgs::msg::GearCommand::DRIVE;
+    switch (current_state_.mode) {
+      case autoware_adapi_v1_msgs::msg::OperationModeState::STOP:
+        gear_cmd.command = autoware_vehicle_msgs::msg::GearCommand::PARK;
+        break;
+      case autoware_adapi_v1_msgs::msg::OperationModeState::AUTONOMOUS:
+        gear_cmd.command = autoware_vehicle_msgs::msg::GearCommand::DRIVE;
+        break;
+      case autoware_adapi_v1_msgs::msg::OperationModeState::LOCAL:
+      case autoware_adapi_v1_msgs::msg::OperationModeState::REMOTE:
+      default:
+        gear_cmd.command = autoware_vehicle_msgs::msg::GearCommand::NONE;
+        break;
     }
     gear_pub_->publish(gear_cmd);
   }
