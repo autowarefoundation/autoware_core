@@ -101,7 +101,7 @@ void GNSSPoser::callback_nav_sat_fix(
 
   // publish is_fixed topic
   auto is_fixed_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(fixed_pub_);
-  is_fixed_msg->stamp = this->now();
+  is_fixed_msg->stamp = nav_sat_fix_msg_ptr->header.stamp;
   is_fixed_msg->data = is_status_fixed;
   fixed_pub_->publish(std::move(is_fixed_msg));
 
