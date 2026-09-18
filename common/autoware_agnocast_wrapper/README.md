@@ -850,3 +850,16 @@ def generate_launch_description():
 The same `use_agnocast` override works here too, via `launch_arguments={"use_agnocast": "0"}.items()`.
 
 This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.
+
+## Switching One Node Between Standalone and a Component Container
+
+A node on Agnocast is a process of its own rather than a component in a container, so it has to be
+launched one way with `ENABLE_AGNOCAST=1` and another way without it. The `<autoware_node>` action
+in [`autoware_agnocast_wrapper_launch`](../autoware_agnocast_wrapper_launch/README.md) takes that
+decision, so a launch file states the node once instead of spelling out both forms. It is the
+alternative to the container swap above: it leaves the container on rclcpp and moves the node out of
+it, rather than replacing the container with an Agnocast one.
+
+`autoware_agnocast_wrapper_register_node()` registers the `autoware_node_plugins` resource that
+action reads, mapping the executable it creates to its component class and to the transport the
+build was made for.
