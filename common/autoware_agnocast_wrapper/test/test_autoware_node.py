@@ -17,7 +17,7 @@
 import io
 import logging
 
-from autoware_agnocast_wrapper_launch.actions import AutowareNode
+from autoware_agnocast_wrapper.actions import AutowareNode
 from launch import LaunchContext
 from launch.frontend import Parser
 from launch.logging import get_logger
@@ -53,7 +53,7 @@ def context(heaphook):
 @pytest.fixture
 def warnings():
     """Collect what the action logs; launch's loggers do not propagate to caplog."""
-    logger = get_logger("autoware_agnocast_wrapper_launch.actions.autoware_node")
+    logger = get_logger("autoware_agnocast_wrapper.actions.autoware_node")
     records = []
 
     class Collect(logging.Handler):
