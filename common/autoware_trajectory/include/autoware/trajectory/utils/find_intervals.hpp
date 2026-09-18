@@ -20,6 +20,7 @@
 #include "autoware/trajectory/temporal_trajectory.hpp"
 
 #include <functional>
+#include <optional>
 #include <utility>
 #include <vector>
 
@@ -63,6 +64,10 @@ std::vector<Interval> find_intervals_impl(
   const std::vector<double> & bases, const std::function<bool(const double &)> & constraint,
   int max_iter = 0);
 
+std::optional<Interval> find_first_interval_impl(
+  const std::vector<double> & bases, const std::function<bool(const double &)> & constraint,
+  int max_iter = 0);
+
 }  // namespace detail::impl
 
 /**
@@ -82,6 +87,19 @@ std::vector<Interval> find_intervals(
   const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint, int max_iter = 0)
 {
   return detail::impl::find_intervals_impl(
+    trajectory.get_underlying_bases(),
+    [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
+      return detail::invoke_with_point_or_parameter(
+        constraint, s, [&trajectory, &s]() { return trajectory.compute(s); });
+    },
+    max_iter);
+}
+
+template <class TrajectoryPointType, class Constraint>
+std::optional<Interval> find_first_interval(
+  const Trajectory<TrajectoryPointType> & trajectory, Constraint && constraint, int max_iter = 0)
+{
+  return detail::impl::find_first_interval_impl(
     trajectory.get_underlying_bases(),
     [constraint = std::forward<Constraint>(constraint), &trajectory](const double & s) {
       return detail::invoke_with_point_or_parameter(
