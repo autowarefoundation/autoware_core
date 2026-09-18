@@ -15,22 +15,14 @@
 /// @file
 /// @brief Characterization tests for `NDTScanMatcher`.
 ///
-/// These tests exist to make a refactor provable, not to specify desirable behavior. They pin
-/// what the node does *today*, through its ROS surface (`/diagnostics`, output topics, services),
-/// so that extracting the decision logic into a ROS-free core can be shown to preserve it.
+/// These pin what the node does *today* through its ROS surface (`/diagnostics`, output topics,
+/// services), so a refactor into a ROS-free core can be shown to preserve it. Conventions:
 ///
-/// Rules that keep them trustworthy:
+///  - Cases marked "Looks like a bug" are frozen on purpose; changing them is a separate decision.
+///  - Every parameter an assertion depends on is overridden, so config drift cannot flip a test.
+///  - An absent diagnostics key is the only evidence of which gate short-circuited which.
 ///
-///  - **Assert current behavior, even when it looks wrong.** Cases marked `SUSPICIOUS` pin
-///    behavior that reads like a bug. They are deliberately frozen; changing them is a separate,
-///    explicit decision, not a side effect of a refactor.
-///  - **Override every parameter an assertion depends on**, even when it already matches the
-///    shipped yaml, so a config change cannot silently flip a test.
-///  - **Prefer `absent(key)` to witness ordering.** The diagnostics key set is the only evidence
-///    of which gate short-circuited which.
-///
-/// One binary, one node per test: each test builds its own `NdtHarness`, whose destructor tears
-/// the node down in a specific order. Tests never call `rclcpp::shutdown()`.
+/// One node per test, owned by its own `NdtHarness`. Tests never call `rclcpp::shutdown()`.
 
 #include "harness/ndt_harness.hpp"
 #include "harness/stimulus.hpp"
@@ -94,10 +86,9 @@ constexpr int8_t level_error = diagnostic_msgs::msg::DiagnosticStatus::ERROR;
 
 /// @brief Overrides that make the initial-pose search cheap enough to run in a test.
 ///
-/// `particles_num` is one `ndt->align` per particle, so 200 -> 10 is the twentyfold saving.
-/// `n_startup_trials` has to come down with it: the TPE samples randomly until it has that many
-/// trials, so leaving it at 100 would make all ten random anyway. At 10/10 they are all random --
-/// the adaptive half of the search never runs here, and no case depends on it.
+/// `particles_num` is one `ndt->align` per particle, so 200 -> 10 saves twentyfold.
+/// `n_startup_trials` must follow: the TPE samples randomly until it has that many trials, so at
+/// 10/10 every trial is random and the adaptive half never runs. No case depends on it.
 std::vector<rclcpp::Parameter> fast_align_overrides()
 {
   return {
@@ -110,9 +101,8 @@ std::vector<rclcpp::Parameter> fast_align_overrides()
 /// @brief Build a harness and wait until it can be driven deterministically.
 ///
 /// Both waits are mandatory: publishing before the node's `/diagnostics` publishers and its
-/// subscriptions have been discovered loses the message. Throws rather than handing back an
-/// unusable harness, so a broken environment is reported at its cause instead of as a downstream
-/// timeout that reads like a behavior change. gtest catches it and fails only that case.
+/// subscriptions are discovered loses the message. Throws instead of returning an unusable
+/// harness, so a broken environment is reported at its cause, not as a timeout downstream.
 std::unique_ptr<NdtHarness> make_ready_harness(std::vector<rclcpp::Parameter> overrides = {})
 {
   auto harness = std::make_unique<NdtHarness>(std::move(overrides));
@@ -278,8 +268,8 @@ TEST(NdtScanMatcherCharacteristics, EmptyScanIsRejectedWithAWarning)
     << "message was: " << diag.message();
 }
 
-/// SUSPICIOUS — a late scan only warns; the early return is commented out on purpose. Continuing
-/// is the behavior pinned here, witnessed by `is_succeed_transform_sensor_points`.
+/// Looks like a bug — a late scan only warns; the early return is commented out on purpose.
+/// Continuing is what is pinned here, witnessed by `is_succeed_transform_sensor_points`.
 TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
 {
   // Arrange
@@ -300,8 +290,7 @@ TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
   EXPECT_TRUE(contains(diag.message(), "sensor points is experiencing latency."))
     << "message was: " << diag.message();
 
-  // Processing continued past the latency gate. Whether it *should* is genuinely open -- the
-  // production comment argues either way -- so this records today's answer, not a preference.
+  // Whether the latency gate *should* abort is genuinely open, so this records today's answer.
   EXPECT_EQ(diag.value("is_succeed_transform_sensor_points"), "True")
     << "the latency gate now aborts, where today it only warns. keys: "
     << ::testing::PrintToString(diag.keys_in_order());
@@ -364,9 +353,8 @@ TEST(NdtScanMatcherCharacteristics, NearFieldScanIsRejectedBeforeActivationCheck
     << ::testing::PrintToString(diag.keys_in_order());
 }
 
-/// SUSPICIOUS — the scan is stored one line *before* the activation gate rejects it. Moving it
-/// below the gate breaks initialization: `ndt_align_srv` needs a stored scan, and the node is not
-/// activated while the initial pose is estimated.
+/// Looks like a bug — the scan is stored one line *before* the activation gate rejects it. Moving
+/// it below breaks initialization: `ndt_align_srv` needs a stored scan while still deactivated.
 TEST(NdtScanMatcherCharacteristics, SensorPointsAreStoredEvenWhileDeactivated)
 {
   // Arrange
@@ -475,13 +463,13 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides(
   std::vector<rclcpp::Parameter> overrides{
     rclcpp::Parameter("ndt.num_threads", 1),  // removes OpenMP reduction nondeterminism
     rclcpp::Parameter("ndt.max_iterations", 30),
-    // These three decide whether this scene converges. The measured NVTL is about 3.2 against the
-    // 2.3 threshold below, so the margin is small, and `ndt.resolution` affects it most.
+    // These three decide whether this scene converges: measured NVTL is ~3.2 against the 2.3
+    // threshold below, a small margin, and `ndt.resolution` moves it most.
     rclcpp::Parameter("ndt.resolution", 2.0),
     rclcpp::Parameter("ndt.step_size", 0.1),
     rclcpp::Parameter("ndt.trans_epsilon", 0.01),
-    // All three are read by assertions: `has_ndt_base_link_transform` checks the first two,
-    // `map_frame` is also the frame of `/ndt_pose`, and the sensor TF points at `base_link_frame`.
+    // Assertions read all three: the `/tf` check uses the first two, `/ndt_pose` carries
+    // `map_frame`, and the sensor TF points at `base_link_frame`.
     rclcpp::Parameter("frame.ndt_base_frame", ndt_base_link_frame),
     rclcpp::Parameter("frame.map_frame", map_frame),
     rclcpp::Parameter("frame.base_frame", base_link_frame),
@@ -494,9 +482,9 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides(
     rclcpp::Parameter("validation.critical_upper_bound_exe_time_ms", never_exceeded),
     rclcpp::Parameter("validation.initial_to_result_distance_tolerance_m", never_exceeded),
     rclcpp::Parameter("validation.skipping_publish_num", 1000000),
-    // Both checks run before everything else. `required_distance` is geometry: a 28.3 m cloud
-    // against 10 m. `timeout_sec` is wall clock, and the delay includes two blocking initial-pose
-    // round trips, so it is relaxed here. The stale-scan test checks it instead.
+    // Both gates run first. `required_distance` is geometry: a 28.3 m cloud against 10 m.
+    // `timeout_sec` is relaxed because the delay includes two blocking initial-pose round trips;
+    // the stale-scan test covers it instead.
     rclcpp::Parameter("sensor_points.timeout_sec", never_exceeded),
     rclcpp::Parameter("sensor_points.required_distance", 10.0),
     // Both must hold: `drive_one_scan` brackets the scan stamp +/-100 ms, up to `delta_x` apart.
@@ -553,7 +541,7 @@ TEST(NdtScanMatcherCharacteristics, UnknownConvergedParamTypeIsAnErrorAfterAlign
   EXPECT_EQ(points_aligned->count(), 0U);
 }
 
-/// SUSPICIOUS — a non-converged scan withholds the pose but still broadcasts the TF: the
+/// Looks like a bug — a non-converged scan withholds the pose but still broadcasts the TF: the
 /// convergence gate sits inside `publish_pose`, and `publish_tf` has none. Both repairs harm.
 TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadcastsTf)
 {
@@ -749,8 +737,7 @@ TEST(NdtScanMatcherCharacteristics, ScanMatchingStatusEmitsExactlyTheseNineteenK
   // Sorted, so the count is checked but the positions are free.
   EXPECT_EQ(sorted_keys(diag.keys_in_order()), sorted_keys(expected_keys));
 
-  // The message and hardware id are not checked: `DiagnosticsInterface` builds both from the level
-  // and the node name, so checking them would test that package instead of this node.
+  // Message and hardware id are not checked: `DiagnosticsInterface` builds both, not this node.
   EXPECT_EQ(diag.level(), level_ok) << "message was: " << diag.message();
 }
 
@@ -801,10 +788,9 @@ TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose
   ASSERT_EQ(outcome->diag.level(), level_ok)
     << "scan did not converge: " << outcome->diag.message();
 
-  // The observer is a separate node on a separate executor, so the publish order inside the
-  // callback says nothing about the arrival order. The silence checks rely on the discovery wait
-  // and on the diagnostics record, which is published after the callback returned. That is not
-  // proof of delivery, because DDS does not order messages across writers.
+  // The observer is a separate node on a separate executor, so neither the publish order in the
+  // callback nor the trailing diagnostics record proves delivery: DDS does not order across
+  // writers. The silence checks rest on the discovery wait above.
   ASSERT_TRUE(harness->wait_until(
     [&] {
       return ndt_pose->count() >= 1 && ndt_pose_with_cov->count() >= 1 &&
@@ -817,9 +803,8 @@ TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose
     5s))
     << "not every expected publication arrived";
 
-  // A retry runs alignment twice, so every count below would read 2. `attempt` tells that apart
-  // from the node publishing twice. Retrying is still worth it: the scan uses best-effort
-  // `SensorDataQoS` and can be dropped, while only a lost reliable status would double-count.
+  // A retry runs alignment twice, so every count below would read 2; `attempt` tells that apart
+  // from a double publish. Retrying is still worth it: the scan uses best-effort `SensorDataQoS`.
   EXPECT_EQ(ndt_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
   EXPECT_EQ(ndt_pose_with_cov->count(), 1U);
   EXPECT_EQ(initial_pose_with_cov->count(), 1U);
@@ -851,7 +836,7 @@ TEST(NdtScanMatcherCharacteristics, ConvergedScanPublishesTheseTopicsAndNotThose
   EXPECT_EQ(multi_initial_pose->count(), 0U);
 }
 
-/// SUSPICIOUS — the estimate overwrites only 4 of the 36 covariance entries, and the two
+/// Looks like a bug — the estimate overwrites only 4 of the 36 covariance entries, and the two
 /// off-diagonal writes are transposed. Harmless only while estimators return symmetric matrices.
 TEST(NdtScanMatcherCharacteristics, EstimatedCovarianceOverwritesOnlyFourOfThirtySixEntries)
 {
@@ -894,10 +879,9 @@ TEST(NdtScanMatcherCharacteristics, EstimatedCovarianceOverwritesOnlyFourOfThirt
   // estimation branch were skipped, these would still read exactly `param_variance_xyz`.
   EXPECT_GT(covariance[0], param_variance_xyz * 10.0) << "the x variance was not overwritten";
   EXPECT_GT(covariance[7], param_variance_xyz * 10.0) << "the y variance was not overwritten";
-  // Magnitude first. Symmetry alone cannot catch the realistic mistake: dropping *both*
-  // off-diagonal writes leaves the two entries equal, at the tiny value the rotation leaves
-  // behind, and the loop below skips indices 1 and 6. The estimate here is about -0.04 after
-  // scaling, so this floor is far above that leftover value and far below the estimate.
+  // Magnitude first: dropping *both* off-diagonal writes leaves the two entries equal at the tiny
+  // value the rotation leaves behind, which symmetry alone cannot catch. The scaled estimate is
+  // about -0.04, so this floor sits well above the leftover and well below the estimate.
   EXPECT_GT(std::abs(covariance[1]), 1.0e-6) << "the xy cross terms were never written";
   // Then symmetry, which catches one of the two writes being dropped. It cannot catch the
   // transpose above, which needs an asymmetric input and so a unit test on the extracted function.
@@ -936,10 +920,8 @@ TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseIsTheInterpolatedMidpoin
   // Assert
   ASSERT_TRUE(outcome.has_value());
   ASSERT_EQ(outcome->diag.value("is_succeed_interpolate_initial_pose"), "True");
-  // Convergence is checked even though this test is about the interpolated position, because the
-  // non-converged test's cleanup depends on it: every converged test except that one resets the
-  // shared skip counter by matching successfully. If this test stopped converging, it would start
-  // leaving the counter above zero without saying so.
+  // Convergence is asserted, though this test is about the interpolated position, because a
+  // converged scan is what resets the shared skip counter for the tests that follow.
   ASSERT_EQ(outcome->diag.level(), level_ok)
     << "scan did not converge: " << outcome->diag.message();
 
