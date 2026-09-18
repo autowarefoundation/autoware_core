@@ -7987,13 +7987,13 @@
 <td><code>gnss_pose_pub_method</code></td>
 <td><code>integer</code></td>
 <td><code>0</code></td>
-<td>0: Instant Value 1: Average Value 2: Median Value. If <code>buffer_epoch</code> is set to 0, <code>gnss_pose_pub_method</code> loses affect. Range: 0~2.</td>
+<td>0: Instant Value 1: Average Value 2: Median Value. Any other value is rejected at startup.</td>
 </tr>
 <tr>
 <td><code>buff_epoch</code></td>
 <td><code>integer</code></td>
 <td><code>1</code></td>
-<td>Buffer epoch. Range: 0~inf.</td>
+<td>Number of positions the average / median is taken over (ignored for method 0). Range: 1~inf; smaller values are rejected at startup.</td>
 </tr>
 </tbody>
 </table>
