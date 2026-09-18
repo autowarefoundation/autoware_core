@@ -74,6 +74,7 @@ if(BUILD_TESTING)
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
     ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
       test/test_velocity_smoother_node_interface.cpp
+      test/test_velocity_smoother_integration.cpp
     )
     target_link_libraries(test_${PROJECT_NAME}
       ${PROJECT_NAME}_node
