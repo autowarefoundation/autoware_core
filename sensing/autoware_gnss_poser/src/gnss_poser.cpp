@@ -28,6 +28,7 @@
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
 #include <algorithm>
+#include <cassert>
 #include <cmath>
 #include <numeric>
 #include <stdexcept>
@@ -127,6 +128,11 @@ std::array<double, 36> make_pose_covariance(
 geometry_msgs::msg::Point get_median_position(
   const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
 {
+  // An empty buffer has no median: get_median would call std::vector::at(0) and throw. It cannot
+  // be empty here, because GnssPoser rejects buff_epoch < 1 and input_fix() reduces the buffer
+  // only once it is full.
+  assert(!position_buffer.empty() && "get_median_position: the position buffer is empty");
+
   auto get_median = [](std::vector<double> array) {
     std::sort(std::begin(array), std::end(array));
     const size_t median_index = array.size() / 2;
@@ -155,6 +161,9 @@ geometry_msgs::msg::Point get_median_position(
 geometry_msgs::msg::Point get_average_position(
   const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
 {
+  // An empty buffer would be divided by a size of zero; same precondition as get_median_position.
+  assert(!position_buffer.empty() && "get_average_position: the position buffer is empty");
+
   std::vector<double> array_x;
   std::vector<double> array_y;
   std::vector<double> array_z;
