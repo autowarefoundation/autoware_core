@@ -37,6 +37,10 @@ class GNSSPoserHelpersTest;
 
 namespace autoware::gnss_poser
 {
+// How the published position is derived from the incoming fixes: the latest one as-is, or the
+// average / component-wise median of the last `buff_epoch` ones.
+enum class GnssPosePubMethod { Instant = 0, Average = 1, Median = 2 };
+
 class GNSSPoser : public autoware::agnocast_wrapper::Node
 {
 public:
@@ -100,7 +104,7 @@ private:
 
   autoware_sensing_msgs::msg::GnssInsOrientationStamped::SharedPtr
     msg_gnss_ins_orientation_stamped_;
-  int gnss_pose_pub_method_;
+  GnssPosePubMethod gnss_pose_pub_method_;
 };
 }  // namespace autoware::gnss_poser
 
