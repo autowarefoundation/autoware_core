@@ -1,8 +1,9 @@
 {
   "name": "Autoware Core Development",
   "image": "ghcr.io/autowarefoundation/autoware:core-devel-jazzy",
-  "runArgs": ["--net=host", "--privileged"],
-  "remoteUser": "ubuntu",
+  "runArgs": ["--net=host", "--privileged", "--name", "autoware-core-devcontainer"],
+  "workspaceFolder": "/home/aw/autoware/",
+  "remoteUser": "aw",
   "remoteEnv": {
     "SSH_AUTH_SOCK": "/ssh-agent"
   },
@@ -11,12 +12,28 @@
     {
       "type": "bind",
       "source": "${localWorkspaceFolder}",
-      "target": "/autoware/src/core/autoware_core"
+      "target": "/home/aw/autoware/src/core/"
     },
-    { "type": "volume", "source": "autoware-core-cache", "target": "/home/ubuntu/.cache" },
-    { "type": "volume", "source": "autoware-core-config", "target": "/home/ubuntu/.config" },
-    { "type": "volume", "source": "autoware-core-ccache", "target": "/home/ubuntu/.ccache" },
-    { "type": "bind", "source": "${localEnv:SSH_AUTH_SOCK}", "target": "/ssh-agent" }
+    {
+      "type": "volume",
+      "source": "autoware-core-cache",
+      "target": "/home/aw/.cache"
+    },
+    {
+      "type": "volume",
+      "source": "autoware-core-config",
+      "target": "/home/aw/.config"
+    },
+    {
+      "type": "volume",
+      "source": "autoware-core-ccache",
+      "target": "/home/aw/.ccache"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:SSH_AUTH_SOCK}",
+      "target": "/ssh-agent"
+    }
   ],
 
   "features": {
@@ -29,7 +46,7 @@
   "containerEnv": {
     "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
   },
-  "postCreateCommand": "mkdir -p /autoware/src && chmod 755 /autoware/src || sudo chown -R 1000:1000 /home/ubuntu/.cache",
+  "postCreateCommand": "",
   "customizations": {
     "vscode": {
       "extensions": [
