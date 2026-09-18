@@ -875,13 +875,18 @@ TEST(NdtScanMatcherCharacteristics, EstimatedCovarianceOverwritesOnlyFourOfThirt
     << "pitch variance was overwritten";
   EXPECT_NEAR(covariance[35], param_variance_angular, tolerance) << "yaw variance was overwritten";
 
-  // Overwritten by the scaled estimate, which `scale_factor` lifts well above the floor. If the
-  // estimation branch were skipped, these would still read exactly `param_variance_xyz`.
-  EXPECT_GT(covariance[0], param_variance_xyz * 10.0) << "the x variance was not overwritten";
-  EXPECT_GT(covariance[7], param_variance_xyz * 10.0) << "the y variance was not overwritten";
-  // Magnitude first: dropping *both* off-diagonal writes leaves the two entries equal at the tiny
-  // value the rotation leaves behind, which symmetry alone cannot catch. The scaled estimate is
-  // about -0.04, so this floor sits well above the leftover and well below the estimate.
+  // `adjust_diagonal_covariance` floors the diagonal at `param_variance_xyz`, so these read
+  // `max(scaled estimate, param_variance_xyz)`; `scale_factor` lifts the estimate well clear of
+  // that floor. A skipped estimation branch leaves them at the floor value too, hence the message.
+  EXPECT_GT(covariance[0], param_variance_xyz * 10.0)
+    << "the scaled x estimate no longer clears the floor; check covariance[1] below before "
+       "concluding the estimation branch was skipped";
+  EXPECT_GT(covariance[7], param_variance_xyz * 10.0)
+    << "the scaled y estimate no longer clears the floor; check covariance[1] below before "
+       "concluding the estimation branch was skipped";
+  // Magnitude before symmetry: dropping *both* writes leaves the entries equal at the tiny
+  // leftover of the rotation, which symmetry cannot catch. 1e-6 sits between that and the ~-0.04
+  // estimate. Unlike the diagonal these are never floored, so they are the evidence cited above.
   EXPECT_GT(std::abs(covariance[1]), 1.0e-6) << "the xy cross terms were never written";
   // Then symmetry, which catches one of the two writes being dropped. It cannot catch the
   // transpose above, which needs an asymmetric input and so a unit test on the extracted function.
