@@ -122,6 +122,68 @@ std::array<double, 36> make_pose_covariance(
 }
 }  // namespace
 
+// Defined here rather than in the anonymous namespace above, because the unit tests that came
+// with the package call them directly and so the header still declares them.
+
+geometry_msgs::msg::Point get_median_position(
+  const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
+{
+  auto get_median = [](std::vector<double> array) {
+    std::sort(std::begin(array), std::end(array));
+    const size_t median_index = array.size() / 2;
+    double median = (array.size() % 2)
+                      ? (array.at(median_index))
+                      : ((array.at(median_index) + array.at(median_index - 1)) / 2);
+    return median;
+  };
+
+  std::vector<double> array_x;
+  std::vector<double> array_y;
+  std::vector<double> array_z;
+  for (const auto & position : position_buffer) {
+    array_x.push_back(position.x);
+    array_y.push_back(position.y);
+    array_z.push_back(position.z);
+  }
+
+  geometry_msgs::msg::Point median_point;
+  median_point.x = get_median(array_x);
+  median_point.y = get_median(array_y);
+  median_point.z = get_median(array_z);
+  return median_point;
+}
+
+geometry_msgs::msg::Point get_average_position(
+  const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
+{
+  std::vector<double> array_x;
+  std::vector<double> array_y;
+  std::vector<double> array_z;
+  for (const auto & position : position_buffer) {
+    array_x.push_back(position.x);
+    array_y.push_back(position.y);
+    array_z.push_back(position.z);
+  }
+
+  geometry_msgs::msg::Point average_point;
+  average_point.x =
+    std::reduce(array_x.begin(), array_x.end()) / static_cast<double>(array_x.size());
+  average_point.y =
+    std::reduce(array_y.begin(), array_y.end()) / static_cast<double>(array_y.size());
+  average_point.z =
+    std::reduce(array_z.begin(), array_z.end()) / static_cast<double>(array_z.size());
+  return average_point;
+}
+
+geometry_msgs::msg::Quaternion get_quaternion_by_position_difference(
+  const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point)
+{
+  const double yaw = std::atan2(point.y - prev_point.y, point.x - prev_point.x);
+  tf2::Quaternion quaternion;
+  quaternion.setRPY(0, 0, yaw);
+  return tf2::toMsg(quaternion);
+}
+
 GnssPoser::GnssPoser(
   const GnssPoserParams & params, TransformLookup lookup_antenna_to_base_link,
   const GnssPoserCovarianceDefaults & covariance_defaults)
@@ -243,65 +305,6 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   return {
     Outcome::Published, make_gnss_fixed(fix.header.stamp, true), pose, pose_cov,
     make_transform_stamped(pose, params_.gnss_base_frame)};
-}
-
-geometry_msgs::msg::Point get_median_position(
-  const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
-{
-  auto get_median = [](std::vector<double> array) {
-    std::sort(std::begin(array), std::end(array));
-    const size_t median_index = array.size() / 2;
-    double median = (array.size() % 2)
-                      ? (array.at(median_index))
-                      : ((array.at(median_index) + array.at(median_index - 1)) / 2);
-    return median;
-  };
-
-  std::vector<double> array_x;
-  std::vector<double> array_y;
-  std::vector<double> array_z;
-  for (const auto & position : position_buffer) {
-    array_x.push_back(position.x);
-    array_y.push_back(position.y);
-    array_z.push_back(position.z);
-  }
-
-  geometry_msgs::msg::Point median_point;
-  median_point.x = get_median(array_x);
-  median_point.y = get_median(array_y);
-  median_point.z = get_median(array_z);
-  return median_point;
-}
-
-geometry_msgs::msg::Point get_average_position(
-  const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
-{
-  std::vector<double> array_x;
-  std::vector<double> array_y;
-  std::vector<double> array_z;
-  for (const auto & position : position_buffer) {
-    array_x.push_back(position.x);
-    array_y.push_back(position.y);
-    array_z.push_back(position.z);
-  }
-
-  geometry_msgs::msg::Point average_point;
-  average_point.x =
-    std::reduce(array_x.begin(), array_x.end()) / static_cast<double>(array_x.size());
-  average_point.y =
-    std::reduce(array_y.begin(), array_y.end()) / static_cast<double>(array_y.size());
-  average_point.z =
-    std::reduce(array_z.begin(), array_z.end()) / static_cast<double>(array_z.size());
-  return average_point;
-}
-
-geometry_msgs::msg::Quaternion get_quaternion_by_position_difference(
-  const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point)
-{
-  const double yaw = std::atan2(point.y - prev_point.y, point.x - prev_point.x);
-  tf2::Quaternion quaternion;
-  quaternion.setRPY(0, 0, yaw);
-  return tf2::toMsg(quaternion);
 }
 
 }  // namespace autoware::gnss_poser
