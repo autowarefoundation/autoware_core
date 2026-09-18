@@ -209,13 +209,25 @@ macro(autoware_agnocast_wrapper_register_node target)
     install(TARGETS ${ARGS_EXECUTABLE}
       DESTINATION lib/${PROJECT_NAME})
 
+    set(_AWR_transport "agnocast")
+
   else()
     # ===== Standard rclcpp mode: fall back to rclcpp_components_register_node =====
     rclcpp_components_register_node(${target}
       PLUGIN ${ARGS_PLUGIN}
       EXECUTABLE ${ARGS_EXECUTABLE}
       EXECUTOR ${ARGS_ROS2_EXECUTOR})
+
+    set(_AWR_transport "rclcpp")
+
   endif()
+
+  # Record which component this executable runs and whether this build can use Agnocast, so a
+  # launch file naming the executable can also load it into a container. One resource per
+  # executable, named after the package as well since executable names are only unique within one.
+  ament_index_register_resource("autoware_node_plugins"
+    PACKAGE_NAME "${PROJECT_NAME}__${ARGS_EXECUTABLE}"
+    CONTENT "${ARGS_PLUGIN};${_AWR_transport}")
 
   # Cleanup temporary variables to prevent scope leakage across multiple macro invocations
   unset(_AWR_ros2_executor_type)
@@ -223,6 +235,7 @@ macro(autoware_agnocast_wrapper_register_node target)
   unset(_AWR_agnocast_executor_include)
   unset(_AWR_agnocast_add_node_expr)
   unset(_AWR_agnocast_only)
+  unset(_AWR_transport)
   unset(_AWR_node)
   unset(_AWR_component)
   unset(_AWR_library_name)
