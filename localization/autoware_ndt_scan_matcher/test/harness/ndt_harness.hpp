@@ -18,6 +18,7 @@
 #include "diagnostics_capture.hpp"
 #include "stimulus.hpp"
 #include "stub_map_loader.hpp"
+#include "topic_capture.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
@@ -174,6 +175,35 @@ public:
   // ---------------------------------------------------------------- accessors
 
   [[nodiscard]] DiagnosticsCapture & diag() const { return *diagnostics_; }
+
+  /// @brief Starts recording a topic.
+  ///
+  /// Must be called before the input that could publish it: a check for silence proves nothing
+  /// unless the subscription existed while the node was running.
+  template <typename MsgT>
+  std::shared_ptr<TopicCapture<MsgT>> capture(
+    const std::string & topic, const rclcpp::QoS & qos = rclcpp::QoS(rclcpp::KeepAll()).reliable())
+  {
+    return std::make_shared<TopicCapture<MsgT>>(observer_.get(), topic, qos);
+  }
+
+  /// @brief Activates the node and waits until the map-update timer has loaded a map.
+  ///
+  /// The precondition for every case that needs alignment to run. Returns false rather than
+  /// asserting, so the caller decides whether a missing map is the thing under test.
+  bool ensure_map_loaded(const std::chrono::nanoseconds timeout = 30s)
+  {
+    const auto activated = activate(timeout);
+    if (!activated.has_value() || !activated.value()) {
+      return false;
+    }
+    publish_initial_pose(make_pose_at(now(), map_center_x, map_center_y));
+    return wait_for_diag(
+             map_update_status,
+             [](const Record & record) { return record.value("is_updated_map") == "True"; },
+             timeout)
+      .has_value();
+  }
   [[nodiscard]] rclcpp::Time now() const { return observer_->now(); }
 
   // ------------------------------------------------------------------ pumping
@@ -276,13 +306,33 @@ public:
   /// Returns the response's `success`, or nullopt on timeout.
   std::optional<bool> activate(const std::chrono::nanoseconds timeout = 10s)
   {
+    return set_activation(true, timeout);
+  }
+
+  /// @brief Call `trigger_node_srv` with `false`, so the node rejects what it would process.
+  ///
+  /// Needed by `reset_skip_counter_via_deactivation`: the skip counter is a function-local `static`
+  /// shared by every node in the binary, so a case that raised it has to put it back.
+  std::optional<bool> deactivate(const std::chrono::nanoseconds timeout = 10s)
+  {
+    return set_activation(false, timeout);
+  }
+
+  /// @brief The shared body of `activate` and `deactivate`.
+  ///
+  /// On timeout the pending request is removed: it would otherwise stay queued on the client, and a
+  /// late reply could be matched against the next call. The harness now calls this service more
+  /// than once per node, so that is reachable.
+  std::optional<bool> set_activation(const bool enable, const std::chrono::nanoseconds timeout)
+  {
     if (!trigger_client_->wait_for_service(5s)) {
       return std::nullopt;
     }
     auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
-    request->data = true;
+    request->data = enable;
     auto future = trigger_client_->async_send_request(request);
     if (!wait_until([&] { return future.wait_for(0s) == std::future_status::ready; }, timeout)) {
+      trigger_client_->remove_pending_request(future);
       return std::nullopt;
     }
     return future.get()->success;
