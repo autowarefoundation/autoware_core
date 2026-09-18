@@ -18,13 +18,12 @@ ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
 autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
-autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::default_adapi::OperationModeNode"
   EXECUTABLE operation_mode_node
   ROS2_EXECUTOR MultiThreadedExecutor
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
-
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::default_adapi::InterfaceNode"
   EXECUTABLE interface_node
   ROS2_EXECUTOR MultiThreadedExecutor
