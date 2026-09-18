@@ -111,8 +111,8 @@ constexpr double reference_geoid_height = 36.12;  // [m]
 // missing (0 m) or wrongly signed (+36 m) conversion is far outside.
 constexpr double geoid_height_tolerance = 0.01;  // [m]
 
-// A deterministic, clearly artificial header stamp so that "stamp copied from input" and
-// "stamp taken from the node clock" can be told apart.
+// A deterministic, clearly artificial header stamp so that a stamp copied from the input can be
+// told apart from one taken from a clock.
 constexpr int32_t fix_stamp_sec = 1700000000;
 constexpr uint32_t fix_stamp_nanosec = 123456789U;
 
@@ -879,25 +879,16 @@ TEST_F(GnssPoserCharacterization, Gate_StatusFixSbasGbas_AllPass)
   expect_output_counts(4, 3, 3, 3);
 }
 
-// `gnss_fixed` is stamped with the node clock, not with the header stamp of the fix it reports on.
-//
-// NOTE(characterization): every other output copies the input stamp; this one alone carries
-// `now()`. Only the interval is pinned (between the moments before and after the fix was sent), not
-// a value.
-TEST_F(GnssPoserCharacterization, GnssFixed_StampIsNodeClockNotFixHeaderStamp)
+// `gnss_fixed` carries the header stamp of the fix it reports on, like every other output.
+TEST_F(GnssPoserCharacterization, GnssFixed_StampIsFixHeaderStamp)
 {
   ASSERT_NO_FATAL_FAILURE(build_node({}));
   send_projector_info(make_mgrs_projector_info());
 
-  const rclcpp::Time before = peer_->now();
   send_fix(make_reference_fix(NavSatStatus::STATUS_NO_FIX));
   ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  const rclcpp::Time after = peer_->now();
 
-  const rclcpp::Time stamp(last_fixed().stamp, RCL_ROS_TIME);
-  EXPECT_NE(last_fixed().stamp, fix_stamp());
-  EXPECT_GE(stamp.nanoseconds(), before.nanoseconds());
-  EXPECT_LE(stamp.nanoseconds(), after.nanoseconds());
+  EXPECT_EQ(last_fixed().stamp, fix_stamp());
 }
 
 // =======================================================================================
