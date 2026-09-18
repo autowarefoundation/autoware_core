@@ -24,9 +24,6 @@
 ///  - **Assert current behavior, even when it looks wrong.** Cases marked `SUSPICIOUS` pin
 ///    behavior that reads like a bug. They are deliberately frozen; changing them is a separate,
 ///    explicit decision, not a side effect of a refactor.
-///  - **Never assert NDT numerics.** Alignment runs under OpenMP and the initial-pose search
-///    draws from a process-global RNG, so pose/score values are not reproducible. Assert
-///    decisions, key sets, levels and message text instead.
 ///  - **Override every parameter an assertion depends on**, even when it already matches the
 ///    shipped yaml, so a config change cannot silently flip a test.
 ///  - **Prefer `absent(key)` to witness ordering.** The diagnostics key set is the only evidence
