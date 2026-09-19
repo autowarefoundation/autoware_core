@@ -53,6 +53,7 @@ planning/autoware_mission_planner/** kosuke.takeuchi@tier4.jp mamoru.sobue@tier4
 planning/autoware_objects_of_interest_marker_interface/** fumiya.watanabe@tier4.jp kosuke.takeuchi@tier4.jp lxg19892021@gmail.com zulfaqar.azmi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_path_generator/** akiro.harada@tier4.jp junya.sasaki@tier4.jp kosuke.takeuchi@tier4.jp masahiro.kubota@tier4.jp mitsuhiro.sakamoto@tier4.jp riku.kimura@tier4.jp takeshi.miura@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_planning_factor_interface/** mamoru.sobue@tier4.jp @autowarefoundation/autoware-core-global-codeowners
+planning/autoware_planning_test_manager/** junya.sasaki@tier4.jp kyoichi.sugahara@tier4.jp mamoru.sobue@tier4.jp takamasa.horibe@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_planning_topic_converter/** kosuke.takeuchi@tier4.jp satoshi.ota@tier4.jp shumpei.wakabayashi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_route_handler/** alqudah.mohammad@tier4.jp kosuke.takeuchi@tier4.jp mamoru.sobue@tier4.jp zulfaqar.azmi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 planning/autoware_velocity_smoother/** takumi.odashima@tier4.jp yuki.takagi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
@@ -67,7 +68,6 @@ sensing/autoware_crop_box_filter/** abrahammonrroy@yahoo.com dai.nguyen@tier4.jp
 sensing/autoware_downsample_filters/** abrahammonrroy@yahoo.com dai.nguyen@tier4.jp david.wong@tier4.jp kenzo.lobos@tier4.jp kyoichi.sugahara@tier4.jp lxg19892021@gmail.com max.schmeller@tier4.jp melike@leodrive.ai norah.xiong@autocore.ai yihsiang.fang@tier4.jp yoshi.ri@tier4.jp yukihiro.saito@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 sensing/autoware_gnss_poser/** anh.nguyen.2@tier4.jp lxg19892021@gmail.com masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 sensing/autoware_vehicle_velocity_converter/** anh.nguyen.2@tier4.jp masahiro.sakamoto@tier4.jp taiki.yamada@tier4.jp yamato.ando@tier4.jp @autowarefoundation/autoware-core-global-codeowners
-testing/autoware_planning_test_manager/** junya.sasaki@tier4.jp kyoichi.sugahara@tier4.jp mamoru.sobue@tier4.jp takamasa.horibe@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 testing/autoware_pyplot/** mamoru.sobue@tier4.jp yukinari.hisaki.2@tier4.jp @autowarefoundation/autoware-core-global-codeowners
 testing/autoware_test_node/** mfc@autoware.org @autowarefoundation/autoware-core-global-codeowners
 testing/autoware_test_utils/** egon.kang@autocore.ai junya.sasaki@tier4.jp kyoichi.sugahara@tier4.jp mamoru.sobue@tier4.jp takamasa.horibe@tier4.jp yukinari.hisaki.2@tier4.jp zulfaqar.azmi@tier4.jp @autowarefoundation/autoware-core-global-codeowners
