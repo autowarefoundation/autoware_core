@@ -68,13 +68,6 @@ InitializationResult PoseInitializer::evaluate_auto_pose(
 
     diag.gnss_error_2d = gnss_error_2d;
     diag.is_gnss_pose_error_small = is_error_small;
-
-    if (!is_error_small) {
-      CoreWarning warn;
-      warn.text = " Large error between Initial Pose and GNSS Pose.";
-      warn.throttle_ms = 0;
-      result.warnings.push_back(warn);
-    }
   }
 
   result.diagnostics = diag;

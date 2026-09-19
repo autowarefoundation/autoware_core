@@ -201,18 +201,16 @@ void PoseInitializerNode::on_initialize(
       if (result.diagnostics.has_value()) {
         const auto & diag = result.diagnostics.value();
 
-        if (diag.gnss_error_2d.has_value()) {
+        if (diag.gnss_error_2d.has_value() && diag.is_gnss_pose_error_small.has_value()) {
           diagnostics_pose_reliable_->add_key_value(
             "gnss_pose_error_2d", diag.gnss_error_2d.value());
           diagnostics_pose_reliable_->add_key_value(
             "is_gnss_pose_error_small", diag.is_gnss_pose_error_small.value());
-        }
-
-        // Output warnings
-        for (const auto & warn : result.warnings) {
-          if (warn.throttle_ms == 0) {
+          if (!diag.is_gnss_pose_error_small.value()) {
+            std::stringstream message;
+            message << " Large error between Initial Pose and GNSS Pose.";
             diagnostics_pose_reliable_->update_level_and_message(
-              diagnostic_msgs::msg::DiagnosticStatus::WARN, warn.text);
+              diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
           }
         }
 

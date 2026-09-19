@@ -28,12 +28,6 @@ namespace autoware::pose_initializer
 using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
 using Pose = geometry_msgs::msg::Pose;
 
-struct CoreWarning
-{
-  std::string text;
-  uint32_t throttle_ms{0};
-};
-
 struct DiagnosticsInfo
 {
   bool is_reliable;
@@ -47,7 +41,6 @@ struct InitializationResult
   uint16_t error_code{0};
   std::string error_message;
 
-  std::vector<CoreWarning> warnings;
   std::optional<DiagnosticsInfo> diagnostics;
   std::optional<PoseWithCovarianceStamped> reset_pose;
 };
