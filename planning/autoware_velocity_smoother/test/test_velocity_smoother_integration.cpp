@@ -174,6 +174,20 @@ protected:
     return odom;
   }
 
+  static nav_msgs::msg::Odometry set_odom(const double x, const double velocity = 5.0)
+  {
+    nav_msgs::msg::Odometry odom;
+    odom.header.frame_id = "map";
+
+    // set pose position at (x ,0.0 ,0.0) with quaternion (0.0, 0.0, 0.0, 1.0)
+    odom.pose.pose.position.x = x;
+
+    // A bit forward velocity
+    odom.twist.twist.linear.x = velocity;
+
+    return odom;
+  }
+
   void retrigger_pubs_spin(
     const std::optional<Trajectory> & traj, const std::optional<nav_msgs::msg::Odometry> & odom,
     const std::optional<autoware_internal_planning_msgs::msg::VelocityLimit> &
@@ -226,11 +240,17 @@ protected:
 // =========================== TEST HELPER =================================
 // Check velocity bound and terminal stop
 static void check_velocity_bound(
-  const Trajectory::ConstSharedPtr & traj, const double start_velocity, const double max_velocity)
+  const Trajectory::ConstSharedPtr & traj, const double start_velocity, const double max_velocity,
+  const std::optional<size_t> start_idx_opt = std::nullopt, const double tol = 1e-3)
 {
-  constexpr auto tol = 1e-3;
   ASSERT_FALSE(traj->points.empty());
-  EXPECT_NEAR(traj->points.front().longitudinal_velocity_mps, start_velocity, tol);
+  if (!start_idx_opt.has_value()) {
+    EXPECT_NEAR(traj->points.front().longitudinal_velocity_mps, start_velocity, tol);
+  } else {
+    const auto start_idx = *start_idx_opt;
+    ASSERT_LT(start_idx, traj->points.size());
+    EXPECT_NEAR(traj->points[start_idx].longitudinal_velocity_mps, start_velocity, tol);
+  }
   for (const auto & pt : traj->points) {
     EXPECT_GE(pt.longitudinal_velocity_mps, 0.0);
     // less than input maximum velocity (odom velocity, or node's max velocity)
@@ -251,6 +271,12 @@ static void check_acceleration_bound(
     EXPECT_GE(pt.acceleration_mps2, min_acc - tol);
     EXPECT_LE(pt.acceleration_mps2, max_acc + tol);
   }
+}
+
+static std::optional<size_t> findClosestIndex(
+  const Trajectory::ConstSharedPtr & traj, const nav_msgs::msg::Odometry & odom)
+{
+  return autoware::motion_utils::findNearestIndex(traj->points, odom.pose.pose);
 }
 
 // TEST 1:
@@ -551,15 +577,65 @@ TEST_F(VelocitySmootherIntegrationHarness, StopPointPreserve)
     EXPECT_NEAR(latest_traj_->points.back().longitudinal_velocity_mps, 0.0, stop_vel_threshold);
   }
 }
+
 // TEST 4:
-TEST_F(VelocitySmootherIntegrationHarness, ExternalVelocityLimit)
-{
-}
-// TEST 5:
 TEST_F(VelocitySmootherIntegrationHarness, MultiCycleConsistency)
 {
+  constexpr double tol = 1e-3;
+  ASSERT_TRUE(
+    wait_for([this] { return latest_vel_limit_ != nullptr; }, std::chrono::milliseconds(100)))
+    << "Node failed to output latest velocity limit for constructor.";
+
+  // check constructor max velocity (from config)
+  EXPECT_NEAR(latest_vel_limit_->max_velocity, 11.1, 1e-3);
+
+  autoware_adapi_v1_msgs::msg::OperationModeState operation_mode;
+  operation_mode.mode = OperationModeState::AUTONOMOUS;
+  operation_mode.is_autoware_control_enabled = true;
+  geometry_msgs::msg::AccelWithCovarianceStamped current_acceleration;
+  current_acceleration.accel.accel.linear.x = 0.0;
+
+  Trajectory input_traj = create_mock_straight_trajectory(10.0);
+  retrigger_pubs_spin(
+    std::nullopt, std::nullopt, std::nullopt, operation_mode, current_acceleration,
+    std::chrono::milliseconds(100));
+
+  Trajectory::ConstSharedPtr prev_traj;
+  // test for 4 cycles
+  for (size_t k = 0; k < 4; ++k) {
+    latest_traj_ = nullptr;
+    auto odom = set_odom(5.0 * k, 5.0 + 2.0 * k);
+    retrigger_pubs_spin(
+      input_traj, odom, std::nullopt, std::nullopt, std::nullopt, std::chrono::milliseconds(100));
+    ASSERT_TRUE(
+      wait_for([this] { return latest_traj_ != nullptr; }, std::chrono::milliseconds(100)))
+      << "Node failed to output Smoothed Trajectory";
+
+    if (k > 0) {
+      const auto start_idx_opt = findClosestIndex(latest_traj_, odom);
+      ASSERT_TRUE(start_idx_opt.has_value());
+      const auto prev_start_idx_opt = findClosestIndex(prev_traj, odom);
+      ASSERT_TRUE(prev_start_idx_opt.has_value());
+      // check start from that start_idx velocity and less than  maximum velocity (11.1) - with
+      // loosen tol (0.1)
+      check_velocity_bound(
+        latest_traj_, prev_traj->points[*prev_start_idx_opt].longitudinal_velocity_mps, 11.1,
+        start_idx_opt, 0.1);
+
+      // check start point location (should be 5.0 * k)
+      EXPECT_NEAR(latest_traj_->points[*start_idx_opt].pose.position.x, 5.0 * k, tol);
+    } else {
+      // check start from 5.0 and less than  maximum velocity (11.1)
+      check_velocity_bound(latest_traj_, 5.0, 11.1);
+    }
+
+    // check within acceleration bound (from config)
+    check_acceleration_bound(latest_traj_, 1.0, -0.5);
+    prev_traj = latest_traj_;
+  }
 }
-// TEST 6:
+
+// TEST 5:
 TEST_F(VelocitySmootherIntegrationHarness, AbnormalInputNoCrash)
 {
 }
