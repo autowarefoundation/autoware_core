@@ -638,6 +638,60 @@ TEST_F(VelocitySmootherIntegrationHarness, MultiCycleConsistency)
 // TEST 5:
 TEST_F(VelocitySmootherIntegrationHarness, AbnormalInputNoCrash)
 {
+  ASSERT_TRUE(
+    wait_for([this] { return latest_vel_limit_ != nullptr; }, std::chrono::milliseconds(100)))
+    << "Node failed to output latest velocity limit.";
+
+  // check constructor max velocity (from config)
+  EXPECT_NEAR(latest_vel_limit_->max_velocity, 11.1, 1e-3);
+
+  autoware_adapi_v1_msgs::msg::OperationModeState operation_mode;
+  operation_mode.mode = OperationModeState::AUTONOMOUS;
+  operation_mode.is_autoware_control_enabled = true;
+  geometry_msgs::msg::AccelWithCovarianceStamped current_acceleration;
+  current_acceleration.accel.accel.linear.x = 0.0;
+
+  {
+    // empty input_traj
+    Trajectory input_traj = autoware::test_utils::generateTrajectory<Trajectory>(0, 2.0, 10.0);
+    auto odom = set_start_odom(5.0);
+
+    retrigger_pubs_spin(
+      input_traj, odom, std::nullopt, operation_mode, current_acceleration,
+      std::chrono::milliseconds(100));
+
+    ASSERT_FALSE(
+      wait_for([this] { return latest_traj_ != nullptr; }, std::chrono::milliseconds(100)))
+      << "Node output Smoothed Trajectory from empty input.";
+  }
+
+  {
+    // single-point input_traj
+    Trajectory input_traj = autoware::test_utils::generateTrajectory<Trajectory>(1, 2.0, 10.0);
+    auto odom = set_start_odom(5.0);
+
+    retrigger_pubs_spin(
+      input_traj, odom, std::nullopt, operation_mode, current_acceleration,
+      std::chrono::milliseconds(100));
+
+    ASSERT_FALSE(
+      wait_for([this] { return latest_traj_ != nullptr; }, std::chrono::milliseconds(100)))
+      << "Node output Smoothed Trajectory from single-point input_traj.";
+  }
+
+  {
+    // two-points input_traj
+    Trajectory input_traj = autoware::test_utils::generateTrajectory<Trajectory>(2, 2.0, 10.0);
+    auto odom = set_start_odom(5.0);
+
+    retrigger_pubs_spin(
+      input_traj, odom, std::nullopt, operation_mode, current_acceleration,
+      std::chrono::milliseconds(100));
+
+    ASSERT_TRUE(
+      wait_for([this] { return latest_traj_ != nullptr; }, std::chrono::milliseconds(100)))
+      << "Node failed to output Smoothed Trajectory";
+  }
 }
 
 }  // namespace autoware::velocity_smoother
