@@ -602,7 +602,7 @@ TEST_F(GenericServiceClientMethod1Test, ManyConcurrentRoundTripsUnderRealMultiTh
   spin_thread.join();
 
   ASSERT_TRUE(all_received) << "only " << received_count.load() << "/" << kIterations
-                             << " responses arrived -- at least one was dropped";
+                            << " responses arrived -- at least one was dropped";
   EXPECT_EQ(success_count.load(), kIterations);
 }
 
