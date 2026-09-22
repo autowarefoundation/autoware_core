@@ -708,9 +708,6 @@ When Agnocast is enabled at build time, the heaphook shared library must be prel
 
 The discovery agent behind `ros2 topic list_agnocast` / `info_agnocast` / `hz_agnocast` is not one of them: Agnocast starts it itself.
 
-If those commands come back empty, the auto-start only warns and continues: either
-`ros2agnocast_discovery_agent` is not on `AMENT_PREFIX_PATH`, or `AGNOCAST_NO_DISCOVERY_AGENT` is set.
-
 ### Provided Variables
 
 After including `agnocast_env.launch.xml` (or `agnocast_env.launch.py`), the following variables are available (in Python launch files, reference them via `LaunchConfiguration`):
