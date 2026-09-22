@@ -530,13 +530,15 @@ void EKFLocalizer::predict_with_delay(const double dt)
 {
   const Vector6d x_curr = kalman_filter_.getLatestX();
 
+  const double proc_cov_xy_d = std::pow(params_.proc_stddev_xy_c * dt, 2.0);
   const double proc_cov_vx_d = std::pow(params_.proc_stddev_vx_c * dt, 2.0);
   const double proc_cov_wz_d = std::pow(params_.proc_stddev_wz_c * dt, 2.0);
   const double proc_cov_yaw_d = std::pow(params_.proc_stddev_yaw_c * dt, 2.0);
 
   const Vector6d x_next = predict_next_state(x_curr, dt);
   const Matrix6d a = create_state_transition_matrix(x_curr, dt);
-  const Matrix6d q = process_noise_covariance(proc_cov_yaw_d, proc_cov_vx_d, proc_cov_wz_d);
+  const Matrix6d q =
+    process_noise_covariance(proc_cov_xy_d, proc_cov_yaw_d, proc_cov_vx_d, proc_cov_wz_d);
   kalman_filter_.predictWithDelay(x_next, a, q);
   ekf_dt_ = dt;
 }
