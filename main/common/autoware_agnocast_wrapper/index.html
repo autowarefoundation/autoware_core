@@ -8079,17 +8079,6 @@
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#discovery-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Discovery agent
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
   <a href="#provided-variables" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -9068,11 +9057,7 @@ colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<spa
 <p>In such cases, rebuild both A and B with Agnocast <strong>disabled</strong> to ensure consistency. As a best practice, we recommend keeping the value of <code>ENABLE_AGNOCAST</code> consistent within a workspace to avoid unintentional mismatches and simplify build management.</p>
 <h2 id="how-to-enable-agnocast-at-runtime">How to Enable Agnocast at Runtime<a class="headerlink" href="#how-to-enable-agnocast-at-runtime" title="Permanent link">#</a></h2>
 <p>When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via <code>LD_PRELOAD</code>, and component containers must be replaced with their Agnocast equivalents. This package provides <code>agnocast_env.launch.xml</code> (and its Python equivalent <code>agnocast_env.launch.py</code>) which handles both of these concerns based on the <code>ENABLE_AGNOCAST</code> environment variable.</p>
-<h3 id="discovery-agent">Discovery agent<a class="headerlink" href="#discovery-agent" title="Permanent link">#</a></h3>
-<p>Including <code>agnocast_env.launch.xml</code> / <code>.py</code> also launches the <code>agnocast_discovery_agent</code> node
-automatically, once per launch tree and only when <code>ENABLE_AGNOCAST=1</code>. It publishes the local Agnocast
-state on <code>/_agnocast_discovery</code>, which the <code>ros2 topic list_agnocast</code> / <code>info_agnocast</code> / <code>hz_agnocast</code>
-commands rely on.</p>
+<p>The discovery agent behind <code>ros2 topic list_agnocast</code> / <code>info_agnocast</code> / <code>hz_agnocast</code> is not one of them: Agnocast starts it itself.</p>
 <h3 id="provided-variables">Provided Variables<a class="headerlink" href="#provided-variables" title="Permanent link">#</a></h3>
 <p>After including <code>agnocast_env.launch.xml</code> (or <code>agnocast_env.launch.py</code>), the following variables are available (in Python launch files, reference them via <code>LaunchConfiguration</code>):</p>
 <table>
