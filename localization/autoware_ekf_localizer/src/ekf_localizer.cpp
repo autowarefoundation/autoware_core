@@ -607,13 +607,16 @@ bool EKFLocalizer::measurement_update_pose(
   const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
   const Eigen::MatrixXd p_y = p_curr.block(0, 0, dim_y, dim_y);
 
-  const double distance = mahalanobis(y_ekf, y, p_y);
+  // pose_gate_dist is a chi-square quantile, so it is compared against the squared distance.
+  const double squared_distance = squared_mahalanobis(y_ekf, y, p_y);
+  const double distance = std::sqrt(squared_distance);
   pose_diag_info.mahalanobis_distance = std::max(distance, pose_diag_info.mahalanobis_distance);
   // is_passed_mahalanobis_gate is initialized true before the first calling measurement_update_pose
   // every ekf_localizer call.
-  if (distance > params_.pose_gate_dist) {
+  if (squared_distance > params_.pose_gate_dist) {
     pose_diag_info.is_passed_mahalanobis_gate = false;
-    warnings_out.push_back({mahalanobis_warning_message(distance, params_.pose_gate_dist), 2000});
+    warnings_out.push_back(
+      {mahalanobis_warning_message(distance, std::sqrt(params_.pose_gate_dist)), 2000});
     warnings_out.push_back({"Ignore the measurement data.", 2000});
     return false;
   }
@@ -737,13 +740,16 @@ bool EKFLocalizer::measurement_update_twist(
   const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
   const Eigen::MatrixXd p_y = p_curr.block(4, 4, dim_y, dim_y);
 
-  const double distance = mahalanobis(y_ekf, y, p_y);
+  // twist_gate_dist is a chi-square quantile, so it is compared against the squared distance.
+  const double squared_distance = squared_mahalanobis(y_ekf, y, p_y);
+  const double distance = std::sqrt(squared_distance);
   twist_diag_info.mahalanobis_distance = std::max(distance, twist_diag_info.mahalanobis_distance);
   // is_passed_mahalanobis_gate is initialized true before the first calling
   // measurement_update_twist every ekf_localizer call.
-  if (distance > params_.twist_gate_dist) {
+  if (squared_distance > params_.twist_gate_dist) {
     twist_diag_info.is_passed_mahalanobis_gate = false;
-    warnings_out.push_back({mahalanobis_warning_message(distance, params_.twist_gate_dist), 2000});
+    warnings_out.push_back(
+      {mahalanobis_warning_message(distance, std::sqrt(params_.twist_gate_dist)), 2000});
     warnings_out.push_back({"Ignore the measurement data.", 2000});
     return false;
   }
