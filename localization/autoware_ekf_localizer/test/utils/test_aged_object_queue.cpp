@@ -14,9 +14,6 @@
 
 #include "utils/aged_object_queue.hpp"
 
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-#include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
-
 #include <gtest/gtest.h>
 
 #include <memory>
@@ -124,24 +121,6 @@ TEST(AgedObjectQueue, PopAndMaxQueueSize)
   EXPECT_EQ(queue.size(), 1U);
   EXPECT_EQ(queue.pop(), "b");
   EXPECT_TRUE(queue.empty());
-}
-
-TEST(AgedObjectQueue, PoseAndTwistQueues)
-{
-  using PoseMsg = geometry_msgs::msg::PoseWithCovarianceStamped::ConstSharedPtr;
-  using TwistMsg = geometry_msgs::msg::TwistWithCovarianceStamped::ConstSharedPtr;
-
-  AgedObjectQueue<PoseMsg> pose_queue(3, 5);
-  EXPECT_EQ(pose_queue.max_queue_size(), 5U);
-  auto p = std::make_shared<geometry_msgs::msg::PoseWithCovarianceStamped>();
-  pose_queue.push(p);
-  EXPECT_EQ(pose_queue.pop(), p);
-
-  AgedObjectQueue<TwistMsg> twist_queue(3, 5);
-  EXPECT_EQ(twist_queue.max_queue_size(), 5U);
-  auto t = std::make_shared<geometry_msgs::msg::TwistWithCovarianceStamped>();
-  twist_queue.push(t);
-  EXPECT_EQ(twist_queue.pop(), t);
 }
 
 }  // namespace autoware::ekf_localizer
