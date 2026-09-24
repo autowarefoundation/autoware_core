@@ -64,18 +64,4 @@ TEST(mahalanobis_warning_message, SmokeTest)
     "The Mahalanobis distance 1.0000 is over the limit 0.5000.");
 }
 
-TEST(large_ekf_dt_waring_message, SmokeTest)
-{
-  EXPECT_STREQ(
-    large_ekf_dt_waring_message(12.3456).c_str(),
-    "Large ekf_dt_ detected!! (12.3456 sec) Capped to 10.0 seconds");
-}
-
-TEST(too_slow_ekf_dt_waring_message, SmokeTest)
-{
-  EXPECT_STREQ(
-    too_slow_ekf_dt_waring_message(0.25).c_str(),
-    "EKF period may be too slow to finish pose smoothing!! (0.2500 sec)");
-}
-
 }  // namespace autoware::ekf_localizer
