@@ -33,7 +33,6 @@ using TrajectoryPoints = std::vector<TrajectoryPoint>;
 
 namespace
 {
-// Floating point tolerance at EXPECT_NEAR and similar checks
 constexpr float near_tol = 1e-4F;
 
 TrajectoryPoint createPoint(double x, double y, double z, double yaw, double velocity)
@@ -64,6 +63,13 @@ TrajectoryPoints createTrajectory(double velocity, double length, double step)
   return traj;
 }
 
+TrajectoryPoints createTrajectoryWithStopAtEnd(double velocity, double length, double step)
+{
+  auto traj = createTrajectory(velocity, length, step);
+  traj.back().longitudinal_velocity_mps = 0.0;
+  return traj;
+}
+
 rclcpp::NodeOptions makeNodeOptions(const std::string & algorithm_param_file)
 {
   rclcpp::NodeOptions options;
@@ -90,123 +96,193 @@ rclcpp::NodeOptions makeNodeOptions(const std::string & algorithm_param_file)
 }
 }  // namespace
 
-TEST(TestPseudoJerkSmoothers, L2PseudoJerkSmootherTest)
+class SmootherTest : public ::testing::Test
 {
-  rclcpp::init(0, nullptr);
-  auto node =
-    std::make_shared<rclcpp::Node>("test_l2_smoother_node", makeNodeOptions("L2.param.yaml"));
-  auto time_keeper = std::make_shared<autoware_utils_debug::TimeKeeper>();
+protected:
+  static void SetUpTestSuite()
+  {
+    if (!rclcpp::ok()) {
+      rclcpp::init(0, nullptr);
+    }
+  }
 
-  L2PseudoJerkSmoother smoother(*node, time_keeper);
+  static void TearDownTestSuite()
+  {
+    if (rclcpp::ok()) {
+      rclcpp::shutdown();
+    }
+  }
 
-  // Test Param getters and setters
-  auto p = smoother.getParam();
-  EXPECT_GT(p.pseudo_jerk_weight, 0.0);
-  p.pseudo_jerk_weight += 10.0;
-  smoother.setParam(p);
-  EXPECT_NEAR(smoother.getParam().pseudo_jerk_weight, p.pseudo_jerk_weight, near_tol);
+  template <typename SmootherType>
+  std::unique_ptr<SmootherType> createSmoother(const std::string & algorithm_name)
+  {
+    auto node = std::make_shared<rclcpp::Node>(
+      "test_" + algorithm_name + "_node", makeNodeOptions(algorithm_name + ".param.yaml"));
+    auto time_keeper = std::make_shared<autoware_utils_debug::TimeKeeper>();
+    return std::make_unique<SmootherType>(*node, time_keeper);
+  }
 
-  // Test apply with insufficient trajectory (single point)
-  TrajectoryPoints single_point = {createPoint(0.0, 0.0, 0.0, 0.0, 5.0)};
-  TrajectoryPoints output;
-  std::vector<TrajectoryPoints> debug_trajectories;
-  EXPECT_FALSE(smoother.apply(5.0, 0.0, single_point, output, debug_trajectories, false));
+  static void expect_initial_velocity_kept(
+    const TrajectoryPoints & trajectory, const double initial_velocity)
+  {
+    ASSERT_FALSE(trajectory.empty());
+    EXPECT_NEAR(trajectory.front().longitudinal_velocity_mps, initial_velocity, velocity_tolerance);
+  }
 
-  // Test apply with stopped vehicle
-  TrajectoryPoints stopped_input = {
+  static void expect_within_velocity_limit(
+    const TrajectoryPoints & input, const TrajectoryPoints & output)
+  {
+    ASSERT_EQ(input.size(), output.size());
+    for (size_t i = 0; i < output.size(); ++i) {
+      SCOPED_TRACE("point index " + std::to_string(i));
+      EXPECT_LE(
+        output.at(i).longitudinal_velocity_mps,
+        input.at(i).longitudinal_velocity_mps + velocity_tolerance);
+    }
+  }
+
+  static void expect_goal_point_velocity_is_zero(const TrajectoryPoints & trajectory)
+  {
+    ASSERT_FALSE(trajectory.empty());
+    EXPECT_NEAR(trajectory.back().longitudinal_velocity_mps, 0.0, stop_velocity_tolerance);
+  }
+
+  static constexpr double velocity_tolerance = 0.05;
+  static constexpr double stop_velocity_tolerance = 0.05;
+
+  TrajectoryPoints output_;
+  std::vector<TrajectoryPoints> debug_trajectories_;
+};
+
+// ========================== L2 pseudo jerk smoother tests ==========================
+
+TEST_F(SmootherTest, L2SmoothsVelocityToStopPointKeepConstraint)
+{
+  const auto smoother = createSmoother<L2PseudoJerkSmoother>("L2");
+  const auto input = createTrajectoryWithStopAtEnd(10.0, 50.0, 1.0);
+
+  ASSERT_TRUE(smoother->apply(5.0, 0.0, input, output_, debug_trajectories_, true));
+
+  expect_initial_velocity_kept(output_, 5.0);
+  expect_within_velocity_limit(input, output_);
+  expect_goal_point_velocity_is_zero(output_);
+  EXPECT_TRUE(debug_trajectories_.empty());
+}
+
+TEST_F(SmootherTest, L2RejectsInsufficientTrajectoryPoints)
+{
+  const auto smoother = createSmoother<L2PseudoJerkSmoother>("L2");
+  const TrajectoryPoints single_point = {createPoint(0.0, 0.0, 0.0, 0.0, 5.0)};
+
+  EXPECT_FALSE(smoother->apply(5.0, 0.0, single_point, output_, debug_trajectories_, false));
+}
+
+TEST_F(SmootherTest, L2SucceedsForStoppedVehicle)
+{
+  const auto smoother = createSmoother<L2PseudoJerkSmoother>("L2");
+  const TrajectoryPoints stopped_input = {
     createPoint(0.0, 0.0, 0.0, 0.0, 0.0), createPoint(1.0, 0.0, 0.0, 0.0, 0.0)};
-  EXPECT_TRUE(smoother.apply(0.0, 0.0, stopped_input, output, debug_trajectories, false));
 
-  // Test apply with nominal trajectory
-  TrajectoryPoints nominal_input = createTrajectory(10.0, 50.0, 1.0);
-  nominal_input.back().longitudinal_velocity_mps = 0.0;  // Stop point
-  EXPECT_TRUE(smoother.apply(5.0, 0.0, nominal_input, output, debug_trajectories, true));
-  EXPECT_EQ(output.size(), nominal_input.size());
-  EXPECT_TRUE(debug_trajectories.empty());
-
-  // Test resampleTrajectory
-  geometry_msgs::msg::Pose current_pose;
-  current_pose.orientation.w = 1.0;
-  const auto resampled = smoother.resampleTrajectory(nominal_input, 5.0, current_pose, 3.0, 1.0);
-  EXPECT_GT(resampled.size(), 0u);
-
-  rclcpp::shutdown();
+  EXPECT_TRUE(smoother->apply(0.0, 0.0, stopped_input, output_, debug_trajectories_, false));
+  expect_goal_point_velocity_is_zero(output_);
 }
 
-TEST(TestPseudoJerkSmoothers, LinfPseudoJerkSmootherTest)
+TEST_F(SmootherTest, L2UpdatesPseudoJerkWeightParameter)
 {
-  rclcpp::init(0, nullptr);
-  auto node =
-    std::make_shared<rclcpp::Node>("test_linf_smoother_node", makeNodeOptions("Linf.param.yaml"));
-  auto time_keeper = std::make_shared<autoware_utils_debug::TimeKeeper>();
-
-  LinfPseudoJerkSmoother smoother(*node, time_keeper);
-
-  // Test Param getters and setters
-  auto p = smoother.getParam();
+  const auto smoother = createSmoother<L2PseudoJerkSmoother>("L2");
+  auto p = smoother->getParam();
   EXPECT_GT(p.pseudo_jerk_weight, 0.0);
-  p.pseudo_jerk_weight += 20.0;
-  smoother.setParam(p);
-  EXPECT_NEAR(smoother.getParam().pseudo_jerk_weight, p.pseudo_jerk_weight, near_tol);
 
-  // Test apply with insufficient points
-  TrajectoryPoints single_point = {createPoint(0.0, 0.0, 0.0, 0.0, 5.0)};
-  TrajectoryPoints output;
-  std::vector<TrajectoryPoints> debug_trajectories;
-  EXPECT_FALSE(smoother.apply(5.0, 0.0, single_point, output, debug_trajectories, false));
-
-  // Test apply with nominal trajectory
-  TrajectoryPoints nominal_input = createTrajectory(10.0, 50.0, 1.0);
-  nominal_input.back().longitudinal_velocity_mps = 0.0;  // Stop point
-  EXPECT_TRUE(smoother.apply(5.0, 0.0, nominal_input, output, debug_trajectories, true));
-  EXPECT_EQ(output.size(), nominal_input.size());
-
-  // Test resampleTrajectory
-  geometry_msgs::msg::Pose current_pose;
-  current_pose.orientation.w = 1.0;
-  const auto resampled = smoother.resampleTrajectory(nominal_input, 5.0, current_pose, 3.0, 1.0);
-  EXPECT_GT(resampled.size(), 0u);
-
-  rclcpp::shutdown();
+  p.pseudo_jerk_weight += 10.0;
+  smoother->setParam(p);
+  EXPECT_NEAR(smoother->getParam().pseudo_jerk_weight, p.pseudo_jerk_weight, near_tol);
 }
 
-TEST(TestPseudoJerkSmoothers, AnalyticalJerkConstrainedSmootherTest)
+// ========================== Linf pseudo jerk smoother tests ==========================
+
+TEST_F(SmootherTest, LinfSmoothsVelocityToStopPointKeepConstraint)
 {
-  rclcpp::init(0, nullptr);
-  auto node = std::make_shared<rclcpp::Node>(
-    "test_analytical_smoother_node", makeNodeOptions("Analytical.param.yaml"));
-  auto time_keeper = std::make_shared<autoware_utils_debug::TimeKeeper>();
+  const auto smoother = createSmoother<LinfPseudoJerkSmoother>("Linf");
+  const auto input = createTrajectoryWithStopAtEnd(10.0, 50.0, 1.0);
 
-  AnalyticalJerkConstrainedSmoother smoother(*node, time_keeper);
+  ASSERT_TRUE(smoother->apply(5.0, 0.0, input, output_, debug_trajectories_, true));
 
-  // Test Param getters and setters
-  auto p = smoother.getParam();
+  expect_initial_velocity_kept(output_, 5.0);
+  expect_within_velocity_limit(input, output_);
+  expect_goal_point_velocity_is_zero(output_);
+}
+
+TEST_F(SmootherTest, LinfRejectsInsufficientTrajectoryPoints)
+{
+  const auto smoother = createSmoother<LinfPseudoJerkSmoother>("Linf");
+  const TrajectoryPoints single_point = {createPoint(0.0, 0.0, 0.0, 0.0, 5.0)};
+
+  EXPECT_FALSE(smoother->apply(5.0, 0.0, single_point, output_, debug_trajectories_, false));
+}
+
+TEST_F(SmootherTest, LinfUpdatesPseudoJerkWeightParameter)
+{
+  const auto smoother = createSmoother<LinfPseudoJerkSmoother>("Linf");
+  auto p = smoother->getParam();
+  EXPECT_GT(p.pseudo_jerk_weight, 0.0);
+
+  p.pseudo_jerk_weight += 20.0;
+  smoother->setParam(p);
+  EXPECT_NEAR(smoother->getParam().pseudo_jerk_weight, p.pseudo_jerk_weight, near_tol);
+}
+
+// ========================== Analytical jerk constrained smoother tests ==========================
+
+TEST_F(SmootherTest, AnalyticalSmoothsVelocityToStopPointKeepConstraint)
+{
+  const auto smoother = createSmoother<AnalyticalJerkConstrainedSmoother>("Analytical");
+  const auto input = createTrajectoryWithStopAtEnd(10.0, 50.0, 1.0);
+
+  ASSERT_TRUE(smoother->apply(5.0, 0.0, input, output_, debug_trajectories_, true));
+
+  expect_initial_velocity_kept(output_, 5.0);
+  expect_within_velocity_limit(input, output_);
+  expect_goal_point_velocity_is_zero(output_);
+}
+
+TEST_F(SmootherTest, AnalyticalHandlesSinglePointTrajectory)
+{
+  const auto smoother = createSmoother<AnalyticalJerkConstrainedSmoother>("Analytical");
+  const TrajectoryPoints single_point = {createPoint(0.0, 0.0, 0.0, 0.0, 5.0)};
+
+  EXPECT_TRUE(smoother->apply(5.0, 0.0, single_point, output_, debug_trajectories_, false));
+}
+
+TEST_F(SmootherTest, AnalyticalFiltersLateralAcceleration)
+{
+  const auto smoother = createSmoother<AnalyticalJerkConstrainedSmoother>("Analytical");
+  const auto input = createTrajectory(10.0, 50.0, 1.0);
+
+  const auto filtered = smoother->applyLateralAccelerationFilter(input, 5.0, 0.0, true, true, 1.0);
+  ASSERT_FALSE(filtered.empty());
+  EXPECT_LE(filtered.front().longitudinal_velocity_mps, 10.0 + velocity_tolerance);
+}
+
+TEST_F(SmootherTest, AnalyticalUpdatesResampleParameter)
+{
+  const auto smoother = createSmoother<AnalyticalJerkConstrainedSmoother>("Analytical");
+  auto p = smoother->getParam();
+
   p.resample.ds_resample = 0.5;
-  smoother.setParam(p);
-  EXPECT_NEAR(smoother.getParam().resample.ds_resample, 0.5, near_tol);
+  smoother->setParam(p);
+  EXPECT_NEAR(smoother->getParam().resample.ds_resample, 0.5, near_tol);
+}
 
-  // Test apply with single point
-  TrajectoryPoints single_point = {createPoint(0.0, 0.0, 0.0, 0.0, 5.0)};
-  TrajectoryPoints output;
-  std::vector<TrajectoryPoints> debug_trajectories;
-  EXPECT_TRUE(smoother.apply(5.0, 0.0, single_point, output, debug_trajectories, false));
+// ========================== Common trajectory resampling test ==========================
 
-  // Test apply with nominal trajectory
-  TrajectoryPoints nominal_input = createTrajectory(10.0, 50.0, 1.0);
-  nominal_input.back().longitudinal_velocity_mps = 0.0;  // Stop point
-  EXPECT_TRUE(smoother.apply(5.0, 0.0, nominal_input, output, debug_trajectories, true));
-  EXPECT_GT(output.size(), 0u);
+TEST_F(SmootherTest, ResamplesTrajectoryAroundPose)
+{
+  const auto smoother = createSmoother<L2PseudoJerkSmoother>("L2");
+  const auto input = createTrajectory(10.0, 50.0, 1.0);
 
-  // Test applyLateralAccelerationFilter
-  const auto filtered =
-    smoother.applyLateralAccelerationFilter(nominal_input, 5.0, 0.0, true, true, 1.0);
-  EXPECT_GT(filtered.size(), 0u);
-
-  // Test resampleTrajectory
   geometry_msgs::msg::Pose current_pose;
   current_pose.orientation.w = 1.0;
-  const auto resampled = smoother.resampleTrajectory(nominal_input, 5.0, current_pose, 3.0, 1.0);
-  EXPECT_GT(resampled.size(), 0u);
 
-  rclcpp::shutdown();
+  const auto resampled = smoother->resampleTrajectory(input, 5.0, current_pose, 3.0, 1.0);
+  EXPECT_FALSE(resampled.empty());
 }
