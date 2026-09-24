@@ -35,10 +35,7 @@ namespace
 {
 // Floating point tolerance at EXPECT_NEAR and similar checks
 constexpr float near_tol = 1e-4F;
-}  // namespace
 
-namespace
-{
 TrajectoryPoint createPoint(double x, double y, double z, double yaw, double velocity)
 {
   TrajectoryPoint p;
