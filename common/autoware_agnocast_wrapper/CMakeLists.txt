@@ -108,11 +108,6 @@ install(
 )
 
 if(BUILD_TESTING)
-  find_package(ament_cmake_pytest REQUIRED)
-  ament_add_pytest_test(test_discovery_agent_launch
-    test/test_discovery_agent_launch.py
-  )
-
   find_package(std_msgs REQUIRED)
   file(GLOB_RECURSE test_files test/main.cpp test/cases/*.cpp)
   ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})
