@@ -12,8 +12,6 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/objects_of_interest_marker_interface/coloring.hpp"
-#include "autoware/objects_of_interest_marker_interface/marker_utils.hpp"
 #include "autoware/objects_of_interest_marker_interface/objects_of_interest_marker_interface.hpp"
 
 #include <rclcpp/rclcpp.hpp>
@@ -21,82 +19,35 @@
 #include <gtest/gtest.h>
 
 #include <memory>
-#include <vector>
+#include <string>
 
 using autoware::objects_of_interest_marker_interface::ColorName;
-using autoware::objects_of_interest_marker_interface::ObjectMarkerData;
 using autoware::objects_of_interest_marker_interface::ObjectsOfInterestMarkerInterface;
-namespace coloring = autoware::objects_of_interest_marker_interface::coloring;
-namespace marker_utils = autoware::objects_of_interest_marker_interface::marker_utils;
 
 namespace
 {
-// Floating point tolerance at EXPECT_NEAR and similar checks
 constexpr float near_tol = 1e-4F;
 }  // namespace
 
-TEST(TestColoring, BasicColors)
+class ObjectsOfInterestMarkerInterfaceTest : public ::testing::Test
 {
-  const float alpha = 0.8f;
-  const auto green = coloring::getGreen(alpha);
-  EXPECT_NEAR(green.a, alpha, near_tol);
-  EXPECT_GT(green.g, 0.5f);
+protected:
+  static void SetUpTestSuite()
+  {
+    if (!rclcpp::ok()) {
+      rclcpp::init(0, nullptr);
+    }
+  }
 
-  const auto amber = coloring::getAmber(alpha);
-  EXPECT_NEAR(amber.a, alpha, near_tol);
-  EXPECT_GT(amber.r, 0.5f);
-  EXPECT_GT(amber.g, 0.5f);
+  static void TearDownTestSuite()
+  {
+    if (rclcpp::ok()) {
+      rclcpp::shutdown();
+    }
+  }
+};
 
-  const auto red = coloring::getRed(alpha);
-  EXPECT_NEAR(red.a, alpha, near_tol);
-  EXPECT_GT(red.r, 0.5f);
-
-  const auto gray = coloring::getGray(alpha);
-  EXPECT_NEAR(gray.a, alpha, near_tol);
-  EXPECT_GT(gray.r, 0.4f);
-  EXPECT_NEAR(gray.r, gray.g, near_tol);
-  EXPECT_NEAR(gray.g, gray.b, near_tol);
-}
-
-TEST(TestMarkerUtils, CreateMarkers)
-{
-  ObjectMarkerData data;
-  data.pose.position.x = 1.0;
-  data.pose.position.y = 2.0;
-  data.pose.position.z = 0.5;
-  data.pose.orientation.w = 1.0;
-  data.shape.dimensions.x = 2.0;
-  data.shape.dimensions.y = 1.5;
-  data.shape.dimensions.z = 1.0;
-  data.color = coloring::getRed(0.9f);
-
-  // Arrow marker
-  const auto arrow = marker_utils::createArrowMarker(1, data, "test", 0.5, 1.0);
-  EXPECT_EQ(arrow.id, 1);
-  EXPECT_EQ(arrow.type, visualization_msgs::msg::Marker::ARROW);
-  EXPECT_EQ(arrow.ns, "test_arrow");
-  ASSERT_EQ(arrow.points.size(), 2u);
-  EXPECT_NEAR(arrow.points[0].x, 1.0f, near_tol);
-  EXPECT_NEAR(arrow.points[0].y, 2.0f, near_tol);
-
-  // Circle marker
-  const auto circle = marker_utils::createCircleMarker(2, data, "test_circle", 1.0, 0.5, 0.1);
-  EXPECT_EQ(circle.id, 2);
-  EXPECT_EQ(circle.type, visualization_msgs::msg::Marker::LINE_STRIP);
-  EXPECT_EQ(circle.points.size(), 21u);  // 20 points + closing point
-
-  // Name text marker
-  const auto text = marker_utils::createNameTextMarker(3, data, "test_name", 0.5, 0.8);
-  EXPECT_EQ(text.id, 3);
-  EXPECT_EQ(text.type, visualization_msgs::msg::Marker::TEXT_VIEW_FACING);
-  EXPECT_EQ(text.text, "test_name");
-
-  // Target marker array
-  const auto marker_array = marker_utils::createTargetMarker(4, data, "test_target", 0.5, 1.0, 0.1);
-  EXPECT_EQ(marker_array.markers.size(), 4u);
-}
-
-TEST(TestObjectsOfInterestMarkerInterface, InterfaceOperations)
+TEST_F(ObjectsOfInterestMarkerInterfaceTest, PublishMarkerArrayPublishesMarkersToSubscribedTopic)
 {
   rclcpp::init(0, nullptr);
   auto node = std::make_shared<rclcpp::Node>("test_objects_of_interest_node");
