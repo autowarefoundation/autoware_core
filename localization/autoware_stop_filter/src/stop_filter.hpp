@@ -27,15 +27,18 @@ struct StopFilterConfig
   double angular_z_threshold;
 };
 
+struct StopFilterResult
+{
+  nav_msgs::msg::Odometry filtered_odometry;
+  autoware_internal_debug_msgs::msg::BoolStamped stop_flag;
+};
+
 class StopFilter
 {
 public:
   explicit StopFilter(const StopFilterConfig & config);
 
-  autoware_internal_debug_msgs::msg::BoolStamped create_stop_flag_msg(
-    const nav_msgs::msg::Odometry & input) const;
-
-  nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry & input) const;
+  StopFilterResult filter(const nav_msgs::msg::Odometry & input) const;
 
 private:
   StopFilterConfig config_;
