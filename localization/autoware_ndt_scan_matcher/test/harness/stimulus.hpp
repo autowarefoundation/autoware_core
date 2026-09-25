@@ -53,6 +53,10 @@ inline constexpr const char * ndt_align_status = "ndt_scan_matcher: ndt_align_se
 inline constexpr double map_center_x = 100.0;
 inline constexpr double map_center_y = 100.0;
 
+/// @brief Anchor of the stub's second cell. Placed where only the cell-boundary walk can reach it;
+/// `StubMapLoader` says why it must not move closer.
+inline constexpr double second_cell_x = 300.0;
+
 // ------------------------------------------------------------------------------- world geometry
 
 /// @brief Edge length [m] of the box whose corner is the only shape in this world.
@@ -118,11 +122,15 @@ inline pcl::PointCloud<pcl::PointXYZ> make_corner_cloud(
 // -------------------------------------------------------------------------------------- stimulus
 
 /// @brief A normal scan stamped at `stamp`: the corner cloud at 1 m spacing, 1,323 points.
+///
+/// `shift_x` / `shift_y` move the corner within the sensor frame, which is what lets a scan taken
+/// from one position still describe the cell anchored at another.
 inline sensor_msgs::msg::PointCloud2 make_scan_at(
-  const builtin_interfaces::msg::Time & stamp, const std::string & frame_id = sensor_frame)
+  const builtin_interfaces::msg::Time & stamp, const double shift_x = 0.0,
+  const double shift_y = 0.0, const std::string & frame_id = sensor_frame)
 {
   sensor_msgs::msg::PointCloud2 cloud;
-  pcl::toROSMsg(make_corner_cloud(scan_spacing), cloud);
+  pcl::toROSMsg(make_corner_cloud(scan_spacing, shift_x, shift_y), cloud);
   cloud.header.stamp = stamp;
   cloud.header.frame_id = frame_id;
   return cloud;
