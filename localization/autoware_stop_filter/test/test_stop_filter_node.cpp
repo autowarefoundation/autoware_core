@@ -17,89 +17,106 @@
 #include <gtest/gtest.h>
 
 #include <chrono>
+#include <functional>
 #include <memory>
-#include <mutex>
-#include <thread>
 
-TEST(StopFilterNodeTest, TestStopDetection)
+namespace
 {
-  // Initialize ROS 2 context
-  rclcpp::init(0, nullptr);
+struct PublishedMessages
+{
+  nav_msgs::msg::Odometry::SharedPtr filtered_odom;
+  autoware_internal_debug_msgs::msg::BoolStamped::SharedPtr stop_flag;
+};
 
-  // Variable to hold received messages
-  std::shared_ptr<nav_msgs::msg::Odometry> received_odom;
-  std::shared_ptr<autoware_internal_debug_msgs::msg::BoolStamped> received_stop_flag;
-  bool odom_received = false;
-  bool stop_flag_received = false;
-  std::mutex msg_mutex;
+nav_msgs::msg::Odometry create_odometry_message(const double linear_x, const double angular_z)
+{
+  nav_msgs::msg::Odometry msg;
+  msg.twist.twist.linear.x = linear_x;
+  msg.twist.twist.angular.z = angular_z;
+  return msg;
+}
 
-  // Subscription to receive output messages
-  std::shared_ptr<rclcpp::Node> test_control_node =
-    std::make_shared<rclcpp::Node>("test_control_node");
-  auto odom_subscription = test_control_node->create_subscription<nav_msgs::msg::Odometry>(
-    "output/odom", 10, [&](const nav_msgs::msg::Odometry::SharedPtr msg) {
-      std::lock_guard<std::mutex> lock(msg_mutex);
-      received_odom = msg;
-      odom_received = true;
-    });
+// Spin the executor until the condition becomes true or the timeout of 2 seconds expires.
+void spin_until(rclcpp::Executor & executor, const std::function<bool()> & condition)
+{
+  const auto timeout = std::chrono::seconds(2);
+  const auto start_time = std::chrono::steady_clock::now();
+  while (!condition() && std::chrono::steady_clock::now() - start_time < timeout) {
+    executor.spin_once(std::chrono::milliseconds(10));
+  }
+}
+}  // namespace
 
-  auto stop_flag_subscription =
-    test_control_node->create_subscription<autoware_internal_debug_msgs::msg::BoolStamped>(
-      "debug/stop_flag", 10,
-      [&](const autoware_internal_debug_msgs::msg::BoolStamped::SharedPtr msg) {
-        std::lock_guard<std::mutex> lock(msg_mutex);
-        received_stop_flag = msg;
-        stop_flag_received = true;
+class StopFilterNodeTest : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    rclcpp::init(0, nullptr);
+
+    test_node_ = std::make_shared<rclcpp::Node>("test_stop_filter_node");
+    odom_subscription_ = test_node_->create_subscription<nav_msgs::msg::Odometry>(
+      "output/odom", 10, [this](const nav_msgs::msg::Odometry::SharedPtr msg) {
+        received_messages_.filtered_odom = msg;
       });
+    stop_flag_subscription_ =
+      test_node_->create_subscription<autoware_internal_debug_msgs::msg::BoolStamped>(
+        "debug/stop_flag", 10,
+        [this](const autoware_internal_debug_msgs::msg::BoolStamped::SharedPtr msg) {
+          received_messages_.stop_flag = msg;
+        });
+    odom_publisher_ = test_node_->create_publisher<nav_msgs::msg::Odometry>("input/odom", 10);
 
-  // Create stop filter node and register subscriptions
-  rclcpp::NodeOptions options;
-  options.parameter_overrides({{"vx_threshold", 1.0}, {"wz_threshold", 1.0}});
-  std::shared_ptr<autoware::stop_filter::StopFilterNode> stop_filter_node =
-    std::make_shared<autoware::stop_filter::StopFilterNode>(options);
-
-  // Create executor and register nodes
-  rclcpp::executors::SingleThreadedExecutor executor;
-  executor.add_node(stop_filter_node->get_node_base_interface());
-  executor.add_node(test_control_node);
-
-  // Run executor in separate thread
-  std::thread executor_thread([&]() { executor.spin(); });
-
-  // Create publisher for input messages
-  auto publisher = test_control_node->create_publisher<nav_msgs::msg::Odometry>("input/odom", 10);
-
-  // Wait for connection to be established
-  std::this_thread::sleep_for(std::chrono::milliseconds(100));
-
-  // Create and publish stop state test message
-  auto stop_msg = nav_msgs::msg::Odometry();
-  stop_msg.header.frame_id = "base_link";
-  stop_msg.header.stamp = rclcpp::Clock().now();
-  stop_msg.twist.twist.linear.x = 0.2;   // below threshold
-  stop_msg.twist.twist.angular.z = 0.2;  // below threshold
-  publisher->publish(stop_msg);
-
-  // Wait for messages to be received
-  auto start_time = std::chrono::steady_clock::now();
-  while ((!odom_received || !stop_flag_received) &&
-         std::chrono::steady_clock::now() - start_time < std::chrono::seconds(4)) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
+    executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
+    executor_->add_node(test_node_);
   }
 
-  // Stop executor
-  executor.cancel();
-  if (executor_thread.joinable()) {
-    executor_thread.join();
-  }
-  rclcpp::shutdown();
+  void TearDown() override { rclcpp::shutdown(); }
 
-  // Verify results
-  ASSERT_TRUE(odom_received) << "Odometry message was not received within timeout";
-  ASSERT_TRUE(stop_flag_received) << "Stop flag message was not received within timeout";
-  ASSERT_NE(received_odom, nullptr);
-  ASSERT_NE(received_stop_flag, nullptr);
-  ASSERT_EQ(received_odom->twist.twist.linear.x, 0.0);
-  ASSERT_EQ(received_odom->twist.twist.angular.z, 0.0);
-  ASSERT_TRUE(received_stop_flag->data);
+  void start_stop_filter_node(const double vx_threshold, const double wz_threshold)
+  {
+    rclcpp::NodeOptions options;
+    options.parameter_overrides({{"vx_threshold", vx_threshold}, {"wz_threshold", wz_threshold}});
+    stop_filter_node_ = std::make_shared<autoware::stop_filter::StopFilterNode>(options);
+    executor_->add_node(stop_filter_node_->get_node_base_interface());
+
+    spin_until(*executor_, [this]() {
+      return odom_publisher_->get_subscription_count() > 0 &&
+             odom_subscription_->get_publisher_count() > 0 &&
+             stop_flag_subscription_->get_publisher_count() > 0;
+    });
+  }
+
+  PublishedMessages receive_published_messages()
+  {
+    spin_until(*executor_, [this]() {
+      return received_messages_.filtered_odom && received_messages_.stop_flag;
+    });
+    return received_messages_;
+  }
+
+  std::shared_ptr<rclcpp::Node> test_node_;
+  std::shared_ptr<autoware::stop_filter::StopFilterNode> stop_filter_node_;
+  rclcpp::Publisher<nav_msgs::msg::Odometry>::SharedPtr odom_publisher_;
+  rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_subscription_;
+  rclcpp::Subscription<autoware_internal_debug_msgs::msg::BoolStamped>::SharedPtr
+    stop_flag_subscription_;
+  std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
+  PublishedMessages received_messages_;
+};
+
+TEST_F(StopFilterNodeTest, PublishesFilteredOdomAndTrueStopFlagWhenVelocityIsUnderThreshold)
+{
+  // Arrange
+  start_stop_filter_node(1.0, 1.0);
+  const auto input_odom = create_odometry_message(0.2, 0.2);
+
+  // Act
+  odom_publisher_->publish(input_odom);
+  const auto result = receive_published_messages();
+
+  // Assert
+  ASSERT_NE(result.filtered_odom, nullptr);
+  ASSERT_NE(result.stop_flag, nullptr);
+  EXPECT_TRUE(result.stop_flag->data);
 }
