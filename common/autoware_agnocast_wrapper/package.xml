@@ -13,6 +13,7 @@
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <buildtool_depend>ament_cmake_python</buildtool_depend>
   <buildtool_depend>autoware_cmake</buildtool_depend>
 
   <depend condition="$ENABLE_AGNOCAST == 1" version_gte="2.4.0">agnocastlib</depend>
@@ -30,9 +31,12 @@
   <depend>tf2_ros</depend>
 
   <exec_depend condition="$ENABLE_AGNOCAST == 1">agnocast_components</exec_depend>
+  <exec_depend>ament_index_python</exec_depend>
   <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
 
   <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_cmake_pytest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
   <test_depend>std_msgs</test_depend>
