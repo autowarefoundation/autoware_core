@@ -21,10 +21,16 @@
 namespace autoware::stop_filter
 {
 
+struct StopFilterConfig
+{
+  double linear_x_threshold;
+  double angular_z_threshold;
+};
+
 class StopFilter
 {
 public:
-  StopFilter(double linear_x_threshold, double angular_z_threshold);
+  explicit StopFilter(const StopFilterConfig & config);
 
   autoware_internal_debug_msgs::msg::BoolStamped create_stop_flag_msg(
     const nav_msgs::msg::Odometry & input) const;
@@ -32,8 +38,7 @@ public:
   nav_msgs::msg::Odometry create_filtered_msg(const nav_msgs::msg::Odometry & input) const;
 
 private:
-  double linear_x_threshold_;
-  double angular_z_threshold_;
+  StopFilterConfig config_;
 };
 }  // namespace autoware::stop_filter
 #endif  // STOP_FILTER_HPP_

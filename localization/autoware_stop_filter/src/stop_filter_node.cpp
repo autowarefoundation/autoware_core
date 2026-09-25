@@ -21,7 +21,9 @@ namespace autoware::stop_filter
 
 StopFilterNode::StopFilterNode(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("stop_filter", node_options),
-  stop_filter_(declare_parameter<double>("vx_threshold"), declare_parameter<double>("wz_threshold"))
+  stop_filter_(
+    StopFilterConfig{
+      declare_parameter<double>("vx_threshold"), declare_parameter<double>("wz_threshold")})
 {
   sub_odom_ = create_subscription<nav_msgs::msg::Odometry>(
     "input/odom", 1, std::bind(&StopFilterNode::callback_odometry, this, std::placeholders::_1));
