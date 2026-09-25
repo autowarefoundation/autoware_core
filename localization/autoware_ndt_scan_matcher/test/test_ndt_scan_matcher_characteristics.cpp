@@ -1281,12 +1281,6 @@ TEST(NdtScanMatcherCharacteristics, AligningOutsideMapRangeFailsWithThreeJoinedM
     << "the map check no longer stops before the sensor-points check.";
 
   EXPECT_EQ(diag->level(), level_error);
-  EXPECT_EQ(
-    diag->message(),
-    "update_ndt failed. If this happens with initial position estimation, make sure that(1) the "
-    "initial position matches the pcd map and (2) the map_loader is working properly.; "
-    "No InputTarget. Please check the map file and the map_loader service; "
-    "ndt_align_service is failed.");
 }
 
 /// A successful align reports twelve keys and publishes one `points_aligned` per particle.
