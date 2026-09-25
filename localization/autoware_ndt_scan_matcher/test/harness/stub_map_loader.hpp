@@ -35,25 +35,16 @@ namespace ndt_test
 /// center and "1" at `second_cell_x`.
 ///
 /// Differential, like the loader it stands in for: a cell is returned when the requested circle
-/// covers its anchor and `cached_ids` does not list it, and a cached cell whose anchor the circle
-/// no longer covers comes back in `ids_to_remove`. A node re-querying from inside its cells gets an
-/// empty response, which `update_ndt` reports as `is_updated_map: False`.
+/// covers its anchor and `cached_ids` does not list it, and a cached cell the circle no longer
+/// covers comes back in `ids_to_remove`. Re-querying from inside the cells yields an empty
+/// response, which `update_ndt` reports as `is_updated_map: False`; so does asking away from both.
 ///
-/// Cell "1" sits where only the cell-boundary walk reaches it. Every other case queries from at
-/// most x = 125 with a radius of 150, so an anchor at x <= 275 would enter their responses and
-/// change their maps.
-///
-/// Asking away from both anchors yields nothing. `MissingMapAbortsBeforeAlignment` asks at
-/// (-100, -100): the load fails once, and since a failed load still records the position
-/// (`map_update_module.cpp:176`), the timer does not try again until the vehicle moves
-/// `update_distance`.
+/// Cell "1" must not move closer than x = 300: every other case queries from at most x = 125 with
+/// a radius of 150, so an anchor at x <= 275 would enter their responses and change their maps.
 ///
 /// @note `test/stub_pcd_loader.hpp` also answers `pcd_loader_service`, for the three pre-existing
-/// node tests. The two are deliberately not merged *yet*: this one takes its geometry from
-/// `make_corner_cloud`, so the scan and the map are provably the same surfaces at different
-/// spacings, while the older stub carries its own hand-written copy. Unifying them means touching
-/// those three tests, which is out of scope here. Until that happens, a change to how the map is
-/// served has to be made in both places.
+/// node tests. Merging the two was left out of scope, so a change to how the map is served has to
+/// be made in both places.
 class StubMapLoader : public rclcpp::Node
 {
   using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;

@@ -122,9 +122,8 @@ inline pcl::PointCloud<pcl::PointXYZ> make_corner_cloud(
 // -------------------------------------------------------------------------------------- stimulus
 
 /// @brief A normal scan stamped at `stamp`: the corner cloud at 1 m spacing, 1,323 points.
-///
-/// `shift_x` / `shift_y` move the corner within the sensor frame, which is what lets a scan taken
-/// from one position still describe the cell anchored at another.
+/// `shift_x` / `shift_y` move the corner, so a scan taken at one position can describe the cell
+/// anchored at another.
 inline sensor_msgs::msg::PointCloud2 make_scan_at(
   const builtin_interfaces::msg::Time & stamp, const double shift_x = 0.0,
   const double shift_y = 0.0, const std::string & frame_id = sensor_frame)

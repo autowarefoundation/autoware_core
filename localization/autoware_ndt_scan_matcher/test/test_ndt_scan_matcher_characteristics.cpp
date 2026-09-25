@@ -192,10 +192,8 @@ bool changed_the_map(const NdtHarness::Record & record)
   return record.value("is_updated_map") == "True";
 }
 
-/// Checks that the tick after a load measures 0 m and stops short of calling the loader.
-///
-/// A positive witness on purpose: waiting for "no second query" to *not* happen would also pass
-/// against a timer that had stopped ticking altogether.
+/// Checks that the tick after a load measures 0 m and stops short of calling the loader. A
+/// positive witness: waiting for a second query to *not* arrive would pass on a stopped timer.
 void expect_idle_tick_does_not_query(NdtHarness & harness)
 {
   const auto idle_tick = harness.wait_for_diag(
@@ -1257,13 +1255,9 @@ TEST(NdtScanMatcherCharacteristics, UpdateDistanceIsAStrictBoundary)
     past_boundary->value_as_double("distance_last_update_position_to_current_position"), 20.0);
 }
 
-/// Driving across a cell boundary adds the next cell and drops the one left behind.
-///
-/// Steps of 45 m keep every query on the incremental path: past `update_distance` (20), inside
-/// `map_radius - lidar_radius` (50). From 100, the query at 145 finds nothing new; 190 brings cell
-/// "1" into the circle; 235 finds nothing new; 280 puts cell "0"'s anchor outside and removes it.
-/// Each scan is the corner of the nearer cell, so it always has a target, and each step waits for
-/// the timer to have seen it so that no two steps merge into one jump that rebuilds instead.
+/// Driving across a cell boundary adds the next cell and drops the one left behind. Steps of 45 m
+/// keep every query incremental: past `update_distance` (20), inside `map_radius - lidar_radius`
+/// (50). Each scan is the corner of the nearer cell, so it always has a target.
 TEST(NdtScanMatcherCharacteristics, WalkAcrossACellBoundaryKeepsConvergingThroughAddAndRemove)
 {
   // Arrange
@@ -1368,12 +1362,9 @@ TEST(NdtScanMatcherCharacteristics, WithoutAMapLoaderTheTimerWarnsOnceAndDoesNot
   expect_idle_tick_does_not_query(*harness);
 }
 
-/// Looks like a bug — an align request far outside the loaded map removes the map, and the next
-/// tick reports a vehicle that has not moved as "not keeping up" before putting the cell back.
-///
-/// Not the rebuild reset one might expect: the service path makes its own differential query at the
-/// request position, the loaded cell's anchor falls outside that circle and comes back in
-/// `ids_to_remove`, and the request position is then recorded as the last load.
+/// Looks like a bug — an align request far outside the loaded map removes the map, because the
+/// service queries at the *request* position and the loaded cell's anchor falls outside it. The
+/// next tick then calls a vehicle that has not moved "not keeping up" before putting the cell back.
 TEST(NdtScanMatcherCharacteristics, FarAlignRequestRemovesTheLoadedCellUntilTheTimerReloadsIt)
 {
   // Arrange
