@@ -1250,8 +1250,8 @@ TEST(NdtScanMatcherCharacteristics, AlignWithoutAStoredScanFailsAfterTheMapCheck
   EXPECT_FALSE(diag->has_key("best_particle_score")) << "the search ran without a scan.";
 }
 
-/// Aligning outside the map range fails, and reports three messages joined into one.
-TEST(NdtScanMatcherCharacteristics, AligningOutsideMapRangeFailsWithThreeJoinedMessages)
+/// Aligning outside the map range fails
+TEST(NdtScanMatcherCharacteristics, AligningOutsideMapRangeFails)
 {
   // Arrange
   // No map, no stored scan, not activated. The align path checks none of these before the map
