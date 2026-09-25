@@ -71,6 +71,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_trajectory_utils
   smoother
   )
+  ament_add_ros_isolated_gtest(test_pseudo_jerk_smoothers
+  test/test_pseudo_jerk_smoothers.cpp
+  )
+  target_link_libraries(test_pseudo_jerk_smoothers
+  smoother
+  ${PROJECT_NAME}_node
+  )
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
     ament_add_ros_isolated_gtest(test_${PROJECT_NAME}
       test/test_velocity_smoother_node_interface.cpp
