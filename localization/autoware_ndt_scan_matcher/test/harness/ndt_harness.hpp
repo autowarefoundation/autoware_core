@@ -55,6 +55,12 @@ struct InitialPoseSpec
   double x{map_center_x};
   double y{map_center_y};
   std::string frame_id{map_frame};
+
+  /// @brief Offset of the *newer* pose from the older one, along x.
+  ///
+  /// Must stay within `validation.initial_pose_distance_tolerance_m` or interpolation is rejected,
+  /// which is what `InitialPoseDistanceToleranceReachesTheInterpolationBuffer` drives past.
+  double delta_x{0.0};
 };
 
 /// @brief One scan-driving attempt's parameters.
@@ -80,6 +86,12 @@ struct ScanOutcome
 {
   builtin_interfaces::msg::Time stamp{};
   DiagnosticsCapture::Record diag{};
+
+  /// @brief Which attempt produced this outcome. Non-zero means an earlier one was abandoned.
+  ///
+  /// A retry runs alignment again, so a test that counts publications needs this to tell "the node
+  /// published twice" apart from "we drove the node twice".
+  int attempt{0};
 };
 
 /// @brief Drives a real `NDTScanMatcher` and observes everything it emits.
@@ -413,8 +425,8 @@ public:
         const auto & spec = drive.initial_pose.value();
         const auto older =
           make_pose_at(target - rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id);
-        const auto newer =
-          make_pose_at(target + rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id);
+        const auto newer = make_pose_at(
+          target + rclcpp::Duration(100ms), spec.x + spec.delta_x, spec.y, spec.frame_id);
         if (!publish_initial_pose_and_confirm(older) || !publish_initial_pose_and_confirm(newer)) {
           continue;
         }
@@ -435,7 +447,7 @@ public:
         if (lost_tf_race) {
           continue;
         }
-        return ScanOutcome{target, record.value()};
+        return ScanOutcome{target, record.value(), attempt};
       }
     }
     return std::nullopt;
