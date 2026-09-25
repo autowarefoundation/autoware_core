@@ -1184,9 +1184,6 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
 // many searches ran before. Nothing below reads a drawn value.
 // ---------------------------------------------------------------------------------------------
 
-/// A threshold no score reaches, so convergence fails on the score and not the iteration count.
-constexpr double never_reached = 1.0e9;
-
 /// A harness with the map loaded and one scan stored, ready for `ndt_align_srv`.
 std::unique_ptr<NdtHarness> make_harness_ready_to_align(
   std::vector<rclcpp::Parameter> extra_overrides = {})
