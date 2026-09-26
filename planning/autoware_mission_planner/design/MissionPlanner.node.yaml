@@ -1,0 +1,93 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: MissionPlanner.node
+package:
+  name: autoware_mission_planner
+  provider: autoware
+launch:
+  plugin: autoware::mission_planner::MissionPlanner
+  executable: mission_planner
+  node_output: screen
+# interfaces
+subscribers:
+  - name: odometry
+    message_type: nav_msgs/msg/Odometry
+    remap_target: input/odometry
+  - name: operation_mode_state
+    message_type: autoware_adapi_v1_msgs/msg/OperationModeState
+    remap_target: input/operation_mode_state
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    remap_target: input/vector_map
+publishers:
+  - name: route
+    message_type: autoware_planning_msgs/msg/LaneletRoute
+    global: /planning/route
+  - name: route_state
+    message_type: autoware_planning_msgs/msg/RouteState
+    global: /planning/route_state
+  - name: route_marker
+    message_type: visualization_msgs/msg/MarkerArray
+    remap_target: debug/route_marker
+  - name: processing_time_ms
+    message_type: autoware_internal_debug_msgs/msg/Float64Stamped
+    remap_target: debug/processing_time_ms
+  - name: goal_footprint
+    message_type: visualization_msgs/msg/MarkerArray
+    remap_target: debug/goal_footprint
+servers:
+  - name: clear_route
+    message_type: autoware_planning_msgs/srv/ClearRoute
+    global: /planning/clear_route
+  - name: set_lanelet_route
+    message_type: autoware_planning_msgs/srv/SetLaneletRoute
+    global: /planning/set_lanelet_route
+  - name: set_waypoint_route
+    message_type: autoware_planning_msgs/srv/SetWaypointRoute
+    global: /planning/set_waypoint_route
+# parameters
+param_files:
+  - name: mission_planner_param
+    default: $(find-pkg-share autoware_mission_planner)/config/mission_planner.param.yaml
+param_values:
+  - name: map_frame
+    type: string
+    default: map
+  - name: arrival_check_angle_deg
+    type: double
+    default: 45.0
+  - name: arrival_check_distance
+    type: double
+    default: 1.0
+  - name: arrival_check_duration
+    type: double
+    default: 1.0
+  - name: goal_angle_threshold_deg
+    type: double
+    default: 45.0
+  - name: enable_correct_goal_pose
+    type: bool
+    default: false
+  - name: reroute_time_threshold
+    type: double
+    default: 10.0
+  - name: minimum_reroute_length
+    type: double
+    default: 30.0
+  - name: consider_no_drivable_lanes
+    type: bool
+    default: false
+  - name: check_footprint_inside_lanes
+    type: bool
+    default: true
+  - name: allow_reroute_in_autonomous_mode
+    type: bool
+    default: true
+# processes
+processes:
+  - name: plan_mission_route
+    trigger_conditions:
+      - on_input: set_lanelet_route
+    outcomes:
+      - to_output: route
+      - to_output: route_state
