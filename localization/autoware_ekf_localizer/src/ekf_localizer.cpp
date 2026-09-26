@@ -530,13 +530,15 @@ void EKFLocalizer::predict_with_delay(const double dt)
 {
   const Vector6d x_curr = kalman_filter_.getLatestX();
 
+  const double proc_cov_xy_d = std::pow(params_.proc_stddev_xy_c * dt, 2.0);
   const double proc_cov_vx_d = std::pow(params_.proc_stddev_vx_c * dt, 2.0);
   const double proc_cov_wz_d = std::pow(params_.proc_stddev_wz_c * dt, 2.0);
   const double proc_cov_yaw_d = std::pow(params_.proc_stddev_yaw_c * dt, 2.0);
 
   const Vector6d x_next = predict_next_state(x_curr, dt);
   const Matrix6d a = create_state_transition_matrix(x_curr, dt);
-  const Matrix6d q = process_noise_covariance(proc_cov_yaw_d, proc_cov_vx_d, proc_cov_wz_d);
+  const Matrix6d q =
+    process_noise_covariance(proc_cov_xy_d, proc_cov_yaw_d, proc_cov_vx_d, proc_cov_wz_d);
   kalman_filter_.predictWithDelay(x_next, a, q);
   ekf_dt_ = dt;
 }
@@ -607,13 +609,16 @@ bool EKFLocalizer::measurement_update_pose(
   const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
   const Eigen::MatrixXd p_y = p_curr.block(0, 0, dim_y, dim_y);
 
-  const double distance = mahalanobis(y_ekf, y, p_y);
+  // pose_gate_dist is a chi-square quantile, so it is compared against the squared distance.
+  const double squared_distance = squared_mahalanobis(y_ekf, y, p_y);
+  const double distance = std::sqrt(squared_distance);
   pose_diag_info.mahalanobis_distance = std::max(distance, pose_diag_info.mahalanobis_distance);
   // is_passed_mahalanobis_gate is initialized true before the first calling measurement_update_pose
   // every ekf_localizer call.
-  if (distance > params_.pose_gate_dist) {
+  if (squared_distance > params_.pose_gate_dist) {
     pose_diag_info.is_passed_mahalanobis_gate = false;
-    warnings_out.push_back({mahalanobis_warning_message(distance, params_.pose_gate_dist), 2000});
+    warnings_out.push_back(
+      {mahalanobis_warning_message(distance, std::sqrt(params_.pose_gate_dist)), 2000});
     warnings_out.push_back({"Ignore the measurement data.", 2000});
     return false;
   }
@@ -737,13 +742,16 @@ bool EKFLocalizer::measurement_update_twist(
   const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
   const Eigen::MatrixXd p_y = p_curr.block(4, 4, dim_y, dim_y);
 
-  const double distance = mahalanobis(y_ekf, y, p_y);
+  // twist_gate_dist is a chi-square quantile, so it is compared against the squared distance.
+  const double squared_distance = squared_mahalanobis(y_ekf, y, p_y);
+  const double distance = std::sqrt(squared_distance);
   twist_diag_info.mahalanobis_distance = std::max(distance, twist_diag_info.mahalanobis_distance);
   // is_passed_mahalanobis_gate is initialized true before the first calling
   // measurement_update_twist every ekf_localizer call.
-  if (distance > params_.twist_gate_dist) {
+  if (squared_distance > params_.twist_gate_dist) {
     twist_diag_info.is_passed_mahalanobis_gate = false;
-    warnings_out.push_back({mahalanobis_warning_message(distance, params_.twist_gate_dist), 2000});
+    warnings_out.push_back(
+      {mahalanobis_warning_message(distance, std::sqrt(params_.twist_gate_dist)), 2000});
     warnings_out.push_back({"Ignore the measurement data.", 2000});
     return false;
   }

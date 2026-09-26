@@ -89,13 +89,15 @@ TEST(create_state_transition_matrix, NumericalApproximation)
 
 TEST(process_noise_covariance, process_noise_covariance)
 {
-  const Matrix6d q = process_noise_covariance(1., 2., 3.);
+  const Matrix6d q = process_noise_covariance(4., 1., 2., 3.);
+  EXPECT_EQ(q(0, 0), 4.);  // for x
+  EXPECT_EQ(q(1, 1), 4.);  // for y
   EXPECT_EQ(q(2, 2), 1.);  // for yaw
   EXPECT_EQ(q(4, 4), 2.);  // for vx
   EXPECT_EQ(q(5, 5), 3.);  // for wz
 
   // Make sure other elements are zero
-  EXPECT_EQ(process_noise_covariance(0, 0, 0).norm(), 0.);
+  EXPECT_EQ(process_noise_covariance(0, 0, 0, 0).norm(), 0.);
 }
 
 }  // namespace autoware::ekf_localizer

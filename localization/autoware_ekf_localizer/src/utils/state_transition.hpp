@@ -24,7 +24,8 @@ double normalize_yaw(const double & yaw);
 Vector6d predict_next_state(const Vector6d & X_curr, const double dt);
 Matrix6d create_state_transition_matrix(const Vector6d & X_curr, const double dt);
 Matrix6d process_noise_covariance(
-  const double proc_cov_yaw_d, const double proc_cov_vx_d, const double proc_cov_wz_d);
+  const double proc_cov_xy_d, const double proc_cov_yaw_d, const double proc_cov_vx_d,
+  const double proc_cov_wz_d);
 
 }  // namespace autoware::ekf_localizer
 

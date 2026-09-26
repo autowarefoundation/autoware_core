@@ -24,6 +24,7 @@
 
     process_noise:
       # for process model
+      proc_stddev_xy_c: 0.1
       proc_stddev_yaw_c: 0.005
       proc_stddev_vx_c: 10.0
       proc_stddev_wz_c: 5.0

@@ -43,6 +43,7 @@ struct HyperParameters
   double twist_gate_dist;
   size_t twist_smoothing_steps;
   size_t max_twist_queue_size;
+  double proc_stddev_xy_c;   //!< @brief  x & y process noise
   double proc_stddev_vx_c;   //!< @brief  vx process noise
   double proc_stddev_wz_c;   //!< @brief  wz process noise
   double proc_stddev_yaw_c;  //!< @brief  yaw process noise
