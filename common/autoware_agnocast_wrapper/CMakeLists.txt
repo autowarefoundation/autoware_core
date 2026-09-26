@@ -5,10 +5,14 @@ find_package(autoware_cmake REQUIRED)
 autoware_package()
 
 find_package(rclcpp REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 find_package(autoware_utils_rclcpp REQUIRED)
 find_package(message_filters REQUIRED)
 find_package(diagnostic_updater REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(rcpputils REQUIRED)
+find_package(rosidl_typesupport_cpp REQUIRED)
+find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(glog REQUIRED)
@@ -22,6 +26,9 @@ include_directories(
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/detail/service_typesupport.cpp
+  src/generic_client.cpp
+  src/generic_service.cpp
   src/node.cpp
   src/runtime.cpp
 )
@@ -33,10 +40,14 @@ if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
   ament_target_dependencies(${PROJECT_NAME}
     rclcpp
     agnocastlib
+    ament_index_cpp
     autoware_utils_rclcpp
     message_filters
     diagnostic_updater
     geometry_msgs
+    rcpputils
+    rosidl_typesupport_cpp
+    rosidl_typesupport_introspection_cpp
     tf2
     tf2_ros
     glog
@@ -45,10 +56,14 @@ if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
 else()
   ament_target_dependencies(${PROJECT_NAME}
     rclcpp
+    ament_index_cpp
     autoware_utils_rclcpp
     message_filters
     diagnostic_updater
     geometry_msgs
+    rcpputils
+    rosidl_typesupport_cpp
+    rosidl_typesupport_introspection_cpp
     tf2
     tf2_ros
     glog
@@ -60,12 +75,16 @@ ament_export_include_directories(
 )
 
 ament_export_dependencies(
+  ament_index_cpp
   autoware_utils_rclcpp
   class_loader
   geometry_msgs
   message_filters
   rclcpp
   rclcpp_components
+  rcpputils
+  rosidl_typesupport_cpp
+  rosidl_typesupport_introspection_cpp
   diagnostic_updater
   tf2
   tf2_ros
@@ -109,11 +128,12 @@ install(
 
 if(BUILD_TESTING)
   find_package(std_msgs REQUIRED)
+  find_package(std_srvs REQUIRED)
   file(GLOB_RECURSE test_files test/main.cpp test/cases/*.cpp)
   ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})
   target_include_directories(test_${PROJECT_NAME} PRIVATE test)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})
-  ament_target_dependencies(test_${PROJECT_NAME} std_msgs)
+  ament_target_dependencies(test_${PROJECT_NAME} std_msgs std_srvs)
 endif()
 
 autoware_ament_auto_package()
