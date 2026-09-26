@@ -6,7 +6,6 @@ autoware_package()
 
 ament_auto_add_library(${PROJECT_NAME}_node SHARED
   src/autoware_command_gate.cpp
-  src/command_gate_mode_builder.cpp
 )
 
 target_include_directories(${PROJECT_NAME}_node
@@ -25,20 +24,6 @@ if(BUILD_TESTING)
   find_package(class_loader REQUIRED)
   find_package(rclcpp REQUIRED)
   find_package(rclcpp_components REQUIRED)
-
-  ament_add_gtest(test_command_gate_mode_builder
-    test/unit/test_command_gate_mode_builder.cpp
-  )
-  target_link_libraries(test_command_gate_mode_builder
-    ${PROJECT_NAME}_node
-  )
-  ament_target_dependencies(test_command_gate_mode_builder
-    autoware_adapi_v1_msgs
-    autoware_common_msgs
-    autoware_system_msgs
-    autoware_vehicle_msgs
-    builtin_interfaces
-  )
 
   ament_add_ros_isolated_gtest(test_ros_integration
     test/integration/test_ros_integration.cpp

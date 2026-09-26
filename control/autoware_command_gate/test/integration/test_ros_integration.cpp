@@ -19,6 +19,7 @@
 #include <rclcpp_components/node_instance_wrapper.hpp>
 
 #include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
+#include <autoware_system_msgs/srv/change_autoware_control.hpp>
 #include <autoware_system_msgs/srv/change_operation_mode.hpp>
 #include <autoware_vehicle_msgs/msg/gear_command.hpp>
 
@@ -37,6 +38,7 @@ namespace
 {
 using autoware_adapi_v1_msgs::msg::OperationModeState;
 using SystemChangeOperationMode = autoware_system_msgs::srv::ChangeOperationMode;
+using SystemChangeAutowareControl = autoware_system_msgs::srv::ChangeAutowareControl;
 using autoware_vehicle_msgs::msg::GearCommand;
 
 bool spin_until(
@@ -111,7 +113,7 @@ TEST_F(CommandGateRosIntegrationTest, ChangeToStopPublishesStateAndGear)
   state_qos.transient_local();
 
   auto state_sub = test_node_->create_subscription<OperationModeState>(
-    "/api/operation_mode/state", state_qos,
+    "/system/operation_mode/state", state_qos,
     [&state_msg](const OperationModeState::SharedPtr msg) { state_msg = *msg; });
   auto gear_sub = test_node_->create_subscription<GearCommand>(
     "/control/command/gear_cmd", rclcpp::QoS{1},
@@ -161,7 +163,7 @@ TEST_F(CommandGateRosIntegrationTest, ChangeToAutonomousPublishesStateAndGear)
   state_qos.transient_local();
 
   auto state_sub = test_node_->create_subscription<OperationModeState>(
-    "/api/operation_mode/state", state_qos,
+    "/system/operation_mode/state", state_qos,
     [&state_msg](const OperationModeState::SharedPtr msg) { state_msg = *msg; });
   auto gear_sub = test_node_->create_subscription<GearCommand>(
     "/control/command/gear_cmd", rclcpp::QoS{1},
@@ -191,7 +193,7 @@ TEST_F(CommandGateRosIntegrationTest, ChangeToAutonomousPublishesStateAndGear)
     std::chrono::seconds(2)));
 
   EXPECT_EQ(state_msg->mode, OperationModeState::AUTONOMOUS);
-  EXPECT_TRUE(state_msg->is_autoware_control_enabled);
+  EXPECT_FALSE(state_msg->is_autoware_control_enabled);  // Two-axis: control flag independent
   EXPECT_FALSE(state_msg->is_in_transition);
   EXPECT_TRUE(state_msg->is_stop_mode_available);
   EXPECT_TRUE(state_msg->is_autonomous_mode_available);
@@ -299,6 +301,69 @@ TEST_F(CommandGateRosIntegrationTest, SystemChangeToRemotePublishesStateAndGear)
   EXPECT_TRUE(state_msg->is_remote_mode_available);
 
   EXPECT_EQ(gear_msg->command, GearCommand::NONE);
+}
+
+TEST_F(CommandGateRosIntegrationTest, ChangeAutowareControlTogglesControlFlag)
+{
+  std::optional<OperationModeState> state_msg;
+
+  rclcpp::QoS state_qos(1);
+  state_qos.reliable();
+  state_qos.transient_local();
+
+  auto state_sub = test_node_->create_subscription<OperationModeState>(
+    "/system/operation_mode/state", state_qos,
+    [&state_msg](const OperationModeState::SharedPtr msg) { state_msg = *msg; });
+
+  auto client = test_node_->create_client<SystemChangeAutowareControl>(
+    "/system/operation_mode/change_autoware_control");
+  ASSERT_TRUE(spin_until(
+    executor_, [&client]() { return client->wait_for_service(std::chrono::seconds(0)); },
+    std::chrono::seconds(2)));
+
+  // 1. Enable control
+  auto request_enable = std::make_shared<SystemChangeAutowareControl::Request>();
+  request_enable->autoware_control = true;
+  auto future_enable = client->async_send_request(request_enable);
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&future_enable]() {
+      return future_enable.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    },
+    std::chrono::seconds(2)));
+
+  const auto response_enable = future_enable.get();
+  EXPECT_TRUE(response_enable->status.success);
+  EXPECT_EQ(response_enable->status.code, 0);
+
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&state_msg]() { return state_msg.has_value() && state_msg->is_autoware_control_enabled; },
+    std::chrono::seconds(2)));
+
+  EXPECT_TRUE(state_msg->is_autoware_control_enabled);
+
+  // 2. Disable control
+  auto request_disable = std::make_shared<SystemChangeAutowareControl::Request>();
+  request_disable->autoware_control = false;
+  auto future_disable = client->async_send_request(request_disable);
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&future_disable]() {
+      return future_disable.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    },
+    std::chrono::seconds(2)));
+
+  const auto response_disable = future_disable.get();
+  EXPECT_TRUE(response_disable->status.success);
+  EXPECT_EQ(response_disable->status.code, 0);
+
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&state_msg]() { return state_msg.has_value() && !state_msg->is_autoware_control_enabled; },
+    std::chrono::seconds(2)));
+
+  EXPECT_FALSE(state_msg->is_autoware_control_enabled);
 }
 
 int main(int argc, char ** argv)
