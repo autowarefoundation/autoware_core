@@ -19,6 +19,7 @@
 #include <memory>
 
 using autoware::stop_filter::StopFilter;
+using autoware::stop_filter::StopFilterConfig;
 
 namespace
 {
@@ -46,10 +47,10 @@ nav_msgs::msg::Odometry::SharedPtr create_odometry_message(
 // is false. The input timestamp is forwarded onto the flag message.
 TEST(StopFilterTest, StopFlagIsFalseWhenMoving)
 {
-  StopFilter filter(0.1, 0.1);
+  const StopFilter filter(StopFilterConfig{0.1, 0.1});
   const auto input = create_odometry_message(0.2, 0.0, 0.0, 0.0, 0.0, 0.2);
 
-  const auto stop_flag_msg = filter.create_stop_flag_msg(*input);
+  const auto stop_flag_msg = filter.filter(*input).stop_flag;
 
   EXPECT_FALSE(stop_flag_msg.data);
   EXPECT_EQ(stop_flag_msg.stamp, input->header.stamp);
@@ -59,10 +60,10 @@ TEST(StopFilterTest, StopFlagIsFalseWhenMoving)
 // flag is true.
 TEST(StopFilterTest, StopFlagIsTrueWhenStopped)
 {
-  StopFilter filter(0.1, 0.1);
+  const StopFilter filter(StopFilterConfig{0.1, 0.1});
   const auto input = create_odometry_message(0.05, 0.0, 0.0, 0.0, 0.0, 0.05);
 
-  const auto stop_flag_msg = filter.create_stop_flag_msg(*input);
+  const auto stop_flag_msg = filter.filter(*input).stop_flag;
 
   EXPECT_TRUE(stop_flag_msg.data);
   EXPECT_EQ(stop_flag_msg.stamp, input->header.stamp);
@@ -72,28 +73,32 @@ TEST(StopFilterTest, StopFlagIsTrueWhenStopped)
 // twist is preserved.
 TEST(StopFilterTest, NotStoppedWhenOnlyLinearVelocityBelowThreshold)
 {
-  StopFilter filter(0.1, 0.1);
+  const StopFilter filter(StopFilterConfig{0.1, 0.1});
   const auto input = create_odometry_message(0.05, 0.0, 0.0, 0.0, 0.0, 0.2);
 
-  EXPECT_FALSE(filter.create_stop_flag_msg(*input).data);
+  const auto stop_flag_msg = filter.filter(*input).stop_flag;
+
+  EXPECT_FALSE(stop_flag_msg.data);
 }
 
 // Symmetrically, angular-z alone below threshold is still moving, so the twist is preserved.
 TEST(StopFilterTest, NotStoppedWhenOnlyAngularVelocityBelowThreshold)
 {
-  StopFilter filter(0.1, 0.1);
+  const StopFilter filter(StopFilterConfig{0.1, 0.1});
   const auto input = create_odometry_message(0.2, 0.0, 0.0, 0.0, 0.0, 0.05);
 
-  EXPECT_FALSE(filter.create_stop_flag_msg(*input).data);
+  const auto stop_flag_msg = filter.filter(*input).stop_flag;
+
+  EXPECT_FALSE(stop_flag_msg.data);
 }
 
 // On a stop every twist component is zeroed while the header is preserved.
 TEST(StopFilterTest, FilteredMsgZeroesTwistWhenStopped)
 {
-  StopFilter filter(0.1, 0.1);
+  const StopFilter filter(StopFilterConfig{0.1, 0.1});
   const auto input = create_odometry_message(0.05, 0.02, 0.01, 0.03, 0.04, 0.05);
 
-  const auto filtered_msg = filter.create_filtered_msg(*input);
+  const auto filtered_msg = filter.filter(*input).filtered_odometry;
 
   EXPECT_EQ(filtered_msg.twist.twist.linear.x, 0.0);
   EXPECT_EQ(filtered_msg.twist.twist.linear.y, 0.0);
@@ -109,10 +114,10 @@ TEST(StopFilterTest, FilteredMsgZeroesTwistWhenStopped)
 // When moving the twist passes through unchanged.
 TEST(StopFilterTest, FilteredMsgPreservesTwistWhenMoving)
 {
-  StopFilter filter(0.1, 0.1);
+  const StopFilter filter(StopFilterConfig{0.1, 0.1});
   const auto input = create_odometry_message(0.2, 0.0, 0.0, 0.0, 0.0, 0.2);
 
-  const auto filtered_msg = filter.create_filtered_msg(*input);
+  const auto filtered_msg = filter.filter(*input).filtered_odometry;
 
   EXPECT_EQ(filtered_msg.twist.twist.linear.x, 0.2);
   EXPECT_EQ(filtered_msg.twist.twist.angular.z, 0.2);
