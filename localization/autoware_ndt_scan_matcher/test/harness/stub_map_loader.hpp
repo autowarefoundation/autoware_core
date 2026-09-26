@@ -24,30 +24,27 @@
 #include <pcl_conversions/pcl_conversions.h>
 
 #include <algorithm>
+#include <array>
 #include <limits>
 #include <string>
 
 namespace ndt_test
 {
 
-/// @brief The only map in this world: `make_corner_cloud` placed at the map center, in one cell.
+/// @brief The only map in this world: `make_corner_cloud` in two cells, "0" anchored at the map
+/// center and "1" at `second_cell_x`.
 ///
-/// Differential, like the loader it stands in for: the cell is returned when the requested circle
-/// covers the map center and `cached_ids` does not already list it, and a cached cell the circle no
-/// longer covers comes back in `ids_to_remove`. A node that keeps querying from inside the cell
-/// therefore gets an empty response, which `update_ndt` reports as `is_updated_map: False`.
+/// Differential, like the loader it stands in for: a cell is returned when the requested circle
+/// covers its anchor and `cached_ids` does not list it, and a cached cell the circle no longer
+/// covers comes back in `ids_to_remove`. Re-querying from inside the cells yields an empty
+/// response, which `update_ndt` reports as `is_updated_map: False`; so does asking away from both.
 ///
-/// Asking away from the center yields nothing at all. `MissingMapAbortsBeforeAlignment` asks at
-/// (-100, -100): the load fails once, and since a failed load still records the position
-/// (`map_update_module.cpp:176`), the timer does not try again until the vehicle moves
-/// `update_distance`.
+/// Cell "1" must not move closer than x = 300: every other case queries from at most x = 125 with
+/// a radius of 150, so an anchor at x <= 275 would enter their responses and change their maps.
 ///
 /// @note `test/stub_pcd_loader.hpp` also answers `pcd_loader_service`, for the three pre-existing
-/// node tests. The two are deliberately not merged *yet*: this one takes its geometry from
-/// `make_corner_cloud`, so the scan and the map are provably the same surfaces at different
-/// spacings, while the older stub carries its own hand-written copy. Unifying them means touching
-/// those three tests, which is out of scope here. Until that happens, a change to how the map is
-/// served has to be made in both places.
+/// node tests. Merging the two was left out of scope, so a change to how the map is served has to
+/// be made in both places.
 class StubMapLoader : public rclcpp::Node
 {
   using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;
@@ -61,49 +58,61 @@ public:
   }
 
 private:
-  static constexpr const char * cell_id = "0";
+  struct Cell
+  {
+    const char * id;
+    double x;
+    double y;
+  };
+  static constexpr std::array<Cell, 2> cells{
+    {{"0", map_center_x, map_center_y}, {"1", second_cell_x, map_center_y}}};
+
   rclcpp::Service<GetDifferentialPointCloudMap>::SharedPtr service_;
+
+  static bool covers(const autoware_map_msgs::msg::AreaInfo & area, const Cell & cell)
+  {
+    const auto x = static_cast<float>(cell.x);
+    const auto y = static_cast<float>(cell.y);
+    return area.center_x - area.radius <= x && area.center_x + area.radius >= x &&
+           area.center_y - area.radius <= y && area.center_y + area.radius >= y;
+  }
+
+  static autoware_map_msgs::msg::PointCloudMapCellWithID make_cell(const Cell & cell)
+  {
+    const pcl::PointCloud<pcl::PointXYZ> cloud = make_corner_cloud(map_spacing, cell.x, cell.y);
+
+    autoware_map_msgs::msg::PointCloudMapCellWithID msg;
+    msg.cell_id = cell.id;
+    msg.metadata.min_x = std::numeric_limits<float>::max();
+    msg.metadata.min_y = std::numeric_limits<float>::max();
+    msg.metadata.max_x = std::numeric_limits<float>::lowest();
+    msg.metadata.max_y = std::numeric_limits<float>::lowest();
+    for (const auto & point : cloud.points) {
+      msg.metadata.min_x = std::min(msg.metadata.min_x, point.x);
+      msg.metadata.min_y = std::min(msg.metadata.min_y, point.y);
+      msg.metadata.max_x = std::max(msg.metadata.max_x, point.x);
+      msg.metadata.max_y = std::max(msg.metadata.max_y, point.y);
+    }
+    pcl::toROSMsg(cloud, msg.pointcloud);
+    return msg;
+  }
 
   void on_get_map(
     GetDifferentialPointCloudMap::Request::SharedPtr req,
     GetDifferentialPointCloudMap::Response::SharedPtr res) const
   {
     res->header.frame_id = map_frame;
-
-    const auto center_x = static_cast<float>(map_center_x);
-    const auto center_y = static_cast<float>(map_center_y);
-    const bool covers_center = req->area.center_x - req->area.radius <= center_x &&
-                               req->area.center_x + req->area.radius >= center_x &&
-                               req->area.center_y - req->area.radius <= center_y &&
-                               req->area.center_y + req->area.radius >= center_y;
-    const bool cached =
-      std::find(req->cached_ids.begin(), req->cached_ids.end(), cell_id) != req->cached_ids.end();
-
-    if (cached && !covers_center) {
-      res->ids_to_remove.push_back(cell_id);
+    for (const auto & cell : cells) {
+      const bool covered = covers(req->area, cell);
+      const bool cached =
+        std::find(req->cached_ids.begin(), req->cached_ids.end(), cell.id) != req->cached_ids.end();
+      if (cached && !covered) {
+        res->ids_to_remove.push_back(cell.id);
+      }
+      if (covered && !cached) {
+        res->new_pointcloud_with_ids.push_back(make_cell(cell));
+      }
     }
-    if (!covers_center || cached) {
-      return;
-    }
-
-    const pcl::PointCloud<pcl::PointXYZ> cloud =
-      make_corner_cloud(map_spacing, map_center_x, map_center_y);
-
-    autoware_map_msgs::msg::PointCloudMapCellWithID cell;
-    cell.cell_id = cell_id;
-    cell.metadata.min_x = std::numeric_limits<float>::max();
-    cell.metadata.min_y = std::numeric_limits<float>::max();
-    cell.metadata.max_x = std::numeric_limits<float>::lowest();
-    cell.metadata.max_y = std::numeric_limits<float>::lowest();
-    for (const auto & point : cloud.points) {
-      cell.metadata.min_x = std::min(cell.metadata.min_x, point.x);
-      cell.metadata.min_y = std::min(cell.metadata.min_y, point.y);
-      cell.metadata.max_x = std::max(cell.metadata.max_x, point.x);
-      cell.metadata.max_y = std::max(cell.metadata.max_y, point.y);
-    }
-    pcl::toROSMsg(cloud, cell.pointcloud);
-
-    res->new_pointcloud_with_ids.push_back(cell);
   }
 };
 
