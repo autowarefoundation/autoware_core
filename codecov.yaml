@@ -40,6 +40,8 @@ component_management:
       name: Common Packages
       paths:
         - common/**/**
+        - "!common/**/examples/**"
+        - "!common/**/debug.*"
 
     - component_id: control-packages
       name: Control Packages
