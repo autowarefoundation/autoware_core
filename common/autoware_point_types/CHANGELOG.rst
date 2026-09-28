@@ -5,6 +5,60 @@ Changelog for package autoware_point_types
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(autoware_point_types): add PointXYZIRCT point type (`#1422 <https://github.com/autowarefoundation/autoware_core/issues/1422>`_)
+  * feat(autoware_point_types): add PointXYZIRCT point type
+  Add PointXYZIRC extended by a per-point time_stamp (uint32 nanoseconds
+  relative to the point cloud's header stamp), together with its field
+  generator, layout check, field factory and PCL registration.
+  This is the output point type for point clouds that no longer share a
+  single sensor origin -- notably the concatenation of several LiDARs,
+  where the azimuth/elevation/distance fields of PointXYZIRCAEDT lose
+  their meaning but the per-point acquisition time is still needed by
+  time-aware ML models.
+  The layout is a strict superset of PointXYZIRC, so consumers that check
+  is_data_layout_compatible_with_point_xyzirc() and read fields at their
+  PointXYZIRC offsets remain compatible.
+  Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+  * test(autoware_point_types): address review on the PointXYZIRCT tests
+  - Drop TEST(PointLayout, PointXYZIRCT); the prefix property it pinned is
+  already covered by the cross-type layout tests.
+  - Cover xyzirct in every direction of MismatchedTypesReturnFalse, grouped by
+  source layout like the surrounding cases.
+  - Widen the superset test to all layouts extending xyzirc and shorten its
+  comment to one line.
+  Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+  * docs(autoware_point_types): define time_stamp for PointXYZIRCT and PointXYZIRCAEDT
+  Both are a non-negative offset in nanoseconds from the containing point cloud's
+  header.stamp. This was only stated loosely for PointXYZIRCT and not at all for
+  PointXYZIRCAEDT, though producers and consumers already rely on it.
+  Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
+  ---------
+  Co-authored-by: Claude Opus 5 (1M context) <noreply@anthropic.com>
+* feat(point-types): add function that converts class name to PointCloudClassification (`#1382 <https://github.com/autowarefoundation/autoware_core/issues/1382>`_)
+* fix(common): declare the dependencies these packages use (`#1367 <https://github.com/autowarefoundation/autoware_core/issues/1367>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers. Boost.Serialization is declared separately from
+  libboost-dev because it needs its own library at link time.
+* feat(point_types, object_recognition_utils): segmentation pointcloud (`#1288 <https://github.com/autowarefoundation/autoware_core/issues/1288>`_)
+  * feat: add definition of point type for segmentation points
+  * feat: add helper function for segmented pointcloud label
+  * feat: replace default entropy value by Nan
+  * feat: add PointCloudClassification::INVALID
+  * refactor: move PointCloudClassification to autoware_point_types
+  * docs: update README
+  ---------
+* Contributors: Kotaro Uetake, Max Schmeller, Mete Fatih Cırıt, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

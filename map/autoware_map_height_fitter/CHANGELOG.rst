@@ -2,6 +2,54 @@
 Changelog for package autoware_map_height_fitter
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(map_height_fitter, pose_initializer, adapi_adaptors): move the nodes to agnocast_wrapper::Node (`#1445 <https://github.com/autowarefoundation/autoware_core/issues/1445>`_)
+  * feat(map_height_fitter, pose_initializer, adapi_adaptors): move the nodes to agnocast_wrapper::Node
+  * refactor(map_height_fitter, pose_initializer, adapi_adaptors): use AgnocastOnlyCallbackIsolatedExecutor and drop redundant comments
+  * refactor(map_height_fitter, pose_initializer, adapi_adaptors): drop the comments that restate the code
+  * docs(map_height_fitter, pose_initializer, adapi_adaptors): note what the agnocast_env include provides
+  * docs(map_height_fitter, pose_initializer): explain the ENABLE_AGNOCAST test gate
+  ---------
+* fix(map): declare the dependencies these packages use (`#1370 <https://github.com/autowarefoundation/autoware_core/issues/1370>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+* fix(autoware_map_height_fitter): fix inverted TF lookup direction in fit() (`#1276 <https://github.com/autowarefoundation/autoware_core/issues/1276>`_)
+  * fix(autoware_map_height_fitter): fix inverted TF lookup direction in fit()
+  tf2_buffer\_.lookupTransform(target, source) combined with tf2::doTransform
+  converts data from the source frame into the target frame. The fit()
+  function passed the arguments in the opposite order for both conversions,
+  so the input position was transformed with the inverse transform.
+  This is harmless when the requested frame equals the map frame (identity),
+  which is the common case, but when fit() is called with a pose in any
+  other frame (e.g. rviz configured with a non-map fixed frame), the ground
+  height is looked up at a wrong location and the returned height is offset
+  by the frame translation.
+  Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+  * test(autoware_map_height_fitter): add regression test for fit() frame conversion
+  Add a ROS-isolated gtest that exercises MapHeightFitter::fit() through TF:
+  a static transform map -> test_frame with a non-zero translation, and a
+  point cloud map with different ground heights at the query position and at
+  the position mirrored by twice the frame translation.
+  With the previous inverted lookupTransform argument order, the fit sampled
+  the ground at the mirrored location and offset the returned z by the frame
+  translation in the wrong direction, which this test detects. The map-frame
+  case (identity transform) is also covered and is unaffected by the bug.
+  Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: Claude Fable 5 <noreply@anthropic.com>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: DWatabe, Koichi Imai, Mete Fatih Cırıt, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
