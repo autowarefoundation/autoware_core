@@ -349,6 +349,44 @@ TEST(MvpUtilsExtend, ExtensionSpacesPointsByStepLength)
   }
   EXPECT_NEAR(result.back().pose.position.x, 2.0 + extend_distance, 1e-6);
 }
+// An extend_distance that is an exact multiple of step_length is the worst case for the sampling
+// loop: it used to skip the loop entirely and emit a single point at the far end.
+TEST(MvpUtilsExtend, ExactMultipleOfStepStillSamplesEveryStep)
+{
+  const auto points = make_straight_forward_trajectory(3, 1.0);  // last point at x = 2.0
+  const auto result = get_extended_trajectory_points(points, 4.0, 2.0);
+
+  ASSERT_EQ(result.size(), points.size() + 2);
+  EXPECT_NEAR(result[points.size()].pose.position.x, 2.0 + 2.0, 1e-6);
+  EXPECT_NEAR(result.back().pose.position.x, 2.0 + 4.0, 1e-6);
+}
+
+// The extension is anchored on the untrimmed trajectory's terminal orientation, not on the
+// orientation resampling gives the last decimated point. Feed a trajectory whose terminal pose
+// deliberately disagrees with the spline fit and check the extension follows the terminal pose.
+TEST(MvpUtilsDecimate, ExtensionUsesTheUntrimmedTerminalOrientation)
+{
+  constexpr double radius = 5.0;
+  constexpr double step_length = 2.0;
+  auto points = make_arc_forward_trajectory(25, 0.25, radius);
+
+  // Rotate the terminal pose a long way off the arc tangent. A spline through the neighbouring
+  // points cannot produce this, so the extension direction shows which orientation was used.
+  const double true_tangent = 6.0 / radius;
+  const double skewed = true_tangent + 0.5;
+  points.back().pose.orientation = autoware_utils_geometry::create_quaternion_from_yaw(skewed);
+
+  const auto result = autoware::motion_velocity_planner::utils::decimate_trajectory_points_from_ego(
+    points, points.front().pose, 3.0, 1.046, step_length, 6.0);
+  ASSERT_GT(result.size(), 2u);
+
+  // The first extended point must sit step_length away along the skewed heading, not the tangent.
+  const auto & goal = points.back().pose.position;
+  const auto & first_extended = result.at(result.size() - 3).pose.position;
+  const double heading_to_first = std::atan2(first_extended.y - goal.y, first_extended.x - goal.x);
+  EXPECT_NEAR(heading_to_first, skewed + step_length / radius / 2.0, 0.05);
+}
+
 // Check that a point obstacle on a circular arc beyond the goal lies within the extended
 // footprint. The lateral reach combines the vehicle half width and a nominal margin;
 // a point obstacle does not contribute an additional object half width.
