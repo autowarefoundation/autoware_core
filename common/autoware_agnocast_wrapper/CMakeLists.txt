@@ -116,6 +116,7 @@ if(BUILD_TESTING)
   find_package(ament_cmake_pytest REQUIRED)
   ament_add_pytest_test(test_autoware_node
     test/test_autoware_node.py
+    APPEND_ENV PYTHONPATH=${CMAKE_CURRENT_SOURCE_DIR}
   )
 
   find_package(std_msgs REQUIRED)
