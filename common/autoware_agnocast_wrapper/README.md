@@ -706,12 +706,7 @@ In such cases, rebuild both A and B with Agnocast **disabled** to ensure consist
 
 When Agnocast is enabled at build time, the heaphook shared library must be preloaded at runtime via `LD_PRELOAD`, and component containers must be replaced with their Agnocast equivalents. This package provides `agnocast_env.launch.xml` (and its Python equivalent `agnocast_env.launch.py`) which handles both of these concerns based on the `ENABLE_AGNOCAST` environment variable.
 
-### Discovery agent
-
-Including `agnocast_env.launch.xml` / `.py` also launches the `agnocast_discovery_agent` node
-automatically, once per launch tree and only when `ENABLE_AGNOCAST=1`. It publishes the local Agnocast
-state on `/_agnocast_discovery`, which the `ros2 topic list_agnocast` / `info_agnocast` / `hz_agnocast`
-commands rely on.
+The discovery agent behind `ros2 topic list_agnocast` / `info_agnocast` / `hz_agnocast` is not one of them: Agnocast starts it itself.
 
 ### Provided Variables
 

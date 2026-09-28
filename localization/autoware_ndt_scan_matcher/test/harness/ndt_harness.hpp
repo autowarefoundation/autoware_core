@@ -18,6 +18,7 @@
 #include "diagnostics_capture.hpp"
 #include "stimulus.hpp"
 #include "stub_map_loader.hpp"
+#include "topic_capture.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
@@ -54,6 +55,12 @@ struct InitialPoseSpec
   double x{map_center_x};
   double y{map_center_y};
   std::string frame_id{map_frame};
+
+  /// @brief Offset of the *newer* pose from the older one, along x.
+  ///
+  /// Must stay within `validation.initial_pose_distance_tolerance_m` or interpolation is rejected,
+  /// which is what `InitialPoseDistanceToleranceReachesTheInterpolationBuffer` drives past.
+  double delta_x{0.0};
 };
 
 /// @brief One scan-driving attempt's parameters.
@@ -79,6 +86,12 @@ struct ScanOutcome
 {
   builtin_interfaces::msg::Time stamp{};
   DiagnosticsCapture::Record diag{};
+
+  /// @brief Which attempt produced this outcome. Non-zero means an earlier one was abandoned.
+  ///
+  /// A retry runs alignment again, so a test that counts publications needs this to tell "the node
+  /// published twice" apart from "we drove the node twice".
+  int attempt{0};
 };
 
 /// @brief Drives a real `NDTScanMatcher` and observes everything it emits.
@@ -174,6 +187,35 @@ public:
   // ---------------------------------------------------------------- accessors
 
   [[nodiscard]] DiagnosticsCapture & diag() const { return *diagnostics_; }
+
+  /// @brief Starts recording a topic.
+  ///
+  /// Must be called before the input that could publish it: a check for silence proves nothing
+  /// unless the subscription existed while the node was running.
+  template <typename MsgT>
+  std::shared_ptr<TopicCapture<MsgT>> capture(
+    const std::string & topic, const rclcpp::QoS & qos = rclcpp::QoS(rclcpp::KeepAll()).reliable())
+  {
+    return std::make_shared<TopicCapture<MsgT>>(observer_.get(), topic, qos);
+  }
+
+  /// @brief Activates the node and waits until the map-update timer has loaded a map.
+  ///
+  /// The precondition for every case that needs alignment to run. Returns false rather than
+  /// asserting, so the caller decides whether a missing map is the thing under test.
+  bool ensure_map_loaded(const std::chrono::nanoseconds timeout = 30s)
+  {
+    const auto activated = activate(timeout);
+    if (!activated.has_value() || !activated.value()) {
+      return false;
+    }
+    publish_initial_pose(make_pose_at(now(), map_center_x, map_center_y));
+    return wait_for_diag(
+             map_update_status,
+             [](const Record & record) { return record.value("is_updated_map") == "True"; },
+             timeout)
+      .has_value();
+  }
   [[nodiscard]] rclcpp::Time now() const { return observer_->now(); }
 
   // ------------------------------------------------------------------ pumping
@@ -276,13 +318,35 @@ public:
   /// Returns the response's `success`, or nullopt on timeout.
   std::optional<bool> activate(const std::chrono::nanoseconds timeout = 10s)
   {
+    return set_activation(true, timeout);
+  }
+
+  /// @brief Call `trigger_node_srv` with `false`, so the node rejects what it would otherwise
+  /// process.
+  ///
+  /// Needed by the cases that drive a scan while deactivated, and by
+  /// `reset_skip_counter_via_deactivation`: the skip counter is a function-local `static` shared by
+  /// every node in the binary, so a case that raised it has to put it back.
+  std::optional<bool> deactivate(const std::chrono::nanoseconds timeout = 10s)
+  {
+    return set_activation(false, timeout);
+  }
+
+  /// @brief The shared body of `activate` and `deactivate`.
+  ///
+  /// On timeout the pending request is removed: it would otherwise stay queued on the client, and a
+  /// late reply could be matched against the next call. This harness now calls the service more
+  /// than once per node, so that is reachable.
+  std::optional<bool> set_activation(const bool enable, const std::chrono::nanoseconds timeout)
+  {
     if (!trigger_client_->wait_for_service(5s)) {
       return std::nullopt;
     }
     auto request = std::make_shared<std_srvs::srv::SetBool::Request>();
-    request->data = true;
+    request->data = enable;
     auto future = trigger_client_->async_send_request(request);
     if (!wait_until([&] { return future.wait_for(0s) == std::future_status::ready; }, timeout)) {
+      trigger_client_->remove_pending_request(future);
       return std::nullopt;
     }
     return future.get()->success;
@@ -363,8 +427,8 @@ public:
         const auto & spec = drive.initial_pose.value();
         const auto older =
           make_pose_at(target - rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id);
-        const auto newer =
-          make_pose_at(target + rclcpp::Duration(100ms), spec.x, spec.y, spec.frame_id);
+        const auto newer = make_pose_at(
+          target + rclcpp::Duration(100ms), spec.x + spec.delta_x, spec.y, spec.frame_id);
         if (!publish_initial_pose_and_confirm(older) || !publish_initial_pose_and_confirm(newer)) {
           continue;
         }
@@ -385,7 +449,7 @@ public:
         if (lost_tf_race) {
           continue;
         }
-        return ScanOutcome{target, record.value()};
+        return ScanOutcome{target, record.value(), attempt};
       }
     }
     return std::nullopt;
