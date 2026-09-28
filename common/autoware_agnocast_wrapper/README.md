@@ -295,6 +295,7 @@ Instead of calling `rclcpp_components_register_node` directly, use the `autoware
 
 1. Registers the component with `rclcpp_components` (for component container support)
 2. Creates a standalone executable that can switch between `rclcpp::Node` and `agnocast::Node` at runtime based on the `ENABLE_AGNOCAST` environment variable
+3. Registers the executable in the `autoware_node_plugins` resource, which the `<autoware_node>` launch action reads (see [Switching One Node Between Standalone and a Component Container](#switching-one-node-between-standalone-and-a-component-container))
 
 When `ENABLE_AGNOCAST` is not set or set to `0`, this macro falls back to standard `rclcpp_components_register_node` behavior.
 

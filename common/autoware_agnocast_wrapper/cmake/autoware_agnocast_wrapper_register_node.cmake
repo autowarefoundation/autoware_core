@@ -19,6 +19,8 @@
 # 1. A standard rclcpp_components registration for the component
 # 2. A standalone executable that can switch between rclcpp::Node and agnocast::Node
 #    at runtime based on the ENABLE_AGNOCAST environment variable
+# 3. An autoware_node_plugins resource index entry mapping <EXECUTABLE> to <PLUGIN> and to the
+#    ENABLE_AGNOCAST it was built with, which the <autoware_node> launch action reads
 #
 # When ENABLE_AGNOCAST is not set or set to 0, this macro falls back to
 # standard rclcpp_components_register_node behavior.
@@ -57,6 +59,8 @@
 #   When ENABLE_AGNOCAST is not set (standard mode):
 #     - <EXECUTABLE>            : standard rclcpp_components executable (delegates to
 #                                 rclcpp_components_register_node as-is)
+#   In both modes:
+#     - autoware_node_plugins entry : <EXECUTABLE> -> <PLUGIN>;<0|1>, read by <autoware_node>
 #   Launch files should always reference <EXECUTABLE> for consistent behavior across both modes.
 #
 # Example:

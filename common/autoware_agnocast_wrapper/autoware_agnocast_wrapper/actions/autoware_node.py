@@ -50,8 +50,8 @@ class AutowareNode(Action):
     ``target`` decides the form, as it would anywhere else: given, the node is loaded into that
     container; omitted, it is a process of its own.
 
-    ``mode`` only says whether to use Agnocast, and is read only when the node was built with
-    Agnocast support and the launch runs with ``ENABLE_AGNOCAST=1``:
+    ``mode`` is always checked, and takes effect only when the node was built with Agnocast support
+    and the launch enables Agnocast (``use_agnocast``, or else ``ENABLE_AGNOCAST=1``):
 
     - ``auto`` (the default): run on Agnocast where it is available, on rclcpp where it is not.
     - ``rclcpp``: stay on rclcpp, in the form ``target`` asks for.
