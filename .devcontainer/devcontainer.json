@@ -1,6 +1,6 @@
 {
   "name": "Autoware Core Development",
-  "image": "ghcr.io/autowarefoundation/autoware:core-devel-jazzy",
+  "image": "ghcr.io/autowarefoundation/autoware:core-jazzy",
   "runArgs": ["--net=host", "--privileged", "--name", "autoware-core-devcontainer"],
   "workspaceFolder": "/home/aw/autoware/",
   "remoteUser": "aw",
@@ -16,17 +16,17 @@
     },
     {
       "type": "volume",
-      "source": "autoware-core-cache",
+      "source": "autoware-core-devcontainer-cache",
       "target": "/home/aw/.cache"
     },
     {
       "type": "volume",
-      "source": "autoware-core-config",
+      "source": "autoware-core-devcontainer-config",
       "target": "/home/aw/.config"
     },
     {
       "type": "volume",
-      "source": "autoware-core-ccache",
+      "source": "autoware-core-devcontainer-ccache",
       "target": "/home/aw/.ccache"
     },
     {
@@ -46,7 +46,7 @@
   "containerEnv": {
     "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
   },
-  "postCreateCommand": "",
+  "postCreateCommand": "sudo chown -R 1000:1000 /home/aw/autoware && bash /home/aw/autoware/src/core/.devcontainer/scripts/setup-bashrc.sh",
   "customizations": {
     "vscode": {
       "extensions": [
