@@ -9892,6 +9892,8 @@ publisher/subscription macros above.</p>
 <p>There is no <code>&lt;EXECUTABLE&gt;_component</code> target. Launch files should always reference <code>&lt;EXECUTABLE&gt;</code>, which
 is the same name in both modes.</p>
 </blockquote>
+<p>In both modes the macro also registers an <code>autoware_node_plugins</code> resource mapping <code>&lt;EXECUTABLE&gt;</code> to
+its component class and to the <code>ENABLE_AGNOCAST</code> it was built with, which <code>&lt;autoware_node&gt;</code> reads.</p>
 <p>Note that the macro applies <code>autoware_agnocast_wrapper_setup()</code> to <strong>both</strong> the component library and the
 generated executable. Both need <code>USE_AGNOCAST_ENABLED</code> defined for ABI consistency, and
 <code>ament_target_dependencies()</code> does not propagate the wrapper's <code>PUBLIC</code> compile definitions.</p>
@@ -10001,6 +10003,9 @@ generated executable. Both need <code>USE_AGNOCAST_ENABLED</code> defined for AB
 <p> </p>
 <h2 id="7-component_container-selection-agnocast_envlaunchxml">7. component_container Selection (agnocast_env.launch.xml)<a class="headerlink" href="#7-component_container-selection-agnocast_envlaunchxml" title="Permanent link">#</a></h2>
 <p>By including <code>agnocast_env.launch.xml</code>, the appropriate component container is automatically selected based on the <code>ENABLE_AGNOCAST</code> environment variable.</p>
+<p>An <code>agnocast_wrapper::Node</code> node cannot be loaded into a container on Agnocast. For such a node,
+the <code>&lt;autoware_node&gt;</code> launch action writes the container form and the standalone form at once; see
+<a href="../../#switching-one-node-between-standalone-and-a-component-container">Switching One Node Between Standalone and a Component Container</a>.</p>
 <p> </p>
 <h3 id="provided-variables">Provided Variables<a class="headerlink" href="#provided-variables" title="Permanent link">#</a></h3>
 <table>

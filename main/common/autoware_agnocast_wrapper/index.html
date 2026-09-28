@@ -8127,6 +8127,56 @@
   
 </li>
       
+        <li class="md-nav__item">
+  <a href="#switching-one-node-between-standalone-and-a-component-container" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Switching One Node Between Standalone and a Component Container
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Switching One Node Between Standalone and a Component Container">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#keeping-one-node-on-rclcpp" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Keeping one node on rclcpp
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#the-heaphook" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The heaphook
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#resolving-the-component" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Resolving the component
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
     </ul>
   
 </nav>
@@ -8541,6 +8591,7 @@ and the subscription callback.</p>
 <ol>
 <li>Registers the component with <code>rclcpp_components</code> (for component container support)</li>
 <li>Creates a standalone executable that can switch between <code>rclcpp::Node</code> and <code>agnocast::Node</code> at runtime based on the <code>ENABLE_AGNOCAST</code> environment variable</li>
+<li>Registers the executable in the <code>autoware_node_plugins</code> resource, which the <code>&lt;autoware_node&gt;</code> launch action reads (see <a href="#switching-one-node-between-standalone-and-a-component-container">Switching One Node Between Standalone and a Component Container</a>)</li>
 </ol>
 <p>When <code>ENABLE_AGNOCAST</code> is not set or set to <code>0</code>, this macro falls back to standard <code>rclcpp_components_register_node</code> behavior.</p>
 <div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_agnocast_wrapper</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
@@ -9222,7 +9273,84 @@ colcon<span class="w"> </span>build<span class="w"> </span>--symlink-install<spa
     <span class="k">return</span> <span class="n">LaunchDescription</span><span class="p">([</span><span class="n">agnocast_env</span><span class="p">,</span> <span class="n">container</span><span class="p">])</span>
 </code></pre></div>
 <p>The same <code>use_agnocast</code> override works here too, via <code>launch_arguments={"use_agnocast": "0"}.items()</code>.</p>
-<p>This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.</p></div>
+<p>This ensures that only the intended nodes receive the heaphook, rather than all nodes in the launch tree.</p>
+<h2 id="switching-one-node-between-standalone-and-a-component-container">Switching One Node Between Standalone and a Component Container<a class="headerlink" href="#switching-one-node-between-standalone-and-a-component-container" title="Permanent link">#</a></h2>
+<p>On Agnocast, an <code>agnocast_wrapper::Node</code> is an <code>agnocast::Node</code>, which no component container can
+load, so a node that is otherwise a component has to run as a process of its own there. The
+<code>&lt;autoware_node&gt;</code> launch action picks the form, so a launch file states the node once instead of
+writing both. The container swap above is for <code>rclcpp::Node</code> components, which can stay in a
+container. <code>&lt;autoware_node&gt;</code> is for nodes registered with <code>autoware_agnocast_wrapper_register_node()</code>
+(see <a href="#resolving-the-component">Resolving the component</a>).</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;autoware_node</span>
+<span class="w">  </span><span class="na">pkg=</span><span class="s">"autoware_pointcloud_preprocessor"</span>
+<span class="w">  </span><span class="na">exec=</span><span class="s">"random_downsample_filter_node"</span>
+<span class="w">  </span><span class="na">name=</span><span class="s">"random_downsample_filter"</span>
+<span class="w">  </span><span class="na">target=</span><span class="s">"$(var pointcloud_container_name)"</span>
+<span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;param</span><span class="w"> </span><span class="na">from=</span><span class="s">"$(var random_downsample_filter_param_path)"</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;remap</span><span class="w"> </span><span class="na">from=</span><span class="s">"input"</span><span class="w"> </span><span class="na">to=</span><span class="s">"voxel_grid_downsample/pointcloud"</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;remap</span><span class="w"> </span><span class="na">from=</span><span class="s">"output"</span><span class="w"> </span><span class="na">to=</span><span class="s">"$(var output/pointcloud)"</span><span class="nt">/&gt;</span>
+<span class="w">  </span><span class="nt">&lt;extra_arg</span><span class="w"> </span><span class="na">name=</span><span class="s">"use_intra_process_comms"</span><span class="w"> </span><span class="na">value=</span><span class="s">"$(var use_intra_process)"</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/autoware_node&gt;</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>Attribute</th>
+<th>Default</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>target</code></td>
+<td>—</td>
+<td>Container to load into; omit or leave empty for a process of its own</td>
+</tr>
+<tr>
+<td><code>mode</code></td>
+<td><code>auto</code></td>
+<td><code>auto</code>: Agnocast where available. <code>rclcpp</code>: never Agnocast</td>
+</tr>
+<tr>
+<td>others</td>
+<td>—</td>
+<td>Same as <code>&lt;node&gt;</code> (<code>pkg</code>, <code>exec</code>, <code>name</code>, <code>namespace</code>, <code>output</code>, ...)</td>
+</tr>
+</tbody>
+</table>
+<p>The attributes and <code>&lt;param&gt;</code> / <code>&lt;remap&gt;</code> / <code>&lt;env&gt;</code> are read by <code>&lt;node&gt;</code>'s parser, and
+<code>&lt;extra_arg&gt;</code> the way <code>&lt;composable_node&gt;</code> reads it. <code>&lt;param&gt;</code> and <code>&lt;remap&gt;</code> apply to both forms,
+<code>&lt;extra_arg&gt;</code> only to the container form, and <code>&lt;env&gt;</code> and the process attributes only to the
+standalone form.</p>
+<p>Agnocast is used only when the package was built with <code>ENABLE_AGNOCAST=1</code>, the launch runs with
+<code>ENABLE_AGNOCAST=1</code>, and <code>mode</code> is <code>auto</code>. As in <code>agnocast_env.launch.xml</code>, a <code>use_agnocast</code> launch
+argument overrides <code>ENABLE_AGNOCAST</code> for this decision. The node then always runs standalone,
+ignoring <code>target</code>. In every other case the node is launched as written, on rclcpp.</p>
+<h3 id="keeping-one-node-on-rclcpp">Keeping one node on rclcpp<a class="headerlink" href="#keeping-one-node-on-rclcpp" title="Permanent link">#</a></h3>
+<p><code>mode="rclcpp"</code> keeps a node off Agnocast in a workspace that otherwise runs on it. With <code>target</code>,
+the node is loaded into that container, which then has to be a plain rclcpp container started with
+<code>ENABLE_AGNOCAST=0</code>: a component takes the container's environment, and Agnocast calls <code>exit()</code>
+when it creates a publisher or subscription without the heaphook in <code>LD_PRELOAD</code>.</p>
+<div class="highlight"><pre><span></span><code><span class="nt">&lt;node_container</span><span class="w"> </span><span class="na">pkg=</span><span class="s">"rclcpp_components"</span><span class="w"> </span><span class="na">exec=</span><span class="s">"component_container"</span><span class="w"> </span><span class="na">name=</span><span class="s">"pointcloud_container"</span><span class="w"> </span><span class="na">namespace=</span><span class="s">""</span><span class="nt">&gt;</span>
+<span class="w">  </span><span class="nt">&lt;env</span><span class="w"> </span><span class="na">name=</span><span class="s">"ENABLE_AGNOCAST"</span><span class="w"> </span><span class="na">value=</span><span class="s">"0"</span><span class="nt">/&gt;</span>
+<span class="nt">&lt;/node_container&gt;</span>
+</code></pre></div>
+<p>The action warns whenever it loads a node built with Agnocast into a container while
+<code>ENABLE_AGNOCAST=1</code>.</p>
+<h3 id="the-heaphook">The heaphook<a class="headerlink" href="#the-heaphook" title="Permanent link">#</a></h3>
+<p>A node on Agnocast gets the heaphook at the front of its <code>LD_PRELOAD</code>, which is taken from <code>&lt;env&gt;</code>
+if given and inherited otherwise. A heaphook in that <code>&lt;env&gt;</code> is the one used, so that one node can
+run another build of it. Otherwise the path comes from the <code>agnocast_heaphook_path</code> launch
+configuration, defaulting to <code>/opt/ros/$ROS_DISTRO/lib/libagnocast_heaphook.so</code>, and any other
+copy is replaced so that only one is loaded. The heaphook must match the workspace's
+<code>agnocastlib</code>, and a missing file stops the launch.</p>
+<h3 id="resolving-the-component">Resolving the component<a class="headerlink" href="#resolving-the-component" title="Permanent link">#</a></h3>
+<p><code>autoware_agnocast_wrapper_register_node()</code> registers an <code>autoware_node_plugins</code> resource named
+<code>&lt;package&gt;__&lt;executable&gt;</code> holding <code>&lt;component class&gt;;&lt;0|1&gt;</code>, the <code>ENABLE_AGNOCAST</code> the package was
+built with. <code>target</code> therefore works only for nodes registered that way; the
+<code>rclcpp_components</code> index does not map executables to classes. Without <code>target</code>, an unregistered
+node runs on rclcpp, with a warning when Agnocast is enabled.</p></div>
 
 
 
