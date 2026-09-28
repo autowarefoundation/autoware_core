@@ -28,3 +28,56 @@ ignore:
   - tools/**
   - "**/examples/*"
   - "**/examples/**/*"
+
+# NOTE: The README.md component-wise coverage badges query this list positionally
+# (`$.[N].coverage` via shields.io, which does not support JSONPath filters).
+# The API returns components in the order declared below, so keep this list
+# alphabetical and update README.md if you insert, remove, or reorder an entry.
+# Launch/URDF-only directories (autoware_core, description, vehicle) are omitted
+# because they contain no compiled code and would always report null.
+component_management:
+  individual_components:
+    - component_id: api-packages
+      name: API Packages
+      paths:
+        - api/**/**
+
+    - component_id: common-packages
+      name: Common Packages
+      paths:
+        - common/**/**
+
+    - component_id: control-packages
+      name: Control Packages
+      paths:
+        - control/**/**
+
+    - component_id: localization-packages
+      name: Localization Packages
+      paths:
+        - localization/**/**
+
+    - component_id: map-packages
+      name: Map Packages
+      paths:
+        - map/**/**
+
+    - component_id: perception-packages
+      name: Perception Packages
+      paths:
+        - perception/**/**
+
+    - component_id: planning-packages
+      name: Planning Packages
+      paths:
+        - planning/**/**
+
+    - component_id: sensing-packages
+      name: Sensing Packages
+      paths:
+        - sensing/**/**
+
+    - component_id: testing-packages
+      name: Testing Packages
+      paths:
+        - testing/**/**
