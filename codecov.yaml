@@ -67,6 +67,7 @@ component_management:
       name: Planning Packages
       paths:
         - planning/**/**
+        - "!planning/**/debug.*"
 
     - component_id: sensing-packages
       name: Sensing Packages
