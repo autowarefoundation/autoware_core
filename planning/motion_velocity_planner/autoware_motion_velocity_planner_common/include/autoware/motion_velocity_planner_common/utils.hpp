@@ -177,7 +177,8 @@ double calc_dist_to_traj_poly(
 /**
  * @brief append the `input_points` up to `extend_length` every `step_length`, following the road
  * curvature at the last point of `input_points`, keeping its vel/acc
- * @param curvature curvature to follow past the last point. When not given it is estimated from
+ * @param curvature curvature to follow past the last point, signed by the order of the points
+ * it was measured from (as calc_curvature() does). When not given it is estimated from
  * `input_points`, which is only reliable while they still span a few metres; callers that still
  * hold the untrimmed trajectory should measure it there and pass it in.
  */

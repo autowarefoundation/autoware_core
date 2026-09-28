@@ -139,8 +139,12 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
   }
 
   const auto goal_point = input_points.back();
-  const double goal_curvature =
+  // calc_curvature() signs the curvature by the order of the points it is given, which runs
+  // along the direction of travel. The arc formula below needs it in the vehicle frame, where
+  // the heading does not flip when reversing, so undo the sign the point order imposed.
+  const double point_order_curvature =
     curvature.value_or(estimate_goal_curvature(input_points, step_length));
+  const double goal_curvature = is_driving_forward ? point_order_curvature : -point_order_curvature;
   // Stop one epsilon short of extend_distance so that a step landing exactly on it does not add a
   // duplicate of the final point below.
   constexpr double duplicate_point_epsilon = 1e-6;
@@ -183,12 +187,18 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const auto decimated_traj_points_from_ego =
     resample_trajectory_points(traj_points_from_ego, decimate_trajectory_step_length);
 
-  // extend trajectory. Measure the curvature on the untrimmed trajectory: close to the goal the
-  // trimmed and decimated one is only a couple of points long, which is exactly when the
-  // extension past the goal decides whether an obstacle beyond it is seen.
+  // Extend the trajectory. Both the curvature and the pose the extension starts from are taken
+  // from the untrimmed trajectory. Resampling recomputes orientations with a spline whose error
+  // is largest at the end points, and close to the goal the trimmed and decimated trajectory is
+  // only a couple of points long -- which is exactly when the extension past the goal decides
+  // whether an obstacle beyond it is seen.
+  auto extension_input = decimated_traj_points_from_ego;
+  if (!extension_input.empty() && !traj_points.empty()) {
+    extension_input.back().pose.orientation = traj_points.back().pose.orientation;
+  }
+
   const auto extended_traj_points_from_ego = get_extended_trajectory_points(
-    decimated_traj_points_from_ego, goal_extended_trajectory_length,
-    decimate_trajectory_step_length,
+    extension_input, goal_extended_trajectory_length, decimate_trajectory_step_length,
     estimate_goal_curvature(traj_points, decimate_trajectory_step_length));
   if (extended_traj_points_from_ego.size() < 2) {
     return traj_points;
