@@ -30,8 +30,3 @@ You can check more details by clicking a badge and navigating the Codecov websit
 | Planning     | [![codecov](https://img.shields.io/badge/dynamic/json?url=https://codecov.io/api/v2/github/autowarefoundation/repos/autoware_core/components&label=Planning%20Packages&query=$.[6].coverage&suffix=%25)](https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Planning%20Packages)         |
 | Sensing      | [![codecov](https://img.shields.io/badge/dynamic/json?url=https://codecov.io/api/v2/github/autowarefoundation/repos/autoware_core/components&label=Sensing%20Packages&query=$.[7].coverage&suffix=%25)](https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Sensing%20Packages)           |
 | Testing      | [![codecov](https://img.shields.io/badge/dynamic/json?url=https://codecov.io/api/v2/github/autowarefoundation/repos/autoware_core/components&label=Testing%20Packages&query=$.[8].coverage&suffix=%25)](https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Testing%20Packages)           |
-
-<!-- NOTE: `query` indices are positional and must match the declaration order of -->
-<!-- `component_management.individual_components` in codecov.yaml. -->
-<!-- `autoware_core/`, `description/` and `vehicle/` are launch/URDF-only and are -->
-<!-- therefore not tracked as components. -->

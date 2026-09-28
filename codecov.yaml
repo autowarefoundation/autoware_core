@@ -29,12 +29,8 @@ ignore:
   - "**/examples/*"
   - "**/examples/**/*"
 
-# NOTE: The README.md component-wise coverage badges query this list positionally
-# (`$.[N].coverage` via shields.io, which does not support JSONPath filters).
 # The API returns components in the order declared below, so keep this list
 # alphabetical and update README.md if you insert, remove, or reorder an entry.
-# Launch/URDF-only directories (autoware_core, description, vehicle) are omitted
-# because they contain no compiled code and would always report null.
 component_management:
   individual_components:
     - component_id: api-packages
