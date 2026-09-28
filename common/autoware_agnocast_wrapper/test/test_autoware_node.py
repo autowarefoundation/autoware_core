@@ -133,8 +133,8 @@ def test_form_and_transport(
 
     emitted = emit(action(mode=mode, target=target), context)
 
-    on_agnocast = built_with_agnocast and enable_agnocast == "1"
-    if on_agnocast and mode != "rclcpp":
+    available = built_with_agnocast and enable_agnocast == "1"
+    if available and mode != "rclcpp":
         # Agnocast always takes a process of its own, so target is dropped.
         assert isinstance(emitted, Node)
         assert env_of(emitted)["ENABLE_AGNOCAST"] == "1"
@@ -144,7 +144,7 @@ def test_form_and_transport(
         assert text(component_of(emitted).node_plugin) == PLUGIN
     else:
         assert isinstance(emitted, Node)
-        assert env_of(emitted).get("ENABLE_AGNOCAST") == ("0" if on_agnocast else None)
+        assert env_of(emitted)["ENABLE_AGNOCAST"] == "0"
 
 
 def test_an_empty_target_is_no_container(build, run, context):
@@ -263,16 +263,76 @@ def test_the_standalone_form_takes_the_process_arguments(build, run, context):
     assert env_of(emitted)["A"] == "B"
 
 
-@pytest.mark.parametrize("mode,decided", [("auto", "1"), ("rclcpp", "0")])
-def test_enable_agnocast_in_env_is_overridden(build, run, context, mode, decided):
+@pytest.mark.parametrize(
+    "built_with_agnocast,enable_agnocast,mode,decided",
+    [(True, "1", "auto", "1"), (True, "1", "rclcpp", "0"), (True, "0", "auto", "0")],
+)
+def test_enable_agnocast_in_env_is_overridden(
+    build, run, context, built_with_agnocast, enable_agnocast, mode, decided
+):
     """ENABLE_AGNOCAST is the action's to decide; mode is how a launch file has its say."""
-    build(True)
-    run("1")
+    build(built_with_agnocast)
+    run(enable_agnocast)
     given = "0" if decided == "1" else "1"
 
     emitted = emit(action(mode=mode, additional_env={("ENABLE_AGNOCAST",): subs(given)}), context)
 
     assert env_of(emitted)["ENABLE_AGNOCAST"] == decided
+
+
+@pytest.mark.parametrize(
+    "use_agnocast,enable_agnocast,available", [("0", "1", False), ("1", "0", True)]
+)
+def test_use_agnocast_overrides_enable_agnocast(
+    build, run, context, heaphook, use_agnocast, enable_agnocast, available
+):
+    """As it does for the containers agnocast_env.launch.xml resolves."""
+    build(True)
+    run(enable_agnocast)
+    context.launch_configurations["use_agnocast"] = use_agnocast
+
+    env = env_of(emit(action(), context))
+
+    assert env["ENABLE_AGNOCAST"] == ("1" if available else "0")
+    assert (env.get("LD_PRELOAD") == heaphook) == available
+
+
+@pytest.mark.parametrize("source", ["launch", "env"], ids=["from the launch", "from <env>"])
+def test_a_node_off_agnocast_drops_the_heaphook(build, run, context, heaphook, warnings, source):
+    build(True)
+    given = f"/lib/one.so:{heaphook}"
+    if source == "launch":
+        run("1", ld_preload=given)
+        act = action(mode="rclcpp")
+    else:
+        run("1")
+        act = action(mode="rclcpp", additional_env={("LD_PRELOAD",): subs(given)})
+
+    env = env_of(emit(act, context))
+
+    assert env["LD_PRELOAD"] == "/lib/one.so"
+    # Only what the launch file wrote for this node is worth a word.
+    messages = [w.getMessage() for w in warnings]
+    if source == "launch":
+        assert messages == []
+    else:
+        (message,) = messages
+        assert "'a_node'" in message
+
+
+@pytest.mark.parametrize("enable_agnocast,warned", [("1", True), ("0", False)])
+def test_an_unregistered_node_is_reported_when_agnocast_is_enabled(
+    build, run, context, warnings, enable_agnocast, warned
+):
+    build(False, plugin=None)
+    run(enable_agnocast)
+
+    env = env_of(emit(action(), context))
+
+    assert env["ENABLE_AGNOCAST"] == "0"
+    assert bool(warnings) == warned
+    if warned:
+        assert "'a_node'" in warnings[0].getMessage()
 
 
 def test_the_container_form_drops_the_process_arguments(build, run, context):
@@ -354,24 +414,38 @@ def test_it_needs_a_package():
 
 
 @pytest.mark.parametrize(
-    "built_with_agnocast,enable_agnocast,mode,target,warned",
+    "built_with_agnocast,enable_agnocast,use_agnocast,mode,target,warned",
     [
-        # The one case where something outside <autoware_node> settles the transport.
-        (True, "1", "rclcpp", CONTAINER, True),
+        # Where something outside <autoware_node> settles the transport.
+        (True, "1", None, "rclcpp", CONTAINER, True),
+        # The container keeps the launch's ENABLE_AGNOCAST=1, which use_agnocast does not reach.
+        (True, "1", "0", "auto", CONTAINER, True),
         # Agnocast takes a process of its own, so no container is involved.
-        (True, "1", "auto", CONTAINER, False),
-        (True, "1", "rclcpp", None, False),
+        (True, "1", None, "auto", CONTAINER, False),
+        # No target, so no container is involved.
+        (True, "1", None, "rclcpp", None, False),
         # Agnocast is not in play, so the container's environment does not matter.
-        (True, "0", "rclcpp", CONTAINER, False),
-        (False, "1", "rclcpp", CONTAINER, False),
+        (True, "0", None, "rclcpp", CONTAINER, False),
+        (False, "1", None, "rclcpp", CONTAINER, False),
     ],
 )
 def test_it_warns_where_the_container_decides_the_transport(
-    build, run, context, warnings, built_with_agnocast, enable_agnocast, mode, target, warned
+    build,
+    run,
+    context,
+    warnings,
+    built_with_agnocast,
+    enable_agnocast,
+    use_agnocast,
+    mode,
+    target,
+    warned,
 ):
     """The action cannot see the container it hands the node to, so all it can do is say so."""
     build(built_with_agnocast)
     run(enable_agnocast)
+    if use_agnocast is not None:
+        context.launch_configurations["use_agnocast"] = use_agnocast
 
     emit(action(mode=mode, target=target), context)
 

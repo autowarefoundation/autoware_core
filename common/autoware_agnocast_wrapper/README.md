@@ -852,7 +852,8 @@ On Agnocast, an `agnocast_wrapper::Node` is an `agnocast::Node`, which no compon
 load, so a node that is otherwise a component has to run as a process of its own there. The
 `<autoware_node>` launch action picks the form, so a launch file states the node once instead of
 writing both. The container swap above is for `rclcpp::Node` components, which can stay in a
-container.
+container. `<autoware_node>` is for nodes registered with `autoware_agnocast_wrapper_register_node()`
+(see [Resolving the component](#resolving-the-component)).
 
 ```xml
 <autoware_node
@@ -880,9 +881,9 @@ The attributes and `<param>` / `<remap>` / `<env>` are read by `<node>`'s parser
 standalone form.
 
 Agnocast is used only when the package was built with `ENABLE_AGNOCAST=1`, the launch runs with
-`ENABLE_AGNOCAST=1`, and `mode` is `auto`. The node then always runs standalone, ignoring `target`.
-In every other case the node is launched as written, on rclcpp. The `use_agnocast` argument of
-`agnocast_env.launch.xml` is not read; use `mode` instead.
+`ENABLE_AGNOCAST=1`, and `mode` is `auto`. As in `agnocast_env.launch.xml`, a `use_agnocast` launch
+argument overrides `ENABLE_AGNOCAST` for this decision. The node then always runs standalone,
+ignoring `target`. In every other case the node is launched as written, on rclcpp.
 
 ### Keeping one node on rclcpp
 
@@ -897,7 +898,8 @@ when it creates a publisher or subscription without the heaphook in `LD_PRELOAD`
 </node_container>
 ```
 
-The action warns whenever it loads a node into a container while `ENABLE_AGNOCAST=1`.
+The action warns whenever it loads a node built with Agnocast into a container while
+`ENABLE_AGNOCAST=1`.
 
 ### The heaphook
 
@@ -913,4 +915,5 @@ copy is replaced so that only one is loaded. The heaphook must match the workspa
 `autoware_agnocast_wrapper_register_node()` registers an `autoware_node_plugins` resource named
 `<package>__<executable>` holding `<component class>;<0|1>`, the `ENABLE_AGNOCAST` the package was
 built with. `target` therefore works only for nodes registered that way; the
-`rclcpp_components` index does not map executables to classes.
+`rclcpp_components` index does not map executables to classes. Without `target`, an unregistered
+node runs on rclcpp, with a warning when Agnocast is enabled.

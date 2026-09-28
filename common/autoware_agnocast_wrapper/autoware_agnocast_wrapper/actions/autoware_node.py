@@ -140,15 +140,17 @@ class AutowareNode(Action):
         return plugin, built_with_agnocast == "1"
 
     @staticmethod
+    def _configured_heaphook(context: LaunchContext) -> str:
+        return context.launch_configurations.get("agnocast_heaphook_path", _default_heaphook_path())
+
+    @staticmethod
     def _heaphook_path(context: LaunchContext, given: Optional[str]) -> str:
         """Return the heaphook to preload.
 
         One in the LD_PRELOAD the launch file ``given`` for this node wins, so that one node can
         run another build of it; otherwise it is the ``agnocast_heaphook_path`` config.
         """
-        heaphook = context.launch_configurations.get(
-            "agnocast_heaphook_path", _default_heaphook_path()
-        )
+        heaphook = AutowareNode._configured_heaphook(context)
         if given is not None:
             heaphook = next(
                 (
@@ -193,6 +195,21 @@ class AutowareNode(Action):
 
         return ":".join([heaphook, *kept])
 
+    @staticmethod
+    def _without_heaphook(heaphook: str, base: str, given: bool, label: str) -> str:
+        """Drop the heaphook from ``base``.
+
+        It registers a process with Agnocast on startup whatever ``ENABLE_AGNOCAST`` says.
+        """
+        entries = [entry for entry in base.split(":") if entry]
+        kept = [e for e in entries if os.path.basename(e) != os.path.basename(heaphook)]
+        if given and len(kept) != len(entries):
+            get_logger(__name__).warning(
+                f"'{label}' does not run on Agnocast, so the heaphook in its <env> LD_PRELOAD is "
+                "left out"
+            )
+        return ":".join(kept)
+
     def _mode_of(self, context: LaunchContext) -> str:
         mode = self._perform(context, self._mode) or "auto"
         if mode not in MODES:
@@ -212,8 +229,14 @@ class AutowareNode(Action):
         # Read unconditionally, so an unknown mode is rejected in every build and run.
         mode = self._mode_of(context)
 
-        on_agnocast = built_with_agnocast and os.environ.get("ENABLE_AGNOCAST", "0") == "1"
-        use_agnocast = on_agnocast and mode != "rclcpp"
+        # use_agnocast overrides ENABLE_AGNOCAST as in agnocast_env.launch.xml, but a container keeps
+        # the ENABLE_AGNOCAST it inherited from the launch.
+        launch_enabled = os.environ.get("ENABLE_AGNOCAST", "0") == "1"
+        use_agnocast_arg = context.launch_configurations.get("use_agnocast")
+        enabled = launch_enabled if use_agnocast_arg is None else use_agnocast_arg == "1"
+        available = built_with_agnocast and enabled
+        use_agnocast = available and mode != "rclcpp"
+        agnocast_in_container = built_with_agnocast and launch_enabled
 
         if use_agnocast and target:
             get_logger(__name__).info(
@@ -228,7 +251,7 @@ class AutowareNode(Action):
                     f"'{executable}' of {package} registers no {PLUGIN_RESOURCE} resource, so the "
                     f"component to load as '{label}' is unknown"
                 )
-            if on_agnocast:
+            if agnocast_in_container:
                 # Only a warning: the container is a name to the action, not something it can
                 # look at, and the launch may well have started it correctly.
                 get_logger(__name__).warning(
@@ -267,21 +290,31 @@ class AutowareNode(Action):
             for key, value in (process_kwargs.pop("additional_env", None) or {}).items()
         }
 
+        given = env.pop("LD_PRELOAD", None)
+        if given is not None:
+            given = perform_substitutions(context, normalize_to_list_of_substitutions(given))
+        base = os.environ.get("LD_PRELOAD", "") if given is None else given
+
         if use_agnocast:
-            # An LD_PRELOAD of the launch file's own replaces the inherited one, as it would on
-            # <node>, and the heaphook goes in front of whichever it is.
-            given = env.pop("LD_PRELOAD", None)
-            if given is not None:
-                given = perform_substitutions(context, normalize_to_list_of_substitutions(given))
             heaphook = self._heaphook_path(context, given)
-            base = os.environ.get("LD_PRELOAD", "") if given is None else given
             transport_env = {
                 "ENABLE_AGNOCAST": "1",
                 "LD_PRELOAD": self._ld_preload(heaphook, base, label),
             }
         else:
-            # Only worth overriding when the node would otherwise have picked Agnocast up.
-            transport_env = {"ENABLE_AGNOCAST": "0"} if on_agnocast else {}
+            if plugin is None and enabled:
+                get_logger(__name__).warning(
+                    f"'{executable}' of {package} registers no {PLUGIN_RESOURCE} resource, so "
+                    f"'{label}' runs on rclcpp although Agnocast is enabled; register it with "
+                    "autoware_agnocast_wrapper_register_node()"
+                )
+            # Set whatever the node inherits, so it cannot start Agnocast on its own.
+            transport_env = {"ENABLE_AGNOCAST": "0"}
+            kept = self._without_heaphook(
+                self._configured_heaphook(context), base, given is not None, label
+            )
+            if given is not None or kept != base:
+                transport_env["LD_PRELOAD"] = kept
 
         # The launch file's own <env> comes first, so the transport the action settled on wins.
         env.update(transport_env)
