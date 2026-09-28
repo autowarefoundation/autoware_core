@@ -19,7 +19,6 @@ from typing import List
 from typing import Optional
 
 from ament_index_python.resources import get_resource
-from ament_index_python.resources import has_resource
 from launch import Action
 from launch.frontend import Entity
 from launch.frontend import Parser
@@ -123,7 +122,6 @@ class AutowareNode(Action):
             for extra_arg in extra_arguments:
                 extra_arg.assert_entity_completely_parsed()
 
-        entity.assert_entity_completely_parsed()
         return cls, kwargs
 
     def _perform(self, context: LaunchContext, value) -> Optional[str]:
@@ -135,9 +133,10 @@ class AutowareNode(Action):
     def _registration(package: str, executable: str):
         """Return the component class and whether it was built with ENABLE_AGNOCAST=1."""
         resource = f"{package}__{executable}"
-        if not has_resource(PLUGIN_RESOURCE, resource):
+        try:
+            content, _ = get_resource(PLUGIN_RESOURCE, resource)
+        except LookupError:
             return None, False
-        content, _ = get_resource(PLUGIN_RESOURCE, resource)
         plugin, _, built_with_agnocast = content.strip().partition(";")
         return plugin, built_with_agnocast == "1"
 
