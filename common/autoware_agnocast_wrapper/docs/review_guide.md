@@ -678,6 +678,9 @@ A CMake macro used in place of `rclcpp_components_register_node`. It generates d
 > There is no `<EXECUTABLE>_component` target. Launch files should always reference `<EXECUTABLE>`, which
 > is the same name in both modes.
 
+In both modes the macro also registers an `autoware_node_plugins` resource mapping `<EXECUTABLE>` to
+its component class and to the `ENABLE_AGNOCAST` it was built with, which `<autoware_node>` reads.
+
 Note that the macro applies `autoware_agnocast_wrapper_setup()` to **both** the component library and the
 generated executable. Both need `USE_AGNOCAST_ENABLED` defined for ABI consistency, and
 `ament_target_dependencies()` does not propagate the wrapper's `PUBLIC` compile definitions.
@@ -739,6 +742,10 @@ autoware_agnocast_wrapper_register_node(my_node_component
 ## 7. component_container Selection (agnocast_env.launch.xml)
 
 By including `agnocast_env.launch.xml`, the appropriate component container is automatically selected based on the `ENABLE_AGNOCAST` environment variable.
+
+An `agnocast_wrapper::Node` node cannot be loaded into a container on Agnocast. For such a node,
+the `<autoware_node>` launch action writes the container form and the standalone form at once; see
+[Switching One Node Between Standalone and a Component Container](../README.md#switching-one-node-between-standalone-and-a-component-container).
 
 &nbsp;
 
