@@ -21,6 +21,7 @@ from autoware_agnocast_wrapper.actions import AutowareNode
 from launch import LaunchContext
 from launch.frontend import Parser
 from launch.logging import get_logger
+from launch.substitutions import LaunchConfiguration
 from launch.substitutions import TextSubstitution
 from launch_ros.actions import LoadComposableNodes
 from launch_ros.actions import Node
@@ -145,6 +146,21 @@ def test_form_and_transport(
     else:
         assert isinstance(emitted, Node)
         assert env_of(emitted)["ENABLE_AGNOCAST"] == "0"
+
+
+def test_plain_strings_and_single_substitutions_are_accepted(build, run, context):
+    """As they are by Node, for launch files written in Python."""
+    build(False)
+    run("0")
+    context.launch_configurations["container"] = CONTAINER
+    act = AutowareNode(
+        package="a_package",
+        executable="an_executable",
+        name="a_node",
+        target=LaunchConfiguration("container"),
+    )
+
+    assert isinstance(emit(act, context), LoadComposableNodes)
 
 
 def test_an_empty_target_is_no_container(build, run, context):

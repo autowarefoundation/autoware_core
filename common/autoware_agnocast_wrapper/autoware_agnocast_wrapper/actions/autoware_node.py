@@ -127,7 +127,9 @@ class AutowareNode(Action):
         return cls, kwargs
 
     def _perform(self, context: LaunchContext, value) -> Optional[str]:
-        return None if value is None else perform_substitutions(context, value)
+        if value is None:
+            return None
+        return perform_substitutions(context, normalize_to_list_of_substitutions(value))
 
     @staticmethod
     def _registration(package: str, executable: str):
