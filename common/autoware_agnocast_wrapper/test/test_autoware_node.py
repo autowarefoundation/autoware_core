@@ -177,7 +177,7 @@ def test_an_unknown_mode_is_rejected_everywhere(
     """Including where Agnocast is unavailable, where mode changes nothing."""
     build(built_with_agnocast)
     run(enable_agnocast)
-    with pytest.raises(RuntimeError, match="unknown mode"):
+    with pytest.raises(RuntimeError, match="'a_node'.*unknown mode"):
         emit(action(mode="agnocast"), context)
 
 
@@ -209,7 +209,7 @@ def test_a_heaphook_that_is_not_there_stops_the_launch(build, run, context, sour
         act = action()
     else:
         act = action(additional_env={("LD_PRELOAD",): subs(missing)})
-    with pytest.raises(RuntimeError, match="does not exist"):
+    with pytest.raises(RuntimeError, match="'a_node'.*does not exist"):
         emit(act, context)
 
 

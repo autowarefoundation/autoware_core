@@ -146,7 +146,7 @@ class AutowareNode(Action):
         return context.launch_configurations.get("agnocast_heaphook_path", _default_heaphook_path())
 
     @staticmethod
-    def _heaphook_path(context: LaunchContext, given: Optional[str]) -> str:
+    def _heaphook_path(context: LaunchContext, given: Optional[str], label: str) -> str:
         """Return the heaphook to preload.
 
         One in the LD_PRELOAD the launch file ``given`` for this node wins, so that one node can
@@ -165,9 +165,9 @@ class AutowareNode(Action):
         # A bare file name is the dynamic linker's to resolve; a path is ours to check.
         if os.sep in heaphook and not os.path.exists(heaphook):
             raise RuntimeError(
-                f"the Agnocast heaphook '{heaphook}' does not exist; point <env> LD_PRELOAD or "
-                "the 'agnocast_heaphook_path' launch configuration at the one built against this "
-                "workspace's agnocastlib"
+                f"the Agnocast heaphook '{heaphook}' for '{label}' does not exist; point <env> "
+                "LD_PRELOAD or the 'agnocast_heaphook_path' launch configuration at the one built "
+                "against this workspace's agnocastlib"
             )
         return heaphook
 
@@ -212,10 +212,12 @@ class AutowareNode(Action):
             )
         return ":".join(kept)
 
-    def _mode_of(self, context: LaunchContext) -> str:
+    def _mode_of(self, context: LaunchContext, label: str) -> str:
         mode = self._perform(context, self._mode) or "auto"
         if mode not in MODES:
-            raise RuntimeError(f"unknown mode '{mode}', expected one of {', '.join(MODES)}")
+            raise RuntimeError(
+                f"'{label}' has an unknown mode '{mode}', expected one of {', '.join(MODES)}"
+            )
         return mode
 
     def execute(self, context: LaunchContext):
@@ -229,7 +231,7 @@ class AutowareNode(Action):
         plugin, built_with_agnocast = self._registration(package, executable)
 
         # Read unconditionally, so an unknown mode is rejected in every build and run.
-        mode = self._mode_of(context)
+        mode = self._mode_of(context, label)
 
         # use_agnocast overrides ENABLE_AGNOCAST as in agnocast_env.launch.xml, but a container keeps
         # the ENABLE_AGNOCAST it inherited from the launch.
@@ -298,7 +300,7 @@ class AutowareNode(Action):
         base = os.environ.get("LD_PRELOAD", "") if given is None else given
 
         if use_agnocast:
-            heaphook = self._heaphook_path(context, given)
+            heaphook = self._heaphook_path(context, given, label)
             transport_env = {
                 "ENABLE_AGNOCAST": "1",
                 "LD_PRELOAD": self._ld_preload(heaphook, base, label),
