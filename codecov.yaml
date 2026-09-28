@@ -29,8 +29,6 @@ ignore:
   - "**/examples/*"
   - "**/examples/**/*"
 
-# The API returns components in the order declared below, so keep this list
-# alphabetical and update README.md if you insert, remove, or reorder an entry.
 component_management:
   individual_components:
     - component_id: api-packages
