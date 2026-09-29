@@ -5,11 +5,14 @@ A gateway that stores the operation mode and Autoware control flag separately.
 ## Features
 
 - Provides `/system/operation_mode/change_operation_mode` (`autoware_system_msgs/srv/ChangeOperationMode`) for STOP, AUTONOMOUS, LOCAL, and REMOTE.
-- Provides `/system/operation_mode/change_autoware_control` (`autoware_system_msgs/srv/ChangeAutowareControl`) for the independent control flag.
-- Publishes `/system/operation_mode/state` with reliable, transient local QoS. The initial state is STOP with control disabled.
+- Provides `/system/operation_mode/change_autoware_control` (`autoware_system_msgs/srv/ChangeAutowareControl`) for the independent control flag. It requests the vehicle mode through `/control/control_mode_request` and returns failure if that service is unavailable, rejects the request, or takes more than two seconds.
+- Publishes `/system/operation_mode/state` with reliable, transient local QoS. The initial state is STOP with control disabled, even while simulation time is paused. The control flag changes only when `/vehicle/status/control_mode` reports a new mode.
 - Publishes `/control/command/gear_cmd` for each valid mode request: PARK for STOP, DRIVE for AUTONOMOUS, and NONE for LOCAL or REMOTE.
 
 The `autoware_default_adapi` operation mode node provides the public `/api/operation_mode/*` services and state topic.
+The control service needs a vehicle or simulator that provides `/control/control_mode_request` (`autoware_vehicle_msgs/srv/ControlModeCommand`).
+Service success means that the vehicle accepted the request. The control flag changes when the vehicle reports its mode.
+A timed-out request can still take effect at the vehicle. A later control mode report updates the state.
 
 ## Build
 

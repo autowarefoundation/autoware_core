@@ -19,6 +19,8 @@ import unittest
 from ament_index_python.packages import get_package_share_directory
 from autoware_adapi_v1_msgs.msg import OperationModeState
 from autoware_adapi_v1_msgs.srv import ChangeOperationMode
+from autoware_vehicle_msgs.msg import ControlModeReport
+from autoware_vehicle_msgs.srv import ControlModeCommand
 import launch
 from launch_ros.actions import Node
 import launch_testing.actions
@@ -54,6 +56,24 @@ class TestOperationMode(unittest.TestCase):
         node = rclpy.create_node("operation_mode_api_test")
         try:
             states = []
+            vehicle_requests = []
+            vehicle_accepts_requests = [True]
+            vehicle_mode_pub = node.create_publisher(
+                ControlModeReport, "/vehicle/status/control_mode", 1
+            )
+
+            def on_vehicle_mode(request, response):
+                vehicle_requests.append(request.mode)
+                response.success = vehicle_accepts_requests[0]
+                if response.success:
+                    report = ControlModeReport()
+                    report.mode = request.mode
+                    vehicle_mode_pub.publish(report)
+                return response
+
+            node.create_service(
+                ControlModeCommand, "/control/control_mode_request", on_vehicle_mode
+            )
             qos = QoSProfile(
                 depth=1,
                 reliability=ReliabilityPolicy.RELIABLE,
@@ -95,6 +115,21 @@ class TestOperationMode(unittest.TestCase):
                 self.assertTrue(future.done(), service)
                 self.assertTrue(future.result().status.success, service)
                 wait_state(mode, control)
+            self.assertEqual(
+                vehicle_requests,
+                [ControlModeCommand.Request.AUTONOMOUS, ControlModeCommand.Request.MANUAL],
+            )
+
+            vehicle_accepts_requests[0] = False
+            client = node.create_client(
+                ChangeOperationMode, "/api/operation_mode/enable_autoware_control"
+            )
+            future = client.call_async(ChangeOperationMode.Request())
+            rclpy.spin_until_future_complete(node, future, timeout_sec=10)
+            self.assertTrue(future.done())
+            self.assertFalse(future.result().status.success)
+            self.assertEqual(vehicle_requests[-1], ControlModeCommand.Request.AUTONOMOUS)
+            wait_state(OperationModeState.STOP, False)
         finally:
             node.destroy_node()
             rclpy.shutdown()

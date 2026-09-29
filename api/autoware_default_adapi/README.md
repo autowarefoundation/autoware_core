@@ -13,7 +13,7 @@ This package is a default implementation AD API.
 - [routing](document/routing.md)
 - Operation mode: four mode services, two control services, and `/api/operation_mode/state`.
 
-The operation mode node relays `/system/operation_mode/state` and calls the system mode and control services. The Core command gate supplies these system services in a Core-only launch.
+The operation mode node relays `/system/operation_mode/state` and calls the system mode and control services. The Core command gate supplies these system services in a Core-only launch. The gate needs a vehicle control mode service to enable or disable Autoware control.
 
 ## Interface
 
