@@ -45,6 +45,7 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
 if(BUILD_TESTING)
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
     add_launch_test(test/main.test.py)
+    add_launch_test(test/operation_mode.test.py)
   endif()
 
   ament_auto_add_gtest(test_${PROJECT_NAME}
