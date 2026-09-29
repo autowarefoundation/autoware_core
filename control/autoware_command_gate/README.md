@@ -1,12 +1,15 @@
 # autoware_command_gate
 
-A minimal gateway that exposes operation-mode change services and publishes matching state and gear commands.
+A gateway that stores the operation mode and Autoware control flag separately.
 
 ## Features
 
-- Services `/api/operation_mode/change_to_stop` and `/api/operation_mode/change_to_autonomous` (`autoware_adapi_v1_msgs/srv/ChangeOperationMode`).
-- Publishes `/api/operation_mode/state` (reliable, transient local QoS) and `/control/command/gear_cmd` on each service call.
-- STOP -> gear `PARK`; AUTONOMOUS -> gear `DRIVE`.
+- Provides `/system/operation_mode/change_operation_mode` (`autoware_system_msgs/srv/ChangeOperationMode`) for STOP, AUTONOMOUS, LOCAL, and REMOTE.
+- Provides `/system/operation_mode/change_autoware_control` (`autoware_system_msgs/srv/ChangeAutowareControl`) for the independent control flag.
+- Publishes `/system/operation_mode/state` with reliable, transient local QoS. The initial state is STOP with control disabled.
+- Publishes `/control/command/gear_cmd` for each valid mode request: PARK for STOP, DRIVE for AUTONOMOUS, and NONE for LOCAL or REMOTE.
+
+The `autoware_default_adapi` operation mode node provides the public `/api/operation_mode/*` services and state topic.
 
 ## Build
 
@@ -30,26 +33,23 @@ ros2 run autoware_command_gate autoware_command_gate_exe
 
 ## Interact
 
-Call services (example from a sourced workspace):
+In one terminal, start the gear subscriber before a mode request. The gear topic uses volatile QoS.
 
 ```bash
-ros2 service call /api/operation_mode/change_to_stop autoware_adapi_v1_msgs/srv/ChangeOperationMode "{}"
-ros2 service call /api/operation_mode/change_to_autonomous autoware_adapi_v1_msgs/srv/ChangeOperationMode "{}"
+ros2 topic echo /control/command/gear_cmd
 ```
 
-Echo topics:
+In another terminal, call the system services from a sourced workspace. Mode values are STOP=1, AUTONOMOUS=2, LOCAL=3, and REMOTE=4.
 
 ```bash
-ros2 topic echo /api/operation_mode/state
-ros2 topic echo /control/command/gear_cmd
+ros2 service call /system/operation_mode/change_operation_mode autoware_system_msgs/srv/ChangeOperationMode "{mode: 2}"
+ros2 service call /system/operation_mode/change_autoware_control autoware_system_msgs/srv/ChangeAutowareControl "{autoware_control: true}"
+ros2 topic echo /system/operation_mode/state --qos-durability transient_local
 ```
 
 ## Tests
 
-Tests are grouped under the following directories:
-
-- Unit tests: test/unit
-- Integration tests: test/integration
+The ROS integration tests are in `test/integration`.
 
 Run all tests:
 
