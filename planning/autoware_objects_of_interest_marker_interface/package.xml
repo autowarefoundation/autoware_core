@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <package format="3">
   <name>autoware_objects_of_interest_marker_interface</name>
-  <version>1.9.0</version>
+  <version>1.10.0</version>
   <description>The autoware_objects_of_interest_marker_interface package</description>
 
   <maintainer email="lxg19892021@gmail.com">Xingang Liu</maintainer>
@@ -25,6 +25,7 @@
   <depend>std_msgs</depend>
   <depend>visualization_msgs</depend>
 
+  <test_depend>ament_cmake_gtest</test_depend>
   <test_depend>ament_lint_auto</test_depend>
   <test_depend>autoware_lint_common</test_depend>
 

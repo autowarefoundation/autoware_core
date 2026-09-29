@@ -11,6 +11,54 @@ Changelog for package autoware_route_handler
   Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
 * Contributors: Mert Çolak
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_route_handler): implement characterization test (`#1439 <https://github.com/autowarefoundation/autoware_core/issues/1439>`_)
+  * added test for verifying lane change inetrval
+  * added etst for checking area routing state and termination when traversing cyclic route
+  * added test to check if bicycle & opposite direction lane quesies on standard map
+  * verifies pullover pullout and deadend queries
+  * added test to check route planning when routing cost permits nondrivable lanelets
+  * added test to check route metadata accerssors and clearning a route resets raedy state
+  * verifies public topological queries
+  * verifies planning & segment creation via LaneletOrArea
+  * verifies routing/segment conversion/traversal etc.
+  * added more details on each test case and why I put em there, lcov coverage, etc.
+  * split into multi tests, change name to Harry Porter style, run and build and test all good
+  * [komiya]added custom map-relied test for findDrivableLanePathIncludeAreas func
+  * added brief comments on each test case
+  * const reference
+  * added star/goal poses (just to be clear)
+  * [ishikawa] removed all set test route calls that overlaps with fixture
+  * [komiya] fixed that useless EXPECT_TRUE(success || ....); assertion
+  * [komiya] fixed that useless EXPECT_TRUE(success || ....); assertion
+  * strengthen assertions with lane IDs instead
+  ---------
+* fix(planning): declare the dependencies these packages use (`#1372 <https://github.com/autowarefoundation/autoware_core/issues/1372>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+  A clean-context review of the pull request found five more direct uses with no manifest entry. Add one entry for each:
+  - autoware_path_generator: tf2 (tf2::getYaw in src/utils.cpp)
+  - autoware_motion_velocity_planner_common: tf2 (tf2::getYaw in src/planner_data.cpp and src/polygon_utils.cpp)
+  - autoware_motion_velocity_obstacle_stop_module: autoware_planning_factor_interface (constructed in src/obstacle_stop_module.cpp)
+  - autoware_behavior_velocity_stop_line_module: autoware_planning_factor_interface (used in src/experimental/scene.cpp)
+  - autoware_velocity_smoother: rclcpp_components (register_node_macro.hpp in src/node.cpp)
+* refactor(autoware_route_handler): remove rclcpp::ok() from lanelet sequence loops (`#1289 <https://github.com/autowarefoundation/autoware_core/issues/1289>`_)
+  * feat(autoware_route_handler): use agnocast_wrapper::ok() for lanelet sequence loops
+  * fix to delete rclcpp::ok
+  * test(autoware_route_handler): add regression tests for lanelet sequence loop termination
+  ---------
+* fix(autoware_route_handler): use portable lanelet ID logging (`#1271 <https://github.com/autowarefoundation/autoware_core/issues/1271>`_)
+* Contributors: Koichi Imai, Mete Fatih Cırıt, Tobias Fischer, Tran Huu Nhat Huy, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

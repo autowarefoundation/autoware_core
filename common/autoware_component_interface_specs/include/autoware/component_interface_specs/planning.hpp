@@ -16,7 +16,7 @@
 #define AUTOWARE__COMPONENT_INTERFACE_SPECS__PLANNING_HPP_
 
 #include <autoware/component_interface_specs/utils.hpp>
-#include <rclcpp/qos.hpp>
+#include <autoware/component_interface_specs/version.hpp>
 
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <autoware_planning_msgs/msg/route_state.hpp>
@@ -24,6 +24,8 @@
 #include <autoware_planning_msgs/srv/clear_route.hpp>
 #include <autoware_planning_msgs/srv/set_lanelet_route.hpp>
 #include <autoware_planning_msgs/srv/set_waypoint_route.hpp>
+
+#include <rmw/qos_profiles.h>
 
 namespace autoware::component_interface_specs::planning
 {
@@ -72,6 +74,9 @@ struct Trajectory
   static constexpr auto reliability = RMW_QOS_POLICY_RELIABILITY_RELIABLE;
   static constexpr auto durability = RMW_QOS_POLICY_DURABILITY_VOLATILE;
 };
+
+AUTOWARE_COMPONENT_INTERFACE_SPECS_DEFINE_DOMAIN(
+  0, 1, 0, SetLaneletRoute, SetWaypointRoute, ClearRoute, RouteState, LaneletRoute, Trajectory)
 
 }  // namespace autoware::component_interface_specs::planning
 

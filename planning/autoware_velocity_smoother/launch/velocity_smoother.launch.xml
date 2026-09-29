@@ -15,7 +15,10 @@
   <arg name="param_path" default="$(find-pkg-share autoware_velocity_smoother)/config/default_velocity_smoother.param.yaml"/>
   <arg name="velocity_smoother_param_path" default="$(find-pkg-share autoware_velocity_smoother)/config/$(var velocity_smoother_type).param.yaml"/>
 
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
+
   <node pkg="autoware_velocity_smoother" exec="velocity_smoother_node" name="velocity_smoother_node" output="screen">
+    <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
     <param from="$(var common_param_path)"/>
     <param from="$(var nearest_search_param_path)"/>
     <param from="$(var param_path)"/>

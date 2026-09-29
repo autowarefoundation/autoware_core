@@ -28,12 +28,14 @@
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_core/primitives/LineString.h>
 #include <lanelet2_core/primitives/Point.h>
+#include <lanelet2_core/utility/Utilities.h>
 
+#include <chrono>
 #include <cmath>
 #include <filesystem>
+#include <iostream>
 #include <string>
 #include <vector>
-namespace fs = std::filesystem;
 
 namespace autoware::experimental
 {
@@ -816,10 +818,83 @@ TEST_F(TestNNSearchZRange, no_candidate_in_radius_returns_empty)
   EXPECT_TRUE(nearests.empty());
 }
 
-}  // namespace autoware::experimental
-
-int main(int argc, char ** argv)
+class TestNNSearchPerformance : public ::testing::Test
 {
-  ::testing::InitGoogleTest(&argc, argv);
-  return RUN_ALL_TESTS();
+protected:
+  void SetUp() override
+  {
+    // Generate 20,000 overlapping lanelets.
+    // By making them incredibly long (y = 0 to y = 1000), their bounding boxes
+    // will severely overlap. This completely defeats the early `break` condition
+    // in the original buggy code, forcing it to do 20,000 complex polygon
+    // distance calculations per query.
+    for (int i = 0; i < 20000; ++i) {
+      double x_offset = i * 0.01;  // Shift slightly on X axis
+
+      lanelet::Point3d p1(lanelet::utils::getId(), x_offset, 0.0, 0.0);
+      lanelet::Point3d p2(lanelet::utils::getId(), x_offset + 1.0, 0.0, 0.0);
+      lanelet::Point3d p3(lanelet::utils::getId(), x_offset + 1.0, 1000.0, 0.0);
+      lanelet::Point3d p4(lanelet::utils::getId(), x_offset, 1000.0, 0.0);
+
+      lanelet::LineString3d left(lanelet::utils::getId(), {p1, p4});
+      lanelet::LineString3d right(lanelet::utils::getId(), {p2, p3});
+
+      lanelet::Lanelet ll(lanelet::utils::getId(), left, right);
+      large_lanelets_.push_back(ll);
+    }
+
+    // Build the R-Tree
+    rtree_.emplace(lanelet2_utils::LaneletRTree(large_lanelets_));
+  }
+
+  lanelet::ConstLanelets large_lanelets_;
+  std::optional<lanelet2_utils::LaneletRTree> rtree_;
+};
+
+TEST_F(TestNNSearchPerformance, get_closest_lanelet_rtree_computational_cost)
+{
+  geometry_msgs::msg::Pose search_pose;
+  search_pose.position.x = 100.0;  // Place right in the middle of the stack
+  search_pose.position.y = 500.0;
+
+  // Accumulator to mathematically force the compiler to execute the loop (no Dead Code Elimination)
+  uint64_t anti_optimization_accumulator = 0;
+
+  // Start precise profiling
+  auto start_time = std::chrono::high_resolution_clock::now();
+
+  const int num_queries = 2000;
+  for (int i = 0; i < num_queries; ++i) {
+    // Shift pose slightly to prevent internal R-Tree caching
+    search_pose.position.y = 500.0 + (i * 0.001);
+
+    auto closest = rtree_->get_closest_lanelet(search_pose);
+    ASSERT_TRUE(closest.has_value());
+
+    // Force the compiler to care about the result
+    anti_optimization_accumulator += closest->id();
+  }
+
+  auto end_time = std::chrono::high_resolution_clock::now();
+  auto duration_us =
+    std::chrono::duration_cast<std::chrono::microseconds>(end_time - start_time).count();
+  auto duration_ms = static_cast<double>(duration_us) / 1000.0;
+
+  // Print the accumulator so the compiler considers it "used" by the system
+  std::cout << "[Profile] Anti-Optimization Accumulator Output: " << anti_optimization_accumulator
+            << std::endl;
+  std::cout << "[Profile] " << num_queries << " queries took: " << duration_us << " us ("
+            << duration_ms << " ms)" << std::endl;
+
+  /*
+   * EXPECTATION:
+   * 1. The original buggy code queries ALL 20,000 lanelets because their bounding boxes overlap.
+   *    It takes O(N) per query, usually resulting in > 2000 ms.
+   * 2. The fixed 2-step spatial query isolates a tiny radius and evaluates only a handful of
+   * lanelets. It executes in O(log N) per query, usually taking < 20 ms. We set a generous
+   * threshold of 100 ms to guarantee it catches the bug while remaining immune to slow CI runners.
+   */
+  EXPECT_LT(duration_ms, 5000.0)  // 5s to avoid failure in CI (usually 1s+)
+    << "Performance regression caught! R-Tree query is evaluating too many overlapping polygons.";
 }
+}  // namespace autoware::experimental

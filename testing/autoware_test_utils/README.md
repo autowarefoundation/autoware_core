@@ -82,7 +82,7 @@ The overlap lanelet map includes
 
 ### Autoware Planning Test Manager
 
-The goal of the [Autoware Planning Test Manager](https://autowarefoundation.github.io/autoware_core/main/testing/autoware_planning_test_manager/) is to test planning module nodes. The `PlanningInterfaceTestManager` class ([source code](https://github.com/autowarefoundation/autoware_core/blob/main/testing/autoware_planning_test_manager/src/autoware_planning_test_manager.cpp)) creates wrapper functions based on the `test_utils` functions.
+The goal of the [Autoware Planning Test Manager](https://autowarefoundation.github.io/autoware_core/main/planning/autoware_planning_test_manager/) is to test planning module nodes. The `PlanningInterfaceTestManager` class ([source code](https://github.com/autowarefoundation/autoware_core/blob/main/planning/autoware_planning_test_manager/src/autoware_planning_test_manager.cpp)) creates wrapper functions based on the `test_utils` functions.
 
 ### Generate test data for unit testing
 

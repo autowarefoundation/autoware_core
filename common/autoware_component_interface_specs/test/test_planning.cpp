@@ -12,34 +12,56 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include "autoware/component_interface_specs/concepts.hpp"
 #include "autoware/component_interface_specs/planning.hpp"
 #include "gtest/gtest.h"
+#include "spec_test_utils.hpp"
+
+#include <tuple>
+
+namespace specs = autoware::component_interface_specs;
+namespace tu = autoware::component_interface_specs::test_utils;
+
+TEST(planning, concept_and_registration)
+{
+  using specs::planning::ClearRoute;
+  using specs::planning::LaneletRoute;
+  using specs::planning::RouteState;
+  using specs::planning::SetLaneletRoute;
+  using specs::planning::SetWaypointRoute;
+  using specs::planning::Specs;
+  using specs::planning::Trajectory;
+
+  static_assert(specs::InterfaceSpec<Trajectory>);
+  static_assert(specs::InterfaceSpec<LaneletRoute>);
+  static_assert(specs::InterfaceSpec<RouteState>);
+  static_assert(specs::ServiceSpec<SetLaneletRoute>);
+  static_assert(specs::ServiceSpec<SetWaypointRoute>);
+  static_assert(specs::ServiceSpec<ClearRoute>);
+
+  static_assert(tu::has_type<Trajectory, Specs>::value);
+  static_assert(tu::has_type<LaneletRoute, Specs>::value);
+  static_assert(tu::has_type<RouteState, Specs>::value);
+  static_assert(tu::has_type<SetLaneletRoute, Specs>::value);
+  static_assert(tu::has_type<SetWaypointRoute, Specs>::value);
+  static_assert(tu::has_type<ClearRoute, Specs>::value);
+  static_assert(std::tuple_size_v<Specs> == 6);
+  SUCCEED();
+}
 
 TEST(planning, interface)
 {
   {
-    using autoware::component_interface_specs::planning::LaneletRoute;
-    size_t depth = 1;
-    EXPECT_EQ(LaneletRoute::depth, depth);
-    EXPECT_EQ(LaneletRoute::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(LaneletRoute::durability, RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
-
-    const auto qos = autoware::component_interface_specs::get_qos<LaneletRoute>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::TransientLocal);
+    using specs::planning::LaneletRoute;
+    tu::expect_topic_qos<LaneletRoute>(
+      "/planning/route", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_TRANSIENT_LOCAL);
   }
 
   {
-    using autoware::component_interface_specs::planning::Trajectory;
-    size_t depth = 1;
-    EXPECT_EQ(Trajectory::depth, depth);
-    EXPECT_EQ(Trajectory::reliability, RMW_QOS_POLICY_RELIABILITY_RELIABLE);
-    EXPECT_EQ(Trajectory::durability, RMW_QOS_POLICY_DURABILITY_VOLATILE);
-
-    const auto qos = autoware::component_interface_specs::get_qos<Trajectory>();
-    EXPECT_EQ(qos.depth(), depth);
-    EXPECT_EQ(qos.reliability(), rclcpp::ReliabilityPolicy::Reliable);
-    EXPECT_EQ(qos.durability(), rclcpp::DurabilityPolicy::Volatile);
+    using specs::planning::Trajectory;
+    tu::expect_topic_qos<Trajectory>(
+      "/planning/trajectory", 1, RMW_QOS_POLICY_RELIABILITY_RELIABLE,
+      RMW_QOS_POLICY_DURABILITY_VOLATILE);
   }
 }

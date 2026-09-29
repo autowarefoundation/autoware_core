@@ -17,7 +17,6 @@
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/nn_search.hpp>
-#include <rclcpp/logging.hpp>
 
 #include <lanelet2_core/geometry/Lanelet.h>
 #include <lanelet2_core/geometry/LineString.h>
@@ -25,6 +24,7 @@
 #include <algorithm>
 #include <functional>
 #include <optional>
+#include <string>
 #include <utility>
 #include <vector>
 
@@ -58,20 +58,18 @@ bool has_same_primitives(
 
 }  // namespace
 
-bool check_reroute_safety(
+RerouteSafetyResult check_reroute_safety(
   const LaneletRoute & original_route, const LaneletRoute & target_route,
   const lanelet::LaneletMapConstPtr & lanelet_map, const double current_velocity,
-  const double reroute_time_threshold, const double minimum_reroute_length,
-  const rclcpp::Logger & logger)
+  const double reroute_time_threshold, const double minimum_reroute_length)
 {
   if (original_route.segments.empty() || target_route.segments.empty() || !lanelet_map) {
-    RCLCPP_ERROR(logger, "Check reroute safety failed. Route, map or odometry is not set.");
-    return false;
+    return {false, "Check reroute safety failed. Route, map or odometry is not set."};
   }
 
   // if vehicle is stopped, do not check safety
   if (current_velocity < 0.01) {
-    return true;
+    return {true, ""};
   }
 
   // =============================================================================================
@@ -96,8 +94,7 @@ bool check_reroute_safety(
       return std::nullopt;
     });
   if (!start_idx_opt.has_value()) {
-    RCLCPP_ERROR(logger, "Check reroute safety failed. Cannot find the start index of the route.");
-    return false;
+    return {false, "Check reroute safety failed. Cannot find the start index of the route."};
   }
   const auto [start_idx_original, start_idx_target] = start_idx_opt.value();
 
@@ -128,9 +125,7 @@ bool check_reroute_safety(
         target_route.start_pose, lanelet);
     });
   if (!ego_is_on_first_target_section) {
-    RCLCPP_ERROR(
-      logger, "Check reroute safety failed. Ego is not on the first section of target route.");
-    return false;
+    return {false, "Check reroute safety failed. Ego is not on the first section of target route."};
   }
 
   // compute the remaining arc-length from the current pose to the end of the closest lanelet among
@@ -170,8 +165,7 @@ bool check_reroute_safety(
   const auto start_segment_length =
     arc_length_to_lanelet_end(original_route.segments.at(start_segment_idx).primitives);
   if (!start_segment_length.has_value()) {
-    RCLCPP_ERROR(logger, "Check reroute safety failed. Cannot find the closest lanelet.");
-    return false;
+    return {false, "Check reroute safety failed. Cannot find the closest lanelet."};
   }
   double accumulated_length = start_segment_length.value();
 
@@ -217,15 +211,13 @@ bool check_reroute_safety(
   const double safety_length =
     std::max(current_velocity * reroute_time_threshold, minimum_reroute_length);
   if (accumulated_length > safety_length) {
-    return true;
+    return {true, ""};
   }
 
-  RCLCPP_WARN(
-    logger,
-    "Length of lane where original and B target (= %f) is less than safety length (= %f), so "
-    "reroute is not safe.",
-    accumulated_length, safety_length);
-  return false;
+  return {
+    false, "Length of lane where original and B target (= " + std::to_string(accumulated_length) +
+             ") is less than safety length (= " + std::to_string(safety_length) +
+             "), so reroute is not safe."};
 }
 
 }  // namespace autoware::mission_planner

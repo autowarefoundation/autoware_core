@@ -1,0 +1,73 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: Lanelet2MapLoader.node
+
+description: Loads the Lanelet2 map once the map projector info arrives, generates centerline at the configured resolution, and latches the map as a binary message. Optionally serves selected map cells for dynamic map loading.
+
+package:
+  name: autoware_map_loader
+  provider: autoware
+
+launch:
+  plugin: autoware::map_loader::Lanelet2MapLoaderNode
+  executable: autoware_lanelet2_map_loader
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: map_projector_info
+    message_type: autoware_map_msgs/msg/MapProjectorInfo
+    description: Definition of map coordinate system.
+    remap_target: /map/map_projector_info
+    qos:
+      reliability: reliable
+      durability: transient_local
+
+publishers:
+  - name: lanelet2_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    description: Loaded Lanelet2 map as a binary message.
+    remap_target: /map/vector_map
+    qos:
+      reliability: reliable
+      durability: transient_local
+  - name: lanelet2_map_metadata
+    message_type: autoware_map_msgs/msg/LaneletMapMetaData
+    description: Metadata of the divided map cells. Published when enable_selected_map_loading is true.
+    remap_target: output/lanelet2_map_metadata
+    qos:
+      reliability: reliable
+      durability: transient_local
+
+servers:
+  - name: get_selected_lanelet2_map
+    message_type: autoware_map_msgs/srv/GetSelectedLanelet2Map
+    description: Loads the map cells with the requested cell IDs. Available when enable_selected_map_loading is true.
+    remap_target: service/get_selected_lanelet2_map
+
+# parameters
+param_files:
+  - name: param_file
+    default: config/lanelet2_map_loader.param.yaml
+    description: Map file paths, centerline resolution and map-loading feature switches.
+
+param_values:
+  - name: lanelet2_map_path
+    type: string
+    default: ""
+    description: Path to the Lanelet2 map file, or a directory containing .osm files.
+  - name: lanelet2_map_metadata_path
+    type: string
+    default: ""
+    description: Path to the Lanelet2 map metadata file; if empty or missing, cell bounding boxes are computed from map points.
+
+# processes
+processes:
+  - name: load
+    description: Loads and converts the map with the received projector info, then latches the map and its metadata.
+    trigger_conditions:
+      - on_input: map_projector_info
+    outcomes:
+      - to_output: lanelet2_map
+      - to_output: lanelet2_map_metadata

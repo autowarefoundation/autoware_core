@@ -5,6 +5,12 @@ Changelog for package autoware_objects_of_interest_marker_interface
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_objects_of_interest_marker_interface): implement test suites (`#1466 <https://github.com/autowarefoundation/autoware_core/issues/1466>`_)
+* Contributors: Tran Huu Nhat Huy, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 

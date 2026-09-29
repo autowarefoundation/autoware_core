@@ -38,10 +38,10 @@ target_include_directories(${PROJECT_NAME}
     "${EIGEN3_INCLUDE_DIR}"
 )
 
-ament_target_dependencies(${PROJECT_NAME}
-  Eigen3
-  osqp_vendor
-  proxsuite
+target_link_libraries(${PROJECT_NAME}
+  Eigen3::Eigen
+  osqp::osqp
+  proxsuite::proxsuite
 )
 
 # crucial so downstream package builds because osqp_interface exposes osqp.hpp

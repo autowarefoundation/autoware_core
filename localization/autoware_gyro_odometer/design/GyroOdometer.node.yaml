@@ -1,0 +1,70 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: GyroOdometer.node
+
+description: Estimates the ego twist by combining the vehicle speed with the IMU angular velocity transformed into the base frame.
+
+package:
+  name: autoware_gyro_odometer
+  provider: autoware
+
+launch:
+  plugin: autoware::gyro_odometer::GyroOdometerNode
+  executable: autoware_gyro_odometer_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: vehicle_twist_with_covariance
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    description: Twist with covariance from the vehicle.
+    remap_target: vehicle/twist_with_covariance
+  - name: imu
+    message_type: sensor_msgs/msg/Imu
+    description: IMU measurements from the sensor.
+    remap_target: imu
+
+publishers:
+  - name: twist_raw
+    message_type: geometry_msgs/msg/TwistStamped
+    description: Estimated twist before the stationary suppression.
+    remap_target: twist_raw
+  - name: twist_with_covariance_raw
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    description: Estimated twist with covariance before the stationary suppression.
+    remap_target: twist_with_covariance_raw
+  - name: twist
+    message_type: geometry_msgs/msg/TwistStamped
+    description: Estimated twist.
+    remap_target: twist
+  - name: twist_with_covariance
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    description: Estimated twist with covariance.
+    remap_target: twist_with_covariance
+  - name: diagnostics
+    message_type: diagnostic_msgs/msg/DiagnosticArray
+    description: Input arrival, message timeout, queue size and IMU transform status.
+    global: /diagnostics
+
+# parameters
+param_files:
+  - name: config_file
+    default: config/gyro_odometer.param.yaml
+    description: Frame ids and message timeout parameters.
+
+param_values: []
+
+# processes
+processes:
+  - name: integrate
+    description: Synchronizes the queued vehicle twist and IMU messages, averages them and publishes the combined twist with covariance.
+    trigger_conditions:
+      - on_input: imu
+      - on_input: vehicle_twist_with_covariance
+    outcomes:
+      - to_output: twist_raw
+      - to_output: twist_with_covariance_raw
+      - to_output: twist
+      - to_output: twist_with_covariance
+      - to_output: diagnostics
