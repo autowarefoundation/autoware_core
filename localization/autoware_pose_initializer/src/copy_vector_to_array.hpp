@@ -15,10 +15,9 @@
 #ifndef COPY_VECTOR_TO_ARRAY_HPP_
 #define COPY_VECTOR_TO_ARRAY_HPP_
 
-#include <fmt/core.h>
-
 #include <algorithm>
 #include <array>
+#include <stdexcept>
 #include <string>
 #include <vector>
 

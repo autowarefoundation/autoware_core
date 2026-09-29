@@ -1,0 +1,37 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: AdapiInterface.node
+
+description: Serves the AD API interface version.
+
+package:
+  name: autoware_default_adapi
+  provider: autoware
+
+launch:
+  plugin: autoware::default_adapi::InterfaceNode
+  node_output: screen
+
+# interfaces
+subscribers: []
+
+publishers: []
+
+servers:
+  - name: version
+    message_type: autoware_adapi_version_msgs/srv/InterfaceVersion
+    description: Interface version request from the API.
+    remap_target: /api/interface/version
+
+# parameters
+param_files: []
+
+param_values: []
+
+# processes
+processes:
+  - name: version
+    description: Responds to interface version requests.
+    trigger_conditions: []
+    outcomes: []

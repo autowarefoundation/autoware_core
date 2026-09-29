@@ -1,4 +1,6 @@
 <launch>
+  <include file="$(find-pkg-share autoware_agnocast_wrapper)/launch/agnocast_env.launch.xml"/>
+
   <arg name="input_vehicle_twist_with_covariance_topic" default="/sensing/vehicle_velocity_converter/twist_with_covariance" description="input twist with covariance topic name from vehicle"/>
 
   <arg name="input_imu_topic" default="/sensing/imu/imu_data" description="input imu topic name"/>
@@ -12,6 +14,8 @@
   <arg name="config_file" default="$(find-pkg-share autoware_gyro_odometer)/config/gyro_odometer.param.yaml"/>
 
   <node pkg="autoware_gyro_odometer" exec="autoware_gyro_odometer_node" output="both">
+    <env name="LD_PRELOAD" value="$(var ld_preload_value)"/>
+
     <remap from="vehicle/twist_with_covariance" to="$(var input_vehicle_twist_with_covariance_topic)"/>
 
     <remap from="imu" to="$(var input_imu_topic)"/>

@@ -1,13 +1,52 @@
 {
   "name": "Autoware Core Development",
-  "image": "ghcr.io/autowarefoundation/autoware:core-devel-jazzy",
-  "runArgs": ["--net=host", "--privileged"],
-  "workspaceMount": "source=${localWorkspaceFolder},target=/autoware/src/core/autoware_core,type=bind,consistency=cached",
-  "workspaceFolder": "/autoware/src/core/autoware_core",
+  "image": "ghcr.io/autowarefoundation/autoware:core-jazzy",
+  "runArgs": ["--net=host", "--privileged", "--name", "autoware-core-devcontainer"],
+  "workspaceFolder": "/home/aw/autoware/",
+  "remoteUser": "aw",
+  "remoteEnv": {
+    "SSH_AUTH_SOCK": "/ssh-agent"
+  },
+
+  "mounts": [
+    {
+      "type": "bind",
+      "source": "${localWorkspaceFolder}",
+      "target": "/home/aw/autoware/src/core/"
+    },
+    {
+      "type": "volume",
+      "source": "autoware-core-devcontainer-cache",
+      "target": "/home/aw/.cache"
+    },
+    {
+      "type": "volume",
+      "source": "autoware-core-devcontainer-config",
+      "target": "/home/aw/.config"
+    },
+    {
+      "type": "volume",
+      "source": "autoware-core-devcontainer-ccache",
+      "target": "/home/aw/.ccache"
+    },
+    {
+      "type": "bind",
+      "source": "${localEnv:SSH_AUTH_SOCK}",
+      "target": "/ssh-agent"
+    }
+  ],
+
+  "features": {
+    "ghcr.io/devcontainers/features/common-utils:2": {},
+    "ghcr.io/devcontainers/features/git:1": {},
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers-extra/features/pre-commit:2": {}
+  },
+
   "containerEnv": {
     "ROS_DOMAIN_ID": "${localEnv:ROS_DOMAIN_ID:0}"
   },
-  "postCreateCommand": "mkdir -p /autoware/src && chmod 755 /autoware/src",
+  "postCreateCommand": "sudo chown -R 1000:1000 /home/aw/autoware && bash /home/aw/autoware/src/core/.devcontainer/scripts/setup-bashrc.sh",
   "customizations": {
     "vscode": {
       "extensions": [

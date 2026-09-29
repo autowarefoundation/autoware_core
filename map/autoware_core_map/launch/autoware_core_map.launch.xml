@@ -1,6 +1,7 @@
 <launch>
   <!-- map files -->
   <arg name="lanelet2_map_path"/>
+  <arg name="lanelet2_map_metadata_path" default="''"/>
   <arg name="map_projector_info_path"/>
   <arg name="pointcloud_map_path"/>
   <arg name="pointcloud_map_metadata_path"/>

@@ -121,11 +121,21 @@ jobs:
       - name: Remove self packages from underlay
         if: ${{ inputs.above }}
         run: |
+          ros_distro="${ROS_DISTRO:-${{ inputs.rosdistro }}}"
           for pkg_xml in $(find . -name package.xml); do
             pkg_name=$(xmllint --xpath 'string(//package/name)' "$pkg_xml")
             if [ -d "/opt/autoware/$pkg_name" ]; then
               echo "Removing /opt/autoware/$pkg_name"
               sudo rm -rf "/opt/autoware/$pkg_name"
+            fi
+            # The released Debian package installs the same headers under
+            # /opt/ros/$ROS_DISTRO/include, which is searched before the workspace include
+            # directory when packages above this repository are compiled. Leaving it in place
+            # lets a stale released header shadow the one just built from source.
+            deb_name="ros-${ros_distro}-${pkg_name//_/-}"
+            if dpkg-query -W -f='${Status}' "$deb_name" 2>/dev/null | grep -q '^install ok installed$'; then
+              echo "Removing $deb_name"
+              sudo dpkg --remove --force-depends "$deb_name"
             fi
           done
         shell: bash

@@ -28,7 +28,7 @@ jobs:
         with:
           since_last_remote_commit: true
           files_ignore: |
-            **.md
+            **/*.md
             **/CODEOWNERS
             **/CODEOWNERS-manual
 

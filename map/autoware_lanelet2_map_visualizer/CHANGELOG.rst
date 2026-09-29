@@ -2,6 +2,64 @@
 Changelog for package autoware_lanelet2_map_visualizer
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(map): add node designs for the map nodes (`#1413 <https://github.com/autowarefoundation/autoware_core/issues/1413>`_)
+  * feat(map): add node designs for the map nodes
+  Describe the interfaces, parameters and processes of the pointcloud and
+  lanelet2 map loaders, the map hash generator, the lanelet2 map
+  visualizer and the map projection loader as system design node files.
+  * fix(map): correct description formatting in Lanelet2MapLoader.node.yaml
+  * refactor(map): rename node designs to match the node class names
+  PointCloudMapLoader and Lanelet2MapVisualization follow the entity
+  naming convention derived from the C++ class names, as in `#1335 <https://github.com/autowarefoundation/autoware_core/issues/1335>`_.
+  * fix(map): declare the MapHashGenerator external API interfaces as remap targets
+  The map hash publisher and the lanelet XML server carry the fixed API
+  names as remap_target, so a system design connects them like any other
+  port and the launcher remaps the node-side names.
+  * fix(map): update description for map_projector_info to clarify its purpose
+  ---------
+* fix(map): declare the dependencies these packages use (`#1370 <https://github.com/autowarefoundation/autoware_core/issues/1370>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+* feat(lanelet2_map_visualizer): apply `agnocast_wrapper::Node` to `lanelet2_map_visualizer` (`#1197 <https://github.com/autowarefoundation/autoware_core/issues/1197>`_)
+  * apply agnocast_wrapper::Node
+  * style(pre-commit): autofix
+  * fix copilot review
+  * disable test when agnocast enabled
+  * fix tests
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(autoware_map_loader): add support of GetSelectedLanelet2Map service (`#889 <https://github.com/autowarefoundation/autoware_core/issues/889>`_)
+  * fix build failure for jazzy
+  * feat(autoware_map_loader): add support of GetSelectedLanelet2Map service
+  * style(pre-commit): autofix
+  * apply fix for pre-commit
+  * fix cppcheck error
+  * fix build
+  * update parameters
+  * set default to false
+  * modify lanelet2_map_loader behavior to match with pcd_map_loader
+  * fix launch files
+  * update test scripts
+  * rename parameter name
+  * add args to autoware_core_map.launch.xml
+  * update copyright year
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Ryohsuke Mitsudome <ryoshuke.mitsudome@tier4.jp>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Koichi Imai, Mete Fatih Cırıt, Ryohsuke Mitsudome, Taekjin LEE, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

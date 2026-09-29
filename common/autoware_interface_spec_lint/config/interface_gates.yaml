@@ -1,0 +1,59 @@
+# Interface-spec gate config for the Autoware component interface specs.
+#
+# Each gate maps to a severity: off (not run), warn (advisory), error (fails the
+# build when it reports at least one finding). This config ratchets the manifest
+# / honesty / isolation gates from warn to error. `ament_interface_spec_lint
+# --config <this>` loads it; `--warn-only` overrides every gate to exit 0 for
+# local advisory runs.
+gates:
+  # Static header analyses (no false positives on the registered surface).
+  interface_spec_concept: { severity: error }
+  spec_registered: { severity: error }
+  version_consistency: { severity: error }
+  qos_consistency: { severity: error }
+
+  # Manifest freshness. The lint check binds only where the manifest generator
+  # binary is available and skips gracefully otherwise (plain checkout / pre-commit); the
+  # BINDING freshness gate is the specs-package gtest (test/test_manifest.cpp),
+  # which regenerates and asserts byte-equality on every build-and-test CI run.
+  manifest_fresh: { severity: error }
+
+  # Cross-cutting honesty / isolation audits over the committed manifest(s).
+  owner_isolation: { severity: error }
+  no_raw_spec_topic: { severity: error }
+
+  # --- Honest deferrals (kept off; enabling one is rejected until implemented) ---
+  # ("off" is quoted so YAML does not parse the bare word as the boolean false.)
+  # Needs per-component provided/required role manifests (e.g. OCI-label
+  # manifests), which do not exist yet. Deferred.
+  no_foreign_if_dependency: { severity: "off" }
+  # profile_compat needs a vendor-specific interface profile that does not
+  # exist yet. Deferred.
+  profile_compat: { severity: "off" }
+  # Runtime gates need runtime introspection data this static-analysis package
+  # does not have: they would bring up a profile and inspect broadcast/admission.
+  if_usage_coverage: { severity: "off" }
+  admission_smoke: { severity: "off" }
+
+# Heavy-raw confinement deny list. A versioned topic whose interface name
+# contains any deny substring must not be a cross-container spec.
+# The derived grid /sensing/obstacle_segmentation/obstacle_grid is NOT raw and
+# does not match. Request/response services are out of scope (see checks.py).
+no_raw_spec_topic:
+  deny:
+    - /pointcloud
+    # Both spellings: the ROS topic is /map/pointcloud_map, but the spec declares
+    # PointCloudMap::name = "/map/point_cloud_map", and the gate matches the
+    # spec-declared interface name that reaches the manifest.
+    - pointcloud_map
+    - point_cloud_map
+    - /image_raw
+    - occupancy_grid_map/map
+    - concatenated/pointcloud
+  allow: []
+
+# owner_isolation: extension (vendor) manifests may not shadow a base-owner
+# interface name. Vacuously clean with the single autowarefoundation core manifest;
+# binds once a second (vendor) manifest is cross-checked against it.
+owner_isolation:
+  base_owner: autowarefoundation

@@ -21,14 +21,35 @@
 
 #include <algorithm>
 #include <memory>
+#include <stdexcept>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace autoware::gnss_poser
 {
+namespace
+{
+GnssPosePubMethod to_gnss_pose_pub_method(const int value)
+{
+  switch (value) {
+    case 0:
+      return GnssPosePubMethod::Instant;
+    case 1:
+      return GnssPosePubMethod::Average;
+    case 2:
+      return GnssPosePubMethod::Median;
+    default:
+      throw std::invalid_argument(
+        "gnss_pose_pub_method must be 0 (instant), 1 (average) or 2 (median), got " +
+        std::to_string(value));
+  }
+}
+}  // namespace
+
 GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
-: rclcpp::Node("gnss_poser", node_options),
-  tf2_listener_(tf2_buffer_),
+: autoware::agnocast_wrapper::Node("gnss_poser", node_options),
+  tf2_listener_(tf2_buffer_, *this),
   tf2_broadcaster_(*this),
   base_frame_(declare_parameter<std::string>("base_frame")),
   gnss_base_frame_(declare_parameter<std::string>("gnss_base_frame")),
@@ -36,7 +57,7 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
   use_gnss_ins_orientation_(declare_parameter<bool>("use_gnss_ins_orientation")),
   msg_gnss_ins_orientation_stamped_(
     std::make_shared<autoware_sensing_msgs::msg::GnssInsOrientationStamped>()),
-  gnss_pose_pub_method_(static_cast<int>(declare_parameter<int>("gnss_pose_pub_method")))
+  gnss_pose_pub_method_(to_gnss_pose_pub_method(declare_parameter<int>("gnss_pose_pub_method")))
 {
   // Subscribe to map_projector_info topic
   sub_map_projector_info_ = create_subscription<autoware_map_msgs::msg::MapProjectorInfo>(
@@ -44,7 +65,10 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
     std::bind(&GNSSPoser::callback_map_projector_info, this, std::placeholders::_1));
 
   // Set up position buffer
-  int buff_epoch = static_cast<int>(declare_parameter<int>("buff_epoch"));
+  const int buff_epoch = declare_parameter<int>("buff_epoch");
+  if (buff_epoch < 1) {
+    throw std::invalid_argument("buff_epoch must be at least 1, got " + std::to_string(buff_epoch));
+  }
   position_buffer_.set_capacity(buff_epoch);
 
   // Set subscribers and publishers
@@ -70,14 +94,14 @@ GNSSPoser::GNSSPoser(const rclcpp::NodeOptions & node_options)
 }
 
 void GNSSPoser::callback_map_projector_info(
-  const autoware_map_msgs::msg::MapProjectorInfo::ConstSharedPtr msg)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_map_msgs::msg::MapProjectorInfo) & msg)
 {
   projector_info_ = *msg;
   received_map_projector_info_ = true;
 }
 
 void GNSSPoser::callback_nav_sat_fix(
-  const sensor_msgs::msg::NavSatFix::ConstSharedPtr nav_sat_fix_msg_ptr)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::NavSatFix) & nav_sat_fix_msg_ptr)
 {
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
@@ -99,10 +123,10 @@ void GNSSPoser::callback_nav_sat_fix(
   const bool is_status_fixed = is_fixed(nav_sat_fix_msg_ptr->status);
 
   // publish is_fixed topic
-  autoware_internal_debug_msgs::msg::BoolStamped is_fixed_msg;
-  is_fixed_msg.stamp = this->now();
-  is_fixed_msg.data = is_status_fixed;
-  fixed_pub_->publish(is_fixed_msg);
+  auto is_fixed_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(fixed_pub_);
+  is_fixed_msg->stamp = nav_sat_fix_msg_ptr->header.stamp;
+  is_fixed_msg->data = is_status_fixed;
+  fixed_pub_->publish(std::move(is_fixed_msg));
 
   if (!is_status_fixed) {
     RCLCPP_WARN_STREAM_THROTTLE(
@@ -125,7 +149,7 @@ void GNSSPoser::callback_nav_sat_fix(
   geometry_msgs::msg::Pose gnss_antenna_pose{};
 
   // publish pose immediately
-  if (!gnss_pose_pub_method_) {
+  if (gnss_pose_pub_method_ == GnssPosePubMethod::Instant) {
     gnss_antenna_pose.position = position;
   } else {
     // fill position buffer
@@ -137,7 +161,7 @@ void GNSSPoser::callback_nav_sat_fix(
       return;
     }
     // publish average pose or median pose of position buffer
-    gnss_antenna_pose.position = (gnss_pose_pub_method_ == 1)
+    gnss_antenna_pose.position = (gnss_pose_pub_method_ == GnssPosePubMethod::Average)
                                    ? get_average_position(position_buffer_)
                                    : get_median_position(position_buffer_);
   }
@@ -173,47 +197,50 @@ void GNSSPoser::callback_nav_sat_fix(
   tf2::Transform tf_map2base_link{};
   tf_map2base_link = tf_map2gnss_antenna * tf_gnss_antenna2base_link;
 
-  geometry_msgs::msg::PoseStamped gnss_base_pose_msg{};
-  gnss_base_pose_msg.header.stamp = nav_sat_fix_msg_ptr->header.stamp;
-  gnss_base_pose_msg.header.frame_id = map_frame_;
-  tf2::toMsg(tf_map2base_link, gnss_base_pose_msg.pose);
+  auto gnss_base_pose_unique = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pose_pub_);
+  gnss_base_pose_unique->header.stamp = nav_sat_fix_msg_ptr->header.stamp;
+  gnss_base_pose_unique->header.frame_id = map_frame_;
+  tf2::toMsg(tf_map2base_link, gnss_base_pose_unique->pose);
+
+  const geometry_msgs::msg::PoseStamped gnss_base_pose_msg = *gnss_base_pose_unique;
 
   // publish gnss_base_link pose in map frame
-  pose_pub_->publish(gnss_base_pose_msg);
+  pose_pub_->publish(std::move(gnss_base_pose_unique));
 
   // publish gnss_base_link pose_cov in map frame
-  geometry_msgs::msg::PoseWithCovarianceStamped gnss_base_pose_cov_msg;
-  gnss_base_pose_cov_msg.header = gnss_base_pose_msg.header;
-  gnss_base_pose_cov_msg.pose.pose = gnss_base_pose_msg.pose;
+  auto gnss_base_pose_cov_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pose_cov_pub_);
+  gnss_base_pose_cov_msg->header = gnss_base_pose_msg.header;
+  gnss_base_pose_cov_msg->pose.pose = gnss_base_pose_msg.pose;
   constexpr std::size_t diagonal_stride = 7;
-  gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 0] =
+  gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 0] =
     can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[0] : 10.0;
-  gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 1] =
+  gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 1] =
     can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[4] : 10.0;
-  gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 2] =
+  gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 2] =
     can_get_covariance(*nav_sat_fix_msg_ptr) ? nav_sat_fix_msg_ptr->position_covariance[8] : 10.0;
 
   if (use_gnss_ins_orientation_) {
-    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 3] =
+    gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 3] =
       std::pow(msg_gnss_ins_orientation_stamped_->orientation.rmse_rotation_x, 2);
-    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 4] =
+    gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 4] =
       std::pow(msg_gnss_ins_orientation_stamped_->orientation.rmse_rotation_y, 2);
-    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 5] =
+    gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 5] =
       std::pow(msg_gnss_ins_orientation_stamped_->orientation.rmse_rotation_z, 2);
   } else {
-    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 3] = 0.1;
-    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 4] = 0.1;
-    gnss_base_pose_cov_msg.pose.covariance[diagonal_stride * 5] = 1.0;
+    gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 3] = 0.1;
+    gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 4] = 0.1;
+    gnss_base_pose_cov_msg->pose.covariance[diagonal_stride * 5] = 1.0;
   }
 
-  pose_cov_pub_->publish(gnss_base_pose_cov_msg);
+  pose_cov_pub_->publish(std::move(gnss_base_pose_cov_msg));
 
   // broadcast map to gnss_base_link
   publish_tf(map_frame_, gnss_base_frame_, gnss_base_pose_msg);
 }
 
 void GNSSPoser::callback_gnss_ins_orientation_stamped(
-  const autoware_sensing_msgs::msg::GnssInsOrientationStamped::ConstSharedPtr msg)
+  const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
+  msg)
 {
   *msg_gnss_ins_orientation_stamped_ = *msg;
 }

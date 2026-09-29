@@ -596,7 +596,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeAng
     h_ang_.row(4) << (-sx * cz - cx * sy * sz), (sx * sz - cx * sy * cz), 0.0f, 0.0f;  // c2
     h_ang_.row(5) << (cx * cz - sx * sy * sz), (-sx * sy * cz - cx * sz), 0.0f, 0.0f;  // c3
 
-    h_ang_.row(6) << (-cy * cz), (cy * sz), (sy), 0.0f;                  // d1
+    h_ang_.row(6) << (-cy * cz), (cy * sz), (-sy), 0.0f;                 // d1
     h_ang_.row(7) << (-sx * sy * cz), (sx * sy * sz), (sx * cy), 0.0f;   // d2
     h_ang_.row(8) << (cx * sy * cz), (-cx * sy * sz), (-cx * cy), 0.0f;  // d3
 

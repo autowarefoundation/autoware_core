@@ -305,29 +305,53 @@ LaneletRTree::LaneletRTree(const lanelet::ConstLanelets & lanelets) : lanelets_(
 }
 
 std::optional<lanelet::ConstLanelet> LaneletRTree::get_closest_lanelet(
-  const geometry_msgs::msg::Pose search_pose) const
+  const geometry_msgs::msg::Pose & search_pose) const
 {
   if (lanelets_.empty()) {
     return std::nullopt;
   }
-  const auto search_point = lanelet::BasicPoint2d(search_pose.position.x, search_pose.position.y);
-  const auto query_nearest = boost::geometry::index::nearest(search_point, lanelets_.size());
 
-  auto min_dist = std::numeric_limits<double>::max();
+  const auto search_point = lanelet::BasicPoint2d(search_pose.position.x, search_pose.position.y);
+
+  // Query the single closest bounding box in the R-Tree (O(log N))
+  auto first_nearest_it = rtree_.qbegin(boost::geometry::index::nearest(search_point, 1));
+  if (first_nearest_it == rtree_.qend()) {
+    return std::nullopt;
+  }
+
+  // Calculate the actual polygon distance to this candidate.
+  // The true closest polygon cannot possibly be further away than this distance.
+  const double max_search_radius = boost::geometry::distance(
+    search_point, lanelets_.at(first_nearest_it->second).polygon2d().basicPolygon());
+
+  // Construct a bounding box around the search point using the max_search_radius
+  lanelet::BasicPoint2d min_pt(
+    search_point.x() - max_search_radius, search_point.y() - max_search_radius);
+  lanelet::BasicPoint2d max_pt(
+    search_point.x() + max_search_radius, search_point.y() + max_search_radius);
+  boost::geometry::model::box<lanelet::BasicPoint2d> search_box(min_pt, max_pt);
+
+  double min_dist = std::numeric_limits<double>::max();
   lanelet::ConstLanelets candidates;
-  for (auto query_it = rtree_.qbegin(query_nearest); query_it != rtree_.qend(); ++query_it) {
-    const auto approx_dist_to_lanelet = boost::geometry::distance(search_point, query_it->first);
-    if (approx_dist_to_lanelet > min_dist) {
-      break;
-    }
+  constexpr double DIST_TOLERANCE = 1e-4;  // Tolerance for floating point ties (e.g., 1cm^2)
+
+  // Query only the lanelets whose bounding boxes intersect our search radius
+  for (auto query_it = rtree_.qbegin(boost::geometry::index::intersects(search_box));
+       query_it != rtree_.qend(); ++query_it) {
     const auto dist = boost::geometry::distance(
       search_point, lanelets_.at(query_it->second).polygon2d().basicPolygon());
-    if (dist <= min_dist) {
-      // NOTE(soblin): if multiple lanelets overlap at same position, they all give zero distance
+
+    if (dist < min_dist - DIST_TOLERANCE) {
+      // Found a strictly closer lanelet, discard previous candidates
+      candidates.clear();
       candidates.push_back(lanelets_.at(query_it->second));
       min_dist = dist;
+    } else if (dist <= min_dist + DIST_TOLERANCE) {
+      // Overlapping lanelets at the same position (or within tolerance)
+      candidates.push_back(lanelets_.at(query_it->second));
     }
   }
+
   return autoware::experimental::lanelet2_utils::get_closest_lanelet(candidates, search_pose);
 }
 

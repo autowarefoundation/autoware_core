@@ -16,6 +16,9 @@
 #define ROUTING_ADAPTOR_HPP_
 
 #include <autoware/adapi_specs/routing.hpp>
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 #include <geometry_msgs/msg/pose_stamped.hpp>
@@ -25,7 +28,7 @@
 namespace autoware::adapi_adaptors
 {
 
-class RoutingAdaptor : public rclcpp::Node
+class RoutingAdaptor : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit RoutingAdaptor(const rclcpp::NodeOptions & options);
@@ -36,15 +39,20 @@ private:
   using ChangeRoutePoints = autoware::adapi_specs::routing::ChangeRoutePoints;
   using ClearRoute = autoware::adapi_specs::routing::ClearRoute;
   using RouteState = autoware::adapi_specs::routing::RouteState;
-  rclcpp::Client<ChangeRoutePoints::Service>::SharedPtr cli_reroute_;
-  rclcpp::Client<SetRoutePoints::Service>::SharedPtr cli_route_;
-  rclcpp::Client<ClearRoute::Service>::SharedPtr cli_clear_;
-  rclcpp::Subscription<RouteState::Message>::SharedPtr sub_state_;
-  rclcpp::Subscription<PoseStamped>::SharedPtr sub_fixed_goal_;
-  rclcpp::Subscription<PoseStamped>::SharedPtr sub_rough_goal_;
-  rclcpp::Subscription<PoseStamped>::SharedPtr sub_waypoint_;
-  rclcpp::Subscription<PoseStamped>::SharedPtr sub_reroute_;
-  rclcpp::TimerBase::SharedPtr timer_;
+  using NodeT = autoware::agnocast_wrapper::Node;
+  template <class SpecT>
+  using Cli = autoware::component_interface_utils::Client<SpecT, NodeT>;
+
+  autoware::component_interface_utils::NodeAdaptor<NodeT> adaptor_{this};
+  Cli<ChangeRoutePoints>::SharedPtr cli_reroute_;
+  Cli<SetRoutePoints>::SharedPtr cli_route_;
+  Cli<ClearRoute>::SharedPtr cli_clear_;
+  autoware::component_interface_utils::Subscription<RouteState, NodeT>::SharedPtr sub_state_;
+  AUTOWARE_SUBSCRIPTION_PTR(PoseStamped) sub_fixed_goal_;
+  AUTOWARE_SUBSCRIPTION_PTR(PoseStamped) sub_rough_goal_;
+  AUTOWARE_SUBSCRIPTION_PTR(PoseStamped) sub_waypoint_;
+  AUTOWARE_SUBSCRIPTION_PTR(PoseStamped) sub_reroute_;
+  AUTOWARE_TIMER_PTR timer_;
 
   bool calling_service_ = false;
   int elapsed_count_from_last_request_ = 0;

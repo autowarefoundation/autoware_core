@@ -61,19 +61,21 @@ std::shared_ptr<VelocitySmootherNode> generateNode()
 
 void publishMandatoryTopics(
   std::shared_ptr<PlanningInterfaceTestManager> test_manager,
-  rclcpp::Node::SharedPtr test_target_node)
+  std::shared_ptr<VelocitySmootherNode> test_target_node)
 {
+  const auto rclcpp_node = test_target_node->get_rclcpp_node();
+
   // publish necessary topics from test_manager
   test_manager->publishInput(
-    test_target_node, INPUT_ODOMETRY_TOPIC, autoware::test_utils::makeOdometry());
+    rclcpp_node, INPUT_ODOMETRY_TOPIC, autoware::test_utils::makeOdometry());
   test_manager->publishInput(
-    test_target_node, "velocity_smoother/input/external_velocity_limit_mps",
+    rclcpp_node, "velocity_smoother/input/external_velocity_limit_mps",
     autoware_internal_planning_msgs::msg::VelocityLimit{});
   test_manager->publishInput(
-    test_target_node, "velocity_smoother/input/operation_mode_state",
+    rclcpp_node, "velocity_smoother/input/operation_mode_state",
     autoware_adapi_v1_msgs::msg::OperationModeState{});
   test_manager->publishInput(
-    test_target_node, "velocity_smoother/input/acceleration",
+    rclcpp_node, "velocity_smoother/input/acceleration",
     geometry_msgs::msg::AccelWithCovarianceStamped{});
 }
 
@@ -86,12 +88,13 @@ TEST(PlanningModuleInterfaceTest, testPlanningInterfaceWithVariousTrajectoryInpu
   publishMandatoryTopics(test_manager, test_target_node);
 
   // test for normal trajectory
-  ASSERT_NO_THROW(test_manager->testWithNormalTrajectory(test_target_node, INPUT_TRAJECTORY_TOPIC));
+  ASSERT_NO_THROW(test_manager->testWithNormalTrajectory(
+    test_target_node->get_rclcpp_node(), INPUT_TRAJECTORY_TOPIC));
   EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
 
   // test for trajectory with empty/one point/overlapping point
-  ASSERT_NO_THROW(
-    test_manager->testWithAbnormalTrajectory(test_target_node, INPUT_TRAJECTORY_TOPIC));
+  ASSERT_NO_THROW(test_manager->testWithAbnormalTrajectory(
+    test_target_node->get_rclcpp_node(), INPUT_TRAJECTORY_TOPIC));
 
   rclcpp::shutdown();
 }
@@ -105,10 +108,12 @@ TEST(PlanningModuleInterfaceTest, NodeTestWithOffTrackEgoPose)
   publishMandatoryTopics(test_manager, test_target_node);
 
   // test for normal trajectory
-  ASSERT_NO_THROW(test_manager->testWithNormalTrajectory(test_target_node, INPUT_TRAJECTORY_TOPIC));
+  ASSERT_NO_THROW(test_manager->testWithNormalTrajectory(
+    test_target_node->get_rclcpp_node(), INPUT_TRAJECTORY_TOPIC));
   EXPECT_GE(test_manager->getReceivedTopicNum(), 1);
 
-  ASSERT_NO_THROW(test_manager->testWithOffTrackOdometry(test_target_node, INPUT_ODOMETRY_TOPIC));
+  ASSERT_NO_THROW(test_manager->testWithOffTrackOdometry(
+    test_target_node->get_rclcpp_node(), INPUT_ODOMETRY_TOPIC));
 
   rclcpp::shutdown();
 }

@@ -2,6 +2,33 @@
 Changelog for package autoware_default_adapi
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(api, motion_velocity_planner): add the node designs required by the AD API and motion planning design modules (`#1456 <https://github.com/autowarefoundation/autoware_core/issues/1456>`_)
+  * feat(api): add node designs for the default AD API nodes and RViz adaptors
+  * fix(autoware_motion_velocity_planner): add additional planning factors to publishers in the node design
+  ---------
+* feat(default_adapi): move the API nodes to agnocast_wrapper::Node (`#1438 <https://github.com/autowarefoundation/autoware_core/issues/1438>`_)
+* fix(api): declare the dependencies autoware_default_adapi uses (`#1366 <https://github.com/autowarefoundation/autoware_core/issues/1366>`_)
+  autoware_default_adapi uses packages it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break this package without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>.
+* fix(component_interface_utils): fix build errors related to NodeAdaptor (`#1339 <https://github.com/autowarefoundation/autoware_core/issues/1339>`_)
+* refactor(autoware_default_adapi): create endpoints through NodeAdaptor (`#1326 <https://github.com/autowarefoundation/autoware_core/issues/1326>`_)
+  The nineteen endpoints in this package each re-derived their type, name
+  and QoS by hand from a spec that already carries all three. Create them
+  through NodeAdaptor instead, so each call site names its spec once.
+  No wire change: every site already passed Spec::name, and the QoS each
+  one built by hand is the value NodeAdaptor derives. The topic and service
+  lists are identical before and after.
+* Contributors: Koichi Imai, Mete Fatih Cırıt, Taekjin LEE, Takagi, Isamu, Yutaka Kondo, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

@@ -1,0 +1,108 @@
+// Copyright 2026 The Autoware Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef AUTOWARE__COMPONENT_INTERFACE_ADMISSION__RECORDS_HPP_
+#define AUTOWARE__COMPONENT_INTERFACE_ADMISSION__RECORDS_HPP_
+
+#include <cstdint>
+#include <string>
+#include <vector>
+
+namespace autoware::component_interface_admission
+{
+
+// Plain C++ records that mirror the handshake message set field-for-field. Whether these become
+// rosidl messages, and the runtime broadcast that would use them, is not decided or implemented by
+// this package, so these structs stand in for the future rosidl messages; the binding to real
+// messages, once decided, is a mechanical field-by-field mapping.
+
+// QoS as carried in a v2 manifest document (schema below), JSON string-encoded rather than the RMW
+// enums autoware_component_interface_specs uses, since this package is a no-dependency leaf and
+// cannot include that package's headers. reliability is "reliable" | "best_effort"; durability is
+// "volatile" | "transient_local". depth is endpoint-local and presentational only: it never
+// participates in an admission verdict.
+struct QosRecord
+{
+  std::string reliability;
+  std::string durability;
+  int depth = 0;
+};
+
+// One interface a component provides (it is a publisher / service server / action server for it).
+struct ProvidedInterface
+{
+  std::string ns;
+  // Spec-declared interface name (Spec::name = the topic / service / action name). This is the
+  // remap-invariant contract identity and the admission matching key.
+  std::string interface_name;
+  // Remap-resolved fully-qualified name (get_topic_name() / get_service_name()), captured at
+  // create-time. Equal to interface_name when the interface is not remapped.
+  std::string resolved_name;
+  std::string type_name;
+  std::uint16_t major{0};
+  std::uint16_t minor{0};
+  std::uint16_t patch{0};
+  // Whether major/minor/patch were present in the source manifest. A v1 document always carries
+  // them (true, the default here). A v2 document may omit all three for an endpoint whose spec is
+  // unversioned, in which case this is false and major/minor/patch stay at their 0 default; version
+  // verdicts (MAJOR_MISMATCH / MINOR_MISMATCH) must skip such an entry rather than comparing it
+  // against its all-zero default. NO_PROVIDER is NOT a version verdict -- it is a completeness
+  // verdict that fires when a required entry has no provider of its interface_name anywhere in the
+  // deploy set at all, regardless of whether that required entry itself declares a version; see
+  // admission_rule.hpp.
+  bool has_version = true;
+  // Whether `qos` below was present in the source manifest. Absent in every v1 document and in a
+  // v2 document for an endpoint that does not carry QoS in its manifest.
+  bool has_qos = false;
+  QosRecord qos;
+};
+
+// One interface a component requires (it is a subscription / service client / action client of it).
+struct RequiredInterface
+{
+  std::string ns;
+  // Spec-declared interface name (Spec::name); the admission matching key. See ProvidedInterface.
+  std::string interface_name;
+  // Remap-resolved fully-qualified name; equal to interface_name when not remapped.
+  std::string resolved_name;
+  std::string type_name;
+  // The consumer declares an acceptance range, not a single version: it admits a provider whose
+  // MAJOR lies in [accept_major_min, accept_major_max]. min_minor (0 = unconstrained) is an
+  // optional, inclusive lower bound on the provider's MINOR. Per semver, MINOR resets to 0 on every
+  // MAJOR bump, so min_minor binds ONLY at the MAJOR it was declared against (accept_major_min); at
+  // any higher accepted MAJOR the bound is already satisfied.
+  std::uint16_t accept_major_min{0};
+  std::uint16_t accept_major_max{0};
+  std::uint16_t min_minor{0};
+  // Whether accept_major_min/accept_major_max/min_minor were present in the source manifest. See
+  // ProvidedInterface::has_version; the same v1-always-true / v2-may-omit rule applies, including
+  // the NO_PROVIDER exception (it fires for an unversioned required entry too).
+  bool has_version = true;
+  // Whether `qos` below was present in the source manifest. See ProvidedInterface::has_qos.
+  bool has_qos = false;
+  QosRecord qos;
+};
+
+// A component's interface manifest: the interfaces it provides and requires.
+struct InterfaceManifest
+{
+  std::string owner;      // GitHub org that owns the spec set (e.g. "autowarefoundation").
+  std::string node_name;  // The declaring component / node.
+  std::vector<ProvidedInterface> provided;
+  std::vector<RequiredInterface> required;
+};
+
+}  // namespace autoware::component_interface_admission
+
+#endif  // AUTOWARE__COMPONENT_INTERFACE_ADMISSION__RECORDS_HPP_

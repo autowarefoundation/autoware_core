@@ -1,0 +1,112 @@
+autoware_system_design_format: 0.3.0
+
+# node information
+name: MotionVelocityPlanner.node
+
+package:
+  name: autoware_motion_velocity_planner
+  provider: autoware
+
+launch:
+  plugin: autoware::motion_velocity_planner::MotionVelocityPlannerNode
+  executable: autoware_motion_velocity_planner_node
+
+# interfaces
+subscribers:
+  - name: trajectory
+    message_type: autoware_planning_msgs/msg/Trajectory
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+  - name: vehicle_odometry
+    message_type: nav_msgs/msg/Odometry
+  - name: accel
+    message_type: geometry_msgs/msg/AccelWithCovarianceStamped
+  - name: dynamic_objects
+    message_type: autoware_perception_msgs/msg/PredictedObjects
+  - name: no_ground_pointcloud
+    message_type: sensor_msgs/msg/PointCloud2
+  - name: traffic_signals
+    message_type: autoware_perception_msgs/msg/TrafficLightGroupArray
+  - name: occupancy_grid
+    message_type: nav_msgs/msg/OccupancyGrid
+  - name: route
+    message_type: autoware_planning_msgs/msg/LaneletRoute
+    remap_target: /planning/mission_planning/route
+  - name: operation_mode_state
+    message_type: autoware_adapi_v1_msgs/msg/OperationModeState
+    remap_target: /api/operation_mode/state
+  - name: control_cmd
+    message_type: autoware_control_msgs/msg/Control
+    remap_target: /control/command/control_cmd
+  - name: predicted_trajectory
+    message_type: autoware_planning_msgs/msg/Trajectory
+    remap_target: /control/trajectory_follower/lateral/predicted_trajectory
+  - name: steering_status
+    message_type: autoware_vehicle_msgs/msg/SteeringReport
+    remap_target: /vehicle/status/steering_status
+
+publishers:
+  - name: trajectory
+    message_type: autoware_planning_msgs/msg/Trajectory
+  - name: planning_factors/dynamic_obstacle_stop
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/dynamic_obstacle_stop
+  - name: planning_factors/obstacle_cruise
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/obstacle_cruise
+  - name: planning_factors/obstacle_slow_down
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/obstacle_slow_down
+  - name: planning_factors/obstacle_stop
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/obstacle_stop
+  - name: planning_factors/out_of_lane
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/out_of_lane
+  - name: planning_factors/road_user_stop
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/road_user_stop
+  - name: planning_factors/run_out
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/run_out
+  - name: velocity_limit
+    message_type: autoware_internal_planning_msgs/msg/VelocityLimit
+  - name: clear_velocity_limit
+    message_type: autoware_internal_planning_msgs/msg/VelocityLimitClearCommand
+
+# parameters
+param_files:
+  - name: motion_velocity_planner_param
+    default: $(find-pkg-share autoware_motion_velocity_planner)/config/motion_velocity_planner.param.yaml
+  - name: obstacle_stop_module_param
+    default: $(find-pkg-share autoware_motion_velocity_obstacle_stop_module)/config/obstacle_stop.param.yaml
+  - name: obstacle_slow_down_module_param
+    default: $(find-pkg-share autoware_motion_velocity_obstacle_slow_down_module)/config/obstacle_slow_down.param.yaml
+  - name: obstacle_cruise_module_param
+    default: $(find-pkg-share autoware_motion_velocity_obstacle_cruise_module)/config/obstacle_cruise.param.yaml
+  - name: run_out_module_param
+    default: $(find-pkg-share autoware_motion_velocity_run_out_module)/config/run_out.param.yaml
+  - name: out_of_lane_module_param
+    default: $(find-pkg-share autoware_motion_velocity_out_of_lane_module)/config/out_of_lane.param.yaml
+
+param_values:
+  - name: launch_modules
+    type: string_array
+    default:
+      - autoware::motion_velocity_planner::ObstacleStopModule
+      - autoware::motion_velocity_planner::ObstacleSlowDownModule
+      - autoware::motion_velocity_planner::ObstacleCruiseModule
+      - autoware::motion_velocity_planner::OutOfLaneModule
+      - autoware::motion_velocity_planner::ObstacleVelocityLimiterModule
+      - autoware::motion_velocity_planner::DynamicObstacleStopModule
+      - autoware::motion_velocity_planner::RunOutModule
+      - autoware::motion_velocity_planner::experimental::BoundaryDeparturePreventionModule
+      - autoware::motion_velocity_planner::RoadUserStopModule
+
+# processes
+processes:
+  - name: plan_velocity
+    trigger_conditions:
+      - on_input: trajectory
+    outcomes:
+      - to_output: trajectory
