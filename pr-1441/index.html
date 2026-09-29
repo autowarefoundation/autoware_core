@@ -7763,6 +7763,53 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#code-coverage-metrics" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code Coverage Metrics
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Code Coverage Metrics">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#entire-project-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Entire Project Coverage
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#component-wise-coverage" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Component-wise Coverage
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -7786,12 +7833,66 @@
 <li>An <a href="https://github.com/autowarefoundation/autoware">Autoware</a> repository that contains a basic set of high-quality, stable ROS packages for autonomous driving.</li>
 </ul>
 <ul>
-<li>Although this repository is currently empty, porting of code from Universe to Core will begin once the interfaces for Autoware Core/Universe have been finalized, as per ongoing <a href="https://github.com/autowarefoundation/autoware/discussions?discussions_q=label%3Aarchitecture_wg">Autoware Architecture WG</a> discussions.</li>
+<li>The scope and design of Autoware Core are guided by the ongoing <a href="https://github.com/autowarefoundation/autoware/discussions?discussions_q=label%3Aarchitecture_wg">Autoware Architecture WG</a> discussions.</li>
+</ul>
+<ul>
 <li>A more detailed explanation about Autoware Core can be found on the <a href="https://autowarefoundation.github.io/autoware-documentation/main/design/autoware-concepts/#the-core-module">Autoware concepts documentation page</a>.</li>
 </ul>
 <ul>
 <li>For researchers and developers who want to extend the functionality of Autoware Core with experimental, cutting-edge ROS packages, see <a href="https://github.com/autowarefoundation/autoware_universe">Autoware Universe</a>.</li>
-</ul></div>
+</ul>
+<h2 id="code-coverage-metrics">Code Coverage Metrics<a class="headerlink" href="#code-coverage-metrics" title="Permanent link">#</a></h2>
+<p>The table below shows the coverage rate of the entire Autoware Core and of each sub-component.</p>
+<h3 id="entire-project-coverage">Entire Project Coverage<a class="headerlink" href="#entire-project-coverage" title="Permanent link">#</a></h3>
+<p><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core/tree/main"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg"></a></p>
+<h3 id="component-wise-coverage">Component-wise Coverage<a class="headerlink" href="#component-wise-coverage" title="Permanent link">#</a></h3>
+<p>You can check more details by clicking a badge and navigating the Codecov website.</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Coverage</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>API</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=API%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=api-packages&amp;precision=2"></a></td>
+</tr>
+<tr>
+<td>Common</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Common%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=common-packages&amp;precision=2"></a></td>
+</tr>
+<tr>
+<td>Control</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Control%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=control-packages&amp;precision=2"></a></td>
+</tr>
+<tr>
+<td>Localization</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Localization%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=localization-packages&amp;precision=2"></a></td>
+</tr>
+<tr>
+<td>Map</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Map%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=map-packages&amp;precision=2"></a></td>
+</tr>
+<tr>
+<td>Perception</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Perception%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=perception-packages&amp;precision=2"></a></td>
+</tr>
+<tr>
+<td>Planning</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Planning%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=planning-packages&amp;precision=2"></a></td>
+</tr>
+<tr>
+<td>Sensing</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Sensing%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=sensing-packages&amp;precision=2"></a></td>
+</tr>
+<tr>
+<td>Testing</td>
+<td><a href="https://app.codecov.io/gh/autowarefoundation/autoware_core?components%5B0%5D=Testing%20Packages"><img alt="codecov" src="https://codecov.io/gh/autowarefoundation/autoware_core/branch/main/graph/badge.svg?component=testing-packages&amp;precision=2"></a></td>
+</tr>
+</tbody>
+</table></div>
 
 
 
