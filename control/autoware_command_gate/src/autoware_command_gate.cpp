@@ -59,7 +59,6 @@ public:
     timer_ = rclcpp::create_timer(this, get_clock(), std::chrono::milliseconds(100), [this]() {
       if (!initial_published_) {
         publish_state();
-        initial_published_ = true;
       }
     });
 
@@ -96,6 +95,7 @@ public:
           res->status.code = 0;
           res->status.message = message;
           publish_state();
+          publish_gear();
         } else {
           res->status.success = false;
           res->status.code = autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR;
@@ -121,7 +121,11 @@ private:
   {
     current_state_.stamp = now();
     system_state_pub_->publish(current_state_);
+    initial_published_ = true;
+  }
 
+  void publish_gear()
+  {
     autoware_vehicle_msgs::msg::GearCommand gear_cmd;
     gear_cmd.stamp = current_state_.stamp;
     switch (current_state_.mode) {

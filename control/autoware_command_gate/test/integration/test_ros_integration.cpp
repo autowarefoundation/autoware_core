@@ -27,6 +27,7 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstddef>
 #include <functional>
 #include <future>
 #include <memory>
@@ -364,6 +365,72 @@ TEST_F(CommandGateRosIntegrationTest, ChangeAutowareControlTogglesControlFlag)
     std::chrono::seconds(2)));
 
   EXPECT_FALSE(state_msg->is_autoware_control_enabled);
+}
+
+TEST_F(CommandGateRosIntegrationTest, ControlFlagChangeDoesNotPublishGear)
+{
+  std::optional<OperationModeState> state_msg;
+  std::optional<GearCommand> gear_msg;
+  std::size_t gear_count = 0;
+
+  rclcpp::QoS state_qos(1);
+  state_qos.reliable();
+  state_qos.transient_local();
+  auto state_sub = test_node_->create_subscription<OperationModeState>(
+    "/system/operation_mode/state", state_qos,
+    [&state_msg](const OperationModeState::SharedPtr msg) { state_msg = *msg; });
+  auto gear_sub = test_node_->create_subscription<GearCommand>(
+    "/control/command/gear_cmd", rclcpp::QoS{1},
+    [&gear_msg, &gear_count](const GearCommand::SharedPtr msg) {
+      gear_msg = *msg;
+      ++gear_count;
+    });
+
+  auto mode_client = test_node_->create_client<SystemChangeOperationMode>(
+    "/system/operation_mode/change_operation_mode");
+  auto control_client = test_node_->create_client<SystemChangeAutowareControl>(
+    "/system/operation_mode/change_autoware_control");
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&mode_client, &control_client]() {
+      return mode_client->service_is_ready() && control_client->service_is_ready();
+    },
+    std::chrono::seconds(2)));
+
+  auto mode_request = std::make_shared<SystemChangeOperationMode::Request>();
+  mode_request->mode = SystemChangeOperationMode::Request::AUTONOMOUS;
+  auto mode_future = mode_client->async_send_request(mode_request);
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&mode_future]() {
+      return mode_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    },
+    std::chrono::seconds(2)));
+  ASSERT_TRUE(mode_future.get()->status.success);
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&state_msg, &gear_msg]() {
+      return state_msg && state_msg->mode == OperationModeState::AUTONOMOUS && gear_msg &&
+             gear_msg->command == GearCommand::DRIVE;
+    },
+    std::chrono::seconds(2)));
+  const auto gear_count_after_mode = gear_count;
+
+  auto control_request = std::make_shared<SystemChangeAutowareControl::Request>();
+  control_request->autoware_control = true;
+  auto control_future = control_client->async_send_request(control_request);
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&control_future]() {
+      return control_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    },
+    std::chrono::seconds(2)));
+  ASSERT_TRUE(control_future.get()->status.success);
+  ASSERT_TRUE(spin_until(
+    executor_, [&state_msg]() { return state_msg && state_msg->is_autoware_control_enabled; },
+    std::chrono::seconds(2)));
+  spin_until(executor_, []() { return false; }, std::chrono::milliseconds(100));
+  EXPECT_EQ(gear_count, gear_count_after_mode);
 }
 
 int main(int argc, char ** argv)
