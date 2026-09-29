@@ -34,7 +34,7 @@ API_NODES = [
     ("interface", "InterfaceNode", "interface_node"),
     ("localization", "LocalizationNode", "localization_node"),
     ("routing", "RoutingNode", "routing_node"),
-    ("operation_mode", "OperationModeNode", "operation_mode_node"),
+    ("operation_mode", "CoreOperationModeNode", "operation_mode_node"),
 ]
 
 

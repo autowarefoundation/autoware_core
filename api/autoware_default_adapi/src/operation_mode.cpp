@@ -23,24 +23,25 @@ namespace autoware::default_adapi
 
 using ServiceResponse = autoware_adapi_v1_msgs::srv::ChangeOperationMode::Response;
 
-OperationModeNode::OperationModeNode(const rclcpp::NodeOptions & options)
+CoreOperationModeNode::CoreOperationModeNode(const rclcpp::NodeOptions & options)
 : autoware::agnocast_wrapper::Node("operation_mode", options),
   group_cli_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive))
 {
   const auto adaptor = autoware::component_interface_utils::NodeAdaptor<NodeT>(this);
-  adaptor.init_sub(sub_state_, this, &OperationModeNode::on_state);
+  adaptor.init_sub(sub_state_, this, &CoreOperationModeNode::on_state);
   adaptor.init_pub(pub_state_);
-  adaptor.init_srv(srv_stop_mode_, this, &OperationModeNode::on_change_to_stop);
-  adaptor.init_srv(srv_autonomous_mode_, this, &OperationModeNode::on_change_to_autonomous);
-  adaptor.init_srv(srv_local_mode_, this, &OperationModeNode::on_change_to_local);
-  adaptor.init_srv(srv_remote_mode_, this, &OperationModeNode::on_change_to_remote);
-  adaptor.init_srv(srv_enable_control_, this, &OperationModeNode::on_enable_autoware_control);
-  adaptor.init_srv(srv_disable_control_, this, &OperationModeNode::on_disable_autoware_control);
+  adaptor.init_srv(srv_stop_mode_, this, &CoreOperationModeNode::on_change_to_stop);
+  adaptor.init_srv(srv_autonomous_mode_, this, &CoreOperationModeNode::on_change_to_autonomous);
+  adaptor.init_srv(srv_local_mode_, this, &CoreOperationModeNode::on_change_to_local);
+  adaptor.init_srv(srv_remote_mode_, this, &CoreOperationModeNode::on_change_to_remote);
+  adaptor.init_srv(srv_enable_control_, this, &CoreOperationModeNode::on_enable_autoware_control);
+  adaptor.init_srv(srv_disable_control_, this, &CoreOperationModeNode::on_disable_autoware_control);
   adaptor.init_cli(cli_mode_, group_cli_);
   adaptor.init_cli(cli_control_, group_cli_);
 
   timer_ = autoware::agnocast_wrapper::create_timer(
-    this, get_clock(), rclcpp::Rate(5.0).period(), std::bind(&OperationModeNode::on_timer, this));
+    this, get_clock(), rclcpp::Rate(5.0).period(),
+    std::bind(&CoreOperationModeNode::on_timer, this));
 
   curr_state_.mode = OperationModeState::Message::UNKNOWN;
   prev_state_.mode = OperationModeState::Message::UNKNOWN;
@@ -52,7 +53,7 @@ OperationModeNode::OperationModeNode(const rclcpp::NodeOptions & options)
 }
 
 template <class ResponseT>
-void OperationModeNode::change_mode(
+void CoreOperationModeNode::change_mode(
   const ResponseT res, const OperationModeRequest::_mode_type mode)
 {
   if (!mode_available_[mode]) {
@@ -69,35 +70,35 @@ void OperationModeNode::change_mode(
   autoware::component_interface_utils::status::copy(cli_mode_->call(req), res);  // NOLINT
 }
 
-void OperationModeNode::on_change_to_stop(
+void CoreOperationModeNode::on_change_to_stop(
   const ChangeToStop::Service::Request::SharedPtr,
   const ChangeToStop::Service::Response::SharedPtr res)
 {
   change_mode(res, OperationModeRequest::STOP);
 }
 
-void OperationModeNode::on_change_to_autonomous(
+void CoreOperationModeNode::on_change_to_autonomous(
   const ChangeToAutonomous::Service::Request::SharedPtr,
   const ChangeToAutonomous::Service::Response::SharedPtr res)
 {
   change_mode(res, OperationModeRequest::AUTONOMOUS);
 }
 
-void OperationModeNode::on_change_to_local(
+void CoreOperationModeNode::on_change_to_local(
   const ChangeToLocal::Service::Request::SharedPtr,
   const ChangeToLocal::Service::Response::SharedPtr res)
 {
   change_mode(res, OperationModeRequest::LOCAL);
 }
 
-void OperationModeNode::on_change_to_remote(
+void CoreOperationModeNode::on_change_to_remote(
   const ChangeToRemote::Service::Request::SharedPtr,
   const ChangeToRemote::Service::Response::SharedPtr res)
 {
   change_mode(res, OperationModeRequest::REMOTE);
 }
 
-void OperationModeNode::on_enable_autoware_control(
+void CoreOperationModeNode::on_enable_autoware_control(
   const EnableAutowareControl::Service::Request::SharedPtr,
   const EnableAutowareControl::Service::Response::SharedPtr res)
 {
@@ -110,7 +111,7 @@ void OperationModeNode::on_enable_autoware_control(
   autoware::component_interface_utils::status::copy(cli_control_->call(req), res);  // NOLINT
 }
 
-void OperationModeNode::on_disable_autoware_control(
+void CoreOperationModeNode::on_disable_autoware_control(
   const DisableAutowareControl::Service::Request::SharedPtr,
   const DisableAutowareControl::Service::Response::SharedPtr res)
 {
@@ -119,18 +120,18 @@ void OperationModeNode::on_disable_autoware_control(
   autoware::component_interface_utils::status::copy(cli_control_->call(req), res);  // NOLINT
 }
 
-void OperationModeNode::on_state(const OperationModeState::Message::ConstSharedPtr msg)
+void CoreOperationModeNode::on_state(const OperationModeState::Message::ConstSharedPtr msg)
 {
   curr_state_ = *msg;
   update_state();
 }
 
-void OperationModeNode::on_timer()
+void CoreOperationModeNode::on_timer()
 {
   update_state();
 }
 
-void OperationModeNode::update_state()
+void CoreOperationModeNode::update_state()
 {
   // Clear stamp to compare other fields.
   OperationModeState::Message state = curr_state_;
@@ -150,4 +151,4 @@ void OperationModeNode::update_state()
 }  // namespace autoware::default_adapi
 
 #include <rclcpp_components/register_node_macro.hpp>
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::default_adapi::OperationModeNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::default_adapi::CoreOperationModeNode)
