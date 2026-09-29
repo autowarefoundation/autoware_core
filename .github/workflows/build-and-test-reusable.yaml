@@ -176,19 +176,6 @@ jobs:
           target-packages: ${{ steps.get-self-packages.outputs.self-packages }}
           underlay-workspace: /opt/autoware
 
-      - name: Filter unwanted directories from coverage
-        if: ${{ steps.test.outputs.coverage-report-files != '' && !inputs.above }}
-        run: |
-          lcov --remove lcov/total_coverage.info \
-            '*/build/*' \
-            '*/install/*' \
-            '*/examples/*' \
-            '*/test/*' \
-            '*/debug.cpp' '*/debug.hpp' \
-            '/usr/*' '/opt/*' \
-            --output-file lcov/total_coverage.info || true
-        shell: bash
-
       - name: Upload coverage to CodeCov
         if: ${{ steps.test.outputs.coverage-report-files != '' && !inputs.above }}
         uses: codecov/codecov-action@v5
