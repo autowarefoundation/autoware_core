@@ -5,6 +5,171 @@ Changelog for package autoware_ekf_localizer
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_ekf_localizer): organize and remove test codes (`#1414 <https://github.com/autowarefoundation/autoware_core/issues/1414>`_)
+* test(autoware_ekf_localizer): add more unit tests for `update_step()` (`#1412 <https://github.com/autowarefoundation/autoware_core/issues/1412>`_)
+* feat(localization): add node designs for the pose/twist estimation nodes (`#1409 <https://github.com/autowarefoundation/autoware_core/issues/1409>`_)
+  * feat(localization): add node designs for the pose/twist estimation nodes
+  Declare NdtScanMatcher, EkfLocalizer, GyroOdometer, StopFilter and
+  Twist2Accel node designs, with remap_target set to each node's hardcoded
+  topic and service names, and extend PoseInitializer with the map, GNSS,
+  stop-check inputs and the align/trigger/partial-map-load clients that
+  pose_initializer.launch.xml remaps. These let a system designer module
+  compose the localization stack directly from nodes.
+  * feat(localization): describe node designs and bump to format 0.4.0
+  ---------
+* fix(autoware_ekf_localizer): fix the conditional check in `push_pose()` (`#1402 <https://github.com/autowarefoundation/autoware_core/issues/1402>`_)
+* refactor(autoware_ekf_localizer): core logic isolation - PART 3 - The ADDITIONAL refactoring (`#1397 <https://github.com/autowarefoundation/autoware_core/issues/1397>`_)
+  * updated EKFUpdateResult struct
+  * added new internal state handlers in core header
+  * update initialize to flip the flag
+  * briefly moved push_pose logic from node to core
+  * briefly moved push_twist logic from node to core
+  * revamped reset() to activate() with bool flag param
+  * update update_step() top package mega struct, including draining queues
+  * finalize the wrapping of megastruct inside core
+  * purge node wrapper private state variables
+  * update publish_estimate_result
+  * update node wrapper with reset/activate func to be cleaner
+  * update timeer_callback func in node
+  * update publish+_estimate_result
+  * final fixes - build test all good sucecssfully with good codecov
+  * style(pre-commit): autofix
+  * attempted to fix the build test agnocast stuff by properly typecasting the msg
+  * style(pre-commit): autofix
+  * rearrange the order of queue draining blocks in update_step()
+  * align yaw bias and odom to other standard passthroughs
+  * style(pre-commit): autofix
+  * updated update_step() interface to ingest rclcpp::Time current time, then use double time for math stuffs
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* refactor(autoware_ekf_localizer): core logic isolation - PART 2 - The REAL refactoring (`#1352 <https://github.com/autowarefoundation/autoware_core/issues/1352>`_)
+  * revamped ekf_localizer.hpp header - removed rclcpp timestamps, new corewarnings
+  * revamped ekf_localizer.hpp header - removed rclcpp timestamps, new corewarnings
+  * revamped ekf_localizer.cpp, get rid of rclcpp time dependency, and adapt new warnings
+  * removed the warning dependency inside header of node
+  * revamped source of node wrapper, including ROS warnings and time assignment
+  * removed friend class declaration of EKFLocalizerDiagnosticsTest for test code (we wont gonna do that here)
+  * removed warning mock
+  * module test - updated get current pose and twist by excluding time involvement
+  * update tests - measurement_update_pose and twist are now comply to new structure
+  * added 1 more assertion of no-warning stuffs on each rejection tests
+  * removed redundant test_diagnostic.cpp and test_diagnostics_topic.cpp cuz we did all of em in test_ekf_localizer_integration.cpp
+  * removed NoOpWhenConstructedWithNullptr module test cuz this concept is dead
+  * fix various typo and misfits, now build good and test good, all good, raedy for PR
+  * added new struct EKFUpdateResult to header of core logic, containing agg diags and warnings vector
+  * moved major pose/tiwst measurement update funcs back to private
+  * added unified orchestration funcs into public part of core
+  * addednew internalized states in private sectoer
+  * style(pre-commit): autofix
+  * update EKFModule constructor to init those 2 new queues
+  * implement new orchestration funcs in core source
+  * removed aged_object_queue dependencies from the node
+  * cleaned other methods inside node wrapper that are now redundant
+  * removed all the obsolete, redundant part sinside node wrapper
+  * restored original loggings inside core logic
+  * cleaned node wrapper source from obsolete redundancies
+  * exposed friend classs and friend test (this is the only way.....)
+  * style(pre-commit): autofix
+  * added include memory (precommit check)
+  * [ishikawa] address the issue in node timer_callback() queue overflow potential bug
+  * [ishikawa] remove all friend declarations, simply re-publicize the funcs
+  * [sasaki] added comment to CoreWarnings to explain the throttle_ms behavior
+  * fix spellcheck
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(autoware_ekf_localizer): rename of various entities inside this node (`#1380 <https://github.com/autowarefoundation/autoware_core/issues/1380>`_)
+  * rename: EKFLocalizer => EKFLocalizerNode
+  * rename: EKFLocalizerDiagnosticsTest => EKFLocalizerNodeDiagnosticsTest
+  * renamed: EKFModule => EKFLocalizer
+  * rename: TestEKFModule => TestEKFLocalizer
+  * rename: ekf_module\_ => ekf_localizer\_
+  * renamed: test_ekf_module.cpp => test_ekf_localizer.cpp
+  * rename: test_ekf_localizer_integration.cpp => test_ekf_localizer_node_integration.cpp
+  * rename: PLUGIN autoware::ekf_localizer::EKFLocalizer => PLUGIN autoware::ekf_localizer::EKFLocalizerNode
+  * style(pre-commit): autofix
+  * fixed CMakeLists.txt for integration test which caused agnocast error on CI
+  * rename create_ekf_localizer => create_ekf_localizer_node
+  * rename: ekf_localizer => ekf_localizer_node (only for those with EKFLocalizerNode class
+  * rename: ekf_localizer-> => ekf_localizer_node->
+  * rename: make_module => make_ekf_localizer
+  * rename: module => ekf_localizer
+  * further rename: ekf_localizer.get() => ekf_localizer_node.get()
+  * rename: initialize_ekf_module() => initialize_ekf_localizer()
+  * rename: make_module() => make_ekf_localizer()
+  * rename: module\_ => ekf_localizer\_
+  * [akamine] Update localization/autoware_ekf_localizer/src/ekf_localizer_node.hpp
+  Co-authored-by: Takayuki AKAMINE <38586589+takam5f2@users.noreply.github.com>
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Takayuki AKAMINE <38586589+takam5f2@users.noreply.github.com>
+* fix: add <fmt/format.h> for fmt 11+ compatibility (`#1385 <https://github.com/autowarefoundation/autoware_core/issues/1385>`_)
+* fix(localization): declare the dependencies these packages use (`#1369 <https://github.com/autowarefoundation/autoware_core/issues/1369>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+* refactor(autoware_ekf_localizer): core logic isolation PART 1 - file restructuring (`#1346 <https://github.com/autowarefoundation/autoware_core/issues/1346>`_)
+* feat(autoware_ekf_localizer): implement characterization test (`#1325 <https://github.com/autowarefoundation/autoware_core/issues/1325>`_)
+  * inited integration test class with integration test object
+  * added test case 1 of pose init gatekeeping
+  * added test 2 of integration suite, build successfsfully
+  * foundational fix of integration suite setup so the EKF expected results are stable
+  * added test 3 of ignoring bad shits without crashing - build test good
+  * added TEST 4 of confirming node handling pose queue overflow
+  * added test 5 of time out cascade warning
+  * fix spell check diff
+  * reduced near tol threshold to 1cm
+  * added std cout on diag status so we can see em clearly upon test loggings
+  * revamped timeoutcascade to be moah realistic
+  * revamped TEST 5 to adapt to jazzy timer being parallel
+  * allow this integrtion test suite to bypass AGNOPCAST build fix lol
+  * [ishikawa] replace node init/trigger sequejnce with a clean helper
+  * [ishikawa] further clean the code with helpers on repeated snippetes
+  * style(pre-commit): autofix
+  * [ishikawa] split test 3 into 3 smaller tests (also their order)
+  * style(pre-commit): autofix
+  * fix some weird rebase artifacts
+  * resolved git conflicts out of nowhere
+  * style(pre-commit): autofix
+  * fixing pre-commit ???
+  * style(pre-commit): autofix
+  * update warn message catch, also fix an edge case in test
+  * style(pre-commit): autofix
+  * [akamine] stricten the position.x assertion
+  * [akamine] apply latest_odom assertion (1)
+  Co-authored-by: Takayuki AKAMINE <38586589+takam5f2@users.noreply.github.com>
+  * [akamine] apply latest_odom assertion (2)
+  Co-authored-by: Takayuki AKAMINE <38586589+takam5f2@users.noreply.github.com>
+  * [akamine] add more libs
+  Co-authored-by: Takayuki AKAMINE <38586589+takam5f2@users.noreply.github.com>
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Takayuki AKAMINE <38586589+takam5f2@users.noreply.github.com>
+* refactor(ekf_localizer): isolate pose and twist subscription callback groups (`#1227 <https://github.com/autowarefoundation/autoware_core/issues/1227>`_)
+  * refactor: callback-isolation
+  * fix: cppcheck
+  * fix: nanosecond
+  * fix: address review comments on callback group isolation
+  ---------
+* fix(autoware_ekf_localizer): link fmt target (`#1274 <https://github.com/autowarefoundation/autoware_core/issues/1274>`_)
+  This upstreams a RoboStack build fix from patch/ros-rolling-autoware-ekf-localizer.patch.
+  autoware_ekf_localizer uses fmt through its dependencies and already declares fmt in package.xml. Linking fmt::fmt explicitly makes the CMake target closure complete for toolchains and package managers that do not rely on transitive link information.
+  Co-authored-by: Daisuke Nishimatsu <nishimarudai@gmail.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* feat(ekf_localizer): apply `agnocast_wrapper::Node` to `ekf_localizer` (`#1190 <https://github.com/autowarefoundation/autoware_core/issues/1190>`_)
+  apply agnocast_wrapper::Node
+* Contributors: Dhruv Patel, Koichi Imai, Mete Fatih Cırıt, Taekjin LEE, Tobias Fischer, Tran Huu Nhat Huy, Yutaro Kobayashi, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

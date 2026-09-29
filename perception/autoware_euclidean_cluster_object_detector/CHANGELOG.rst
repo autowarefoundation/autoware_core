@@ -2,6 +2,90 @@
 Changelog for package autoware_euclidean_cluster_object_detector
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(euclidean_cluster_object_detector): fixed test euclidian cluser (`#1393 <https://github.com/autowarefoundation/autoware_core/issues/1393>`_)
+  test(autoware_euclidean_cluster_object_detector): make the voxel-grid tests deterministic
+  The tests drew their point coordinates from an unseeded RNG. `testcase3` failed
+  in CI about 20% of the time, and no failure could be reproduced, because no seed
+  was recorded. The input clouds are now written out as literal points.
+  - `testcase1/2/3` are renamed after the limit each one exercises, and they pin
+  `skipped_cluster_count` as well.
+  - `ExceedMaxClusterSize` is removed. It drove the same rejection path as the
+  max-size case and asserted less about it.
+  - New cases cover several objects in one scan, a count sitting on both limits at
+  once, a contradictory pair of limits, and skipping decided per cluster.
+  - `BoundaryVoxelPointsAreNotDropped` is unchanged. It came from the regression
+  fixed in `#1376 <https://github.com/autowarefoundation/autoware_core/issues/1376>`_.
+  - Outside the tests, the map key in `cluster_voxel_grid()` is renamed from
+  `voxel_1d_idx` to `centroid_idx`. `getCentroidIndexAt()` returns an index into
+  the filtered centroid cloud, not the grid cell index the old name claimed.
+  - The README states the assumed range for the two size limits.
+* fix(perception): declare the dependencies these packages use (`#1371 <https://github.com/autowarefoundation/autoware_core/issues/1371>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+* fix(autoware_euclidean_cluster_object_detector): keep boundary voxel points in their clusters (`#1376 <https://github.com/autowarefoundation/autoware_core/issues/1376>`_)
+  The detector recomputed the map key of each voxel from the float coordinates of its centroid. The centroid is a float mean. For points that sit exactly on a cell boundary, this mean rounds to one float step under the boundary. The recomputed key then pointed to the neighbor cell, and the detector dropped the raw points of that voxel. The oversized cluster in VoxelGridBasedEuclideanClusterTest.testcase3 then passed the max_cluster_size check, and the test failed intermittently.
+  Key the map by the centroid index instead. This index is the same value that getCentroidIndexAt() returns for the raw points. Add a deterministic regression test for the boundary case.
+* feat: [codecov/refactoring] [euclidean_cluster_object_detector] Core logic isolation (SECOND HALF) (`#1244 <https://github.com/autowarefoundation/autoware_core/issues/1244>`_)
+  * added voxel grid cluster into core logic header, and specify a strategy gate to init once at startup
+  * implemented voxel_grid algorithm into the core logic module, with a nice touch of init once to address Akamine-san concern
+  * node unification between cluster standard and cluster nvoxel grid with a bunch of diagnostic added
+  * removed legacy files from old voxel grid structure, now already unified into core logics
+  * adjusted launch file to reflect new voxel grid locs
+  * purged voxel_grid relatives from cmakelist
+  * refactor test_euclidean_cluster_object_detection_integration.cpp test suite
+  * refactor test_node.cpp test suite
+  * heavy refactor of test_voxel_grid_based_euclidean_cluster.cpp test suite
+  * added the weird 2D flattening feature inside the voxel grid clustering
+  * removed redundant test inside tesdt voxel
+  * fixedspellcheck error (why Akamine-san's name does not pass the spellcheck?)
+  * bring back the voxel grid based euclidean cluster node header hpp
+  * reimplement voxel grid based euclidean cluster node source cpp
+  * clean up standard node, remove the voxel leaf size delcairation
+  * reimplemented voxel grid stuffs to CMakeLists
+  * fixed launch revert back to voxel node
+  * successfully reverted to the dual-node architecture
+  * fully reverted to dual nodes, all builds tests good now
+  * spell check and cpp ckeck  diff fix
+* feat: [codecov/refactoring] [euclidean_cluster_object_detector] Core logic isolation (FIRST HALF) (`#1239 <https://github.com/autowarefoundation/autoware_core/issues/1239>`_)
+  * implemented master params struct for this node new refactoring
+  * implemented ros_conversions.cpp/.hpp
+  * implemented euclidean_cluster_object_detector.hpp as the header for core logic, now with only cluster_standard
+  * implemented euclidean_cluster_object_detector.cpp as the source for core logic, now with only cluster_standard
+  * euclidean_cluster_node core logic refine, now only with cluster_standard()
+  * mega revamp of the unit tests of euclidean cluster func - I kept the tests as original as possible while applying new euclidean_cluster structure in, also deleted those 2 characterization tests cuz already done in another test suite
+  * removed EXPECT_TRUE cuz its kinda redundant, all build and test good, ready for launch
+  * attempted to fix the cppcheck error
+  * fully renamed and revamped utils.cpp into ros_conversions.cpp
+  * adapted the test of utils now into test_ros_conversions, build test all good should be OK now
+  * solved a helluva dependencies of old utils.cpp/.hpp taht I just git removed (holy shiet this node refactoring is killing me)
+  * git removed euclidean_cluster.cpp and .hpp cuz they are all useless/redundant now
+* feat: [codecov/refactoring] [euclidean_cluster_object_detector] implement characterization test (`#1225 <https://github.com/autowarefoundation/autoware_core/issues/1225>`_)
+  * init integration test suite test_euclidean_cluster_object_detector_integration.cpp
+  * init integration test class with constructor and destructor
+  * provided node & resources for test suite env
+  * added helper func to point cloud publishing and pubsub handsshake cehcking
+  * added helper func to generate a mock point cloud to test various stuffs
+  * added near assertion tolerance
+  * implemented first TEST 1 to confirm the clustering makes normal basic sense
+  * added test 2 of empty cloud confirmation
+  * added TEST 3 of freezing a kinda weird behavior showing current code does not take into account asynch param updates
+  * offset the points in STEP 2 my bad
+  * registered new test into cmakelist
+  * fixed spell check
+  * [akamine] address comments (timeout and timestamp)
+  * [sasaki] code clarity - num points
+* Contributors: Kazuki Komiya, Mete Fatih Cırıt, Tran Huu Nhat Huy, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

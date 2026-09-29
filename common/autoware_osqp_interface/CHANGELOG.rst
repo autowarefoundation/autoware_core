@@ -5,6 +5,19 @@ Changelog for package autoware_osqp_interface
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* chore: update package maintainer (`#1384 <https://github.com/autowarefoundation/autoware_core/issues/1384>`_)
+  chore: update package author metadata
+* fix(autoware_osqp_interface): use CMake targets (`#1268 <https://github.com/autowarefoundation/autoware_core/issues/1268>`_)
+  Use CMake targets in autoware_osqp_interface
+  This upstreams RoboStack downstream patch `patch/ros-rolling-autoware-osqp-interface.patch`.
+  Best-guess rationale: linking against Eigen3::Eigen and osqp::osqp exposes the actual imported targets to CMake, and reserving enough CSC storage avoids under-reserving when dense matrices report fewer non-zero elements than the conversion loops may visit.
+  Co-authored-by: Daisuke Nishimatsu <nishimarudai@gmail.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Satoshi OTA, Tobias Fischer, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
