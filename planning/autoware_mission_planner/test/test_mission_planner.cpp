@@ -237,6 +237,21 @@ MissionPlanner::ChangeStateCallback record_states(std::vector<RouteState::_state
   return [&states](const auto state) { states.push_back(state); };
 }
 
+template <typename Result>
+void expect_success_response(const Result & result)
+{
+  EXPECT_TRUE(result.response.status.success);
+  EXPECT_EQ(result.response.status.code, 0);
+}
+
+template <typename Result>
+void expect_fail_response_with_code(const Result & result, const uint16_t code)
+{
+  EXPECT_FALSE(result.response.status.success);
+  EXPECT_EQ(result.response.status.code, code);
+  EXPECT_FALSE(result.route.has_value());
+}
+
 // Owns the objects that a mission planner refers to, so that the mission planners created by the
 // fixture stay valid for the whole test. Every state change notified by these mission planners is
 // appended to `states`.
@@ -261,6 +276,12 @@ protected:
     mission_planner.check_initialization();
     states.clear();
     return mission_planner;
+  }
+
+  // Expects that the notified states are exactly `expected_states`, in this order.
+  void expect_states_transition(const std::vector<RouteState::_state_type> & expected_states) const
+  {
+    EXPECT_EQ(states, expected_states);
   }
 
   tf2::BufferCore tf_buffer;
@@ -319,7 +340,7 @@ TEST_F(MissionPlannerTest, CheckInitializationChangesStateToUnset)
 
   // Assert
   EXPECT_TRUE(is_initialized);
-  EXPECT_EQ(states, std::vector<RouteState::_state_type>{RouteState::UNSET});
+  expect_states_transition({RouteState::UNSET});
 }
 
 TEST_F(MissionPlannerTest, ClearRouteBeforeInitializationHasNoEffect)
@@ -331,6 +352,8 @@ TEST_F(MissionPlannerTest, ClearRouteBeforeInitializationHasNoEffect)
   const auto response = mission_planner.clear_route();
 
   // Assert
+  // Unlike the other responses, this one is a success with a non-zero code (NO_EFFECT), so it is
+  // the only response that is checked without expect_success_response().
   EXPECT_TRUE(response.status.success);
   EXPECT_EQ(response.status.code, ResponseStatus::NO_EFFECT);
   EXPECT_TRUE(states.empty());
@@ -346,7 +369,7 @@ TEST_F(MissionPlannerTest, ClearRouteAfterInitializationChangesStateToUnset)
 
   // Assert
   EXPECT_TRUE(response.status.success);
-  EXPECT_EQ(states, std::vector<RouteState::_state_type>{RouteState::UNSET});
+  expect_states_transition({RouteState::UNSET});
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteBeforeInitializationFailsWithInvalidState)
@@ -360,9 +383,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteBeforeInitializationFailsWithInvalidSt
   const auto result = mission_planner.set_lanelet_route(request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRouteResponse::ERROR_INVALID_STATE);
-  EXPECT_FALSE(result.route.has_value());
+  expect_fail_response_with_code(result, SetRouteResponse::ERROR_INVALID_STATE);
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteBeforeInitializationFailsWithInvalidState)
@@ -376,9 +397,7 @@ TEST_F(MissionPlannerTest, SetWaypointRouteBeforeInitializationFailsWithInvalidS
   const auto result = mission_planner.set_waypoint_route(request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRoutePointsResponse::ERROR_INVALID_STATE);
-  EXPECT_FALSE(result.route.has_value());
+  expect_fail_response_with_code(result, SetRoutePointsResponse::ERROR_INVALID_STATE);
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteWithoutSegmentsFailsAndRestoresUnsetState)
@@ -392,10 +411,8 @@ TEST_F(MissionPlannerTest, SetLaneletRouteWithoutSegmentsFailsAndRestoresUnsetSt
   const auto result = mission_planner.set_lanelet_route(request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRouteResponse::ERROR_PLANNER_FAILED);
-  EXPECT_FALSE(result.route.has_value());
-  EXPECT_EQ(states, (std::vector<RouteState::_state_type>{RouteState::ROUTING, RouteState::UNSET}));
+  expect_fail_response_with_code(result, SetRouteResponse::ERROR_PLANNER_FAILED);
+  expect_states_transition({RouteState::ROUTING, RouteState::UNSET});
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteFailsWhenTransformToMapIsUnavailable)
@@ -410,9 +427,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteFailsWhenTransformToMapIsUnavailable)
   const auto result = mission_planner.set_lanelet_route(request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, ResponseStatus::TRANSFORM_ERROR);
-  EXPECT_FALSE(result.route.has_value());
+  expect_fail_response_with_code(result, ResponseStatus::TRANSFORM_ERROR);
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenTransformToMapIsUnavailable)
@@ -427,9 +442,7 @@ TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenTransformToMapIsUnavailable)
   const auto result = mission_planner.set_waypoint_route(request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, ResponseStatus::TRANSFORM_ERROR);
-  EXPECT_FALSE(result.route.has_value());
+  expect_fail_response_with_code(result, ResponseStatus::TRANSFORM_ERROR);
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteSucceedsAfterInitialization)
@@ -443,7 +456,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteSucceedsAfterInitialization)
   const auto result = mission_planner.set_lanelet_route(request);
 
   // Assert
-  EXPECT_TRUE(result.response.status.success);
+  expect_success_response(result);
   ASSERT_TRUE(result.route.has_value());
   ASSERT_EQ(result.route->segments.size(), 1U);
   EXPECT_EQ(result.route->segments.front().preferred_primitive.id, FIRST_LANELET_ID);
@@ -452,7 +465,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteSucceedsAfterInitialization)
   EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 40.0);
   EXPECT_DOUBLE_EQ(result.initial_pose.position.x, start_x);
   EXPECT_TRUE(result.route_marker.has_value());
-  EXPECT_EQ(states, (std::vector<RouteState::_state_type>{RouteState::ROUTING, RouteState::SET}));
+  expect_states_transition({RouteState::ROUTING, RouteState::SET});
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteTransformsGoalPoseIntoMapFrame)
@@ -467,7 +480,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTransformsGoalPoseIntoMapFrame)
   const auto result = mission_planner.set_lanelet_route(request);
 
   // Assert
-  EXPECT_TRUE(result.response.status.success);
+  expect_success_response(result);
   ASSERT_TRUE(result.route.has_value());
   EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 10.0 + map_frame_transform_x);
 }
@@ -485,8 +498,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteFailsWhenOperationModeStateIsNo
   const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRouteResponse::ERROR_PLANNER_UNREADY);
+  expect_fail_response_with_code(result, SetRouteResponse::ERROR_PLANNER_UNREADY);
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteRerouteFailsWhenNotAllowedInAutonomousMode)
@@ -506,8 +518,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteFailsWhenNotAllowedInAutonomous
   const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRouteResponse::ERROR_INVALID_STATE);
+  expect_fail_response_with_code(result, SetRouteResponse::ERROR_INVALID_STATE);
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenNotInAutonomousMode)
@@ -531,7 +542,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenNotInAutonomousMode
   const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_TRUE(result.response.status.success);
+  expect_success_response(result);
   ASSERT_TRUE(result.route.has_value());
   EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 20.0);
 }
@@ -558,7 +569,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenAutowareControlIsDi
   const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_TRUE(result.response.status.success);
+  expect_success_response(result);
   ASSERT_TRUE(result.route.has_value());
   EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 20.0);
 }
@@ -582,13 +593,12 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileStoppedInAutonomousModeRerou
   const auto second_result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  ASSERT_TRUE(first_result.response.status.success);
-  EXPECT_TRUE(second_result.response.status.success);
+  expect_success_response(first_result);
+  expect_success_response(second_result);
   ASSERT_TRUE(second_result.route.has_value());
   EXPECT_EQ(second_result.route->segments.size(), 2U);
-  EXPECT_EQ(
-    states, (std::vector<RouteState::_state_type>{
-              RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET}));
+  expect_states_transition(
+    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET});
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRerouteIsUnsafe)
@@ -613,14 +623,10 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRe
   const auto second_result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  ASSERT_TRUE(first_result.response.status.success);
-  EXPECT_FALSE(second_result.response.status.success);
-  EXPECT_EQ(second_result.response.status.code, SetRouteResponse::ERROR_REROUTE_FAILED);
-  EXPECT_TRUE(second_result.error_message.has_value());
-  EXPECT_FALSE(second_result.route.has_value());
-  EXPECT_EQ(
-    states, (std::vector<RouteState::_state_type>{
-              RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET}));
+  expect_success_response(first_result);
+  expect_fail_response_with_code(second_result, SetRouteResponse::ERROR_REROUTE_FAILED);
+  expect_states_transition(
+    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET});
 }
 
 TEST_F(
@@ -647,9 +653,7 @@ TEST_F(
   const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRouteResponse::ERROR_REROUTE_FAILED);
-  EXPECT_TRUE(result.error_message.has_value());
+  expect_fail_response_with_code(result, SetRouteResponse::ERROR_REROUTE_FAILED);
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteRerouteFailsWhenOperationModeStateIsNotReceived)
@@ -665,8 +669,7 @@ TEST_F(MissionPlannerTest, SetWaypointRouteRerouteFailsWhenOperationModeStateIsN
   const auto result = mission_planner.set_waypoint_route(second_request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRoutePointsResponse::ERROR_PLANNER_UNREADY);
+  expect_fail_response_with_code(result, SetRoutePointsResponse::ERROR_PLANNER_UNREADY);
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenRerouteIsUnsafe)
@@ -690,14 +693,10 @@ TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenR
   const auto second_result = mission_planner.set_waypoint_route(second_request);
 
   // Assert
-  ASSERT_TRUE(first_result.response.status.success);
-  EXPECT_FALSE(second_result.response.status.success);
-  EXPECT_EQ(second_result.response.status.code, SetRoutePointsResponse::ERROR_REROUTE_FAILED);
-  EXPECT_TRUE(second_result.error_message.has_value());
-  EXPECT_FALSE(second_result.route.has_value());
-  EXPECT_EQ(
-    states, (std::vector<RouteState::_state_type>{
-              RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET}));
+  expect_success_response(first_result);
+  expect_fail_response_with_code(second_result, SetRoutePointsResponse::ERROR_REROUTE_FAILED);
+  expect_states_transition(
+    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET});
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenGoalIsOutsideTheMap)
@@ -712,10 +711,8 @@ TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenGoalIsOutsideTheMap)
   const auto result = mission_planner.set_waypoint_route(request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRoutePointsResponse::ERROR_PLANNER_FAILED);
-  EXPECT_FALSE(result.route.has_value());
-  EXPECT_EQ(states, (std::vector<RouteState::_state_type>{RouteState::ROUTING, RouteState::UNSET}));
+  expect_fail_response_with_code(result, SetRoutePointsResponse::ERROR_PLANNER_FAILED);
+  expect_states_transition({RouteState::ROUTING, RouteState::UNSET});
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRoutePlansRouteToGoalLanelet)
@@ -729,7 +726,7 @@ TEST_F(MissionPlannerTest, SetWaypointRoutePlansRouteToGoalLanelet)
   const auto result = mission_planner.set_waypoint_route(request);
 
   // Assert
-  EXPECT_TRUE(result.response.status.success);
+  expect_success_response(result);
   ASSERT_TRUE(result.route.has_value());
   EXPECT_EQ(result.route->header.frame_id, "map");
   EXPECT_EQ(result.route->segments.back().preferred_primitive.id, SECOND_LANELET_ID);
@@ -737,7 +734,7 @@ TEST_F(MissionPlannerTest, SetWaypointRoutePlansRouteToGoalLanelet)
   EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 90.0);
   EXPECT_TRUE(result.route_marker.has_value());
   EXPECT_TRUE(result.goal_footprint_marker.has_value());
-  EXPECT_EQ(states, (std::vector<RouteState::_state_type>{RouteState::ROUTING, RouteState::SET}));
+  expect_states_transition({RouteState::ROUTING, RouteState::SET});
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteTransformsWaypointsAndGoalIntoMapFrame)
@@ -754,7 +751,7 @@ TEST_F(MissionPlannerTest, SetWaypointRouteTransformsWaypointsAndGoalIntoMapFram
   const auto result = mission_planner.set_waypoint_route(request);
 
   // Assert
-  EXPECT_TRUE(result.response.status.success);
+  expect_success_response(result);
   ASSERT_TRUE(result.route.has_value());
   EXPECT_EQ(result.route->segments.back().preferred_primitive.id, SECOND_LANELET_ID);
   EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 60.0 + map_frame_transform_x);
@@ -774,7 +771,7 @@ TEST_F(MissionPlannerTest, OnOdometryChangesStateToArrivedWhenStoppedAtGoal)
   stay_stopped_at(mission_planner, goal_pose, arrival_check_duration + 0.5);
 
   // Assert
-  EXPECT_EQ(states, std::vector<RouteState::_state_type>{RouteState::ARRIVED});
+  expect_states_transition({RouteState::ARRIVED});
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteAfterArrivalFailsWithInvalidState)
@@ -793,8 +790,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteAfterArrivalFailsWithInvalidState)
   const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRouteResponse::ERROR_INVALID_STATE);
+  expect_fail_response_with_code(result, SetRouteResponse::ERROR_INVALID_STATE);
 }
 
 TEST_F(MissionPlannerTest, ClearRouteAfterArrivalAllowsSettingANewRoute)
@@ -815,7 +811,7 @@ TEST_F(MissionPlannerTest, ClearRouteAfterArrivalAllowsSettingANewRoute)
   const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_TRUE(result.response.status.success);
+  expect_success_response(result);
   ASSERT_TRUE(result.route.has_value());
   EXPECT_EQ(result.route->segments.size(), 2U);
 }
