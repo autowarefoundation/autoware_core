@@ -31,6 +31,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdint>
 #include <functional>
 #include <future>
 #include <memory>
@@ -182,7 +183,10 @@ TEST_F(CommandGateRosIntegrationTest, ChangeToStopPublishesStateAndGear)
   EXPECT_EQ(response->status.message, "Switched to STOP");
 
   ASSERT_TRUE(spin_until(
-    executor_, [&state_msg, &gear_msg]() { return state_msg.has_value() && gear_msg.has_value(); },
+    executor_,
+    [&state_msg, &gear_msg]() {
+      return state_msg.has_value() && gear_msg.has_value() && state_msg->stamp == gear_msg->stamp;
+    },
     std::chrono::seconds(2)));
 
   EXPECT_EQ(state_msg->mode, OperationModeState::STOP);
@@ -194,6 +198,8 @@ TEST_F(CommandGateRosIntegrationTest, ChangeToStopPublishesStateAndGear)
   EXPECT_TRUE(state_msg->is_remote_mode_available);
 
   EXPECT_EQ(gear_msg->command, GearCommand::PARK);
+  EXPECT_GT(rclcpp::Time(state_msg->stamp).nanoseconds(), 0);
+  EXPECT_EQ(gear_msg->stamp, state_msg->stamp);
 }
 
 TEST_F(CommandGateRosIntegrationTest, ChangeToAutonomousPublishesStateAndGear)
@@ -232,7 +238,10 @@ TEST_F(CommandGateRosIntegrationTest, ChangeToAutonomousPublishesStateAndGear)
   EXPECT_EQ(response->status.message, "Switched to AUTONOMOUS");
 
   ASSERT_TRUE(spin_until(
-    executor_, [&state_msg, &gear_msg]() { return state_msg.has_value() && gear_msg.has_value(); },
+    executor_,
+    [&state_msg, &gear_msg]() {
+      return state_msg.has_value() && gear_msg.has_value() && state_msg->stamp == gear_msg->stamp;
+    },
     std::chrono::seconds(2)));
 
   EXPECT_EQ(state_msg->mode, OperationModeState::AUTONOMOUS);
@@ -244,6 +253,8 @@ TEST_F(CommandGateRosIntegrationTest, ChangeToAutonomousPublishesStateAndGear)
   EXPECT_TRUE(state_msg->is_remote_mode_available);
 
   EXPECT_EQ(gear_msg->command, GearCommand::DRIVE);
+  EXPECT_GT(rclcpp::Time(state_msg->stamp).nanoseconds(), 0);
+  EXPECT_EQ(gear_msg->stamp, state_msg->stamp);
 }
 
 TEST_F(CommandGateRosIntegrationTest, SystemChangeToLocalPublishesStateAndGear)
@@ -282,7 +293,10 @@ TEST_F(CommandGateRosIntegrationTest, SystemChangeToLocalPublishesStateAndGear)
   EXPECT_EQ(response->status.message, "Switched to LOCAL");
 
   ASSERT_TRUE(spin_until(
-    executor_, [&state_msg, &gear_msg]() { return state_msg.has_value() && gear_msg.has_value(); },
+    executor_,
+    [&state_msg, &gear_msg]() {
+      return state_msg.has_value() && gear_msg.has_value() && state_msg->stamp == gear_msg->stamp;
+    },
     std::chrono::seconds(2)));
 
   EXPECT_EQ(state_msg->mode, OperationModeState::LOCAL);
@@ -294,6 +308,8 @@ TEST_F(CommandGateRosIntegrationTest, SystemChangeToLocalPublishesStateAndGear)
   EXPECT_TRUE(state_msg->is_remote_mode_available);
 
   EXPECT_EQ(gear_msg->command, GearCommand::NONE);
+  EXPECT_GT(rclcpp::Time(state_msg->stamp).nanoseconds(), 0);
+  EXPECT_EQ(gear_msg->stamp, state_msg->stamp);
 }
 
 TEST_F(CommandGateRosIntegrationTest, SystemChangeToRemotePublishesStateAndGear)
@@ -332,7 +348,10 @@ TEST_F(CommandGateRosIntegrationTest, SystemChangeToRemotePublishesStateAndGear)
   EXPECT_EQ(response->status.message, "Switched to REMOTE");
 
   ASSERT_TRUE(spin_until(
-    executor_, [&state_msg, &gear_msg]() { return state_msg.has_value() && gear_msg.has_value(); },
+    executor_,
+    [&state_msg, &gear_msg]() {
+      return state_msg.has_value() && gear_msg.has_value() && state_msg->stamp == gear_msg->stamp;
+    },
     std::chrono::seconds(2)));
 
   EXPECT_EQ(state_msg->mode, OperationModeState::REMOTE);
@@ -344,7 +363,79 @@ TEST_F(CommandGateRosIntegrationTest, SystemChangeToRemotePublishesStateAndGear)
   EXPECT_TRUE(state_msg->is_remote_mode_available);
 
   EXPECT_EQ(gear_msg->command, GearCommand::NONE);
+  EXPECT_GT(rclcpp::Time(state_msg->stamp).nanoseconds(), 0);
+  EXPECT_EQ(gear_msg->stamp, state_msg->stamp);
 }
+
+class InvalidOperationModeGateTest : public CommandGateRosIntegrationTest,
+                                     public ::testing::WithParamInterface<uint16_t>
+{
+};
+
+TEST_P(InvalidOperationModeGateTest, RejectsRequestWithoutPublishingStateOrGear)
+{
+  std::vector<OperationModeState> states;
+  std::vector<GearCommand> gears;
+  auto state_sub = test_node_->create_subscription<OperationModeState>(
+    "/system/operation_mode/state", rclcpp::QoS(1).reliable().transient_local(),
+    [&states](const OperationModeState::SharedPtr msg) { states.push_back(*msg); });
+  auto gear_sub = test_node_->create_subscription<GearCommand>(
+    "/control/command/gear_cmd", rclcpp::QoS{1},
+    [&gears](const GearCommand::SharedPtr msg) { gears.push_back(*msg); });
+  auto client = test_node_->create_client<SystemChangeOperationMode>(
+    "/system/operation_mode/change_operation_mode");
+  ASSERT_TRUE(spin_until(
+    executor_, [&client, &states]() { return client->service_is_ready() && !states.empty(); },
+    std::chrono::seconds(2)));
+
+  auto valid_request = std::make_shared<SystemChangeOperationMode::Request>();
+  valid_request->mode = SystemChangeOperationMode::Request::AUTONOMOUS;
+  auto valid_future = client->async_send_request(valid_request);
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&valid_future]() {
+      return valid_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    },
+    std::chrono::seconds(2)));
+  ASSERT_TRUE(valid_future.get()->status.success);
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&states, &gears]() {
+      return !states.empty() && !gears.empty() &&
+             states.back().mode == OperationModeState::AUTONOMOUS &&
+             gears.back().command == GearCommand::DRIVE &&
+             states.back().stamp == gears.back().stamp;
+    },
+    std::chrono::seconds(2)));
+  const auto previous_state = states.back();
+  const auto previous_gear = gears.back();
+  const auto state_count = states.size();
+  const auto gear_count = gears.size();
+
+  auto invalid_request = std::make_shared<SystemChangeOperationMode::Request>();
+  invalid_request->mode = GetParam();
+  auto invalid_future = client->async_send_request(invalid_request);
+  ASSERT_TRUE(spin_until(
+    executor_,
+    [&invalid_future]() {
+      return invalid_future.wait_for(std::chrono::seconds(0)) == std::future_status::ready;
+    },
+    std::chrono::seconds(2)));
+  const auto response = invalid_future.get();
+  EXPECT_FALSE(response->status.success);
+  EXPECT_EQ(response->status.code, autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR);
+  EXPECT_EQ(response->status.message, "Unknown operation mode requested.");
+  EXPECT_FALSE(spin_until(
+    executor_,
+    [&states, &gears, state_count, gear_count]() {
+      return states.size() != state_count || gears.size() != gear_count;
+    },
+    std::chrono::milliseconds(200)));
+  EXPECT_EQ(states.back(), previous_state);
+  EXPECT_EQ(gears.back(), previous_gear);
+}
+
+INSTANTIATE_TEST_SUITE_P(InvalidModes, InvalidOperationModeGateTest, ::testing::Values(0, 5, 255));
 
 TEST_F(CommandGateRosIntegrationTest, ChangeAutowareControlTogglesControlFlag)
 {
