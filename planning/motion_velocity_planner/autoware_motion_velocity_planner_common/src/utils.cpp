@@ -40,7 +40,7 @@ namespace autoware::motion_velocity_planner::utils
 {
 namespace
 {
-// Below this curvature the arc formula divides by an almost-zero radius, and the road is straight
+// Below this curvature the arc formula divides by an almost-zero curvature, and the road is straight
 // enough that the difference is irrelevant: 1e-4 corresponds to a 10 km radius.
 constexpr double min_curvature_for_arc = 1e-4;
 
@@ -49,6 +49,10 @@ constexpr double min_curvature_for_arc = 1e-4;
 // spacing the trajectory happens to have.
 size_t index_before_end(const std::vector<TrajectoryPoint> & points, const double distance)
 {
+  if (points.empty()) {
+    throw std::invalid_argument("index_before_end requires a non-empty trajectory");
+  }
+
   double travelled = 0.0;
   for (size_t i = points.size() - 1; i > 0; --i) {
     travelled += autoware_utils_geometry::calc_distance2d(
@@ -60,11 +64,9 @@ size_t index_before_end(const std::vector<TrajectoryPoint> & points, const doubl
   return 0;
 }
 
-// Curvature of the road at the end of `points`, from three points spread over `baseline_length`.
-// Three points on a circle give its curvature exactly, so a clean arc needs no more than that; the
-// baseline is what keeps a densely sampled trajectory from turning rounding noise into curvature.
-// Returns zero (straight) when there are too few points, or when they are too close together or
-// too collinear to define a circle.
+// Curvature at the end of `points`, from three points spaced `baseline_length` apart to
+// suppress noise on dense trajectories. Returns 0.0 if the points cannot define a circle.
+// See ../docs/trajectory-extension.png for the extension geometry.
 double estimate_goal_curvature(
   const std::vector<TrajectoryPoint> & points, const double baseline_length)
 {
