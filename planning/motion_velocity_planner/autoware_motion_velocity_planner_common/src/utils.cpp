@@ -186,7 +186,7 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const auto decimated_traj_points_from_ego =
     resample_trajectory_points(traj_points_from_ego, decimate_trajectory_step_length);
 
-  // Extend the trajectory. Both the curvature and the pose the extension starts from are taken
+  // Extend the trajectory. Both the curvature and the terminal orientation are taken
   // from the untrimmed trajectory. Resampling recomputes orientations with a spline whose error
   // is largest at the end points, and close to the goal the trimmed and decimated trajectory is
   // only a couple of points long -- which is exactly when the extension past the goal decides
