@@ -52,6 +52,20 @@ CoreOperationModeNode::CoreOperationModeNode(const rclcpp::NodeOptions & options
   mode_available_[OperationModeState::Message::REMOTE] = true;
 }
 
+template <class ClientT, class RequestT>
+auto CoreOperationModeNode::call_with_timeout(ClientT & client, const RequestT & request)
+{
+  try {
+    // Allow the gate's two-second vehicle timeout to return its own status first.
+    return client->call(request, 3.0);
+  } catch (const autoware::component_interface_utils::ServiceTimeout &) {
+    // The wrapper has no remove_pending_request(); replacing it releases the abandoned request.
+    const auto adaptor = autoware::component_interface_utils::NodeAdaptor<NodeT>(this);
+    adaptor.init_cli(client, group_cli_);
+    throw;
+  }
+}
+
 template <class ResponseT>
 void CoreOperationModeNode::change_mode(
   const ResponseT res, const OperationModeRequest::_mode_type mode)
@@ -67,7 +81,7 @@ void CoreOperationModeNode::change_mode(
   }
   const auto req = std::make_shared<OperationModeRequest>();
   req->mode = mode;
-  autoware::component_interface_utils::status::copy(cli_mode_->call(req), res);  // NOLINT
+  autoware::component_interface_utils::status::copy(call_with_timeout(cli_mode_, req), res);
 }
 
 void CoreOperationModeNode::on_change_to_stop(
@@ -108,7 +122,7 @@ void CoreOperationModeNode::on_enable_autoware_control(
   }
   const auto req = std::make_shared<AutowareControlRequest>();
   req->autoware_control = true;
-  autoware::component_interface_utils::status::copy(cli_control_->call(req), res);  // NOLINT
+  autoware::component_interface_utils::status::copy(call_with_timeout(cli_control_, req), res);
 }
 
 void CoreOperationModeNode::on_disable_autoware_control(
@@ -117,7 +131,7 @@ void CoreOperationModeNode::on_disable_autoware_control(
 {
   const auto req = std::make_shared<AutowareControlRequest>();
   req->autoware_control = false;
-  autoware::component_interface_utils::status::copy(cli_control_->call(req), res);  // NOLINT
+  autoware::component_interface_utils::status::copy(call_with_timeout(cli_control_, req), res);
 }
 
 void CoreOperationModeNode::on_state(const OperationModeState::Message::ConstSharedPtr msg)

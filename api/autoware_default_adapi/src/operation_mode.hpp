@@ -102,6 +102,9 @@ private:
   void on_timer();
   void update_state();
 
+  template <class ClientT, class RequestT>
+  auto call_with_timeout(ClientT & client, const RequestT & request);
+
   template <class ResponseT>
   void change_mode(const ResponseT res, const OperationModeRequest::_mode_type mode);
 };
