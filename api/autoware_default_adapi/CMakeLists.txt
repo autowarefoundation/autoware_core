@@ -51,6 +51,12 @@ if(BUILD_TESTING)
     ament_add_ros_isolated_gtest(test_operation_mode_timeout test/test_operation_mode_timeout.cpp)
     target_include_directories(test_operation_mode_timeout PRIVATE src)
     target_link_libraries(test_operation_mode_timeout ${PROJECT_NAME})
+
+    ament_auto_add_gtest(test_operation_mode
+      test/test_operation_mode.cpp
+    )
+    target_include_directories(test_operation_mode PRIVATE src)
+    target_link_libraries(test_operation_mode ${PROJECT_NAME})
   endif()
 
   ament_auto_add_gtest(test_${PROJECT_NAME}
@@ -58,12 +64,6 @@ if(BUILD_TESTING)
   )
   target_include_directories(test_${PROJECT_NAME} PRIVATE src)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})
-
-  ament_auto_add_gtest(test_operation_mode
-    test/test_operation_mode.cpp
-  )
-  target_include_directories(test_operation_mode PRIVATE src)
-  target_link_libraries(test_operation_mode ${PROJECT_NAME})
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE config launch test)
