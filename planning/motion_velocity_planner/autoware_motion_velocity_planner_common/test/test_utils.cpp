@@ -11,6 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 #include "autoware/motion_velocity_planner_common/utils.hpp"
 
 #include <autoware/motion_utils/trajectory/trajectory.hpp>
@@ -33,8 +34,10 @@
 #include <string>
 #include <utility>
 #include <vector>
+
 namespace autoware::motion_velocity_planner::utils
 {
+
 class MotionVelocityPlannerCommonUtilsTest : public ::testing::Test
 {
 protected:
@@ -44,8 +47,10 @@ protected:
       rclcpp::init(0, nullptr);
     }
   }
+
   static void TearDownTestSuite() { rclcpp::shutdown(); }
 };
+
 TEST_F(MotionVelocityPlannerCommonUtilsTest, GetTargetObjectTypeSupportsAnimalAndHazard)
 {
   auto options = rclcpp::NodeOptions{};
@@ -59,12 +64,15 @@ TEST_F(MotionVelocityPlannerCommonUtilsTest, GetTargetObjectTypeSupportsAnimalAn
   options.append_parameter_override("target.pedestrian", false);
   options.append_parameter_override("target.animal", true);
   options.append_parameter_override("target.hazard", true);
+
   auto node = std::make_shared<rclcpp::Node>("test_get_target_object_type", options);
   const auto types = get_target_object_type(*node, "target.");
+
   EXPECT_NE(std::find(types.begin(), types.end(), ObjectClassification::ANIMAL), types.end());
   EXPECT_NE(std::find(types.begin(), types.end(), ObjectClassification::HAZARD), types.end());
   EXPECT_EQ(std::find(types.begin(), types.end(), ObjectClassification::UNKNOWN), types.end());
 }
+
 TEST_F(MotionVelocityPlannerCommonUtilsTest, GetTargetObjectTypeDefaultsMissingLabelsToFalse)
 {
   auto options = rclcpp::NodeOptions{};
@@ -76,7 +84,9 @@ TEST_F(MotionVelocityPlannerCommonUtilsTest, GetTargetObjectTypeDefaultsMissingL
   options.append_parameter_override("target.motorcycle", false);
   options.append_parameter_override("target.bicycle", false);
   options.append_parameter_override("target.pedestrian", false);
+
   auto node = std::make_shared<rclcpp::Node>("test_get_target_object_type_defaults", options);
+
   EXPECT_NO_THROW({
     const auto types = get_target_object_type(*node, "target.");
     EXPECT_NE(std::find(types.begin(), types.end(), ObjectClassification::UNKNOWN), types.end());
@@ -84,7 +94,9 @@ TEST_F(MotionVelocityPlannerCommonUtilsTest, GetTargetObjectTypeDefaultsMissingL
     EXPECT_EQ(std::find(types.begin(), types.end(), ObjectClassification::HAZARD), types.end());
   });
 }
+
 }  // namespace autoware::motion_velocity_planner::utils
+
 namespace
 {
 using autoware::motion_velocity_planner::utils::calc_distance_to_front_object;
@@ -94,6 +106,7 @@ using autoware::motion_velocity_planner::utils::get_extended_trajectory_points;
 using autoware::motion_velocity_planner::utils::get_index_with_longitudinal_offset;
 using autoware_perception_msgs::msg::Shape;
 using autoware_planning_msgs::msg::TrajectoryPoint;
+
 // Build a straight trajectory along +x with identity orientation and a forward longitudinal
 // velocity so that direction detection returns "driving forward".
 std::vector<TrajectoryPoint> make_straight_forward_trajectory(
@@ -111,6 +124,7 @@ std::vector<TrajectoryPoint> make_straight_forward_trajectory(
   }
   return points;
 }
+
 // Build a trajectory following a circular arc of the given radius (left turn, centre at (0, R))
 // with each point's orientation set to the arc tangent, so direction detection returns "driving
 // forward" just like make_straight_forward_trajectory.
@@ -130,6 +144,7 @@ std::vector<TrajectoryPoint> make_arc_forward_trajectory(
   }
   return points;
 }
+
 // Shortest distance from a point to the polyline through the trajectory points from begin_index
 // onwards. The collision check sweeps a footprint between consecutive points, so distance to the
 // segments is what decides a hit, not distance to the nearest sampled point.
@@ -152,6 +167,7 @@ double distance_to_polyline(
   }
   return closest;
 }
+
 geometry_msgs::msg::Point make_point(const double x, const double y)
 {
   geometry_msgs::msg::Point point;
@@ -161,7 +177,9 @@ geometry_msgs::msg::Point make_point(const double x, const double y)
   return point;
 }
 }  // namespace
+
 // ----------------------------- calc_object_possible_max_dist_from_center -----------------------
+
 TEST(MvpUtilsMaxDist, BoundingBoxReturnsHalfDiagonal)
 {
   Shape shape;
@@ -171,6 +189,7 @@ TEST(MvpUtilsMaxDist, BoundingBoxReturnsHalfDiagonal)
   // half-diagonal = hypot(2, 1.5) = 2.5
   EXPECT_NEAR(calc_object_possible_max_dist_from_center(shape), 2.5, 1e-9);
 }
+
 TEST(MvpUtilsMaxDist, CylinderReturnsRadius)
 {
   Shape shape;
@@ -178,6 +197,7 @@ TEST(MvpUtilsMaxDist, CylinderReturnsRadius)
   shape.dimensions.x = 6.0;  // diameter
   EXPECT_NEAR(calc_object_possible_max_dist_from_center(shape), 3.0, 1e-9);
 }
+
 TEST(MvpUtilsMaxDist, PolygonReturnsFarthestPointDistance)
 {
   Shape shape;
@@ -192,53 +212,65 @@ TEST(MvpUtilsMaxDist, PolygonReturnsFarthestPointDistance)
   // farthest point is (-3, -4): hypot = 5
   EXPECT_NEAR(calc_object_possible_max_dist_from_center(shape), 5.0, 1e-6);
 }
+
 TEST(MvpUtilsMaxDist, EmptyPolygonReturnsZero)
 {
   Shape shape;
   shape.type = Shape::POLYGON;
   EXPECT_NEAR(calc_object_possible_max_dist_from_center(shape), 0.0, 1e-9);
 }
+
 TEST(MvpUtilsMaxDist, UnsupportedShapeThrowsLogicError)
 {
   Shape shape;
   shape.type = 255;  // not a supported shape type
   EXPECT_THROW(calc_object_possible_max_dist_from_center(shape), std::logic_error);
 }
+
 // ----------------------------- get_index_with_longitudinal_offset ------------------------------
+
 TEST(MvpUtilsLongitudinalOffset, EmptyPointsThrows)
 {
   const std::vector<TrajectoryPoint> empty_points;
   EXPECT_THROW(
     get_index_with_longitudinal_offset(empty_points, 1.0, std::nullopt), std::logic_error);
 }
+
 TEST(MvpUtilsLongitudinalOffset, StartIndexOutOfRangeThrows)
 {
   const auto points = make_straight_forward_trajectory(3, 1.0);
   EXPECT_THROW(
     get_index_with_longitudinal_offset(points, 1.0, std::optional<size_t>(3)), std::out_of_range);
 }
+
 TEST(MvpUtilsLongitudinalOffset, ForwardRoundsToNearerEndpoint)
 {
   // points at x = 0, 1, 2, 3, 4 (1 m spacing). For a forward offset the function finds the segment
   // [i, i+1] whose cumulative length first reaches the offset, then returns the endpoint of that
   // segment that is closer to the offset position.
   const auto points = make_straight_forward_trajectory(5, 1.0);
+
   // offset 2.4: reached on segment [2, 3] (cumulative sum = 3.0 at i = 2). distance from the offset
   // to point 2 (front_length) = 0.4, to point 3 (back_length) = 0.6 -> point 2 is closer.
   EXPECT_EQ(get_index_with_longitudinal_offset(points, 2.4, std::nullopt), 2u);
+
   // offset 2.1: front_length = 0.1, back_length = 0.9 -> point 2 is closer.
   EXPECT_EQ(get_index_with_longitudinal_offset(points, 2.1, std::nullopt), 2u);
+
   // offset 2.6: front_length = 0.6, back_length = 0.4 -> point 3 is closer.
   EXPECT_EQ(get_index_with_longitudinal_offset(points, 2.6, std::nullopt), 3u);
 }
+
 TEST(MvpUtilsLongitudinalOffset, ForwardOffsetBeyondEndReturnsLastIndex)
 {
   const auto points = make_straight_forward_trajectory(5, 1.0);  // total length 4.0
   EXPECT_EQ(get_index_with_longitudinal_offset(points, 100.0, std::nullopt), 4u);
 }
+
 TEST(MvpUtilsLongitudinalOffset, BackwardFromDefaultStart)
 {
   const auto points = make_straight_forward_trajectory(5, 1.0);
+
   // Negative offset and no start_idx -> start from the last index (4) and walk backward.
   // offset -1.4: accumulate backward from index 4: i=4 covers segment [3, 4] (sum=1.0 < 1.4), i=3
   // covers segment [2, 3] (sum=2.0 >= 1.4), so the threshold is reached on segment [2, 3].
@@ -247,12 +279,15 @@ TEST(MvpUtilsLongitudinalOffset, BackwardFromDefaultStart)
   // front_length < back_length -> the offset is closer to point 3, so index i = 3 is returned.
   EXPECT_EQ(get_index_with_longitudinal_offset(points, -1.4, std::nullopt), 3u);
 }
+
 TEST(MvpUtilsLongitudinalOffset, BackwardOffsetBeyondStartReturnsZero)
 {
   const auto points = make_straight_forward_trajectory(5, 1.0);  // total length 4.0
   EXPECT_EQ(get_index_with_longitudinal_offset(points, -100.0, std::nullopt), 0u);
 }
+
 // ----------------------------- get_extended_trajectory_points ----------------------------------
+
 TEST(MvpUtilsExtend, ShortExtendDistanceReturnsInputUnchanged)
 {
   const auto points = make_straight_forward_trajectory(3, 1.0);
@@ -263,12 +298,15 @@ TEST(MvpUtilsExtend, ShortExtendDistanceReturnsInputUnchanged)
     EXPECT_DOUBLE_EQ(result[i].pose.position.x, points[i].pose.position.x);
   }
 }
+
 TEST(MvpUtilsExtend, AppendsIntermediateAndFinalPoints)
 {
   const auto points = make_straight_forward_trajectory(3, 1.0);  // last point at x = 2.0
   const double extend_distance = 5.0;
   const double step_length = 2.0;
+
   const auto result = get_extended_trajectory_points(points, extend_distance, step_length);
+
   // The loop steps by step_length up to extend_distance (2.0 and 4.0), then the final point lands
   // on extend_distance exactly.
   ASSERT_EQ(result.size(), points.size() + 3);
@@ -279,17 +317,20 @@ TEST(MvpUtilsExtend, AppendsIntermediateAndFinalPoints)
   EXPECT_DOUBLE_EQ(
     result.back().longitudinal_velocity_mps, points.back().longitudinal_velocity_mps);
 }
+
 TEST(MvpUtilsExtend, OnlyFinalPointWhenStepLargerThanDistance)
 {
   const auto points = make_straight_forward_trajectory(3, 1.0);  // last point at x = 2.0
   const double extend_distance = 1.0;
   const double step_length = 2.0;
+
   // The loop condition (step_length < extend_distance - step_length -> 2 < -1) is false, so only
   // the single final point at extend_distance is appended.
   const auto result = get_extended_trajectory_points(points, extend_distance, step_length);
   ASSERT_EQ(result.size(), points.size() + 1);
   EXPECT_NEAR(result.back().pose.position.x, 2.0 + extend_distance, 1e-6);  // x = 3.0
 }
+
 TEST(MvpUtilsExtend, EmptyInputReturnsEmptyWithoutDereferencingBack)
 {
   // Degenerate case: an empty trajectory has no goal point to extend from. With an
@@ -299,6 +340,7 @@ TEST(MvpUtilsExtend, EmptyInputReturnsEmptyWithoutDereferencingBack)
   const auto result = get_extended_trajectory_points(empty_points, 5.0, 2.0);
   EXPECT_TRUE(result.empty());
 }
+
 // The goal-side extension follows the curvature of the road at the goal instead of the tangent,
 // so on a circular arc the extended points stay on the arc. Anything more than a few millimetres
 // of drift means the extension has gone back to a straight line.
@@ -320,6 +362,7 @@ TEST(MvpUtilsExtend, ExtensionFollowsLaneCurvature)
     }
   }
 }
+
 // A straight trajectory must keep extending straight: the curvature estimate is zero there and the
 // arc formula has to degrade to the tangent case rather than dividing by it.
 TEST(MvpUtilsExtend, StraightTrajectoryStillExtendsStraight)
@@ -331,6 +374,7 @@ TEST(MvpUtilsExtend, StraightTrajectoryStillExtendsStraight)
     EXPECT_NEAR(result[i].pose.position.y, 0.0, 1e-9) << "extended point " << i;
   }
 }
+
 // The extension samples every step_length so that the one-step collision polygons built from it
 // stay tight against the road. A gap wider than step_length would cut the corner on a curve.
 TEST(MvpUtilsExtend, ExtensionSpacesPointsByStepLength)
@@ -349,6 +393,7 @@ TEST(MvpUtilsExtend, ExtensionSpacesPointsByStepLength)
   }
   EXPECT_NEAR(result.back().pose.position.x, 2.0 + extend_distance, 1e-6);
 }
+
 // An extend_distance that is an exact multiple of step_length is the worst case for the sampling
 // loop: it used to skip the loop entirely and emit a single point at the far end.
 TEST(MvpUtilsExtend, ExactMultipleOfStepStillSamplesEveryStep)
@@ -426,6 +471,7 @@ TEST(MvpUtilsExtend, ScenarioCurveKeepsPedestrianInsideExtendedFootprint)
   // ... and the swept footprint reaches it.
   EXPECT_LT(lateral_distance, pointcloud_reach);
 }
+
 // The curvature that drives the extension is measured on the untrimmed trajectory, so it must
 // survive the ego getting close to the goal. Trim an arc down to what is left a short distance
 // before the goal and check that the extension still follows the road: decimating that remainder
@@ -459,6 +505,7 @@ TEST(MvpUtilsDecimate, ExtensionKeepsFollowingCurvatureNearTheGoal)
     EXPECT_LT(worst_drift, 1e-6) << "remaining = " << remaining << " m";
   }
 }
+
 // An explicit curvature overrides the estimate taken from the input points. This is the path
 // decimate_trajectory_points_from_ego() uses to hand down the curvature it measured upstream.
 TEST(MvpUtilsExtend, ExplicitCurvatureOverridesTheEstimate)
@@ -474,6 +521,7 @@ TEST(MvpUtilsExtend, ExplicitCurvatureOverridesTheEstimate)
   EXPECT_LT(last.x, straight_x - 0.5);
   EXPECT_GT(std::abs(last.y), 0.5);
 }
+
 // Driving backwards extends behind the goal. isDrivingForwardWithTwist() decides the direction
 // from the geometry of the first two points once there is more than one, so the poses -- not the
 // velocity sign -- are what make this a reversing trajectory.
@@ -499,7 +547,9 @@ TEST(MvpUtilsExtend, BackwardDrivingExtendsBehindAlongTheArc)
     EXPECT_LT(std::atan2(q.x, radius - q.y), goal_arc) << "point " << i;
   }
 }
+
 // ----------------------------- calc_distance_to_front_object -----------------------------------
+
 TEST(MvpUtilsFrontObject, ReturnsArcLengthForObjectAhead)
 {
   const auto points = make_straight_forward_trajectory(5, 1.0);  // x = 0..4
@@ -509,6 +559,7 @@ TEST(MvpUtilsFrontObject, ReturnsArcLengthForObjectAhead)
   // signed arc length from index 1 (x=1) to nearest index of obstacle (x=3) is 2.0.
   EXPECT_NEAR(*dist, 2.0, 1e-6);
 }
+
 TEST(MvpUtilsFrontObject, ReturnsNulloptForObjectBehind)
 {
   const auto points = make_straight_forward_trajectory(5, 1.0);  // x = 0..4
@@ -516,6 +567,7 @@ TEST(MvpUtilsFrontObject, ReturnsNulloptForObjectBehind)
   const auto dist = calc_distance_to_front_object(points, 3, make_point(0.2, 0.0));
   EXPECT_FALSE(dist.has_value());
 }
+
 TEST(MvpUtilsFrontObject, EmptyTrajectoryThrows)
 {
   // Precondition violation: findNearestIndex validates a non-empty trajectory and throws on an
@@ -524,7 +576,9 @@ TEST(MvpUtilsFrontObject, EmptyTrajectoryThrows)
   EXPECT_THROW(
     calc_distance_to_front_object(empty_points, 0, make_point(1.0, 0.0)), std::invalid_argument);
 }
+
 // ----------------------------- concat_vectors --------------------------------------------------
+
 TEST(MvpUtilsConcat, ConcatenatesInOrder)
 {
   const std::vector<int> a{1, 2, 3};
@@ -533,6 +587,7 @@ TEST(MvpUtilsConcat, ConcatenatesInOrder)
   const std::vector<int> expected{1, 2, 3, 4, 5};
   EXPECT_EQ(result, expected);
 }
+
 TEST(MvpUtilsConcat, HandlesEmptyInputs)
 {
   const std::vector<int> empty;
