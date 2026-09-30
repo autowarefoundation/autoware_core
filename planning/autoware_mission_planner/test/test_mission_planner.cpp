@@ -545,7 +545,7 @@ TEST(MissionPlanner, SetLaneletRouteRerouteSucceedsWhenAutowareControlIsDisabled
   EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 20.0);
 }
 
-TEST(MissionPlanner, SetLaneletRouteRerouteSucceedsWhileStoppedInAutonomousMode)
+TEST(MissionPlanner, SetLaneletRouteTwiceWhileStoppedInAutonomousModeReroutesToSecondRoute)
 {
   // Arrange
   auto config = make_default_config();
@@ -556,25 +556,27 @@ TEST(MissionPlanner, SetLaneletRouteRerouteSucceedsWhileStoppedInAutonomousMode)
   initialize(mission_planner, make_pose(10.0));
   mission_planner.on_operation_mode_state(
     make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
-  ASSERT_TRUE(mission_planner
-                .set_lanelet_route(make_lanelet_route_request({FIRST_LANELET_ID}, make_pose(40.0)))
-                .response.status.success);
   states.clear();
-  const auto request =
+  const auto first_request = make_lanelet_route_request({FIRST_LANELET_ID}, make_pose(40.0));
+  const auto second_request =
     make_lanelet_route_request({FIRST_LANELET_ID, SECOND_LANELET_ID}, make_pose(90.0));
 
   // Act
   // The vehicle is stopped, so the reroute safety check passes regardless of the route length.
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto first_result = mission_planner.set_lanelet_route(first_request);
+  const auto second_result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_TRUE(result.response.status.success);
-  ASSERT_TRUE(result.route.has_value());
-  EXPECT_EQ(result.route->segments.size(), 2U);
-  EXPECT_EQ(states, (std::vector<RouteState::_state_type>{RouteState::REROUTING, RouteState::SET}));
+  ASSERT_TRUE(first_result.response.status.success);
+  EXPECT_TRUE(second_result.response.status.success);
+  ASSERT_TRUE(second_result.route.has_value());
+  EXPECT_EQ(second_result.route->segments.size(), 2U);
+  EXPECT_EQ(
+    states, (std::vector<RouteState::_state_type>{
+              RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET}));
 }
 
-TEST(MissionPlanner, SetLaneletRouteRerouteFailsWhenNewRouteIsUnsafeWhileDriving)
+TEST(MissionPlanner, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRerouteIsUnsafe)
 {
   // Arrange
   auto config = make_default_config();
@@ -582,28 +584,29 @@ TEST(MissionPlanner, SetLaneletRouteRerouteFailsWhenNewRouteIsUnsafeWhileDriving
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
   MissionPlanner mission_planner(config, tf_buffer, record_states(states));
-  initialize(mission_planner, make_pose(10.0));
-  mission_planner.on_operation_mode_state(
-    make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
-  ASSERT_TRUE(mission_planner
-                .set_lanelet_route(make_lanelet_route_request(
-                  {FIRST_LANELET_ID, SECOND_LANELET_ID}, make_pose(90.0)))
-                .response.status.success);
   // Driving fast enough that the required safety length (velocity * reroute_time_threshold = 100 m)
   // exceeds the 30 m shared with the new route.
-  mission_planner.on_odometry(make_odometry(make_pose(10.0), 10.0));
+  initialize(mission_planner, make_pose(10.0), 10.0);
+  mission_planner.on_operation_mode_state(
+    make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
   states.clear();
-  const auto request = make_lanelet_route_request({FIRST_LANELET_ID}, make_pose(40.0));
+  const auto first_request =
+    make_lanelet_route_request({FIRST_LANELET_ID, SECOND_LANELET_ID}, make_pose(90.0));
+  const auto second_request = make_lanelet_route_request({FIRST_LANELET_ID}, make_pose(40.0));
 
   // Act
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto first_result = mission_planner.set_lanelet_route(first_request);
+  const auto second_result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRouteResponse::ERROR_REROUTE_FAILED);
-  EXPECT_TRUE(result.error_message.has_value());
-  EXPECT_FALSE(result.route.has_value());
-  EXPECT_EQ(states, (std::vector<RouteState::_state_type>{RouteState::REROUTING, RouteState::SET}));
+  ASSERT_TRUE(first_result.response.status.success);
+  EXPECT_FALSE(second_result.response.status.success);
+  EXPECT_EQ(second_result.response.status.code, SetRouteResponse::ERROR_REROUTE_FAILED);
+  EXPECT_TRUE(second_result.error_message.has_value());
+  EXPECT_FALSE(second_result.route.has_value());
+  EXPECT_EQ(
+    states, (std::vector<RouteState::_state_type>{
+              RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET}));
 }
 
 TEST(MissionPlanner, SetLaneletRouteRerouteFailsWhenSharedRouteIsShorterThanMinimumRerouteLength)
@@ -614,16 +617,15 @@ TEST(MissionPlanner, SetLaneletRouteRerouteFailsWhenSharedRouteIsShorterThanMini
   config.minimum_reroute_length = 40.0;
   tf2::BufferCore tf_buffer;
   MissionPlanner mission_planner(config, tf_buffer, nullptr);
-  initialize(mission_planner, make_pose(10.0));
+  // Driving slowly, so the velocity-dependent safety length (1 m/s * 10 s = 10 m) is shorter than
+  // the 30 m shared with the new route and only minimum_reroute_length can reject the reroute.
+  initialize(mission_planner, make_pose(10.0), 1.0);
   mission_planner.on_operation_mode_state(
     make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
   ASSERT_TRUE(mission_planner
                 .set_lanelet_route(make_lanelet_route_request(
                   {FIRST_LANELET_ID, SECOND_LANELET_ID}, make_pose(90.0)))
                 .response.status.success);
-  // Driving slowly, so the velocity-dependent safety length (1 m/s * 10 s = 10 m) is shorter than
-  // the 30 m shared with the new route and only minimum_reroute_length can reject the reroute.
-  mission_planner.on_odometry(make_odometry(make_pose(10.0), 1.0));
   const auto request = make_lanelet_route_request({FIRST_LANELET_ID}, make_pose(40.0));
 
   // Act
@@ -653,7 +655,7 @@ TEST(MissionPlanner, SetWaypointRouteRerouteFailsWhenOperationModeStateIsNotRece
   EXPECT_EQ(result.response.status.code, SetRoutePointsResponse::ERROR_PLANNER_UNREADY);
 }
 
-TEST(MissionPlanner, SetWaypointRouteRerouteFailsWhenNewRouteIsUnsafeWhileDriving)
+TEST(MissionPlanner, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenRerouteIsUnsafe)
 {
   // Arrange
   auto config = make_default_config();
@@ -661,26 +663,28 @@ TEST(MissionPlanner, SetWaypointRouteRerouteFailsWhenNewRouteIsUnsafeWhileDrivin
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
   MissionPlanner mission_planner(config, tf_buffer, record_states(states));
-  initialize(mission_planner, make_pose(10.0));
-  mission_planner.on_operation_mode_state(
-    make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
-  ASSERT_TRUE(mission_planner.set_waypoint_route(make_waypoint_route_request(make_pose(90.0)))
-                .response.status.success);
   // Driving fast enough that the required safety length (velocity * reroute_time_threshold = 100 m)
   // exceeds the 30 m shared with the new route.
-  mission_planner.on_odometry(make_odometry(make_pose(10.0), 10.0));
+  initialize(mission_planner, make_pose(10.0), 10.0);
+  mission_planner.on_operation_mode_state(
+    make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
   states.clear();
-  const auto request = make_waypoint_route_request(make_pose(40.0));
+  const auto first_request = make_waypoint_route_request(make_pose(90.0));
+  const auto second_request = make_waypoint_route_request(make_pose(40.0));
 
   // Act
-  const auto result = mission_planner.set_waypoint_route(request);
+  const auto first_result = mission_planner.set_waypoint_route(first_request);
+  const auto second_result = mission_planner.set_waypoint_route(second_request);
 
   // Assert
-  EXPECT_FALSE(result.response.status.success);
-  EXPECT_EQ(result.response.status.code, SetRoutePointsResponse::ERROR_REROUTE_FAILED);
-  EXPECT_TRUE(result.error_message.has_value());
-  EXPECT_FALSE(result.route.has_value());
-  EXPECT_EQ(states, (std::vector<RouteState::_state_type>{RouteState::REROUTING, RouteState::SET}));
+  ASSERT_TRUE(first_result.response.status.success);
+  EXPECT_FALSE(second_result.response.status.success);
+  EXPECT_EQ(second_result.response.status.code, SetRoutePointsResponse::ERROR_REROUTE_FAILED);
+  EXPECT_TRUE(second_result.error_message.has_value());
+  EXPECT_FALSE(second_result.route.has_value());
+  EXPECT_EQ(
+    states, (std::vector<RouteState::_state_type>{
+              RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET}));
 }
 
 TEST(MissionPlanner, SetWaypointRouteFailsWhenGoalIsOutsideTheMap)
@@ -758,9 +762,7 @@ TEST(MissionPlanner, OnOdometryChangesStateToArrivedWhenStoppedAtGoal)
   MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   const auto goal_pose = make_pose(40.0);
   initialize(mission_planner, make_pose(10.0));
-  ASSERT_TRUE(
-    mission_planner.set_lanelet_route(make_lanelet_route_request({FIRST_LANELET_ID}, goal_pose))
-      .response.status.success);
+  mission_planner.set_lanelet_route(make_lanelet_route_request({FIRST_LANELET_ID}, goal_pose));
   states.clear();
 
   // Act
