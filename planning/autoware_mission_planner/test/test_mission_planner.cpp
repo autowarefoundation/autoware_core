@@ -223,6 +223,13 @@ TransformStamped make_transform_to_map()
   return transform;
 }
 
+// Returns a state change callback that appends every notified state to `states`. `states` must
+// outlive the mission planner that holds the callback.
+MissionPlanner::ChangeStateCallback record_states(std::vector<RouteState::_state_type> & states)
+{
+  return [&states](const auto state) { states.push_back(state); };
+}
+
 }  // namespace
 
 TEST(MissionPlanner, CheckInitializationFailsWithoutMapAndOdometry)
@@ -271,8 +278,7 @@ TEST(MissionPlanner, CheckInitializationChangesStateToUnset)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   mission_planner.on_map(std::make_shared<LaneletMapBin>(create_map()));
   mission_planner.on_odometry(make_odometry(make_pose(10.0)));
 
@@ -289,8 +295,7 @@ TEST(MissionPlanner, ClearRouteBeforeInitializationHasNoEffect)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
 
   // Act
   const auto response = mission_planner.clear_route();
@@ -306,8 +311,7 @@ TEST(MissionPlanner, ClearRouteAfterInitializationChangesStateToUnset)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   initialize(mission_planner, make_pose(10.0));
   states.clear();
 
@@ -356,8 +360,7 @@ TEST(MissionPlanner, SetLaneletRouteWithoutSegmentsFailsAndRestoresUnsetState)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   initialize(mission_planner, make_pose(10.0));
   states.clear();
   const auto request = make_lanelet_route_request({}, make_pose(40.0));
@@ -411,8 +414,7 @@ TEST(MissionPlanner, SetLaneletRouteSucceedsAfterInitialization)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   const auto ego_pose = make_pose(10.0);
   initialize(mission_planner, ego_pose);
   states.clear();
@@ -550,8 +552,7 @@ TEST(MissionPlanner, SetLaneletRouteRerouteSucceedsWhileStoppedInAutonomousMode)
   config.allow_reroute_in_autonomous_mode = true;
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    config, tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(config, tf_buffer, record_states(states));
   initialize(mission_planner, make_pose(10.0));
   mission_planner.on_operation_mode_state(
     make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
@@ -580,8 +581,7 @@ TEST(MissionPlanner, SetLaneletRouteRerouteFailsWhenNewRouteIsUnsafeWhileDriving
   config.allow_reroute_in_autonomous_mode = true;
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    config, tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(config, tf_buffer, record_states(states));
   initialize(mission_planner, make_pose(10.0));
   mission_planner.on_operation_mode_state(
     make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
@@ -660,8 +660,7 @@ TEST(MissionPlanner, SetWaypointRouteRerouteFailsWhenNewRouteIsUnsafeWhileDrivin
   config.allow_reroute_in_autonomous_mode = true;
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    config, tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(config, tf_buffer, record_states(states));
   initialize(mission_planner, make_pose(10.0));
   mission_planner.on_operation_mode_state(
     make_operation_mode_state(OperationModeState::AUTONOMOUS, true));
@@ -689,8 +688,7 @@ TEST(MissionPlanner, SetWaypointRouteFailsWhenGoalIsOutsideTheMap)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   initialize(mission_planner, make_pose(10.0));
   states.clear();
   const auto request = make_waypoint_route_request(make_pose(1000.0, 1000.0));
@@ -710,8 +708,7 @@ TEST(MissionPlanner, SetWaypointRoutePlansRouteToGoalLanelet)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   initialize(mission_planner, make_pose(10.0));
   states.clear();
   const auto request = make_waypoint_route_request(make_pose(90.0));
@@ -758,8 +755,7 @@ TEST(MissionPlanner, OnOdometryChangesStateToArrivedWhenStoppedAtGoal)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   const auto goal_pose = make_pose(40.0);
   initialize(mission_planner, make_pose(10.0));
   ASSERT_TRUE(
@@ -782,8 +778,7 @@ TEST(MissionPlanner, OnOdometryKeepsStateWhileDrivingTowardsGoal)
   // Arrange
   tf2::BufferCore tf_buffer;
   std::vector<RouteState::_state_type> states;
-  MissionPlanner mission_planner(
-    make_default_config(), tf_buffer, [&states](const auto state) { states.push_back(state); });
+  MissionPlanner mission_planner(make_default_config(), tf_buffer, record_states(states));
   const auto goal_pose = make_pose(40.0);
   initialize(mission_planner, make_pose(10.0));
   ASSERT_TRUE(
