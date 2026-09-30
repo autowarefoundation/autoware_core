@@ -40,8 +40,8 @@ namespace autoware::motion_velocity_planner::utils
 {
 namespace
 {
-// Below this curvature the arc formula divides by an almost-zero curvature, and the road is straight
-// enough that the difference is irrelevant: 1e-4 corresponds to a 10 km radius.
+// Below this curvature the arc formula divides by an almost-zero curvature, and the road is
+// straight enough that the difference is irrelevant: 1e-4 corresponds to a 10 km radius.
 constexpr double min_curvature_for_arc = 1e-4;
 
 // Index of the point roughly `distance` metres back from the end of `points`, clamped to the
@@ -147,10 +147,7 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
   const double point_order_curvature =
     curvature.value_or(estimate_goal_curvature(input_points, step_length));
   const double goal_curvature = is_driving_forward ? point_order_curvature : -point_order_curvature;
-  // Stop one epsilon short of extend_distance so that a step landing exactly on it does not add a
-  // duplicate of the final point below.
-  constexpr double duplicate_point_epsilon = 1e-6;
-  for (double extend_sum = step_length; extend_sum < extend_distance - duplicate_point_epsilon;
+  for (double extend_sum = step_length; extend_sum < extend_distance - step_length;
        extend_sum += step_length) {
     output_points.push_back(
       extend_trajectory_point(extend_sum, goal_point, is_driving_forward, goal_curvature));

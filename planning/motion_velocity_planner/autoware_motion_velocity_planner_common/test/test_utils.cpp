@@ -307,11 +307,10 @@ TEST(MvpUtilsExtend, AppendsIntermediateAndFinalPoints)
 
   const auto result = get_extended_trajectory_points(points, extend_distance, step_length);
 
-  // The loop steps by step_length up to extend_distance (2.0 and 4.0), then the final point lands
-  // on extend_distance exactly.
-  ASSERT_EQ(result.size(), points.size() + 3);
+  // loop pushes one point at extend_sum = 2.0 (2.0 < 5.0 - 2.0 = 3.0), then the final point at
+  // exactly extend_distance.
+  ASSERT_EQ(result.size(), points.size() + 2);
   EXPECT_NEAR(result[points.size()].pose.position.x, 2.0 + 2.0, 1e-6);      // x = 4.0
-  EXPECT_NEAR(result[points.size() + 1].pose.position.x, 2.0 + 4.0, 1e-6);  // x = 6.0
   EXPECT_NEAR(result.back().pose.position.x, 2.0 + extend_distance, 1e-6);  // x = 7.0
   // velocity is carried over from the goal point.
   EXPECT_DOUBLE_EQ(
@@ -375,35 +374,36 @@ TEST(MvpUtilsExtend, StraightTrajectoryStillExtendsStraight)
   }
 }
 
-// The extension samples every step_length so that the one-step collision polygons built from it
-// stay tight against the road. A gap wider than step_length would cut the corner on a curve.
-TEST(MvpUtilsExtend, ExtensionSpacesPointsByStepLength)
+// Keep the legacy point placement, including when the extension length is an exact multiple.
+TEST(MvpUtilsExtend, ExactMultiplePreservesLegacyPointPlacement)
 {
-  const auto points = make_straight_forward_trajectory(3, 1.0);  // last point at x = 2.0
-  constexpr double extend_distance = 6.0;
-  constexpr double step_length = 2.0;
-  const auto result = get_extended_trajectory_points(points, extend_distance, step_length);
-  ASSERT_GT(result.size(), points.size());
-  double previous_x = points.back().pose.position.x;
-  for (size_t i = points.size(); i < result.size(); ++i) {
-    const double gap = result[i].pose.position.x - previous_x;
-    EXPECT_GT(gap, 0.0) << "extended point " << i;
-    EXPECT_LE(gap, step_length + 1e-6) << "extended point " << i;
-    previous_x = result[i].pose.position.x;
-  }
-  EXPECT_NEAR(result.back().pose.position.x, 2.0 + extend_distance, 1e-6);
-}
-
-// An extend_distance that is an exact multiple of step_length is the worst case for the sampling
-// loop: it used to skip the loop entirely and emit a single point at the far end.
-TEST(MvpUtilsExtend, ExactMultipleOfStepStillSamplesEveryStep)
-{
-  const auto points = make_straight_forward_trajectory(3, 1.0);  // last point at x = 2.0
+  const auto points = make_straight_forward_trajectory(3, 1.0);
   const auto result = get_extended_trajectory_points(points, 4.0, 2.0);
 
-  ASSERT_EQ(result.size(), points.size() + 2);
-  EXPECT_NEAR(result[points.size()].pose.position.x, 2.0 + 2.0, 1e-6);
-  EXPECT_NEAR(result.back().pose.position.x, 2.0 + 4.0, 1e-6);
+  ASSERT_EQ(result.size(), points.size() + 1);
+  EXPECT_NEAR(result.back().pose.position.x, 6.0, 1e-6);
+}
+
+TEST(MvpUtilsExtend, TooFewPointsFallBackToStraightExtension)
+{
+  for (const size_t count : {1u, 2u}) {
+    const auto points = make_straight_forward_trajectory(count, 1.0);
+    const auto result = get_extended_trajectory_points(points, 4.0, 2.0);
+
+    ASSERT_EQ(result.size(), points.size() + 1);
+    EXPECT_NEAR(result.back().pose.position.x, points.back().pose.position.x + 4.0, 1e-6);
+    EXPECT_NEAR(result.back().pose.position.y, 0.0, 1e-6);
+  }
+}
+
+TEST(MvpUtilsExtend, CoincidentPointsFallBackToStraightExtension)
+{
+  const auto points = make_straight_forward_trajectory(3, 0.0);
+  const auto result = get_extended_trajectory_points(points, 4.0, 2.0);
+
+  ASSERT_EQ(result.size(), points.size() + 1);
+  EXPECT_NEAR(result.back().pose.position.x, 4.0, 1e-6);
+  EXPECT_NEAR(result.back().pose.position.y, 0.0, 1e-6);
 }
 
 // The extension is anchored on the untrimmed trajectory's terminal orientation, not on the
@@ -427,7 +427,7 @@ TEST(MvpUtilsDecimate, ExtensionUsesTheUntrimmedTerminalOrientation)
 
   // The first extended point must sit step_length away along the skewed heading, not the tangent.
   const auto & goal = points.back().pose.position;
-  const auto & first_extended = result.at(result.size() - 3).pose.position;
+  const auto & first_extended = result.at(result.size() - 2).pose.position;
   const double heading_to_first = std::atan2(first_extended.y - goal.y, first_extended.x - goal.x);
   EXPECT_NEAR(heading_to_first, skewed + step_length / radius / 2.0, 0.05);
 }

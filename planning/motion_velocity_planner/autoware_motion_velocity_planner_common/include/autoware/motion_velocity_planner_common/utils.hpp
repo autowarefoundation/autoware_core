@@ -175,8 +175,9 @@ double calc_dist_to_traj_poly(
   const std::vector<autoware_utils_geometry::Polygon2d> & decimated_traj_polys);
 
 /**
- * @brief append the `input_points` up to `extend_length` every `step_length`, following the road
- * curvature at the last point of `input_points`, keeping its vel/acc
+ * @brief extend `input_points` by `extend_distance`, following the curvature at the last point
+ * and keeping its vel/acc. Intermediate samples are placed at multiples of
+ * `step_length` strictly below `extend_distance - step_length`, followed by the final point.
  * @param curvature curvature to follow past the last point, signed by the order of the points
  * it was measured from (as calc_curvature() does). When not given it is estimated from
  * `input_points`, which is only reliable while they still span a few metres; callers that still
