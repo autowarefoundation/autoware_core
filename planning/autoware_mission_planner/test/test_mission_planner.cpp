@@ -352,8 +352,9 @@ TEST_F(MissionPlannerTest, ClearRouteAfterInitializationChangesStateToUnset)
 TEST_F(MissionPlannerTest, SetLaneletRouteBeforeInitializationFailsWithInvalidState)
 {
   // Arrange
-  auto mission_planner = create_mission_planner();
   const auto request = lanelet_route_request({}, pose(40.0));
+
+  auto mission_planner = create_mission_planner();
 
   // Act
   const auto result = mission_planner.set_lanelet_route(request);
@@ -367,8 +368,9 @@ TEST_F(MissionPlannerTest, SetLaneletRouteBeforeInitializationFailsWithInvalidSt
 TEST_F(MissionPlannerTest, SetWaypointRouteBeforeInitializationFailsWithInvalidState)
 {
   // Arrange
-  auto mission_planner = create_mission_planner();
   const auto request = waypoint_route_request(pose(90.0));
+
+  auto mission_planner = create_mission_planner();
 
   // Act
   const auto result = mission_planner.set_waypoint_route(request);
@@ -382,8 +384,9 @@ TEST_F(MissionPlannerTest, SetWaypointRouteBeforeInitializationFailsWithInvalidS
 TEST_F(MissionPlannerTest, SetLaneletRouteWithoutSegmentsFailsAndRestoresUnsetState)
 {
   // Arrange
-  auto mission_planner = create_initialized_mission_planner();
   const auto request = lanelet_route_request({}, pose(40.0));
+
+  auto mission_planner = create_initialized_mission_planner();
 
   // Act
   const auto result = mission_planner.set_lanelet_route(request);
@@ -399,8 +402,9 @@ TEST_F(MissionPlannerTest, SetLaneletRouteFailsWhenTransformToMapIsUnavailable)
 {
   // Arrange
   // The transform of the request frame is never registered in tf_buffer.
-  auto mission_planner = create_initialized_mission_planner();
   const auto request = lanelet_route_request({}, pose(10.0), non_map_frame);
+
+  auto mission_planner = create_initialized_mission_planner();
 
   // Act
   const auto result = mission_planner.set_lanelet_route(request);
@@ -415,8 +419,9 @@ TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenTransformToMapIsUnavailable)
 {
   // Arrange
   // The transform of the request frame is never registered in tf_buffer.
-  auto mission_planner = create_initialized_mission_planner();
   const auto request = waypoint_route_request(pose(60.0), {}, non_map_frame);
+
+  auto mission_planner = create_initialized_mission_planner();
 
   // Act
   const auto result = mission_planner.set_waypoint_route(request);
@@ -430,8 +435,9 @@ TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenTransformToMapIsUnavailable)
 TEST_F(MissionPlannerTest, SetLaneletRouteSucceedsAfterInitialization)
 {
   // Arrange
-  auto mission_planner = create_initialized_mission_planner();
   const auto request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
+
+  auto mission_planner = create_initialized_mission_planner();
 
   // Act
   const auto result = mission_planner.set_lanelet_route(request);
@@ -453,8 +459,9 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTransformsGoalPoseIntoMapFrame)
 {
   // Arrange
   tf_buffer.setTransform(transform_to_map(), "test", true);
-  auto mission_planner = create_initialized_mission_planner();
   const auto request = lanelet_route_request({FIRST_LANELET_ID}, pose(10.0), non_map_frame);
+
+  auto mission_planner = create_initialized_mission_planner();
 
   // Act
   const auto result = mission_planner.set_lanelet_route(request);
@@ -468,12 +475,14 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTransformsGoalPoseIntoMapFrame)
 TEST_F(MissionPlannerTest, SetLaneletRouteRerouteFailsWhenOperationModeStateIsNotReceived)
 {
   // Arrange
+  const auto first_request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
+  const auto second_request = lanelet_route_request({}, pose(90.0));
+
   auto mission_planner = create_initialized_mission_planner();
-  mission_planner.set_lanelet_route(lanelet_route_request({FIRST_LANELET_ID}, pose(40.0)));
-  const auto request = lanelet_route_request({}, pose(90.0));
+  mission_planner.set_lanelet_route(first_request);
 
   // Act
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
   EXPECT_FALSE(result.response.status.success);
@@ -485,14 +494,16 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteFailsWhenNotAllowedInAutonomous
   // Arrange
   auto config = default_config();
   config.allow_reroute_in_autonomous_mode = false;
-  auto mission_planner = create_initialized_mission_planner(config);
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
+  const auto first_request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
+  const auto second_request = lanelet_route_request({}, pose(90.0));
+
+  auto mission_planner = create_initialized_mission_planner(config);
   mission_planner.on_operation_mode_state(autonomous_mode);
-  mission_planner.set_lanelet_route(lanelet_route_request({FIRST_LANELET_ID}, pose(40.0)));
-  const auto request = lanelet_route_request({}, pose(90.0));
+  mission_planner.set_lanelet_route(first_request);
 
   // Act
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
   EXPECT_FALSE(result.response.status.success);
@@ -502,20 +513,22 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteFailsWhenNotAllowedInAutonomous
 TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenNotInAutonomousMode)
 {
   // Arrange
-  auto mission_planner = create_initialized_mission_planner();
   // The vehicle must be moving: while stopped, the reroute safety check always passes, so this test
   // could not tell whether the check is skipped.
-  const double driving_velocity = 5.0;
-  mission_planner.on_odometry(start_odometry(driving_velocity));
+  const auto odom_while_driving = start_odometry(5.0);
   const auto stop_mode_state = operation_mode_state(OperationModeState::STOP, false);
+  const auto first_request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
+  const auto second_request = lanelet_route_request({FIRST_LANELET_ID}, pose(20.0));
+
+  auto mission_planner = create_initialized_mission_planner();
+  mission_planner.on_odometry(odom_while_driving);
   mission_planner.on_operation_mode_state(stop_mode_state);
-  mission_planner.set_lanelet_route(lanelet_route_request({FIRST_LANELET_ID}, pose(40.0)));
-  const auto request = lanelet_route_request({FIRST_LANELET_ID}, pose(20.0));
+  mission_planner.set_lanelet_route(first_request);
 
   // Act
   // The reroute safety check is skipped outside autonomous mode, so even a short new route is
   // accepted while driving.
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
   EXPECT_TRUE(result.response.status.success);
@@ -526,21 +539,23 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenNotInAutonomousMode
 TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenAutowareControlIsDisabled)
 {
   // Arrange
-  auto mission_planner = create_initialized_mission_planner();
   // The vehicle must be moving: while stopped, the reroute safety check always passes, so this test
   // could not tell whether the check is skipped.
-  const double driving_velocity = 5.0;
-  mission_planner.on_odometry(start_odometry(driving_velocity));
+  const auto odom_while_driving = start_odometry(5.0);
   const auto autoware_control_disabled_state =
     operation_mode_state(OperationModeState::AUTONOMOUS, false);
+  const auto first_request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
+  const auto second_request = lanelet_route_request({FIRST_LANELET_ID}, pose(20.0));
+
+  auto mission_planner = create_initialized_mission_planner();
+  mission_planner.on_odometry(odom_while_driving);
   mission_planner.on_operation_mode_state(autoware_control_disabled_state);
-  mission_planner.set_lanelet_route(lanelet_route_request({FIRST_LANELET_ID}, pose(40.0)));
-  const auto request = lanelet_route_request({FIRST_LANELET_ID}, pose(20.0));
+  mission_planner.set_lanelet_route(first_request);
 
   // Act
   // The vehicle is not driven by Autoware, so it is not treated as autonomous driving and the
   // reroute safety check is skipped.
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
   EXPECT_TRUE(result.response.status.success);
@@ -553,12 +568,13 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileStoppedInAutonomousModeRerou
   // Arrange
   auto config = default_config();
   config.allow_reroute_in_autonomous_mode = true;
-  auto mission_planner = create_initialized_mission_planner(config);
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
-  mission_planner.on_operation_mode_state(autonomous_mode);
   const auto first_request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
   const auto second_request =
     lanelet_route_request({FIRST_LANELET_ID, SECOND_LANELET_ID}, pose(90.0));
+
+  auto mission_planner = create_initialized_mission_planner(config);
+  mission_planner.on_operation_mode_state(autonomous_mode);
 
   // Act
   // The vehicle is stopped, so the reroute safety check passes regardless of the route length.
@@ -580,16 +596,17 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRe
   // Arrange
   auto config = default_config();
   config.allow_reroute_in_autonomous_mode = true;
-  auto mission_planner = create_initialized_mission_planner(config);
   // Driving fast enough that the required safety length (velocity * reroute_time_threshold = 100 m)
   // exceeds the 30 m shared with the new route.
-  const double high_velocity = 10.0;
-  mission_planner.on_odometry(start_odometry(high_velocity));
+  const auto odom_with_high_velocity = start_odometry(10.0);
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
-  mission_planner.on_operation_mode_state(autonomous_mode);
   const auto first_request =
     lanelet_route_request({FIRST_LANELET_ID, SECOND_LANELET_ID}, pose(90.0));
   const auto second_request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
+
+  auto mission_planner = create_initialized_mission_planner(config);
+  mission_planner.on_odometry(odom_with_high_velocity);
+  mission_planner.on_operation_mode_state(autonomous_mode);
 
   // Act
   const auto first_result = mission_planner.set_lanelet_route(first_request);
@@ -613,19 +630,21 @@ TEST_F(
   auto config = default_config();
   config.allow_reroute_in_autonomous_mode = true;
   config.minimum_reroute_length = 40.0;
-  auto mission_planner = create_initialized_mission_planner(config);
   // Driving slowly, so the velocity-dependent safety length (1 m/s * 10 s = 10 m) is shorter than
   // the 30 m shared with the new route and only minimum_reroute_length can reject the reroute.
-  const double low_velocity = 1.0;
-  mission_planner.on_odometry(start_odometry(low_velocity));
+  const auto odom_with_low_velocity = start_odometry(1.0);
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
+  const auto first_request =
+    lanelet_route_request({FIRST_LANELET_ID, SECOND_LANELET_ID}, pose(90.0));
+  const auto second_request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
+
+  auto mission_planner = create_initialized_mission_planner(config);
+  mission_planner.on_odometry(odom_with_low_velocity);
   mission_planner.on_operation_mode_state(autonomous_mode);
-  mission_planner.set_lanelet_route(
-    lanelet_route_request({FIRST_LANELET_ID, SECOND_LANELET_ID}, pose(90.0)));
-  const auto request = lanelet_route_request({FIRST_LANELET_ID}, pose(40.0));
+  mission_planner.set_lanelet_route(first_request);
 
   // Act
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
   EXPECT_FALSE(result.response.status.success);
@@ -636,12 +655,14 @@ TEST_F(
 TEST_F(MissionPlannerTest, SetWaypointRouteRerouteFailsWhenOperationModeStateIsNotReceived)
 {
   // Arrange
+  const auto first_request = waypoint_route_request(pose(90.0));
+  const auto second_request = waypoint_route_request(pose(40.0));
+
   auto mission_planner = create_initialized_mission_planner();
-  mission_planner.set_waypoint_route(waypoint_route_request(pose(90.0)));
-  const auto request = waypoint_route_request(pose(40.0));
+  mission_planner.set_waypoint_route(first_request);
 
   // Act
-  const auto result = mission_planner.set_waypoint_route(request);
+  const auto result = mission_planner.set_waypoint_route(second_request);
 
   // Assert
   EXPECT_FALSE(result.response.status.success);
@@ -653,15 +674,16 @@ TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenR
   // Arrange
   auto config = default_config();
   config.allow_reroute_in_autonomous_mode = true;
-  auto mission_planner = create_initialized_mission_planner(config);
   // Driving fast enough that the required safety length (velocity * reroute_time_threshold = 100 m)
   // exceeds the 30 m shared with the new route.
-  const double high_velocity = 10.0;
-  mission_planner.on_odometry(start_odometry(high_velocity));
+  const auto odom_with_high_velocity = start_odometry(10.0);
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
-  mission_planner.on_operation_mode_state(autonomous_mode);
   const auto first_request = waypoint_route_request(pose(90.0));
   const auto second_request = waypoint_route_request(pose(40.0));
+
+  auto mission_planner = create_initialized_mission_planner(config);
+  mission_planner.on_odometry(odom_with_high_velocity);
+  mission_planner.on_operation_mode_state(autonomous_mode);
 
   // Act
   const auto first_result = mission_planner.set_waypoint_route(first_request);
@@ -682,8 +704,9 @@ TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenGoalIsOutsideTheMap)
 {
   // Arrange
   const auto pose_outside_map = pose(1000.0, 1000.0);
-  auto mission_planner = create_initialized_mission_planner();
   const auto request = waypoint_route_request(pose_outside_map);
+
+  auto mission_planner = create_initialized_mission_planner();
 
   // Act
   const auto result = mission_planner.set_waypoint_route(request);
@@ -698,8 +721,9 @@ TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenGoalIsOutsideTheMap)
 TEST_F(MissionPlannerTest, SetWaypointRoutePlansRouteToGoalLanelet)
 {
   // Arrange
-  auto mission_planner = create_initialized_mission_planner();
   const auto request = waypoint_route_request(pose(90.0));
+
+  auto mission_planner = create_initialized_mission_planner();
 
   // Act
   const auto result = mission_planner.set_waypoint_route(request);
@@ -720,10 +744,11 @@ TEST_F(MissionPlannerTest, SetWaypointRouteTransformsWaypointsAndGoalIntoMapFram
 {
   // Arrange
   tf_buffer.setTransform(transform_to_map(), "test", true);
-  auto mission_planner = create_initialized_mission_planner();
   // In the sensor frame the waypoint and the goal are at x = 10 and x = 60, i.e. at x = 40 and
   // x = 90 in the map frame.
   const auto request = waypoint_route_request(pose(60.0), {pose(10.0)}, non_map_frame);
+
+  auto mission_planner = create_initialized_mission_planner();
 
   // Act
   const auto result = mission_planner.set_waypoint_route(request);
@@ -739,8 +764,10 @@ TEST_F(MissionPlannerTest, OnOdometryChangesStateToArrivedWhenStoppedAtGoal)
 {
   // Arrange
   const auto goal_pose = pose(40.0);
+  const auto request = lanelet_route_request({FIRST_LANELET_ID}, goal_pose);
+
   auto mission_planner = create_initialized_mission_planner();
-  mission_planner.set_lanelet_route(lanelet_route_request({FIRST_LANELET_ID}, goal_pose));
+  mission_planner.set_lanelet_route(request);
   states.clear();
 
   // Act
@@ -755,13 +782,15 @@ TEST_F(MissionPlannerTest, SetLaneletRouteAfterArrivalFailsWithInvalidState)
   // Arrange
   const auto goal_pose = pose(40.0);
   const auto new_goal_pose = pose(90.0);
+  const auto first_request = lanelet_route_request({FIRST_LANELET_ID}, goal_pose);
+  const auto second_request = lanelet_route_request({}, new_goal_pose);
+
   auto mission_planner = create_initialized_mission_planner();
-  mission_planner.set_lanelet_route(lanelet_route_request({FIRST_LANELET_ID}, goal_pose));
+  mission_planner.set_lanelet_route(first_request);
   stay_stopped_at(mission_planner, goal_pose, arrival_check_duration + 0.5);
-  const auto request = lanelet_route_request({}, new_goal_pose);
 
   // Act
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
   EXPECT_FALSE(result.response.status.success);
@@ -773,14 +802,17 @@ TEST_F(MissionPlannerTest, ClearRouteAfterArrivalAllowsSettingANewRoute)
   // Arrange
   const auto goal_pose = pose(40.0);
   const auto new_goal_pose = pose(90.0);
+  const auto first_request = lanelet_route_request({FIRST_LANELET_ID}, goal_pose);
+  const auto second_request =
+    lanelet_route_request({FIRST_LANELET_ID, SECOND_LANELET_ID}, new_goal_pose);
+
   auto mission_planner = create_initialized_mission_planner();
-  mission_planner.set_lanelet_route(lanelet_route_request({FIRST_LANELET_ID}, goal_pose));
+  mission_planner.set_lanelet_route(first_request);
   stay_stopped_at(mission_planner, goal_pose, arrival_check_duration + 0.5);
   mission_planner.clear_route();
-  const auto request = lanelet_route_request({FIRST_LANELET_ID, SECOND_LANELET_ID}, new_goal_pose);
 
   // Act
-  const auto result = mission_planner.set_lanelet_route(request);
+  const auto result = mission_planner.set_lanelet_route(second_request);
 
   // Assert
   EXPECT_TRUE(result.response.status.success);
