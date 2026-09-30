@@ -40,6 +40,8 @@ component_management:
       name: Common Packages
       paths:
         - common/**/**
+        - "!common/**/examples/**"
+        - "!common/**/debug.*"
 
     - component_id: control-packages
       name: Control Packages
@@ -65,6 +67,7 @@ component_management:
       name: Planning Packages
       paths:
         - planning/**/**
+        - "!planning/**/debug.*"
 
     - component_id: sensing-packages
       name: Sensing Packages
