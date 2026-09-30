@@ -10,6 +10,7 @@ This package is a default implementation AD API.
 
 - [interface](document/interface.md)
 - [localization](document/localization.md)
+- [operation_mode](document/operation_mode.md)
 - [routing](document/routing.md)
 
 ## Interface
