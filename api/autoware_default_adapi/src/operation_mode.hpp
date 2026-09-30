@@ -44,10 +44,10 @@ using Cli = typename autoware::component_interface_utils::Client<T, N>::SharedPt
 template <class T, class N>
 using Srv = typename autoware::component_interface_utils::Service<T, N>::SharedPtr;
 
-class OperationModeNode : public autoware::agnocast_wrapper::Node
+class CoreOperationModeNode : public autoware::agnocast_wrapper::Node
 {
 public:
-  explicit OperationModeNode(const rclcpp::NodeOptions & options);
+  explicit CoreOperationModeNode(const rclcpp::NodeOptions & options);
 
 private:
   using OperationModeState = autoware::adapi_specs::operation_mode::OperationModeState;
@@ -101,6 +101,9 @@ private:
   void on_state(const OperationModeState::Message::ConstSharedPtr msg);
   void on_timer();
   void update_state();
+
+  template <class ClientT, class RequestT>
+  auto call_with_timeout(ClientT & client, const RequestT & request);
 
   template <class ResponseT>
   void change_mode(const ResponseT res, const OperationModeRequest::_mode_type mode);

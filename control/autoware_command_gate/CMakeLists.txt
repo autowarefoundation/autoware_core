@@ -33,6 +33,7 @@ if(BUILD_TESTING)
   )
   ament_target_dependencies(test_ros_integration
     autoware_adapi_v1_msgs
+    autoware_common_msgs
     autoware_system_msgs
     autoware_vehicle_msgs
     class_loader

@@ -102,7 +102,7 @@ protected:
       "/api/operation_mode/disable_autoware_control");
 
     // Create node under test
-    node_ = std::make_shared<OperationModeNode>(rclcpp::NodeOptions{});
+    node_ = std::make_shared<CoreOperationModeNode>(rclcpp::NodeOptions{});
 
     // MultiThreadedExecutor to allow synchronous service calls from node to harness
     exec_ =
@@ -145,7 +145,7 @@ protected:
     return nullptr;
   }
 
-  std::shared_ptr<OperationModeNode> node_;
+  std::shared_ptr<CoreOperationModeNode> node_;
   std::shared_ptr<rclcpp::Node> harness_;
   std::shared_ptr<rclcpp::executors::MultiThreadedExecutor> exec_;
   std::thread exec_thread_;
