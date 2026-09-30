@@ -12,6 +12,7 @@ A gateway that stores the operation mode and Autoware control flag separately.
 The `autoware_default_adapi` operation mode node provides the public `/api/operation_mode/*` services and state topic.
 The control service needs a vehicle or simulator that provides `/control/control_mode_request` (`autoware_vehicle_msgs/srv/ControlModeCommand`).
 Service success means that the vehicle accepted the request. The control flag changes when the vehicle reports its mode.
+Full autonomous control, autonomous steering only, and autonomous velocity control only all set the control flag to true.
 A timed-out request can still take effect at the vehicle. A later control mode report updates the state.
 
 ## Build

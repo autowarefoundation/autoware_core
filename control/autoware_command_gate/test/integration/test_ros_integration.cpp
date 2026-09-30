@@ -454,17 +454,22 @@ TEST_F(CommandGateRosIntegrationTest, VehicleReportUpdatesControlFlag)
     executor_, [this]() { return vehicle_mode_pub_->get_subscription_count() > 0; },
     std::chrono::seconds(2)));
 
-  ControlModeReport report;
-  report.mode = ControlModeReport::AUTONOMOUS;
-  vehicle_mode_pub_->publish(report);
-  ASSERT_TRUE(spin_until(
-    executor_, [&state_msg]() { return state_msg->is_autoware_control_enabled; },
-    std::chrono::seconds(2)));
-  report.mode = ControlModeReport::MANUAL;
-  vehicle_mode_pub_->publish(report);
-  ASSERT_TRUE(spin_until(
-    executor_, [&state_msg]() { return !state_msg->is_autoware_control_enabled; },
-    std::chrono::seconds(2)));
+  for (const auto mode :
+       {ControlModeReport::AUTONOMOUS, ControlModeReport::AUTONOMOUS_STEER_ONLY,
+        ControlModeReport::AUTONOMOUS_VELOCITY_ONLY}) {
+    SCOPED_TRACE(static_cast<int>(mode));
+    ControlModeReport report;
+    report.mode = mode;
+    vehicle_mode_pub_->publish(report);
+    ASSERT_TRUE(spin_until(
+      executor_, [&state_msg]() { return state_msg->is_autoware_control_enabled; },
+      std::chrono::seconds(2)));
+    report.mode = ControlModeReport::MANUAL;
+    vehicle_mode_pub_->publish(report);
+    ASSERT_TRUE(spin_until(
+      executor_, [&state_msg]() { return !state_msg->is_autoware_control_enabled; },
+      std::chrono::seconds(2)));
+  }
   EXPECT_TRUE(requested_vehicle_modes_.empty());
 }
 

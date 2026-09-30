@@ -81,7 +81,9 @@ public:
 
     sub_control_mode_ = adaptor_.create_subscription<vehicle::ControlModeStatus>(
       [this](const ControlModeReport::ConstSharedPtr msg) {
-        const bool enabled = msg->mode == ControlModeReport::AUTONOMOUS;
+        const bool enabled = msg->mode == ControlModeReport::AUTONOMOUS ||
+                             msg->mode == ControlModeReport::AUTONOMOUS_STEER_ONLY ||
+                             msg->mode == ControlModeReport::AUTONOMOUS_VELOCITY_ONLY;
         if (current_state_.is_autoware_control_enabled != enabled) {
           current_state_.is_autoware_control_enabled = enabled;
           publish_state();
