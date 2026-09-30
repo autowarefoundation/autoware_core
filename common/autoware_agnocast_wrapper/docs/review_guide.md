@@ -147,7 +147,7 @@ Once identified, proceed to the corresponding review procedure below.
 
 - [ ] Member variable types: `rclcpp::Publisher<M>::SharedPtr` → `AUTOWARE_PUBLISHER_PTR(M)` etc.
 
-- [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc.
+- [ ] Creation: `this->create_publisher` → `AUTOWARE_CREATE_PUBLISHER2` / `AUTOWARE_CREATE_PUBLISHER3` etc. (a type-erased topic uses `AUTOWARE_CREATE_GENERIC_PUBLISHER3/4` / `AUTOWARE_CREATE_GENERIC_SUBSCRIPTION` instead — see Part 2 Section 3)
 
 - [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
@@ -302,7 +302,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Member variable types: `AUTOWARE_*_PTR` macros (e.g. `AUTOWARE_PUBLISHER_PTR(M)`)
 
-- [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` directly (**`AUTOWARE_CREATE_*` macros are not needed**)
+- [ ] Creation: Use `agnocast_wrapper::Node` member functions `create_publisher` / `create_subscription` (and, for a type-erased topic, `create_generic_publisher` / `create_generic_subscription`) directly (**`AUTOWARE_CREATE_*` macros are not needed**)
 
 - [ ] Callback arguments: `const SharedPtr` / `UniquePtr` → `AUTOWARE_MESSAGE_CONST_SHARED_PTR` / `AUTOWARE_MESSAGE_UNIQUE_PTR` (callbacks taking `const MessageT &` can keep their signature unchanged, and so can `Message::ConstSharedPtr`)
 
@@ -310,7 +310,7 @@ Node-wide migration to `agnocast_wrapper::Node` (see Part 2 Section 4 Method 2).
 
 - [ ] Polling subscribers use the `polling::` free-function API (see Part 2 Section 3.1)
 
-- [ ] If the node also uses message_filters, timers, tf2, or diagnostic_updater, they have been migrated to the corresponding `autoware::agnocast_wrapper::*` wrappers (see the [README](../README.md) for usage and current limitations)
+- [ ] If the node also uses message_filters, timers, tf2, diagnostic_updater, or an async parameters client, they have been migrated to the corresponding `autoware::agnocast_wrapper::*` wrappers (see the [README](../README.md) for usage and current limitations)
 
 - [ ] If the original CMakeLists.txt used `rclcpp_components_register_node()`, it has been replaced with `autoware_agnocast_wrapper_register_node()` (see Part 2 Section 5)
 
@@ -408,11 +408,13 @@ All macros below are defined in [`macros.hpp`](../include/autoware/agnocast_wrap
 
 ### Publisher/Subscriber Types
 
-| Macro                             | ENABLE_AGNOCAST=1 (Agnocast)    | ENABLE_AGNOCAST=0 (ROS 2)               |
-| --------------------------------- | ------------------------------- | --------------------------------------- |
-| `AUTOWARE_PUBLISHER_PTR(MsgT)`    | `Publisher<MsgT>::SharedPtr`    | `rclcpp::Publisher<MsgT>::SharedPtr`    |
-| `AUTOWARE_SUBSCRIPTION_PTR(MsgT)` | `Subscription<MsgT>::SharedPtr` | `rclcpp::Subscription<MsgT>::SharedPtr` |
-| `AUTOWARE_TIMER_PTR`              | `Timer::SharedPtr`              | `rclcpp::TimerBase::SharedPtr`          |
+| Macro                               | ENABLE_AGNOCAST=1 (Agnocast)     | ENABLE_AGNOCAST=0 (ROS 2)                |
+| ----------------------------------- | -------------------------------- | ---------------------------------------- |
+| `AUTOWARE_PUBLISHER_PTR(MsgT)`      | `Publisher<MsgT>::SharedPtr`     | `rclcpp::Publisher<MsgT>::SharedPtr`     |
+| `AUTOWARE_SUBSCRIPTION_PTR(MsgT)`   | `Subscription<MsgT>::SharedPtr`  | `rclcpp::Subscription<MsgT>::SharedPtr`  |
+| `AUTOWARE_TIMER_PTR`                | `Timer::SharedPtr`               | `rclcpp::TimerBase::SharedPtr`           |
+| `AUTOWARE_GENERIC_PUBLISHER_PTR`    | `GenericPublisher::SharedPtr`    | `rclcpp::GenericPublisher::SharedPtr`    |
+| `AUTOWARE_GENERIC_SUBSCRIPTION_PTR` | `GenericSubscription::SharedPtr` | `rclcpp::GenericSubscription::SharedPtr` |
 
 &nbsp;
 
@@ -429,15 +431,19 @@ surface), so client and service code needs no per-build spelling:
 | `AUTOWARE_CLIENT_SHARED_FUTURE(SrvT)`                | `Client<SrvT>::SharedFuture`             |
 | `AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(SrvT)`        | `Client<SrvT>::FutureAndRequestId`       |
 | `AUTOWARE_CLIENT_SHARED_FUTURE_AND_REQUEST_ID(SrvT)` | `Client<SrvT>::SharedFutureAndRequestId` |
+| `AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)`                 | `std::shared_ptr<const SrvT::Response>`  |
 
 Request/response pointer types **do** differ per build:
 
-| Macro                                | ENABLE_AGNOCAST=1                | ENABLE_AGNOCAST=0                       |
-| ------------------------------------ | -------------------------------- | --------------------------------------- |
-| `AUTOWARE_SERVER_REQUEST_PTR(SrvT)`  | `message_ptr<const Request, …>`  | `std::shared_ptr<const SrvT::Request>`  |
-| `AUTOWARE_SERVER_RESPONSE_PTR(SrvT)` | `message_ptr<Response, …>`       | `std::shared_ptr<SrvT::Response>`       |
-| `AUTOWARE_CLIENT_REQUEST_PTR(SrvT)`  | `message_ptr<Request, …>`        | `std::shared_ptr<SrvT::Request>`        |
-| `AUTOWARE_CLIENT_RESPONSE_PTR(SrvT)` | `message_ptr<const Response, …>` | `std::shared_ptr<const SrvT::Response>` |
+| Macro                                | ENABLE_AGNOCAST=1               | ENABLE_AGNOCAST=0                      |
+| ------------------------------------ | ------------------------------- | -------------------------------------- |
+| `AUTOWARE_SERVER_REQUEST_PTR(SrvT)`  | `message_ptr<const Request, …>` | `std::shared_ptr<const SrvT::Request>` |
+| `AUTOWARE_SERVER_RESPONSE_PTR(SrvT)` | `message_ptr<Response, …>`      | `std::shared_ptr<SrvT::Response>`      |
+| `AUTOWARE_CLIENT_REQUEST_PTR(SrvT)`  | `message_ptr<Request, …>`       | `std::shared_ptr<SrvT::Request>`       |
+
+The client response is a plain `std::shared_ptr<const Response>` in both builds — the agnocast
+backend aliases the received handle, so nothing is copied. Review point: **the response must not
+outlive the client that produced it**, because that client owns the kernel-side reference.
 
 &nbsp;
 
@@ -464,6 +470,33 @@ Clients and services follow the same pattern, with the numeric suffix selecting 
 
 &nbsp;
 
+### Generic (type-erased) Publisher/Subscriber Creation
+
+There is no `MessageT` to pass as a macro argument here — the topic type is a runtime string
+instead — so these have their own macros rather than reusing `AUTOWARE_CREATE_PUBLISHER*`/
+`AUTOWARE_CREATE_SUBSCRIPTION`:
+
+| Macro                                                                             | ENABLE_AGNOCAST=1 (Agnocast)                         | ENABLE_AGNOCAST=0 (ROS 2)                |
+| --------------------------------------------------------------------------------- | ---------------------------------------------------- | ---------------------------------------- |
+| `AUTOWARE_CREATE_GENERIC_PUBLISHER3(topic, topic_type, qos)`                      | `agnocast_wrapper::create_generic_publisher(...)`    | `this->create_generic_publisher(...)`    |
+| `AUTOWARE_CREATE_GENERIC_PUBLISHER4(topic, topic_type, qos, options)`             | `agnocast_wrapper::create_generic_publisher(...)`    | `this->create_generic_publisher(...)`    |
+| `AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(topic, topic_type, qos, callback, options)` | `agnocast_wrapper::create_generic_subscription(...)` | `this->create_generic_subscription(...)` |
+
+Each has an `_ON_NODE` variant taking the node explicitly as the first argument, same as the typed
+publisher/subscription macros above.
+
+Review points specific to the generic surface:
+
+- [ ] The subscription callback takes exactly `std::shared_ptr<const rclcpp::SerializedMessage>` —
+      there is no `message_ptr` or zero-copy overload, since a type-erased message has no
+      compile-time type to allocate in place.
+- [ ] `options.qos_overriding_options` is left default, on both the publisher and the
+      subscription. A non-empty value throws `std::invalid_argument` at construction: rclcpp's
+      generic publisher/subscription silently ignore it while Agnocast's apply it, so honoring it
+      would behave differently per backend.
+
+&nbsp;
+
 ### 3.1 Polling Subscribers (`polling::` free functions)
 
 Polling subscribers are **not** created via a macro or a `Node` member. Use the free function:
@@ -482,10 +515,9 @@ const std::shared_ptr<const nav_msgs::msg::Odometry> msg = sub_->take_data();
 
 Review points:
 
-- [ ] The receiving variable is `std::shared_ptr<const MessageT>`, not a `message_ptr` or `AUTOWARE_MESSAGE_CONST_SHARED_PTR`.
-- [ ] The **policy tag** is preserved from the original code. `polling_policy::Latest` (the default) re-delivers the cached message every call; `polling_policy::Newest` returns `nullptr` until a new message arrives.
-- [ ] `polling_policy::All` is rejected at compile time — `take_data()` returns a single message, not a vector.
-- [ ] The QoS history depth is 1 — any other depth throws `std::invalid_argument` at construction.
+- [ ] The receiving variable is `std::shared_ptr<const MessageT>`, not a `message_ptr` or `AUTOWARE_MESSAGE_CONST_SHARED_PTR`. With `polling_policy::All` it is a `std::vector` of them.
+- [ ] The **policy tag** is preserved from the original code. `polling_policy::Latest` (the default) re-delivers the cached message every call; `polling_policy::Newest` returns `nullptr` until a new message arrives; `polling_policy::All` returns every pending message, oldest first.
+- [ ] The QoS history depth is 1 for `polling_policy::Latest` and `polling_policy::Newest` — any other depth throws `std::invalid_argument` at construction. `polling_policy::All` accepts any depth except 0 and `KeepAll`.
 - [ ] `take_data()` is called from a single thread, or from callbacks in one mutually exclusive callback group — it is not synchronized, the same as `autoware_utils_rclcpp`.
 
 &nbsp;
@@ -646,6 +678,9 @@ A CMake macro used in place of `rclcpp_components_register_node`. It generates d
 > There is no `<EXECUTABLE>_component` target. Launch files should always reference `<EXECUTABLE>`, which
 > is the same name in both modes.
 
+In both modes the macro also registers an `autoware_node_plugins` resource mapping `<EXECUTABLE>` to
+its component class and to the `ENABLE_AGNOCAST` it was built with, which `<autoware_node>` reads.
+
 Note that the macro applies `autoware_agnocast_wrapper_setup()` to **both** the component library and the
 generated executable. Both need `USE_AGNOCAST_ENABLED` defined for ABI consistency, and
 `ament_target_dependencies()` does not propagate the wrapper's `PUBLIC` compile definitions.
@@ -707,6 +742,10 @@ autoware_agnocast_wrapper_register_node(my_node_component
 ## 7. component_container Selection (agnocast_env.launch.xml)
 
 By including `agnocast_env.launch.xml`, the appropriate component container is automatically selected based on the `ENABLE_AGNOCAST` environment variable.
+
+An `agnocast_wrapper::Node` node cannot be loaded into a container on Agnocast. For such a node,
+the `<autoware_node>` launch action writes the container form and the standalone form at once; see
+[Switching One Node Between Standalone and a Component Container](../README.md#switching-one-node-between-standalone-and-a-component-container).
 
 &nbsp;
 

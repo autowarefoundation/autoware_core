@@ -24,6 +24,17 @@ Changelog for package autoware_kalman_filter
   ---------
 * Contributors: RyuYamamoto, Yutaka Kondo
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_kalman_filter): resolve Eigen include path (`#1267 <https://github.com/autowarefoundation/autoware_core/issues/1267>`_)
+  Resolve Eigen include path before autoware_kalman_filter setup
+  This upstreams RoboStack downstream patch `patch/ros-rolling-autoware-kalman-filter.patch`.
+  Best-guess rationale: autoware_kalman_filter adds Eigen include directories manually, so resolving Eigen3 and its target include path before autoware_package makes the include path deterministic for downstream builds.
+  Co-authored-by: Daisuke Nishimatsu <nishimarudai@gmail.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Tobias Fischer, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

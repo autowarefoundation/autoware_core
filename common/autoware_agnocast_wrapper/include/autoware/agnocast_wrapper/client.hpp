@@ -16,6 +16,7 @@
 
 // Client<ServiceT> abstraction.
 
+#include "autoware/agnocast_wrapper/introspection.hpp"
 #include "autoware/agnocast_wrapper/macros.hpp"
 
 #include <rclcpp/rclcpp.hpp>
@@ -61,6 +62,14 @@ protected:
   virtual AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
     to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) = 0;
 
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
@@ -87,6 +96,31 @@ public:
   virtual const char * get_service_name() const = 0;
 
   virtual bool service_is_ready() const = 0;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
+  /// events through its own event publisher.
+  /// @throws std::invalid_argument for a null clock or a KeepAll QoS; see
+  /// detail::check_introspection_args().
+  /// @throws std::runtime_error on the Agnocast backend, when the event typesupport cannot be
+  /// loaded. The rclcpp backend links it in and cannot fail this way.
+  /// @throws rclcpp::exceptions::RCLError on the rclcpp backend, when rcl rejects the call.
+  /// @note The Agnocast backend terminates the process, rather than throwing, when the kernel
+  /// module refuses the event publisher.
+  /// @note Not thread-safe: rcl documents its own side as such, and the backend is chosen at run
+  /// time, so call this before the node spins or from the spinning thread.
+  /// @note The Agnocast backend ignores the reliability, deadline and lifespan policies the RMW
+  /// applies on the rclcpp path, and logs a failed event where rclcpp lets the rcl error fail the
+  /// service call itself.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    detail::check_introspection_args(get_service_name(), clock, qos_service_event_pub);
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
   template <typename RepT, typename RatioT>
   bool wait_for_service(
@@ -147,6 +181,15 @@ protected:
     return owned;
   }
 
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
+
 public:
   template <typename NodeT>
   explicit AgnocastClient(
@@ -187,8 +230,7 @@ public:
             try {
               typename agnocast::ipc_shared_ptr<const typename ServiceT::Response>
                 agnocast_response = agnocast_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+              promise_ptr->set_value(detail::to_std_shared_ptr(std::move(agnocast_response)));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
             }
@@ -217,8 +259,7 @@ public:
             try {
               typename agnocast::ipc_shared_ptr<const typename ServiceT::Response>
                 agnocast_response = agnocast_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+              promise_ptr->set_value(detail::to_std_shared_ptr(std::move(agnocast_response)));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;
@@ -249,6 +290,15 @@ protected:
     return AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){
       std::shared_ptr<typename ServiceT::Request>(request)};
   }
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   explicit ROS2Client(
@@ -289,8 +339,7 @@ public:
                             try {
                               std::shared_ptr<const typename ServiceT::Response> ros2_response =
                                 ros2_shared_future.get();
-                              promise_ptr->set_value(
-                                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+                              promise_ptr->set_value(std::move(ros2_response));
                             } catch (...) {
                               promise_ptr->set_exception(std::current_exception());
                             }
@@ -319,8 +368,7 @@ public:
             try {
               std::shared_ptr<const typename ServiceT::Response> ros2_response =
                 ros2_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+              promise_ptr->set_value(std::move(ros2_response));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;
@@ -375,6 +423,14 @@ protected:
     }
   }
 
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
 
@@ -401,6 +457,23 @@ public:
   virtual const char * get_service_name() const = 0;
 
   virtual bool service_is_ready() const = 0;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ClientBase::configure_introspection().
+  /// @throws std::invalid_argument for a null clock or a KeepAll QoS; see
+  /// detail::check_introspection_args().
+  /// @throws rclcpp::exceptions::RCLError when rcl rejects the call.
+  /// @note Not thread-safe: rcl documents its own side as such, so call this before the node
+  /// spins or from the spinning thread.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    detail::check_introspection_args(get_service_name(), clock, qos_service_event_pub);
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
   template <typename RepT, typename RatioT>
   bool wait_for_service(
@@ -453,6 +526,15 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
+
 public:
   explicit ROS2Client(
     rclcpp::Node * node, const std::string & service_name, const rclcpp::QoS & qos,
@@ -493,8 +575,9 @@ public:
                           [promise_ptr = std::move(promise_ptr)](
                             typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
                             try {
-                              promise_ptr->set_value(
-                                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+                              std::shared_ptr<const typename ServiceT::Response> ros2_response =
+                                ros2_shared_future.get();
+                              promise_ptr->set_value(std::move(ros2_response));
                             } catch (...) {
                               promise_ptr->set_exception(std::current_exception());
                             }
@@ -520,8 +603,9 @@ public:
            shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
             // If an exception is set in the underlying future, propagate it to our promise.
             try {
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+              std::shared_ptr<const typename ServiceT::Response> ros2_response =
+                ros2_shared_future.get();
+              promise_ptr->set_value(std::move(ros2_response));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;

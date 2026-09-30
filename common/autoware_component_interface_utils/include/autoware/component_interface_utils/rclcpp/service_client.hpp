@@ -25,6 +25,7 @@
 #include <future>
 #include <memory>
 #include <optional>
+#include <type_traits>
 #include <utility>
 
 namespace autoware::component_interface_utils
@@ -44,10 +45,31 @@ auto create_client_handle(NodeT * node, rclcpp::CallbackGroup::SharedPtr group)
 #endif
 }
 
+template <class SpecT, class WrapT, class = void>
+struct client_response_type
+{
+  using type = std::shared_ptr<typename SpecT::Service::Response>;
+};
+template <class SpecT, class WrapT>
+struct client_response_type<SpecT, WrapT, std::void_t<typename WrapT::SharedResponse>>
+{
+  using type = typename WrapT::SharedResponse;
+};
+
+template <class SpecT, class WrapT, class = void>
+struct client_future_type
+{
+  using type = std::shared_future<typename client_response_type<SpecT, WrapT>::type>;
+};
+template <class SpecT, class WrapT>
+struct client_future_type<SpecT, WrapT, std::void_t<typename WrapT::SharedFuture>>
+{
+  using type = typename WrapT::SharedFuture;
+};
+
 /// The wrapper class of a service client. Service-call tracing is provided by ROS 2
 /// service introspection (enabled via NodeInterface::introspection_state), not a
-/// custom log topic. The request/response/future aliases are spelled from the spec rather than
-/// taken off the handle, so they do not depend on the node type.
+/// custom log topic.
 template <class SpecT, class NodeT = rclcpp::Node>
 class Client
 {
@@ -60,8 +82,8 @@ public:
   using WrapType = typename WrapSharedPtr::element_type;
 
   using SharedRequest = std::shared_ptr<typename SpecT::Service::Request>;
-  using SharedResponse = std::shared_ptr<typename SpecT::Service::Response>;
-  using SharedFuture = std::shared_future<SharedResponse>;
+  using SharedResponse = typename client_response_type<SpecT, WrapType>::type;
+  using SharedFuture = typename client_future_type<SpecT, WrapType>::type;
 
   /// Constructor.
   Client(typename NodeInterface<NodeT>::SharedPtr interface, rclcpp::CallbackGroup::SharedPtr group)

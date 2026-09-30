@@ -63,8 +63,14 @@ GyroOdometer::Status GyroOdometer::take_status() const
   Status status;
   status.vehicle_twist_arrived = vehicle_twist_arrived_;
   status.imu_arrived = imu_arrived_;
-  status.latest_vehicle_twist_dt = latest_vehicle_twist_dt_;
-  status.latest_imu_dt = latest_imu_dt_;
+  status.is_frame_id_consistent = is_frame_id_consistent_;
+  if (vehicle_twist_arrived_ && imu_arrived_) {
+    const rclcpp::Time reference_time =
+      std::max(latest_vehicle_twist_ros_time_, latest_imu_ros_time_);
+    status.latest_vehicle_twist_dt =
+      std::abs((reference_time - latest_vehicle_twist_ros_time_).seconds());
+    status.latest_imu_dt = std::abs((reference_time - latest_imu_ros_time_).seconds());
+  }
   status.latest_vehicle_twist_ros_time = latest_vehicle_twist_ros_time_;
   status.latest_imu_ros_time = latest_imu_ros_time_;
   status.vehicle_twist_queue_size = latest_vehicle_twist_queue_size_;
@@ -88,14 +94,15 @@ GyroOdometer::concat_gyro_and_odometer(rclcpp::Time reference_time)
   }
 
   // check timeout
-  latest_vehicle_twist_dt_ = std::abs((reference_time - latest_vehicle_twist_ros_time_).seconds());
-  latest_imu_dt_ = std::abs((reference_time - latest_imu_ros_time_).seconds());
-  if (latest_vehicle_twist_dt_ > message_timeout_sec_) {
+  const double latest_vehicle_twist_dt =
+    std::abs((reference_time - latest_vehicle_twist_ros_time_).seconds());
+  const double latest_imu_dt = std::abs((reference_time - latest_imu_ros_time_).seconds());
+  if (latest_vehicle_twist_dt > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return std::nullopt;
   }
-  if (latest_imu_dt_ > message_timeout_sec_) {
+  if (latest_imu_dt > message_timeout_sec_) {
     vehicle_twist_queue_.clear();
     gyro_queue_.clear();
     return std::nullopt;
@@ -110,6 +117,14 @@ GyroOdometer::concat_gyro_and_odometer(rclcpp::Time reference_time)
   }
   if (gyro_queue_.empty()) {
     // wait for the imu side; the queued vehicle twists are kept for the next attempt
+    return std::nullopt;
+  }
+
+  is_frame_id_consistent_ =
+    vehicle_twist_queue_.front().header.frame_id == gyro_queue_.front().header.frame_id;
+  if (!is_frame_id_consistent_) {
+    vehicle_twist_queue_.clear();
+    gyro_queue_.clear();
     return std::nullopt;
   }
 
@@ -137,21 +152,7 @@ GyroOdometer::OutputData GyroOdometer::make_output(
   twist.header = twist_with_covariance.header;
   twist.twist = twist_with_covariance.twist.twist;
 
-  return std::make_tuple(twist_raw, twist_with_cov_raw, twist, twist_with_covariance);
-}
-
-std::array<double, 9> transform_covariance(const std::array<double, 9> & cov)
-{
-  using COV_IDX = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
-
-  double max_cov = std::max({cov[COV_IDX::X_X], cov[COV_IDX::Y_Y], cov[COV_IDX::Z_Z]});
-
-  std::array<double, 9> cov_transformed = {};
-  cov_transformed.fill(0.);
-  cov_transformed[COV_IDX::X_X] = max_cov;
-  cov_transformed[COV_IDX::Y_Y] = max_cov;
-  cov_transformed[COV_IDX::Z_Z] = max_cov;
-  return cov_transformed;
+  return OutputData{twist_raw, twist_with_cov_raw, twist, twist_with_covariance};
 }
 
 geometry_msgs::msg::TwistWithCovarianceStamped fuse_twist(

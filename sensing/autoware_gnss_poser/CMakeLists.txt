@@ -31,6 +31,19 @@ if(BUILD_TESTING AND NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST
   ament_add_ros_isolated_gtest(test_${PROJECT_NAME} ${TEST_SOURCES})
   target_link_libraries(test_${PROJECT_NAME} gnss_poser_node)
   target_include_directories(test_${PROJECT_NAME} PRIVATE src)
+
+  # Characterization tests: pin the externally observable behavior of GNSSPoser
+  # (see test/test_gnss_poser_node_characterization.cpp for the rationale).
+  ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node_characterization
+    test/test_gnss_poser_node_characterization.cpp
+    TIMEOUT 300
+  )
+  target_link_libraries(test_${PROJECT_NAME}_node_characterization gnss_poser_node)
+  target_include_directories(test_${PROJECT_NAME}_node_characterization PRIVATE src)
+  # Lets the test load the shipped parameter file from the source tree.
+  target_compile_definitions(test_${PROJECT_NAME}_node_characterization
+    PRIVATE GNSS_POSER_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config"
+  )
 endif()
 
 autoware_ament_auto_package(

@@ -31,13 +31,13 @@
           "default": "0",
           "minimum": 0,
           "maximum": 2,
-          "description": "0: Instant Value 1: Average Value 2: Median Value. If 0 is chosen buffer_epoch parameter loses affect."
+          "description": "0: Instant Value 1: Average Value 2: Median Value. Any other value is rejected at startup."
         },
         "buff_epoch": {
           "type": "integer",
           "default": "1",
-          "minimum": 0,
-          "description": "Buffer epoch"
+          "minimum": 1,
+          "description": "Number of positions the average / median is taken over (ignored for method 0)"
         }
       },
       "required": [
