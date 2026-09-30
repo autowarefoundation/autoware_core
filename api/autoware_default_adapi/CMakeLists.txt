@@ -44,17 +44,19 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
 
 if(BUILD_TESTING)
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
-    add_launch_test(test/main.test.py)
-    add_launch_test(test/operation_mode.test.py)
-
     find_package(ament_cmake_ros REQUIRED)
+    add_launch_test(test/main.test.py
+      RUNNER "${ament_cmake_ros_DIR}/run_test_isolated.py"
+    )
+    add_launch_test(test/operation_mode.test.py
+      RUNNER "${ament_cmake_ros_DIR}/run_test_isolated.py"
+    )
+
     ament_add_ros_isolated_gtest(test_operation_mode_timeout test/test_operation_mode_timeout.cpp)
     target_include_directories(test_operation_mode_timeout PRIVATE src)
     target_link_libraries(test_operation_mode_timeout ${PROJECT_NAME})
 
-    ament_auto_add_gtest(test_operation_mode
-      test/test_operation_mode.cpp
-    )
+    ament_add_ros_isolated_gtest(test_operation_mode test/test_operation_mode.cpp)
     target_include_directories(test_operation_mode PRIVATE src)
     target_link_libraries(test_operation_mode ${PROJECT_NAME})
   endif()
