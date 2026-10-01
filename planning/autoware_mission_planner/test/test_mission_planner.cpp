@@ -588,9 +588,10 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileStoppedInAutonomousModeRerou
   auto config = default_config();
   config.allow_reroute_in_autonomous_mode = true;
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
+  const auto second_goal_pose = pose(90.0);
   const auto first_request = lanelet_route_request({first_lanelet_id}, pose(40.0));
   const auto second_request =
-    lanelet_route_request({first_lanelet_id, second_lanelet_id}, pose(90.0));
+    lanelet_route_request({first_lanelet_id, second_lanelet_id}, second_goal_pose);
 
   auto mission_planner = create_initialized_mission_planner(config);
   mission_planner.on_operation_mode_state(autonomous_mode);
@@ -599,6 +600,8 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileStoppedInAutonomousModeRerou
   // The vehicle is stopped, so the reroute safety check passes regardless of the route length.
   const auto first_result = mission_planner.set_lanelet_route(first_request);
   const auto second_result = mission_planner.set_lanelet_route(second_request);
+  // The second route is in effect only if the vehicle arrives at its goal.
+  stay_stopped_at(mission_planner, second_goal_pose, arrival_check_duration + 0.5);
 
   // Assert
   expect_success_response(first_result);
@@ -606,7 +609,8 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileStoppedInAutonomousModeRerou
   ASSERT_TRUE(second_result.route.has_value());
   EXPECT_EQ(second_result.route->segments.size(), 2U);
   expect_states_transition(
-    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET});
+    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET,
+     RouteState::ARRIVED});
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRerouteIsUnsafe)
@@ -618,8 +622,9 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRe
   // exceeds the 30 m shared with the new route.
   const auto odom_with_high_velocity = start_odometry(10.0);
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
+  const auto first_goal_pose = pose(90.0);
   const auto first_request =
-    lanelet_route_request({first_lanelet_id, second_lanelet_id}, pose(90.0));
+    lanelet_route_request({first_lanelet_id, second_lanelet_id}, first_goal_pose);
   const auto second_request = lanelet_route_request({first_lanelet_id}, pose(40.0));
 
   auto mission_planner = create_initialized_mission_planner(config);
@@ -629,12 +634,15 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRe
   // Act
   const auto first_result = mission_planner.set_lanelet_route(first_request);
   const auto second_result = mission_planner.set_lanelet_route(second_request);
+  // The first route stays in effect only if the vehicle arrives at its goal.
+  stay_stopped_at(mission_planner, first_goal_pose, arrival_check_duration + 0.5);
 
   // Assert
   expect_success_response(first_result);
   expect_fail_response_with_code(second_result, SetRouteResponse::ERROR_REROUTE_FAILED);
   expect_states_transition(
-    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET});
+    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET,
+     RouteState::ARRIVED});
 }
 
 TEST_F(
@@ -648,8 +656,9 @@ TEST_F(
   // the 30 m shared with the new route and only minimum_reroute_length can reject the reroute.
   const auto odom_with_low_velocity = start_odometry(1.0);
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
+  const auto first_goal_pose = pose(90.0);
   const auto first_request =
-    lanelet_route_request({first_lanelet_id, second_lanelet_id}, pose(90.0));
+    lanelet_route_request({first_lanelet_id, second_lanelet_id}, first_goal_pose);
   const auto second_request = lanelet_route_request({first_lanelet_id}, pose(40.0));
 
   auto mission_planner = create_initialized_mission_planner(config);
@@ -659,9 +668,14 @@ TEST_F(
 
   // Act
   const auto result = mission_planner.set_lanelet_route(second_request);
+  // The first route stays in effect only if the vehicle arrives at its goal.
+  stay_stopped_at(mission_planner, first_goal_pose, arrival_check_duration + 0.5);
 
   // Assert
   expect_fail_response_with_code(result, SetRouteResponse::ERROR_REROUTE_FAILED);
+  expect_states_transition(
+    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET,
+     RouteState::ARRIVED});
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteRerouteFailsWhenOperationModeStateIsNotReceived)
@@ -689,7 +703,8 @@ TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenR
   // exceeds the 30 m shared with the new route.
   const auto odom_with_high_velocity = start_odometry(10.0);
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
-  const auto first_request = waypoint_route_request(pose(90.0));
+  const auto first_goal_pose = pose(90.0);
+  const auto first_request = waypoint_route_request(first_goal_pose);
   const auto second_request = waypoint_route_request(pose(40.0));
 
   auto mission_planner = create_initialized_mission_planner(config);
@@ -699,12 +714,15 @@ TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenR
   // Act
   const auto first_result = mission_planner.set_waypoint_route(first_request);
   const auto second_result = mission_planner.set_waypoint_route(second_request);
+  // The first route stays in effect only if the vehicle arrives at its goal.
+  stay_stopped_at(mission_planner, first_goal_pose, arrival_check_duration + 0.5);
 
   // Assert
   expect_success_response(first_result);
   expect_fail_response_with_code(second_result, SetRoutePointsResponse::ERROR_REROUTE_FAILED);
   expect_states_transition(
-    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET});
+    {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET,
+     RouteState::ARRIVED});
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteRerouteSucceedsWhenNotInAutonomousMode)
