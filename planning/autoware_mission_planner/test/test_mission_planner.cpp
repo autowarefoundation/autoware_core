@@ -699,6 +699,59 @@ TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenR
     {RouteState::ROUTING, RouteState::SET, RouteState::REROUTING, RouteState::SET});
 }
 
+TEST_F(MissionPlannerTest, SetWaypointRouteRerouteSucceedsWhenNotInAutonomousMode)
+{
+  // Arrange
+  // The vehicle must be moving: while stopped, the reroute safety check always passes, so this test
+  // could not tell whether the check is skipped.
+  const auto odom_while_driving = start_odometry(5.0);
+  const auto stop_mode_state = operation_mode_state(OperationModeState::STOP, false);
+  const auto first_request = waypoint_route_request(pose(40.0));
+  const auto second_request = waypoint_route_request(pose(20.0));
+
+  auto mission_planner = create_initialized_mission_planner();
+  mission_planner.on_odometry(odom_while_driving);
+  mission_planner.on_operation_mode_state(stop_mode_state);
+  mission_planner.set_waypoint_route(first_request);
+
+  // Act
+  // The reroute safety check is skipped outside autonomous mode, so even a short new route is
+  // accepted while driving.
+  const auto result = mission_planner.set_waypoint_route(second_request);
+
+  // Assert
+  expect_success_response(result);
+  ASSERT_TRUE(result.route.has_value());
+  EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 20.0);
+}
+
+TEST_F(MissionPlannerTest, SetWaypointRouteRerouteSucceedsWhenAutowareControlIsDisabled)
+{
+  // Arrange
+  // The vehicle must be moving: while stopped, the reroute safety check always passes, so this test
+  // could not tell whether the check is skipped.
+  const auto odom_while_driving = start_odometry(5.0);
+  const auto autoware_control_disabled_state =
+    operation_mode_state(OperationModeState::AUTONOMOUS, false);
+  const auto first_request = waypoint_route_request(pose(40.0));
+  const auto second_request = waypoint_route_request(pose(20.0));
+
+  auto mission_planner = create_initialized_mission_planner();
+  mission_planner.on_odometry(odom_while_driving);
+  mission_planner.on_operation_mode_state(autoware_control_disabled_state);
+  mission_planner.set_waypoint_route(first_request);
+
+  // Act
+  // The vehicle is not driven by Autoware, so it is not treated as autonomous driving and the
+  // reroute safety check is skipped.
+  const auto result = mission_planner.set_waypoint_route(second_request);
+
+  // Assert
+  expect_success_response(result);
+  ASSERT_TRUE(result.route.has_value());
+  EXPECT_DOUBLE_EQ(result.route->goal_pose.position.x, 20.0);
+}
+
 TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenGoalIsOutsideTheMap)
 {
   // Arrange
@@ -791,6 +844,25 @@ TEST_F(MissionPlannerTest, SetLaneletRouteAfterArrivalFailsWithInvalidState)
 
   // Assert
   expect_fail_response_with_code(result, SetRouteResponse::ERROR_INVALID_STATE);
+}
+
+TEST_F(MissionPlannerTest, SetWaypointRouteAfterArrivalFailsWithInvalidState)
+{
+  // Arrange
+  const auto goal_pose = pose(40.0);
+  const auto new_goal_pose = pose(90.0);
+  const auto first_request = waypoint_route_request(goal_pose);
+  const auto second_request = waypoint_route_request(new_goal_pose);
+
+  auto mission_planner = create_initialized_mission_planner();
+  mission_planner.set_waypoint_route(first_request);
+  stay_stopped_at(mission_planner, goal_pose, arrival_check_duration + 0.5);
+
+  // Act
+  const auto result = mission_planner.set_waypoint_route(second_request);
+
+  // Assert
+  expect_fail_response_with_code(result, SetRoutePointsResponse::ERROR_INVALID_STATE);
 }
 
 TEST_F(MissionPlannerTest, ClearRouteAfterArrivalAllowsSettingANewRoute)
