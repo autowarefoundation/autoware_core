@@ -428,6 +428,11 @@ TEST_F(MissionPlannerTest, SetLaneletRouteFailsWhenTransformToMapIsUnavailable)
 
   // Assert
   expect_fail_response_with_code(result, ResponseStatus::TRANSFORM_ERROR);
+  // NOTE: This pins the current behavior, which is probably a bug. Unlike the other failure paths,
+  // the state is not restored to UNSET, so the mission planner stays in ROUTING and rejects the
+  // following requests with ERROR_INVALID_STATE until the route is cleared. Once fixed, expect
+  // {ROUTING, UNSET} (or no state change at all) instead.
+  expect_states_transition({RouteState::ROUTING});
 }
 
 TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenTransformToMapIsUnavailable)
@@ -443,6 +448,9 @@ TEST_F(MissionPlannerTest, SetWaypointRouteFailsWhenTransformToMapIsUnavailable)
 
   // Assert
   expect_fail_response_with_code(result, ResponseStatus::TRANSFORM_ERROR);
+  // NOTE: This pins the current behavior, which is probably a bug. See
+  // SetLaneletRouteFailsWhenTransformToMapIsUnavailable.
+  expect_states_transition({RouteState::ROUTING});
 }
 
 TEST_F(MissionPlannerTest, SetLaneletRouteSucceedsAfterInitialization)
