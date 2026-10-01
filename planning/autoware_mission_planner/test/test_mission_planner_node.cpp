@@ -18,6 +18,7 @@
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <rclcpp/rclcpp.hpp>
 
+#include <autoware_adapi_v1_msgs/msg/operation_mode_state.hpp>
 #include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
 #include <autoware_planning_msgs/msg/lanelet_route.hpp>
 #include <autoware_planning_msgs/msg/route_state.hpp>
@@ -37,6 +38,7 @@
 #include <vector>
 
 using autoware::mission_planner::MissionPlannerNode;
+using autoware_adapi_v1_msgs::msg::OperationModeState;
 using autoware_map_msgs::msg::LaneletMapBin;
 using autoware_planning_msgs::msg::LaneletPrimitive;
 using autoware_planning_msgs::msg::LaneletRoute;
@@ -149,6 +151,8 @@ protected:
       test_node_->create_publisher<LaneletMapBin>("/mission_planner/input/vector_map", durable_qos);
     odometry_publisher_ =
       test_node_->create_publisher<Odometry>("/mission_planner/input/odometry", rclcpp::QoS(1));
+    operation_mode_state_publisher_ = test_node_->create_publisher<OperationModeState>(
+      "/mission_planner/input/operation_mode_state", durable_qos);
 
     // NOTE: The route, the route state and the route services use the
     // component_interface_specs absolute names (not the node's own relative "~/..." names)
@@ -175,6 +179,7 @@ protected:
     set_lanelet_route_client_.reset();
     state_subscription_.reset();
     route_subscription_.reset();
+    operation_mode_state_publisher_.reset();
     odometry_publisher_.reset();
     map_publisher_.reset();
     test_node_.reset();
@@ -187,6 +192,16 @@ protected:
   {
     map_publisher_->publish(create_map());
     odometry_publisher_->publish(make_odometry());
+    spin_for(std::chrono::milliseconds(300));
+  }
+
+  // A reroute request is rejected until the node has received an operation mode state.
+  void publish_stopped_operation_mode_state()
+  {
+    OperationModeState operation_mode_state;
+    operation_mode_state.mode = OperationModeState::STOP;
+    operation_mode_state.is_autoware_control_enabled = false;
+    operation_mode_state_publisher_->publish(operation_mode_state);
     spin_for(std::chrono::milliseconds(300));
   }
 
@@ -209,6 +224,7 @@ protected:
 
   rclcpp::Publisher<LaneletMapBin>::SharedPtr map_publisher_;
   rclcpp::Publisher<Odometry>::SharedPtr odometry_publisher_;
+  rclcpp::Publisher<OperationModeState>::SharedPtr operation_mode_state_publisher_;
   rclcpp::Client<SetLaneletRoute>::SharedPtr set_lanelet_route_client_;
   rclcpp::Client<SetWaypointRoute>::SharedPtr set_waypoint_route_client_;
 
@@ -262,8 +278,9 @@ private:
 };
 
 // The tests below verify the node side wiring only: the map and odometry subscriptions feed the
-// readiness check, the route service endpoints answer a request, and the resulting route and
-// route states are published. The route planning itself is covered by the unit tests.
+// readiness check, the operation mode state subscription feeds the reroute check, the route service
+// endpoints answer a request, and the resulting route and route states are published. The route
+// planning itself is covered by the unit tests.
 
 TEST_F(MissionPlannerNodeTest, PlansAndPublishesRouteForSetLaneletRouteRequest)
 {
@@ -293,6 +310,21 @@ TEST_F(MissionPlannerNodeTest, PlansAndPublishesRouteForSetWaypointRouteRequest)
   EXPECT_TRUE(response->status.success);
   expect_route_published(received_route_);
   expect_states_transit_from_unset_to_set(received_states_);
+}
+
+TEST_F(MissionPlannerNodeTest, RerouteSucceedsAfterOperationModeStateIsReceived)
+{
+  // Arrange
+  publish_map_and_odometry();
+  publish_stopped_operation_mode_state();
+  call_route_service(*set_lanelet_route_client_, make_set_lanelet_route_request());
+
+  // Act
+  const auto response =
+    call_route_service(*set_lanelet_route_client_, make_set_lanelet_route_request());
+
+  // Assert
+  EXPECT_TRUE(response->status.success);
 }
 
 int main(int argc, char ** argv)
