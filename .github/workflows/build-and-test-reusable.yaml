@@ -181,6 +181,8 @@ jobs:
         uses: codecov/codecov-action@v5
         with:
           files: ${{ steps.test.outputs.coverage-report-files }}
+          disable_search: true
+          plugins: noop
           fail_ci_if_error: false
           verbose: true
           flags: ${{ inputs.codecov-flag }}
