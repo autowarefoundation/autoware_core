@@ -126,7 +126,7 @@ MissionPlannerConfig default_config()
   config.map_frame = "map";
   config.reroute_time_threshold = reroute_time_threshold;
   config.minimum_reroute_length = minimum_reroute_length;
-  config.allow_reroute_in_autonomous_mode = false;
+  config.allow_reroute_in_autonomous_mode = true;
   config.arrival_checker_threshold.distance = 1.0;
   config.arrival_checker_threshold.angle = 45.0 * M_PI / 180.0;
   config.arrival_checker_threshold.duration = arrival_check_duration;
@@ -558,6 +558,8 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenNotInAutonomousMode
 TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenAutowareControlIsDisabled)
 {
   // Arrange
+  auto config = default_config();
+  config.allow_reroute_in_autonomous_mode = false;
   // The vehicle must be moving: while stopped, the reroute safety check always passes, so this test
   // could not tell whether the check is skipped.
   const auto odom_while_driving = start_odometry(5.0);
@@ -566,7 +568,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenAutowareControlIsDi
   const auto first_request = lanelet_route_request({first_lanelet_id}, pose(40.0));
   const auto second_request = lanelet_route_request({first_lanelet_id}, pose(20.0));
 
-  auto mission_planner = create_initialized_mission_planner();
+  auto mission_planner = create_initialized_mission_planner(config);
   mission_planner.on_odometry(odom_while_driving);
   mission_planner.on_operation_mode_state(autoware_control_disabled_state);
   mission_planner.set_lanelet_route(first_request);
@@ -585,15 +587,13 @@ TEST_F(MissionPlannerTest, SetLaneletRouteRerouteSucceedsWhenAutowareControlIsDi
 TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileStoppedInAutonomousModeReroutesToSecondRoute)
 {
   // Arrange
-  auto config = default_config();
-  config.allow_reroute_in_autonomous_mode = true;
   const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
   const auto second_goal_pose = pose(90.0);
   const auto first_request = lanelet_route_request({first_lanelet_id}, pose(40.0));
   const auto second_request =
     lanelet_route_request({first_lanelet_id, second_lanelet_id}, second_goal_pose);
 
-  auto mission_planner = create_initialized_mission_planner(config);
+  auto mission_planner = create_initialized_mission_planner();
   mission_planner.on_operation_mode_state(autonomous_mode);
 
   // Act
@@ -616,8 +616,6 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileStoppedInAutonomousModeRerou
 TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRerouteIsUnsafe)
 {
   // Arrange
-  auto config = default_config();
-  config.allow_reroute_in_autonomous_mode = true;
   // Driving fast enough that the required safety length (velocity * reroute_time_threshold = 100 m)
   // exceeds the 30 m shared with the new route.
   const auto odom_with_high_velocity = start_odometry(10.0);
@@ -627,7 +625,7 @@ TEST_F(MissionPlannerTest, SetLaneletRouteTwiceWhileDrivingKeepsFirstRouteWhenRe
     lanelet_route_request({first_lanelet_id, second_lanelet_id}, first_goal_pose);
   const auto second_request = lanelet_route_request({first_lanelet_id}, pose(40.0));
 
-  auto mission_planner = create_initialized_mission_planner(config);
+  auto mission_planner = create_initialized_mission_planner();
   mission_planner.on_odometry(odom_with_high_velocity);
   mission_planner.on_operation_mode_state(autonomous_mode);
 
@@ -650,7 +648,6 @@ TEST_F(
 {
   // Arrange
   auto config = default_config();
-  config.allow_reroute_in_autonomous_mode = true;
   config.minimum_reroute_length = 40.0;
   // Driving slowly, so the velocity-dependent safety length (1 m/s * 10 s = 10 m) is shorter than
   // the 30 m shared with the new route and only minimum_reroute_length can reject the reroute.
@@ -697,8 +694,6 @@ TEST_F(MissionPlannerTest, SetWaypointRouteRerouteFailsWhenOperationModeStateIsN
 TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenRerouteIsUnsafe)
 {
   // Arrange
-  auto config = default_config();
-  config.allow_reroute_in_autonomous_mode = true;
   // Driving fast enough that the required safety length (velocity * reroute_time_threshold = 100 m)
   // exceeds the 30 m shared with the new route.
   const auto odom_with_high_velocity = start_odometry(10.0);
@@ -707,7 +702,7 @@ TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenR
   const auto first_request = waypoint_route_request(first_goal_pose);
   const auto second_request = waypoint_route_request(pose(40.0));
 
-  auto mission_planner = create_initialized_mission_planner(config);
+  auto mission_planner = create_initialized_mission_planner();
   mission_planner.on_odometry(odom_with_high_velocity);
   mission_planner.on_operation_mode_state(autonomous_mode);
 
@@ -754,6 +749,10 @@ TEST_F(MissionPlannerTest, SetWaypointRouteRerouteSucceedsWhenNotInAutonomousMod
 TEST_F(MissionPlannerTest, SetWaypointRouteRerouteSucceedsWhenAutowareControlIsDisabled)
 {
   // Arrange
+  // Rerouting while driving autonomously is disallowed, so only the disabled Autoware control can
+  // make the reroute succeed.
+  auto config = default_config();
+  config.allow_reroute_in_autonomous_mode = false;
   // The vehicle must be moving: while stopped, the reroute safety check always passes, so this test
   // could not tell whether the check is skipped.
   const auto odom_while_driving = start_odometry(5.0);
@@ -762,7 +761,7 @@ TEST_F(MissionPlannerTest, SetWaypointRouteRerouteSucceedsWhenAutowareControlIsD
   const auto first_request = waypoint_route_request(pose(40.0));
   const auto second_request = waypoint_route_request(pose(20.0));
 
-  auto mission_planner = create_initialized_mission_planner();
+  auto mission_planner = create_initialized_mission_planner(config);
   mission_planner.on_odometry(odom_while_driving);
   mission_planner.on_operation_mode_state(autoware_control_disabled_state);
   mission_planner.set_waypoint_route(first_request);
