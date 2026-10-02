@@ -321,12 +321,10 @@ public:
     return set_activation(true, timeout);
   }
 
-  /// @brief Call `trigger_node_srv` with `false`, so the node rejects what it would otherwise
-  /// process.
+  /// @brief Call `trigger_node_srv` with `false`, so the node rejects what it would process.
   ///
-  /// Needed by the cases that drive a scan while deactivated, and by
-  /// `reset_skip_counter_via_deactivation`: the skip counter is a function-local `static` shared by
-  /// every node in the binary, so a case that raised it has to put it back.
+  /// Needed by `reset_skip_counter_via_deactivation`: the skip counter is a function-local `static`
+  /// shared by every node in the binary, so a case that raised it has to put it back.
   std::optional<bool> deactivate(const std::chrono::nanoseconds timeout = 10s)
   {
     return set_activation(false, timeout);
@@ -335,7 +333,7 @@ public:
   /// @brief The shared body of `activate` and `deactivate`.
   ///
   /// On timeout the pending request is removed: it would otherwise stay queued on the client, and a
-  /// late reply could be matched against the next call. This harness now calls the service more
+  /// late reply could be matched against the next call. The harness now calls this service more
   /// than once per node, so that is reachable.
   std::optional<bool> set_activation(const bool enable, const std::chrono::nanoseconds timeout)
   {
