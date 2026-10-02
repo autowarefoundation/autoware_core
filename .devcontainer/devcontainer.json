@@ -62,7 +62,6 @@
     "ghcr.io/devcontainers-extra/features/npm-packages:latest": {
       "packages": "@openai/codex,@google/gemini-cli"
     },
-    "ghcr.io/dirien/devcontainer-features/opencode:0": {},
     "ghcr.io/fjktkm/devcontainer-features/agent-persistence:1": {}
   },
 
