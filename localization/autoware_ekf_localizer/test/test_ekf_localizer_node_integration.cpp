@@ -68,6 +68,7 @@ protected:
       {"twist_measurement.twist_smoothing_steps", 2},
       {"twist_measurement.max_twist_queue_size", 2},
       {"twist_measurement.twist_gate_dist", 46.1},
+      {"process_noise.proc_stddev_xy_c", 0.1},
       {"process_noise.proc_stddev_vx_c", 10.0},
       {"process_noise.proc_stddev_wz_c", 5.0},
       {"process_noise.proc_stddev_yaw_c", 0.005},

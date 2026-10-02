@@ -87,11 +87,12 @@ Matrix6d create_state_transition_matrix(const Vector6d & X_curr, const double dt
 }
 
 Matrix6d process_noise_covariance(
-  const double proc_cov_yaw_d, const double proc_cov_vx_d, const double proc_cov_wz_d)
+  const double proc_cov_xy_d, const double proc_cov_yaw_d, const double proc_cov_vx_d,
+  const double proc_cov_wz_d)
 {
   Matrix6d q = Matrix6d::Zero();
-  q(IDX::X, IDX::X) = 0.0;
-  q(IDX::Y, IDX::Y) = 0.0;
+  q(IDX::X, IDX::X) = proc_cov_xy_d;
+  q(IDX::Y, IDX::Y) = proc_cov_xy_d;
   q(IDX::YAW, IDX::YAW) = proc_cov_yaw_d;  // for yaw
   q(IDX::YAWB, IDX::YAWB) = 0.0;
   q(IDX::VX, IDX::VX) = proc_cov_vx_d;  // for vx

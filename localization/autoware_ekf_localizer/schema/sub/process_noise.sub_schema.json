@@ -5,6 +5,11 @@
     "process_noise": {
       "type": "object",
       "properties": {
+        "proc_stddev_xy_c": {
+          "type": "number",
+          "description": "Standard deviation of process noise added directly to position x and y each predict step, independent of the motion model. Keeps position covariance from collapsing to zero while the vehicle is stationary and pose measurements keep arriving.",
+          "default": 0.1
+        },
         "proc_stddev_vx_c": {
           "type": "number",
           "description": "Standard deviation of process noise in time differentiation expression of linear velocity x, noise for d_vx = 0",
@@ -21,7 +26,7 @@
           "default": 0.005
         }
       },
-      "required": ["proc_stddev_yaw_c", "proc_stddev_vx_c", "proc_stddev_wz_c"],
+      "required": ["proc_stddev_xy_c", "proc_stddev_yaw_c", "proc_stddev_vx_c", "proc_stddev_wz_c"],
       "additionalProperties": false
     }
   }
