@@ -117,7 +117,9 @@ public:
 
   /// @param overrides Appended *after* the shipped yaml. `NodeOptions::parameter_overrides()`
   /// is applied in vector order into a map, so the last write wins and these take effect.
-  explicit NdtHarness(std::vector<rclcpp::Parameter> overrides = {})
+  /// @param with_map_loader False leaves `pcd_loader_service` unserved, for the loader-absent
+  /// case; everything else is unchanged.
+  explicit NdtHarness(std::vector<rclcpp::Parameter> overrides = {}, bool with_map_loader = true)
   : overrides_(std::move(overrides))
   {
     node_ = std::make_shared<autoware::ndt_scan_matcher::NDTScanMatcher>(build_node_options());
@@ -146,11 +148,13 @@ public:
     node_thread_ = std::thread([this] { node_executor_->spin(); });
     wait_until_spinning(*node_executor_);
 
-    map_loader_ = std::make_shared<StubMapLoader>();
-    loader_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
-    loader_executor_->add_node(map_loader_);
-    loader_thread_ = std::thread([this] { loader_executor_->spin(); });
-    wait_until_spinning(*loader_executor_);
+    if (with_map_loader) {
+      map_loader_ = std::make_shared<StubMapLoader>();
+      loader_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
+      loader_executor_->add_node(map_loader_);
+      loader_thread_ = std::thread([this] { loader_executor_->spin(); });
+      wait_until_spinning(*loader_executor_);
+    }
   }
 
   ~NdtHarness()
