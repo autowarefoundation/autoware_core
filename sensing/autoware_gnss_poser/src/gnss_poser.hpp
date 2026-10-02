@@ -1,0 +1,180 @@
+// Copyright 2026 TIER IV, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+#ifndef GNSS_POSER_HPP_
+#define GNSS_POSER_HPP_
+
+#include <builtin_interfaces/msg/time.hpp>
+
+#include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
+#include <autoware_map_msgs/msg/map_projector_info.hpp>
+#include <autoware_sensing_msgs/msg/gnss_ins_orientation.hpp>
+#include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
+#include <geometry_msgs/msg/transform.hpp>
+#include <geometry_msgs/msg/transform_stamped.hpp>
+#include <sensor_msgs/msg/nav_sat_fix.hpp>
+
+#include <boost/circular_buffer.hpp>
+
+#include <array>
+#include <functional>
+#include <optional>
+#include <string>
+#include <utility>
+
+// The rclcpp-free part of the GNSS poser: it turns GNSS fixes into base_link poses. Everything
+// here takes and returns message types but needs no node, clock, TF listener or publisher.
+namespace autoware::gnss_poser
+{
+// How the published position is derived from the incoming fixes: the latest one as-is, or the
+// average / component-wise median of the last `buff_epoch` ones.
+enum class GnssPosePubMethod { Instant = 0, Average = 1, Median = 2 };
+
+/// \brief Configuration of GnssPoser, taken from the node parameters of the same names.
+struct GnssPoserParams
+{
+  GnssPosePubMethod gnss_pose_pub_method = GnssPosePubMethod::Instant;
+  int buff_epoch = 1;
+  bool use_gnss_ins_orientation = true;
+  /// frame_id of the published pose and of the transform to broadcast.
+  std::string map_frame = "map";
+  /// child_frame_id of the transform to broadcast.
+  std::string gnss_base_frame = "gnss_base_link";
+};
+
+// Covariance values the poser claims when its input carries none. gnss_poser has used them
+// unchanged since 2020 and no rationale for any of them is recorded; the maintainer wrote in
+// autoware.universe issue #800 that "the default values were set without any verification". They
+// are named here so that they can be seen and discussed in one place rather than read out of the
+// arithmetic, and so that a test can state which of them it exercises.
+constexpr std::array<double, 3> default_unknown_position_variances = {10.0, 10.0, 10.0};  // [m^2]
+constexpr std::array<double, 3> default_motion_rotation_variances = {0.1, 0.1, 1.0};      // [rad^2]
+constexpr double default_ins_placeholder_rmse = 1.0;                                      // [rad]
+
+/// \brief The covariance values above, as GnssPoser takes them.
+///
+/// Not node parameters: GnssPoserNode constructs GnssPoser without them, so the values are the
+/// ones above. They are injectable so that a test can show which value reaches the output, and so
+/// that turning any of them into a parameter later needs no change here.
+struct GnssPoserCovarianceDefaults
+{
+  /// Position variances used when the fix reports COVARIANCE_TYPE_UNKNOWN. [m^2]
+  std::array<double, 3> unknown_position_variances = default_unknown_position_variances;
+  /// Roll, pitch and yaw variances used while the orientation is derived from motion. [rad^2]
+  std::array<double, 3> motion_rotation_variances = default_motion_rotation_variances;
+  /// Stand-in rmse per axis until the first INS orientation arrives. It is squared into the
+  /// rotation variances like a real one, so 1.0 rad becomes 1.0 rad^2. [rad]
+  double ins_placeholder_rmse = default_ins_placeholder_rmse;
+};
+
+/// \brief Turns GNSS fixes into base_link poses in the map frame.
+///
+/// Feed the map projector info and, when configured, the INS orientation through the setters, then
+/// call input_fix() for every NavSatFix. The result says whether the fix produced a pose or why it
+/// did not; what to publish and log for each outcome is the caller's decision.
+class GnssPoser
+{
+public:
+  /// \brief Resolves the transform from the antenna frame named in the fix header to base_link at
+  /// the fix header stamp, or std::nullopt when it cannot be resolved.
+  ///
+  /// input_fix() calls it only for a fix that passed the gates and the buffering, right before the
+  /// pose is composed. Obtaining the transform (TF lookup, logging) is the caller's business; what
+  /// to do when there is none is decided here.
+  using TransformLookup = std::function<std::optional<geometry_msgs::msg::Transform>(
+    const std::string & antenna_frame, const builtin_interfaces::msg::Time & stamp)>;
+
+  /// \param lookup_antenna_to_base_link see TransformLookup; kept for the lifetime of the object.
+  /// \param covariance_defaults see GnssPoserCovarianceDefaults; the node leaves it at its
+  /// defaults.
+  /// \throw std::invalid_argument when params.buff_epoch is smaller than 1.
+  GnssPoser(
+    const GnssPoserParams & params, TransformLookup lookup_antenna_to_base_link,
+    const GnssPoserCovarianceDefaults & covariance_defaults = {});
+
+  /// \brief What input_fix() did with the fix.
+  enum class Outcome {
+    NoProjectorInfo,  ///< no map projector info received yet; nothing was derived from the fix
+    LocalProjector,   ///< the map uses a local projector, so a GNSS fix cannot be converted
+    NotFixed,         ///< the receiver reports no fix; its status is known but no pose is computed
+    Buffering,        ///< the position buffer is not full yet (average and median methods)
+    Published,        ///< a pose was computed, see Result::gnss_pose
+  };
+
+  /// \brief What the fix produced, as the messages to publish.
+  ///
+  /// The messages are filled in completely, headers included, so that the caller only has to hand
+  /// them to a publisher: which frame a pose is in and which stamp it carries is part of the pose
+  /// computation, not of the plumbing. What is empty is not published, so the caller never has to
+  /// know which outcome produces which output; `outcome` is there to be logged and reported.
+  struct Result
+  {
+    Outcome outcome;
+    /// The receiver's fix status. Empty for a fix that was rejected before the fixed check,
+    /// which says nothing about the receiver.
+    std::optional<autoware_internal_debug_msgs::msg::BoolStamped> gnss_fixed;
+    /// The base_link pose in the map frame.
+    std::optional<geometry_msgs::msg::PoseStamped> gnss_pose;
+    /// The same pose with its 6x6 covariance (only the diagonal is filled).
+    std::optional<geometry_msgs::msg::PoseWithCovarianceStamped> gnss_pose_cov;
+    /// The same pose as a transform, map_frame -> gnss_base_frame, ready to broadcast.
+    std::optional<geometry_msgs::msg::TransformStamped> transform;
+  };
+
+  void set_projector_info(const autoware_map_msgs::msg::MapProjectorInfo & projector_info);
+
+  /// \brief Latch the INS orientation used while use_gnss_ins_orientation is true. Until the first
+  /// call, an identity orientation with an rmse of 1.0 rad per axis stands in for it.
+  void set_ins_orientation(const autoware_sensing_msgs::msg::GnssInsOrientation & orientation);
+
+  /// \brief Process one fix: gate, project, buffer, orient, compose with the antenna transform and
+  /// attach the covariance.
+  Result input_fix(const sensor_msgs::msg::NavSatFix & fix);
+
+private:
+  GnssPoserParams params_;
+  TransformLookup lookup_antenna_to_base_link_;
+  GnssPoserCovarianceDefaults covariance_defaults_;
+  autoware_map_msgs::msg::MapProjectorInfo projector_info_;
+  bool received_map_projector_info_ = false;
+  boost::circular_buffer<geometry_msgs::msg::Point> position_buffer_;
+  // Previous antenna position used to derive orientation from motion.
+  geometry_msgs::msg::Point prev_position_;
+  bool has_prev_position_ = false;
+  autoware_sensing_msgs::msg::GnssInsOrientation ins_orientation_;
+};
+
+// Utility functions of a few specific steps, declared here only because the unit tests that came
+// with the package call them directly.
+
+/// \brief Component-wise median of the buffered positions. The buffer must be non-empty.
+geometry_msgs::msg::Point get_median_position(
+  const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer);
+
+/// \brief Component-wise mean of the buffered positions. The buffer must be non-empty.
+geometry_msgs::msg::Point get_average_position(
+  const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer);
+
+/// \brief Yaw-only orientation pointing from `prev_point` to `point` (atan2 of the xy
+/// displacement); identity when the two points coincide.
+geometry_msgs::msg::Quaternion get_quaternion_by_position_difference(
+  const geometry_msgs::msg::Point & point, const geometry_msgs::msg::Point & prev_point);
+
+}  // namespace autoware::gnss_poser
+
+#endif  // GNSS_POSER_HPP_
