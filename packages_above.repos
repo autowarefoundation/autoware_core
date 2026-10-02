@@ -77,7 +77,7 @@ repositories:
   middleware/external/agnocast:
     type: git
     url: https://github.com/tier4/agnocast.git
-    version: 2.3.1
+    version: 2.4.0
   # Tools
   tools/autoware_tools:
     type: git
