@@ -20,6 +20,7 @@
 
 #include <gtest/gtest.h>
 
+#include <cmath>
 #include <memory>
 #include <vector>
 
@@ -87,6 +88,21 @@ public:
     const rclcpp::Time & predicted_objects_stamp) const
   {
     return object->calc_predicted_pose(time, predicted_objects_stamp);
+  }
+
+  // Wrapper method for testing
+  std::vector<StopObstacle> check_consistency_wrapper(
+    const rclcpp::Time & current_time, const std::vector<TrajectoryPoint> & traj_points,
+    const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
+    std::vector<StopObstacle> stop_obstacles)
+  {
+    check_consistency(current_time, traj_points, objects, stop_obstacles);
+    return stop_obstacles;
+  }
+
+  void set_prev_closest_stop_obstacles(const std::vector<StopObstacle> & stop_obstacles)
+  {
+    prev_closest_stop_obstacles_ = stop_obstacles;
   }
 
 private:
@@ -267,6 +283,112 @@ TEST_F(OutsideCutInObstacleTest, GetSpecifiedTimePoseStaticObject)
     object, current_time_ + rclcpp::Duration::from_seconds(1.0), current_time_);
   EXPECT_DOUBLE_EQ(pose_1s.position.x, pose.position.x);
   EXPECT_DOUBLE_EQ(pose_1s.position.y, pose.position.y);
+}
+
+class CheckConsistencyTest : public ::testing::Test
+{
+protected:
+  void SetUp() override
+  {
+    rclcpp::init(0, nullptr);
+    module_ = std::make_unique<ObstacleStopModuleWrapper>();
+    traj_points_ = test_utils::create_test_trajectory();
+  }
+
+  void TearDown() override { rclcpp::shutdown(); }
+
+  // Create an object on the trajectory whose velocity is given in its own frame
+  std::shared_ptr<PlannerData::Object> create_test_object(
+    const double yaw, const double x_vel) const
+  {
+    auto object = std::make_shared<PlannerData::Object>();
+    object->predicted_object.object_id.uuid.at(0) = 1;
+    object->predicted_object.kinematics.initial_pose_with_covariance.pose =
+      test_utils::create_test_pose(
+        20.0, 0.0, 0.0, 0.0, 0.0, std::sin(yaw / 2.0), std::cos(yaw / 2.0));
+    object->predicted_object.kinematics.initial_twist_with_covariance.twist.linear.x = x_vel;
+    object->predicted_object.shape.dimensions.x = 2.0;
+    object->predicted_object.shape.dimensions.y = 2.0;
+    object->predicted_object.shape.dimensions.z = 2.0;
+    object->predicted_object.classification.resize(1);
+    object->predicted_object.classification.at(0).label = ObjectClassification::CAR;
+    return object;
+  }
+
+  // Create the previous closest stop obstacle corresponding to the object
+  static StopObstacle create_prev_stop_obstacle(
+    const std::shared_ptr<PlannerData::Object> & object, const rclcpp::Time & stamp)
+  {
+    const auto & predicted_object = object->predicted_object;
+    return StopObstacle{
+      predicted_object.object_id,
+      stamp,
+      StopObstacleClassification{predicted_object.classification},
+      predicted_object.kinematics.initial_pose_with_covariance.pose,
+      predicted_object.shape,
+      0.0,
+      predicted_object.kinematics.initial_pose_with_covariance.pose.position,
+      20.0,
+      PolygonParam{}};
+  }
+
+  std::vector<TrajectoryPoint> traj_points_;
+  // obstacle_velocity_threshold_enter_fixed_stop: 3.0, stop_obstacle_hold_time_threshold: 1.0
+  const rclcpp::Time current_time_{10, 0, RCL_ROS_TIME};
+  std::unique_ptr<ObstacleStopModuleWrapper> module_;
+};
+
+TEST_F(CheckConsistencyTest, HoldApproachingObstacle)
+{
+  // The object faces the opposite direction of the trajectory and approaches the ego.
+  // Its velocity in its own frame is positive, but the longitudinal velocity against the trajectory
+  // is negative, which is smaller than obstacle_velocity_threshold_enter_fixed_stop.
+  const auto object = create_test_object(M_PI, 5.0);
+  module_->set_prev_closest_stop_obstacles(
+    {create_prev_stop_obstacle(object, current_time_ - rclcpp::Duration::from_seconds(0.5))});
+
+  const auto result = module_->check_consistency_wrapper(current_time_, traj_points_, {object}, {});
+
+  ASSERT_EQ(result.size(), 1u);
+  EXPECT_EQ(result.front().uuid, object->predicted_object.object_id);
+}
+
+TEST_F(CheckConsistencyTest, HoldCrossingObstacle)
+{
+  // The object moves perpendicular to the trajectory, so its longitudinal velocity against the
+  // trajectory is zero.
+  const auto object = create_test_object(M_PI_2, 5.0);
+  module_->set_prev_closest_stop_obstacles(
+    {create_prev_stop_obstacle(object, current_time_ - rclcpp::Duration::from_seconds(0.5))});
+
+  const auto result = module_->check_consistency_wrapper(current_time_, traj_points_, {object}, {});
+
+  ASSERT_EQ(result.size(), 1u);
+  EXPECT_EQ(result.front().uuid, object->predicted_object.object_id);
+}
+
+TEST_F(CheckConsistencyTest, NotHoldFastLeadingObstacle)
+{
+  // The object moves along the trajectory faster than obstacle_velocity_threshold_enter_fixed_stop.
+  const auto object = create_test_object(0.0, 5.0);
+  module_->set_prev_closest_stop_obstacles(
+    {create_prev_stop_obstacle(object, current_time_ - rclcpp::Duration::from_seconds(0.5))});
+
+  const auto result = module_->check_consistency_wrapper(current_time_, traj_points_, {object}, {});
+
+  EXPECT_TRUE(result.empty());
+}
+
+TEST_F(CheckConsistencyTest, NotHoldAfterHoldTime)
+{
+  // The object is static, but stop_obstacle_hold_time_threshold has passed.
+  const auto object = create_test_object(0.0, 0.0);
+  module_->set_prev_closest_stop_obstacles(
+    {create_prev_stop_obstacle(object, current_time_ - rclcpp::Duration::from_seconds(1.5))});
+
+  const auto result = module_->check_consistency_wrapper(current_time_, traj_points_, {object}, {});
+
+  EXPECT_TRUE(result.empty());
 }
 
 }  // namespace autoware::motion_velocity_planner
