@@ -207,7 +207,7 @@ private:
     const VehicleInfo & vehicle_info) const;
 
   void check_consistency(
-    const rclcpp::Time & current_time,
+    const rclcpp::Time & current_time, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
     std::vector<StopObstacle> & stop_obstacles);
   double calc_margin_from_obstacle_on_curve(
