@@ -246,7 +246,7 @@ bool has_ndt_base_link_transform(const TopicCapture<tf2_msgs::msg::TFMessage> & 
 // ---------------------------------------------------------------------------------------------
 
 /// An empty cloud is rejected with a WARN.
-TEST(NdtScanMatcherCharacteristics, EmptyScanIsRejectedWithAWarning)
+TEST(NdtScanMatcherCharacteristics, EmptyScanIsRejectedWithWarning)
 {
   // Arrange
   auto harness = make_ready_harness();
@@ -298,7 +298,7 @@ TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
 
 /// A scan whose frame has no transform to `base_link` is an ERROR, and the callback stops there —
 /// `sensor_points_max_distance` is absent.
-TEST(NdtScanMatcherCharacteristics, ScanWithoutATransformIsAnError)
+TEST(NdtScanMatcherCharacteristics, ScanWithoutTransformIsError)
 {
   // Arrange
   auto harness = make_ready_harness();
@@ -506,7 +506,7 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides(
 }
 
 /// An unknown `converged_param_type` aligns, then discards the result: ERROR, nothing published.
-TEST(NdtScanMatcherCharacteristics, UnknownConvergedParamTypeIsAnErrorAfterAligning)
+TEST(NdtScanMatcherCharacteristics, UnknownConvergedParamTypeIsErrorAfterAligning)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides(
@@ -584,13 +584,13 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
   EXPECT_EQ(ndt_pose->count(), 0U);
   EXPECT_EQ(ndt_pose_with_cov->count(), 0U);
 
-  // Different from `ConvergedScanResetsTheSkipCounter`, which exits early at the distance check.
+  // Different from `ConvergedScanResetsSkipCounter`, which exits early at the distance check.
   // This one reaches the final `return is_converged`.
   EXPECT_GT(diag.value_as_double("skipping_publish_num"), 0.0);
 }
 
 /// The iteration limit withholds the pose even when the score is fine.
-TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPose)
+TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesConvergedPose)
 {
   // Arrange
   // `iteration_num < max_iterations` is false on the first reported iteration.
@@ -668,7 +668,7 @@ TEST(NdtScanMatcherCharacteristics, ExecutionTimeOverBoundWarnsButStillPublishes
 
 /// Reaching `validation.skipping_publish_num` appends the "exceed limit" WARN — the comparison is
 /// `>=`, so the threshold value itself warns. The counter is a `static` shared by the binary.
-TEST(NdtScanMatcherCharacteristics, SkipCounterWarnsWhenItReachesTheThreshold)
+TEST(NdtScanMatcherCharacteristics, SkipCounterWarnsWhenItReachesThreshold)
 {
   // Arrange
   // `required_distance` is what rejects the near-field scan below, so it is pinned alongside.
@@ -903,7 +903,7 @@ TEST(NdtScanMatcherCharacteristics, EstimatedCovarianceOverwritesOnlyFourOfThirt
 }
 
 /// The pose `align` starts from is the interpolated midpoint, not either surrounding pose.
-TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseIsTheInterpolatedMidpoint)
+TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseIsInterpolatedMidpoint)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides());
@@ -942,7 +942,7 @@ TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseIsTheInterpolatedMidpoin
 }
 
 /// `initial_pose_distance_tolerance_m` applies to the gap between the two surrounding poses.
-TEST(NdtScanMatcherCharacteristics, InitialPoseDistanceToleranceReachesTheInterpolationBuffer)
+TEST(NdtScanMatcherCharacteristics, InitialPoseDistanceToleranceReachesInterpolationBuffer)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides(
@@ -969,7 +969,7 @@ TEST(NdtScanMatcherCharacteristics, InitialPoseDistanceToleranceReachesTheInterp
 }
 
 /// A converged scan resets the skip counter, checked after a rejected scan raised it.
-TEST(NdtScanMatcherCharacteristics, ConvergedScanResetsTheSkipCounter)
+TEST(NdtScanMatcherCharacteristics, ConvergedScanResetsSkipCounter)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides());
@@ -1025,7 +1025,7 @@ TEST(NdtScanMatcherCharacteristics, TransformProbabilityTypeIsJudgedByItsOwnThre
 }
 
 /// Out of map range is a WARN on the scan and an ERROR on the timer, and the pose still goes out.
-TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsAWarnOnTheScanAndAnErrorOnTheTimer)
+TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsWarnOnScanAndErrorOnTimer)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides(
@@ -1058,7 +1058,7 @@ TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsAWarnOnTheScanAndAnErrorOnThe
 
 /// Activating the node clears the initial-pose buffer — a side effect nothing else observes. The
 /// control arm proves the sequence would otherwise have interpolated successfully.
-TEST(NdtScanMatcherCharacteristics, ActivatingClearsTheInitialPoseBuffer)
+TEST(NdtScanMatcherCharacteristics, ActivatingClearsInitialPoseBuffer)
 {
   {
     // Arrange
@@ -1101,7 +1101,7 @@ TEST(NdtScanMatcherCharacteristics, ActivatingClearsTheInitialPoseBuffer)
 
 /// An initial pose arriving while deactivated is dropped before its frame is checked, so startup
 /// shows "Node is not activated." and not a frame-id ERROR — `is_expected_frame_id` is absent.
-TEST(NdtScanMatcherCharacteristics, InitialPoseIsRejectedBeforeTheFrameCheckWhenNotActivated)
+TEST(NdtScanMatcherCharacteristics, InitialPoseIsRejectedBeforeFrameCheckWhenNotActivated)
 {
   // Arrange
   auto harness = make_ready_harness();
@@ -1204,7 +1204,7 @@ std::unique_ptr<NdtHarness> make_harness_ready_to_align(
 }
 
 /// An align request whose frame has no transform to `map` is an ERROR, and nothing else runs.
-TEST(NdtScanMatcherCharacteristics, AlignWithoutATransformIsAnError)
+TEST(NdtScanMatcherCharacteristics, AlignWithoutTransformIsError)
 {
   // Arrange
   auto harness = make_ready_harness(fast_align_overrides());
@@ -1227,7 +1227,7 @@ TEST(NdtScanMatcherCharacteristics, AlignWithoutATransformIsAnError)
 }
 
 /// With a map but no stored scan, align fails after the map check.
-TEST(NdtScanMatcherCharacteristics, AlignWithoutAStoredScanFailsAfterTheMapCheck)
+TEST(NdtScanMatcherCharacteristics, AlignWithoutStoredScanFailsAfterMapCheck)
 {
   // Arrange
   auto harness = make_ready_harness(fast_align_overrides());
@@ -1331,7 +1331,7 @@ TEST(NdtScanMatcherCharacteristics, SuccessfulAlignEmitsTheseKeysAndOneCloudPerP
 }
 
 /// The other half of the case above: the NVTL threshold is the one `reliable` answers to.
-TEST(NdtScanMatcherCharacteristics, ReliableFollowsTheNvtlThreshold)
+TEST(NdtScanMatcherCharacteristics, ReliableFollowsNvtlThreshold)
 {
   // Arrange
   // Thresholds swapped: now only the NVTL one is out of reach.
@@ -1352,7 +1352,7 @@ TEST(NdtScanMatcherCharacteristics, ReliableFollowsTheNvtlThreshold)
 }
 
 /// The `reliable` flag ignores the transform-probability threshold.
-TEST(NdtScanMatcherCharacteristics, ReliableIgnoresTheTransformProbabilityThreshold)
+TEST(NdtScanMatcherCharacteristics, ReliableIgnoresTransformProbabilityThreshold)
 {
   // Arrange
   // TP threshold out of reach, NVTL threshold reachable. `0.0 < score` needs a positive score, and

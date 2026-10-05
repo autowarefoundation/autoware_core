@@ -59,7 +59,7 @@ struct InitialPoseSpec
   /// @brief Offset of the *newer* pose from the older one, along x.
   ///
   /// Must stay within `validation.initial_pose_distance_tolerance_m` or interpolation is rejected,
-  /// which is what `InitialPoseDistanceToleranceReachesTheInterpolationBuffer` drives past.
+  /// which is what `InitialPoseDistanceToleranceReachesInterpolationBuffer` drives past.
   double delta_x{0.0};
 };
 
