@@ -1,6 +1,6 @@
 {
   "name": "Autoware Core Development",
-  "image": "ghcr.io/autowarefoundation/autoware:core-jazzy",
+  "image": "ghcr.io/autowarefoundation/autoware:core-devel-jazzy",
   "runArgs": ["--net=host", "--privileged", "--name", "autoware-core-devcontainer"],
   "workspaceFolder": "/home/aw/autoware/",
   "remoteUser": "aw",
@@ -8,11 +8,28 @@
     "SSH_AUTH_SOCK": "/ssh-agent"
   },
 
+  "initializeCommand": "bash ${localWorkspaceFolder}/.devcontainer/scripts/prepare-host-dirs.sh",
+
   "mounts": [
     {
       "type": "bind",
       "source": "${localWorkspaceFolder}",
       "target": "/home/aw/autoware/src/core/"
+    },
+    {
+      "type": "bind",
+      "source": "${localWorkspaceFolder}/.devcontainer/build",
+      "target": "/home/aw/autoware/build"
+    },
+    {
+      "type": "bind",
+      "source": "${localWorkspaceFolder}/.devcontainer/install",
+      "target": "/home/aw/autoware/install"
+    },
+    {
+      "type": "bind",
+      "source": "${localWorkspaceFolder}/.devcontainer/log",
+      "target": "/home/aw/autoware/log"
     },
     {
       "type": "volume",
