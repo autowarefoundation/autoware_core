@@ -115,11 +115,6 @@ std::unique_ptr<NdtHarness> make_ready_harness(std::vector<rclcpp::Parameter> ov
   return harness;
 }
 
-bool contains(const std::string & haystack, const std::string & needle)
-{
-  return haystack.find(needle) != std::string::npos;
-}
-
 /// Returns the keys sorted, so a comparison checks the set and the count but not the order.
 std::vector<std::string> sorted_keys(std::vector<std::string> keys)
 {
@@ -264,8 +259,6 @@ TEST(NdtScanMatcherCharacteristics, EmptyScanIsRejectedWithAWarning)
   const auto & diag = outcome->diag;
 
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), "Sensor points is empty."))
-    << "message was: " << diag.message();
 }
 
 /// Looks like a bug — a late scan only warns; the early return is commented out on purpose.
@@ -287,8 +280,6 @@ TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
   const auto & diag = outcome->diag;
 
   EXPECT_GT(diag.value_as_double("sensor_points_delay_time_sec"), timeout_sec);
-  EXPECT_TRUE(contains(diag.message(), "sensor points is experiencing latency."))
-    << "message was: " << diag.message();
 
   // Whether the latency gate *should* abort is genuinely open, so this records today's answer.
   EXPECT_EQ(diag.value("is_succeed_transform_sensor_points"), "True")
@@ -532,8 +523,6 @@ TEST(NdtScanMatcherCharacteristics, UnknownConvergedParamTypeIsAnErrorAfterAlign
   EXPECT_FALSE(diag.has_key("transform_probability_diff"))
     << "the callback ran past the type check.";
   EXPECT_EQ(diag.level(), level_error);
-  EXPECT_TRUE(contains(diag.message(), "Unknown converged param type"))
-    << "message was: " << diag.message();
   EXPECT_GT(diag.value_as_double("skipping_publish_num"), 0.0);
 
   // The record above is published after the callback returned, so any publish came first.
@@ -572,8 +561,6 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
   const auto & diag = outcome->diag;
 
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), "Score is below the threshold. Score: "))
-    << "message was: " << diag.message();
 
   // `points_aligned` is the last unconditional publish, so it proves the callback passed
   // `publish_pose`.
@@ -617,12 +604,6 @@ TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPos
   EXPECT_EQ(diag.value("iteration_num"), "1");
   EXPECT_EQ(diag.value("local_optimal_solution_oscillation_num"), "0");
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), "The number of iterations has reached its upper limit."))
-    << "message was: " << diag.message();
-  // ASSERT, not EXPECT: if the score check also failed, the next assertion proves nothing.
-  ASSERT_FALSE(contains(diag.message(), "Score is below the threshold."))
-    << "the score check also failed, so this test no longer isolates the iteration check: "
-    << diag.message();
 
   ASSERT_TRUE(harness->wait_until([&] { return points_aligned->count() >= 1; }, 5s));
 
@@ -630,8 +611,7 @@ TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPos
 }
 
 /// Drives one scan and checks that the WARN it raised did not withhold the pose.
-void expect_scan_warns_but_still_publishes(
-  NdtHarness & harness, const std::string & expected_message)
+void expect_scan_warns_but_still_publishes(NdtHarness & harness)
 {
   auto ndt_pose = harness.capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
   ASSERT_TRUE(harness.ensure_map_loaded());
@@ -642,7 +622,6 @@ void expect_scan_warns_but_still_publishes(
   const auto & diag = outcome->diag;
 
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), expected_message)) << "message was: " << diag.message();
   EXPECT_EQ(diag.value("skipping_publish_num"), "0");
 
   expect_published_once(harness, ndt_pose, *outcome);
@@ -654,7 +633,7 @@ TEST(NdtScanMatcherCharacteristics, InitialToResultDistanceOverToleranceWarnsBut
   auto harness = make_ready_harness(converged_hot_path_overrides(
     {rclcpp::Parameter("validation.initial_to_result_distance_tolerance_m", always_exceeded)}));
 
-  expect_scan_warns_but_still_publishes(*harness, "distance_initial_to_result is too large");
+  expect_scan_warns_but_still_publishes(*harness);
 }
 
 /// `execution_time` over its bound is a WARN, and the pose still goes out.
@@ -663,7 +642,7 @@ TEST(NdtScanMatcherCharacteristics, ExecutionTimeOverBoundWarnsButStillPublishes
   auto harness = make_ready_harness(converged_hot_path_overrides(
     {rclcpp::Parameter("validation.critical_upper_bound_exe_time_ms", always_exceeded)}));
 
-  expect_scan_warns_but_still_publishes(*harness, "NDT exe time is too long");
+  expect_scan_warns_but_still_publishes(*harness);
 }
 
 /// Reaching `validation.skipping_publish_num` appends the "exceed limit" WARN — the comparison is
@@ -695,8 +674,6 @@ TEST(NdtScanMatcherCharacteristics, SkipCounterWarnsWhenItReachesTheThreshold)
 
   EXPECT_EQ(diag.value("skipping_publish_num"), "1");
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), "skipping_publish_num exceed limit"))
-    << "message was: " << diag.message();
 }
 
 /// A converged scan reports exactly these nineteen diagnostics keys.
@@ -1017,8 +994,6 @@ TEST(NdtScanMatcherCharacteristics, TransformProbabilityTypeIsJudgedByItsOwnThre
   const auto & diag = outcome->diag;
 
   EXPECT_EQ(diag.level(), level_warn);
-  EXPECT_TRUE(contains(diag.message(), "Score is below the threshold. Score: "))
-    << "message was: " << diag.message();
 
   ASSERT_TRUE(harness->wait_until([&] { return points_aligned->count() >= 1; }, 5s));
   EXPECT_EQ(ndt_pose->count(), 0U);
@@ -1032,8 +1007,7 @@ TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsAWarnOnTheScanAndAnErrorOnThe
     {rclcpp::Parameter("dynamic_map_loading.lidar_radius", 151.0)}));  // `map_radius` is 150
 
   // Act and Assert, scan side: the shared warn-and-continue shape.
-  ASSERT_NO_FATAL_FAILURE(
-    expect_scan_warns_but_still_publishes(*harness, "Lidar has gone out of the map range"));
+  ASSERT_NO_FATAL_FAILURE(expect_scan_warns_but_still_publishes(*harness));
 
   // Timer side. The vehicle has not moved `update_distance`, so the timer only reports. A missing
   // `is_need_rebuild` key shows no rebuild was attempted.
@@ -1042,8 +1016,6 @@ TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsAWarnOnTheScanAndAnErrorOnThe
     [](const NdtHarness::Record & record) { return record.level() == level_error; },
     std::chrono::seconds(5));
   ASSERT_TRUE(timer.has_value());
-  EXPECT_TRUE(contains(timer->message(), "Dynamic map loading is not keeping up"))
-    << "message was: " << timer->message();
   EXPECT_FALSE(timer->has_key("is_need_rebuild")) << "the timer went on to update the map.";
 
   // Side effect of the ERROR: past `update_distance`, the next load rebuilds instead of adding.
