@@ -30,34 +30,29 @@ bool is_stopped(
 }
 }  // namespace
 
-StopFilter::StopFilter(const double linear_x_threshold, const double angular_z_threshold)
-: linear_x_threshold_(linear_x_threshold), angular_z_threshold_(angular_z_threshold)
+StopFilter::StopFilter(const StopFilterConfig & config) : config_(config)
 {
 }
 
-autoware_internal_debug_msgs::msg::BoolStamped StopFilter::create_stop_flag_msg(
-  const nav_msgs::msg::Odometry & input) const
+StopFilterResult StopFilter::filter(const nav_msgs::msg::Odometry & input) const
 {
-  autoware_internal_debug_msgs::msg::BoolStamped stop_flag_msg;
-  stop_flag_msg.stamp = input.header.stamp;
-  stop_flag_msg.data = is_stopped(input, linear_x_threshold_, angular_z_threshold_);
-  return stop_flag_msg;
-}
+  const bool stopped = is_stopped(input, config_.linear_x_threshold, config_.angular_z_threshold);
 
-nav_msgs::msg::Odometry StopFilter::create_filtered_msg(const nav_msgs::msg::Odometry & input) const
-{
-  nav_msgs::msg::Odometry filtered_msg = input;
+  StopFilterResult result;
+  result.stop_flag.stamp = input.header.stamp;
+  result.stop_flag.data = stopped;
 
-  if (is_stopped(input, linear_x_threshold_, angular_z_threshold_)) {
-    filtered_msg.twist.twist.linear.x = 0.0;
-    filtered_msg.twist.twist.linear.y = 0.0;
-    filtered_msg.twist.twist.linear.z = 0.0;
-    filtered_msg.twist.twist.angular.x = 0.0;
-    filtered_msg.twist.twist.angular.y = 0.0;
-    filtered_msg.twist.twist.angular.z = 0.0;
+  result.filtered_odometry = input;
+  if (stopped) {
+    result.filtered_odometry.twist.twist.linear.x = 0.0;
+    result.filtered_odometry.twist.twist.linear.y = 0.0;
+    result.filtered_odometry.twist.twist.linear.z = 0.0;
+    result.filtered_odometry.twist.twist.angular.x = 0.0;
+    result.filtered_odometry.twist.twist.angular.y = 0.0;
+    result.filtered_odometry.twist.twist.angular.z = 0.0;
   }
 
-  return filtered_msg;
+  return result;
 }
 
 }  // namespace autoware::stop_filter

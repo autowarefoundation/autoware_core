@@ -1,7 +1,9 @@
-autoware_system_design_format: 0.3.0
+autoware_system_design_format: 0.4.0
 
 # node information
 name: PoseInitializer.node
+
+description: Sends the initial pose to the EKF localizer. Takes a rough pose from GNSS or the user, fits its height to the map, refines it through the pose estimator alignment services, and publishes the result.
 
 package:
   name: autoware_pose_initializer
@@ -13,55 +15,122 @@ launch:
   node_output: screen
 
 # interfaces
-subscribers: []
+subscribers:
+  - name: stop_check_twist
+    message_type: geometry_msgs/msg/TwistWithCovarianceStamped
+    description: Twist for the stop check.
+    remap_target: stop_check_twist
+  - name: gnss_pose_cov
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Pose from GNSS, used when no pose is given in the request.
+    remap_target: gnss_pose_cov
+  - name: pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    description: Pointcloud map for the map height fitter.
+    remap_target: ~/pointcloud_map
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    description: Vector map for the map height fitter.
+    remap_target: ~/vector_map
 
 publishers:
   - name: pose_reset
     message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Calculated initial ego pose.
     remap_target: pose_reset
   - name: pub_state
     message_type: autoware_adapi_v1_msgs/msg/LocalizationInitializationState
+    description: Pose initialization state.
     remap_target: /localization/initialization_state
 
 servers:
   - name: initialize
     message_type: autoware_localization_msgs/srv/InitializeLocalization
+    description: Initial pose request from the API.
     remap_target: /localization/initialize
+
+clients:
+  - name: yabloc_align
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    description: YabLoc pose estimation service.
+    remap_target: yabloc_align
+  - name: ndt_align
+    message_type: autoware_internal_localization_msgs/srv/PoseWithCovarianceStamped
+    description: NDT pose estimation service.
+    remap_target: ndt_align
+  - name: ekf_trigger_node
+    message_type: std_srvs/srv/SetBool
+    description: Activates or deactivates the EKF localizer.
+    remap_target: ekf_trigger_node
+  - name: ndt_trigger_node
+    message_type: std_srvs/srv/SetBool
+    description: Activates or deactivates the NDT scan matcher.
+    remap_target: ndt_trigger_node
+  - name: partial_map_load
+    message_type: autoware_map_msgs/srv/GetPartialPointCloudMap
+    description: Loads the pointcloud map around the requested pose for the map height fitter.
+    remap_target: ~/partial_map_load
 
 # parameters
 param_files:
   - name: config_file
     default: config/pose_initializer.param.yaml
+    description: Covariances and thresholds of the initialization.
 
 param_values:
   - name: ekf_enabled
+    type: bool
     default: false
+    description: If true, the EKF localizer is activated.
   - name: gnss_enabled
+    type: bool
     default: false
+    description: If true, the GNSS pose is used when no pose is specified.
   - name: ndt_enabled
+    type: bool
     default: false
+    description: If true, the pose is estimated by the NDT scan matcher; otherwise it is passed through.
   - name: yabloc_enabled
+    type: bool
     default: false
+    description: If true, the YabLoc module is used.
   - name: stop_check_enabled
+    type: bool
     default: false
+    description: If true, initialization is accepted only when the vehicle is stopped.
   - name: pose_error_check_enabled
+    type: bool
     default: false
+    description: If true, the error between the initialization result and the GNSS pose is checked.
   - name: stop_check_duration
+    type: double
     default: 0.0
+    description: The duration used for the stop check [sec].
   - name: gnss_pose_timeout
+    type: double
     default: 0.0
+    description: The duration that the GNSS pose is valid [sec].
   - name: user_defined_initial_pose.enable
+    type: bool
     default: false
+    description: If true, user_defined_initial_pose.pose is set as the initial pose.
   - name: user_defined_initial_pose.pose
+    type: double_array
     default: [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]
+    description: Initial pose (x, y, z, quat_x, quat_y, quat_z, quat_w).
   - name: map_height_fitter.map_loader_name
+    type: string
     default: /map/pointcloud_map_loader
+    description: Name of the map loader node whose enable_partial_load parameter selects the map loading method.
   - name: map_height_fitter.target
+    type: string
     default: pointcloud_map
+    description: Map used to fit the height, pointcloud_map or vector_map.
 
 # processes
 processes:
   - name: initialize
+    description: Handles an initialization request; resolves the source pose, fits the height, aligns it with the enabled estimators and publishes the initial pose and state.
     trigger_conditions: []
     outcomes:
       - to_output: pose_reset

@@ -38,7 +38,7 @@ TEST_F(TestNDTScanMatcherLowParticleNum, particle_num_less_than_publish_num)  //
   //---------//
   std::thread t1([&]() {
     rclcpp::executors::MultiThreadedExecutor exec;
-    exec.add_node(node_);
+    exec.add_node(node_->get_node_base_interface());
     exec.spin();
   });
   std::thread t2([&]() { rclcpp::spin(pcd_loader_); });

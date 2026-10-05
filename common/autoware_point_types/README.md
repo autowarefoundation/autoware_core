@@ -8,10 +8,11 @@ This package provides a variety of structures to represent different types of po
 
 ### Point cloud data type definition
 
-`autoware_point_types` defines multiple structures (such as PointXYZI, PointXYZIRC, PointXYZIRADRT, PointXYZIRCAEDT, PointXYZCPE), each structure contains different attributes to adapt to different application scenarios.
+`autoware_point_types` defines multiple structures (such as PointXYZI, PointXYZIRC, PointXYZIRCT, PointXYZIRADRT, PointXYZIRCAEDT, PointXYZCPE), each structure contains different attributes to adapt to different application scenarios.
 
 - `autoware::point_types::PointXYZI`: Point type with intensity information.
 - `autoware::point_types::PointXYZIRC`: Extended PointXYZI, adds return_type and channel information.
+- `autoware::point_types::PointXYZIRCT`: Extended PointXYZIRC, adds a per-point time_stamp (`std::uint32_t`, nanoseconds relative to the point cloud's header stamp).
 - `autoware::point_types::PointXYZIRADRT`: Extended PointXYZI, adds ring, azimuth, distance, return_type and time_stamp information.
 - `autoware::point_types::PointXYZIRCAEDT`: Similar to PointXYZIRADRT, but adds elevation information and uses `std::uint32_t` as the data type for time_stamp.
 - `autoware::point_types::PointXYZCPE`: Point type for segmented points, adds class_id, probability, and entropy information.

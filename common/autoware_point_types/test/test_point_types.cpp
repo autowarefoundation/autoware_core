@@ -14,6 +14,8 @@
 
 #include "autoware/point_types/types.hpp"
 
+#include <point_cloud_msg_wrapper/point_cloud_msg_wrapper.hpp>
+
 #include <gtest/gtest.h>
 
 #include <cmath>
@@ -29,6 +31,19 @@ TEST(PointEquality, PointXYZI)
   PointXYZI pt1{0, 1, 2, 3};
   EXPECT_EQ(pt0, pt1);
   EXPECT_TRUE(pt0 == pt1);
+}
+
+TEST(PointEquality, PointXYZIRCT)
+{
+  using autoware::point_types::PointXYZIRCT;
+
+  PointXYZIRCT pt0{0, 1, 2, 3, 4, 5, 6};
+  PointXYZIRCT pt1{0, 1, 2, 3, 4, 5, 6};
+  EXPECT_EQ(pt0, pt1);
+  EXPECT_TRUE(pt0 == pt1);
+
+  pt1.time_stamp = 7;
+  EXPECT_FALSE(pt0 == pt1);
 }
 
 TEST(PointEquality, PointXYZIRADRT)
@@ -175,4 +190,26 @@ TEST(PointEquality, FloatEq)
 
   // expect same value if epsilon is larger than difference
   EXPECT_TRUE(autoware::point_types::float_eq<float>(2, 2 + 10e-6, 10e-5));
+}
+
+TEST(PointCloudModifier, PointXYZIRCT)
+{
+  using autoware::point_types::PointXYZIRCT;
+  using autoware::point_types::PointXYZIRCTGenerator;
+  using point_cloud_msg_wrapper::PointCloud2Modifier;
+  using point_cloud_msg_wrapper::PointCloud2View;
+
+  sensor_msgs::msg::PointCloud2 msg;
+  PointCloud2Modifier<PointXYZIRCT, PointXYZIRCTGenerator> modifier{msg, "base_link"};
+
+  const PointXYZIRCT point{1.0F, 2.0F, 3.0F, 4U, 5U, 6U, 7U};
+  modifier.push_back(point);
+
+  ASSERT_EQ(msg.fields.size(), 7U);
+  EXPECT_EQ(msg.fields.back().name, "time_stamp");
+  EXPECT_EQ(msg.point_step, sizeof(PointXYZIRCT));
+
+  PointCloud2View<PointXYZIRCT, PointXYZIRCTGenerator> view{msg};
+  ASSERT_EQ(view.size(), 1U);
+  EXPECT_EQ(view[0], point);
 }

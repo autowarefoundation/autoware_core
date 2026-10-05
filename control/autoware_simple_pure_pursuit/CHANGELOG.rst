@@ -5,6 +5,26 @@ Changelog for package autoware_simple_pure_pursuit
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(control): declare the dependencies these packages use (`#1368 <https://github.com/autowarefoundation/autoware_core/issues/1368>`_)
+  * fix(control): declare the dependencies these packages use
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>.
+  * fix(autoware_command_gate): remove the unused rmw include and dependency
+  autoware_command_gate.cpp includes <rmw/types.h> and uses no symbol from it.
+  Remove the include instead of declaring rmw in package.xml. This removes the
+  <depend>rmw</depend> entry that the previous commit added.
+  ---------
+* Contributors: Mete Fatih Cırıt, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

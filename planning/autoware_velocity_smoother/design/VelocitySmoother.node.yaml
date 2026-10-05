@@ -17,6 +17,9 @@ subscribers:
     message_type: autoware_planning_msgs/msg/Trajectory
   - name: external_velocity_limit_mps
     message_type: autoware_internal_planning_msgs/msg/VelocityLimit
+  - name: current_odometry
+    message_type: nav_msgs/msg/Odometry
+    remap_target: /localization/kinematic_state
   - name: acceleration
     message_type: geometry_msgs/msg/AccelWithCovarianceStamped
   - name: operation_mode_state
@@ -26,7 +29,7 @@ publishers:
   - name: trajectory
     message_type: autoware_planning_msgs/msg/Trajectory
   - name: current_velocity_limit_mps
-    message_type: tier4_planning_msgs/msg/VelocityLimit
+    message_type: autoware_internal_planning_msgs/msg/VelocityLimit
 
 # parameters
 param_files:

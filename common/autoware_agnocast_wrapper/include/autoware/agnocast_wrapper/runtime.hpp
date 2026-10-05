@@ -14,58 +14,38 @@
 
 #pragma once
 
-// Runtime mode query and ok().
+// Runtime mode query, init()/shutdown() and ok().
 
-#include <rclcpp/rclcpp.hpp>
-
-#ifdef USE_AGNOCAST_ENABLED
-
-#include <agnocast/agnocast.hpp>
-
-#include <cstdlib>
+#include <string>
+#include <vector>
 
 namespace autoware::agnocast_wrapper
 {
 
-// Defaults to zero if the environment variable is missing or invalid.
-inline int get_ENABLE_AGNOCAST()
-{
-  const char * env = std::getenv("ENABLE_AGNOCAST");
-  if (env) {
-    return std::atoi(env);
-  }
-  return 0;
-}
+/// @brief Whether this process runs on Agnocast, from the ENABLE_AGNOCAST environment variable.
+/// Read once and fixed for the lifetime of the process; always false in a non-Agnocast build.
+bool use_agnocast();
 
-inline bool use_agnocast()
-{
-  static const int sv = get_ENABLE_AGNOCAST();
-  return sv == 1;
-}
+/// @brief Mode-agnostic replacement for rclcpp::init(). Brings up the context ok() reports on: the
+/// agnocast one for an AgnocastOnly executable, the rclcpp one for every other.
+///
+/// @param agnocast_only True if and only if this executable spins one of agnocast's AgnocastOnly*
+///   executors. It selects the agnocast context only when ENABLE_AGNOCAST is 1, so such an
+///   executable needs an rclcpp executor to fall back to otherwise;
+///   autoware_agnocast_wrapper_register_node() fills the flag in and generates that fallback.
+/// @return The arguments left once the ROS ones are removed, to hand to
+///   rclcpp::NodeOptions::arguments(). Empty when the agnocast context is the one brought up, which
+///   parses the command line itself and carries no arguments over.
+std::vector<std::string> init(int argc, char const * const * argv, bool agnocast_only = false);
+
+/// @brief Mode-agnostic replacement for rclcpp::shutdown(). Tears down whichever context init()
+/// brought up.
+void shutdown();
 
 /// @brief Mode-agnostic replacement for rclcpp::ok().
 ///
-/// An AgnocastOnly executable initializes only the agnocast context, while mixed-mode and
-/// non-Agnocast executables initialize only the rclcpp context. Exactly one is alive in any
-/// mode, so the disjunction answers "is this process still running" everywhere.
-inline bool ok()
-{
-  return rclcpp::ok() || agnocast::ok();
-}
+/// An executable spinning an AgnocastOnly* executor brings up only the agnocast context; every
+/// other executable brings up the rclcpp one. Reports whichever is alive.
+bool ok();
 
 }  // namespace autoware::agnocast_wrapper
-
-#else
-
-namespace autoware::agnocast_wrapper
-{
-
-/// @brief Mode-agnostic replacement for rclcpp::ok() (non-Agnocast build).
-inline bool ok()
-{
-  return rclcpp::ok();
-}
-
-}  // namespace autoware::agnocast_wrapper
-
-#endif

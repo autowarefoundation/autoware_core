@@ -295,6 +295,26 @@ public:
   MessageT * get() const noexcept { return ptr_ ? ptr_->as_ptr() : nullptr; }
 };
 
+namespace detail
+{
+
+/// Adapt a subscription-received message to an interface that insists on std::shared_ptr. Every
+/// live copy pins one agnocast shared-memory entry, and none of them may outlive the subscription
+/// that delivered it: its destruction drops the kernel-side reference, so a later publish can
+/// recycle the entry the copies still point at. Subscriber-side handles only: the address is read
+/// once here, so a publisher-side handle would keep handing it out after publish() invalidates it.
+template <typename MessageT>
+std::shared_ptr<const MessageT> to_std_shared_ptr(agnocast::ipc_shared_ptr<const MessageT> && ptr)
+{
+  if (!ptr) {
+    return nullptr;
+  }
+  auto holder = std::make_shared<agnocast::ipc_shared_ptr<const MessageT>>(std::move(ptr));
+  return std::shared_ptr<const MessageT>(holder, holder->get());
+}
+
+}  // namespace detail
+
 }  // namespace autoware::agnocast_wrapper
 
 #endif

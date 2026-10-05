@@ -23,7 +23,7 @@ namespace autoware::adapi_adaptors
 {
 
 RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
-: Node("autoware_routing_adaptor", options)
+: autoware::agnocast_wrapper::Node("autoware_routing_adaptor", options)
 {
   using std::placeholders::_1;
 
@@ -44,7 +44,7 @@ RoutingAdaptor::RoutingAdaptor(const rclcpp::NodeOptions & options)
     [this](const RouteState::Message::ConstSharedPtr msg) { state_ = msg->state; });
 
   const auto rate = rclcpp::Rate(5.0);
-  timer_ = rclcpp::create_timer(
+  timer_ = autoware::agnocast_wrapper::create_timer(
     this, get_clock(), rate.period(), std::bind(&RoutingAdaptor::on_timer, this));
 
   state_ = RouteState::Message::UNKNOWN;
@@ -64,16 +64,13 @@ void RoutingAdaptor::on_timer()
       const auto request = std::make_shared<ClearRoute::Service::Request>();
       calling_service_ = true;
       cli_clear_->async_send_request(
-        request,
-        [this](rclcpp::Client<ClearRoute::Service>::SharedFuture) { calling_service_ = false; });
+        request, [this](Cli<ClearRoute>::SharedFuture) { calling_service_ = false; });
       break;
     }
     case RoutingAction::CallRoute: {
       calling_service_ = true;
       cli_route_->async_send_request(
-        route_, [this](rclcpp::Client<SetRoutePoints::Service>::SharedFuture) {
-          calling_service_ = false;
-        });
+        route_, [this](Cli<SetRoutePoints>::SharedFuture) { calling_service_ = false; });
       break;
     }
   }

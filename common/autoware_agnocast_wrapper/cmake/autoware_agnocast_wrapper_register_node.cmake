@@ -19,6 +19,8 @@
 # 1. A standard rclcpp_components registration for the component
 # 2. A standalone executable that can switch between rclcpp::Node and agnocast::Node
 #    at runtime based on the ENABLE_AGNOCAST environment variable
+# 3. An autoware_node_plugins resource index entry mapping <EXECUTABLE> to <PLUGIN> and to the
+#    ENABLE_AGNOCAST it was built with, which the <autoware_node> launch action reads
 #
 # When ENABLE_AGNOCAST is not set or set to 0, this macro falls back to
 # standard rclcpp_components_register_node behavior.
@@ -57,6 +59,8 @@
 #   When ENABLE_AGNOCAST is not set (standard mode):
 #     - <EXECUTABLE>            : standard rclcpp_components executable (delegates to
 #                                 rclcpp_components_register_node as-is)
+#   In both modes:
+#     - autoware_node_plugins entry : <EXECUTABLE> -> <PLUGIN>;<0|1>, read by <autoware_node>
 #   Launch files should always reference <EXECUTABLE> for consistent behavior across both modes.
 #
 # Example:
@@ -121,7 +125,7 @@ macro(autoware_agnocast_wrapper_register_node target)
   if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     # ===== Agnocast mode: create component + switchable executable =====
 
-    find_package(agnocastlib REQUIRED)
+    find_package(agnocastlib 2.4.0 REQUIRED)
 
     # --- Map AGNOCAST_EXECUTOR to actual type, include, and add_node expression ---
     if("${ARGS_AGNOCAST_EXECUTOR}" STREQUAL "SingleThreadedAgnocastExecutor")
@@ -209,13 +213,25 @@ macro(autoware_agnocast_wrapper_register_node target)
     install(TARGETS ${ARGS_EXECUTABLE}
       DESTINATION lib/${PROJECT_NAME})
 
+    set(_AWR_built_with_agnocast 1)
+
   else()
     # ===== Standard rclcpp mode: fall back to rclcpp_components_register_node =====
     rclcpp_components_register_node(${target}
       PLUGIN ${ARGS_PLUGIN}
       EXECUTABLE ${ARGS_EXECUTABLE}
       EXECUTOR ${ARGS_ROS2_EXECUTOR})
+
+    set(_AWR_built_with_agnocast 0)
+
   endif()
+
+  # Record which component this executable runs and the ENABLE_AGNOCAST it was built with, so a
+  # launch file naming the executable can also load it into a container. One resource per
+  # executable, named after the package as well since executable names are only unique within one.
+  ament_index_register_resource("autoware_node_plugins"
+    PACKAGE_NAME "${PROJECT_NAME}__${ARGS_EXECUTABLE}"
+    CONTENT "${ARGS_PLUGIN};${_AWR_built_with_agnocast}")
 
   # Cleanup temporary variables to prevent scope leakage across multiple macro invocations
   unset(_AWR_ros2_executor_type)
@@ -223,6 +239,7 @@ macro(autoware_agnocast_wrapper_register_node target)
   unset(_AWR_agnocast_executor_include)
   unset(_AWR_agnocast_add_node_expr)
   unset(_AWR_agnocast_only)
+  unset(_AWR_built_with_agnocast)
   unset(_AWR_node)
   unset(_AWR_component)
   unset(_AWR_library_name)
