@@ -1395,6 +1395,7 @@ TEST(NdtScanMatcherCharacteristics, FarAlignRequestRemovesLoadedCellUntilTimerRe
   EXPECT_EQ(reload->value("is_need_rebuild"), "True");
   EXPECT_EQ(reload->value("maps_size_after"), "1");
 }
+
 // ---------------------------------------------------------------------------------------------
 // 3. Align service - `ndt_align_srv`, the path `autoware_pose_initializer` uses. These are the
 // only cases that build a `TreeStructuredParzenEstimator`, so the particles drawn depend on how
