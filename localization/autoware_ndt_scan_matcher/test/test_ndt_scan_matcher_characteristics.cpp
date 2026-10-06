@@ -276,7 +276,7 @@ bool has_ndt_base_link_transform(const TopicCapture<tf2_msgs::msg::TFMessage> & 
 // ---------------------------------------------------------------------------------------------
 
 /// An empty cloud is rejected with a WARN.
-TEST(NdtScanMatcherCharacteristics, EmptyScanIsRejectedWithAWarning)
+TEST(NdtScanMatcherCharacteristics, EmptyScanIsRejectedWithWarning)
 {
   // Arrange
   auto harness = make_ready_harness();
@@ -328,7 +328,7 @@ TEST(NdtScanMatcherCharacteristics, StaleScanWarnsButProcessingContinues)
 
 /// A scan whose frame has no transform to `base_link` is an ERROR, and the callback stops there —
 /// `sensor_points_max_distance` is absent.
-TEST(NdtScanMatcherCharacteristics, ScanWithoutATransformIsAnError)
+TEST(NdtScanMatcherCharacteristics, ScanWithoutTransformIsError)
 {
   // Arrange
   auto harness = make_ready_harness();
@@ -536,7 +536,7 @@ std::vector<rclcpp::Parameter> converged_hot_path_overrides(
 }
 
 /// An unknown `converged_param_type` aligns, then discards the result: ERROR, nothing published.
-TEST(NdtScanMatcherCharacteristics, UnknownConvergedParamTypeIsAnErrorAfterAligning)
+TEST(NdtScanMatcherCharacteristics, UnknownConvergedParamTypeIsErrorAfterAligning)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides(
@@ -614,13 +614,13 @@ TEST(NdtScanMatcherCharacteristics, NonConvergedScanSuppressesPoseButStillBroadc
   EXPECT_EQ(ndt_pose->count(), 0U);
   EXPECT_EQ(ndt_pose_with_cov->count(), 0U);
 
-  // Different from `ConvergedScanResetsTheSkipCounter`, which exits early at the distance check.
+  // Different from `ConvergedScanResetsSkipCounter`, which exits early at the distance check.
   // This one reaches the final `return is_converged`.
   EXPECT_GT(diag.value_as_double("skipping_publish_num"), 0.0);
 }
 
 /// The iteration limit withholds the pose even when the score is fine.
-TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesTheConvergedPose)
+TEST(NdtScanMatcherCharacteristics, IterationLimitAloneSuppressesConvergedPose)
 {
   // Arrange
   // `iteration_num < max_iterations` is false on the first reported iteration.
@@ -698,7 +698,7 @@ TEST(NdtScanMatcherCharacteristics, ExecutionTimeOverBoundWarnsButStillPublishes
 
 /// Reaching `validation.skipping_publish_num` appends the "exceed limit" WARN — the comparison is
 /// `>=`, so the threshold value itself warns. The counter is a `static` shared by the binary.
-TEST(NdtScanMatcherCharacteristics, SkipCounterWarnsWhenItReachesTheThreshold)
+TEST(NdtScanMatcherCharacteristics, SkipCounterWarnsWhenItReachesThreshold)
 {
   // Arrange
   // `required_distance` is what rejects the near-field scan below, so it is pinned alongside.
@@ -933,7 +933,7 @@ TEST(NdtScanMatcherCharacteristics, EstimatedCovarianceOverwritesOnlyFourOfThirt
 }
 
 /// The pose `align` starts from is the interpolated midpoint, not either surrounding pose.
-TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseIsTheInterpolatedMidpoint)
+TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseIsInterpolatedMidpoint)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides());
@@ -972,7 +972,7 @@ TEST(NdtScanMatcherCharacteristics, PublishedInitialPoseIsTheInterpolatedMidpoin
 }
 
 /// `initial_pose_distance_tolerance_m` applies to the gap between the two surrounding poses.
-TEST(NdtScanMatcherCharacteristics, InitialPoseDistanceToleranceReachesTheInterpolationBuffer)
+TEST(NdtScanMatcherCharacteristics, InitialPoseDistanceToleranceReachesInterpolationBuffer)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides(
@@ -999,7 +999,7 @@ TEST(NdtScanMatcherCharacteristics, InitialPoseDistanceToleranceReachesTheInterp
 }
 
 /// A converged scan resets the skip counter, checked after a rejected scan raised it.
-TEST(NdtScanMatcherCharacteristics, ConvergedScanResetsTheSkipCounter)
+TEST(NdtScanMatcherCharacteristics, ConvergedScanResetsSkipCounter)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides());
@@ -1055,7 +1055,7 @@ TEST(NdtScanMatcherCharacteristics, TransformProbabilityTypeIsJudgedByItsOwnThre
 }
 
 /// Out of map range is a WARN on the scan and an ERROR on the timer, and the pose still goes out.
-TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsAWarnOnTheScanAndAnErrorOnTheTimer)
+TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsWarnOnScanAndErrorOnTimer)
 {
   // Arrange
   auto harness = make_ready_harness(converged_hot_path_overrides(
@@ -1088,7 +1088,7 @@ TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsAWarnOnTheScanAndAnErrorOnThe
 
 /// Activating the node clears the initial-pose buffer — a side effect nothing else observes. The
 /// control arm proves the sequence would otherwise have interpolated successfully.
-TEST(NdtScanMatcherCharacteristics, ActivatingClearsTheInitialPoseBuffer)
+TEST(NdtScanMatcherCharacteristics, ActivatingClearsInitialPoseBuffer)
 {
   {
     // Arrange
@@ -1131,7 +1131,7 @@ TEST(NdtScanMatcherCharacteristics, ActivatingClearsTheInitialPoseBuffer)
 
 /// An initial pose arriving while deactivated is dropped before its frame is checked, so startup
 /// shows "Node is not activated." and not a frame-id ERROR — `is_expected_frame_id` is absent.
-TEST(NdtScanMatcherCharacteristics, InitialPoseIsRejectedBeforeTheFrameCheckWhenNotActivated)
+TEST(NdtScanMatcherCharacteristics, InitialPoseIsRejectedBeforeFrameCheckWhenNotActivated)
 {
   // Arrange
   auto harness = make_ready_harness();
@@ -1366,10 +1366,6 @@ TEST(NdtScanMatcherCharacteristics, FarAlignRequestRemovesLoadedCellUntilTimerRe
   // Arrange
   auto harness = make_ready_harness(fast_align_overrides());
   ASSERT_TRUE(harness->ensure_map_loaded());
-  harness->diag().mark(ndt_align_status);
-
-  // Act
-  const auto response =
     harness->call_ndt_align(make_pose_at(harness->now(), -map_center_x, -map_center_y));
 
   // Assert
@@ -1395,6 +1391,210 @@ TEST(NdtScanMatcherCharacteristics, FarAlignRequestRemovesLoadedCellUntilTimerRe
   EXPECT_EQ(reload->value("is_need_rebuild"), "True");
   EXPECT_EQ(reload->value("maps_size_after"), "1");
 }
+// ---------------------------------------------------------------------------------------------
+// 3. Align service - `ndt_align_srv`, the path `autoware_pose_initializer` uses. These are the
+// only cases that build a `TreeStructuredParzenEstimator`, so the particles drawn depend on how
+// many searches ran before. Nothing below reads a drawn value.
+// ---------------------------------------------------------------------------------------------
+
+/// A harness with the map loaded and one scan stored, ready for `ndt_align_srv`.
+std::unique_ptr<NdtHarness> make_harness_ready_to_align(
+  std::vector<rclcpp::Parameter> extra_overrides = {})
+{
+  auto overrides = fast_align_overrides();
+  for (auto & parameter : extra_overrides) {
+    overrides.push_back(std::move(parameter));
+  }
+  auto harness = make_ready_harness(std::move(overrides));
+  if (!harness->ensure_map_loaded()) {
+    throw std::runtime_error("the stub map never loaded");
+  }
+
+  if (!harness->drive_one_scan(default_drive()).has_value()) {
+    throw std::runtime_error("no scan was stored, so `align_pose` would have nothing to match");
+  }
+  return harness;
+}
+
+/// An align request whose frame has no transform to `map` is an ERROR, and nothing else runs.
+TEST(NdtScanMatcherCharacteristics, AlignWithoutTransformIsError)
+{
+  // Arrange
+  auto harness = make_ready_harness(fast_align_overrides());
+  harness->diag().mark(ndt_align_status);
+
+  // Act
+  const auto response =
+    harness->call_ndt_align(make_pose_at(harness->now(), map_center_x, map_center_y, "gnss_link"));
+
+  // Assert
+  ASSERT_TRUE(response.has_value());
+  EXPECT_FALSE(response->success);
+
+  const auto diag = harness->wait_for_diag_since_mark(ndt_align_status);
+  ASSERT_TRUE(diag.has_value());
+  EXPECT_EQ(diag->value("is_succeed_transform_initial_pose"), "False");
+  EXPECT_EQ(diag->level(), level_error) << "message was: " << diag->message();
+  EXPECT_FALSE(diag->has_key("is_need_rebuild"))
+    << "the map module was consulted despite the failed transform.";
+}
+
+/// With a map but no stored scan, align fails after the map check.
+TEST(NdtScanMatcherCharacteristics, AlignWithoutStoredScanFailsAfterMapCheck)
+{
+  // Arrange
+  auto harness = make_ready_harness(fast_align_overrides());
+  ASSERT_TRUE(harness->ensure_map_loaded());  // activates and loads; drives no scan
+  harness->diag().mark(ndt_align_status);
+
+  // Act
+  const auto response =
+    harness->call_ndt_align(make_pose_at(harness->now(), map_center_x, map_center_y));
+
+  // Assert
+  ASSERT_TRUE(response.has_value());
+  EXPECT_FALSE(response->success);
+
+  const auto diag = harness->wait_for_diag_since_mark(ndt_align_status);
+  ASSERT_TRUE(diag.has_value());
+  EXPECT_EQ(diag->value("is_set_map_points"), "True");
+  EXPECT_EQ(diag->value("is_set_sensor_points"), "False");
+  EXPECT_EQ(diag->level(), level_warn);
+  EXPECT_FALSE(diag->has_key("best_particle_score")) << "the search ran without a scan.";
+}
+
+/// Aligning outside the map range fails
+TEST(NdtScanMatcherCharacteristics, AligningOutsideMapRangeFails)
+{
+  // Arrange
+  // No map, no stored scan, not activated. The align path checks none of these before the map
+  // check, and adding any of them changes nothing here.
+  auto harness = make_ready_harness(fast_align_overrides());
+
+  harness->diag().mark(ndt_align_status);
+
+  // Act
+  const auto response =
+    harness->call_ndt_align(make_pose_at(harness->now(), -map_center_x, -map_center_y));
+
+  // Assert
+  ASSERT_TRUE(response.has_value());
+  EXPECT_FALSE(response->success);
+
+  const auto diag = harness->wait_for_diag_since_mark(ndt_align_status);
+  ASSERT_TRUE(diag.has_value());
+
+  EXPECT_EQ(diag->value("is_succeed_transform_initial_pose"), "True");
+  EXPECT_EQ(diag->value("is_need_rebuild"), "True");
+  EXPECT_EQ(diag->value("is_succeed_call_pcd_loader"), "True");
+  EXPECT_EQ(diag->value("maps_to_add_size"), "0");
+  EXPECT_EQ(diag->value("is_updated_map"), "False");
+  EXPECT_EQ(diag->value("is_set_map_points"), "False");
+  EXPECT_FALSE(diag->has_key("is_set_sensor_points"))
+    << "the map check no longer stops before the sensor-points check.";
+
+  EXPECT_EQ(diag->level(), level_error);
+}
+
+/// A successful align reports twelve keys and publishes one `points_aligned` per particle.
+TEST(NdtScanMatcherCharacteristics, SuccessfulAlignEmitsTheseKeysAndOneCloudPerParticle)
+{
+  // Arrange
+  constexpr int particles_num = 10;
+  auto harness = make_harness_ready_to_align(
+    {rclcpp::Parameter("initial_pose_estimation.particles_num", particles_num)});
+
+  // Created after the readying scan, so its cloud is not counted; matched before the align, so
+  // none of the align's are missed.
+  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, points_aligned));
+
+  harness->diag().mark(ndt_align_status);
+
+  // Act
+  const auto response =
+    harness->call_ndt_align(make_pose_at(harness->now(), map_center_x, map_center_y));
+
+  // Assert
+  ASSERT_TRUE(response.has_value());
+  ASSERT_TRUE(response->success);
+
+  const auto diag = harness->wait_for_diag_since_mark(ndt_align_status);
+  ASSERT_TRUE(diag.has_value());
+  const std::vector<std::string> expected_keys{
+    "service_call_time_stamp",
+    "is_succeed_transform_initial_pose",
+    "is_need_rebuild",
+    "maps_size_before",
+    "is_succeed_call_pcd_loader",
+    "maps_to_add_size",
+    "maps_to_remove_size",
+    "is_updated_map",
+    "is_set_map_points",
+    "is_set_sensor_points",
+    "best_particle_score",
+    "is_succeed_service",
+  };
+  EXPECT_EQ(sorted_keys(diag->keys_in_order()), sorted_keys(expected_keys));
+  EXPECT_EQ(diag->level(), level_ok) << "message was: " << diag->message();
+
+  ASSERT_TRUE(harness->wait_until(
+    [&] { return points_aligned->count() >= static_cast<size_t>(particles_num); }, 5s));
+  EXPECT_EQ(points_aligned->count(), static_cast<size_t>(particles_num));
+}
+
+/// The other half of the case above: the NVTL threshold is the one `reliable` answers to.
+TEST(NdtScanMatcherCharacteristics, ReliableFollowsNvtlThreshold)
+{
+  // Arrange
+  // Thresholds swapped: now only the NVTL one is out of reach.
+  auto harness = make_harness_ready_to_align(
+    {rclcpp::Parameter("score_estimation.converged_param_type", 0),
+     rclcpp::Parameter("score_estimation.converged_param_transform_probability", 0.0),
+     rclcpp::Parameter(
+       "score_estimation.converged_param_nearest_voxel_transformation_likelihood", never_reached)});
+
+  // Act
+  const auto response =
+    harness->call_ndt_align(make_pose_at(harness->now(), map_center_x, map_center_y));
+
+  // Assert
+  ASSERT_TRUE(response.has_value());
+  ASSERT_TRUE(response->success);
+  EXPECT_FALSE(response->reliable);
+}
+
+/// The `reliable` flag ignores the transform-probability threshold.
+TEST(NdtScanMatcherCharacteristics, ReliableIgnoresTransformProbabilityThreshold)
+{
+  // Arrange
+  // TP threshold out of reach, NVTL threshold reachable. `0.0 < score` needs a positive score, and
+  // the search samples within about 1.5 m of the map center, so every particle lands on the cloud.
+  auto harness = make_harness_ready_to_align(
+    {rclcpp::Parameter("score_estimation.converged_param_type", 0),
+     rclcpp::Parameter("score_estimation.converged_param_transform_probability", never_reached),
+     rclcpp::Parameter(
+       "score_estimation.converged_param_nearest_voxel_transformation_likelihood", 0.0)});
+
+  // The setup scan did not converge under this threshold, so the shared skip counter advanced.
+  const ScopeExit reset_skip_counter([&] { reset_skip_counter_via_deactivation(*harness); });
+
+  // Act
+  const auto request = make_pose_at(harness->now(), map_center_x, map_center_y);
+  const auto response = harness->call_ndt_align(request);
+
+  // Assert
+  ASSERT_TRUE(response.has_value());
+  ASSERT_TRUE(response->success);
+  EXPECT_TRUE(response->reliable);
+
+  // The header of a successful response. Both fields reach the EKF: `pose_initializer` replaces
+  // only the covariance before publishing what it got back, so a stamp of `now()` instead of the
+  // request's would give the filter a wrongly timed initial pose.
+  EXPECT_EQ(response->pose_with_covariance.header.frame_id, map_frame);
+  EXPECT_EQ(response->pose_with_covariance.header.stamp, request.header.stamp);
+}
+
 }  // namespace
 
 int main(int argc, char ** argv)
