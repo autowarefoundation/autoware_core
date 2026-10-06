@@ -1366,7 +1366,7 @@ TEST(NdtScanMatcherCharacteristics, FarAlignRequestRemovesLoadedCellUntilTimerRe
   // Arrange
   auto harness = make_ready_harness(fast_align_overrides());
   ASSERT_TRUE(harness->ensure_map_loaded());
-    harness->call_ndt_align(make_pose_at(harness->now(), -map_center_x, -map_center_y));
+  harness->call_ndt_align(make_pose_at(harness->now(), -map_center_x, -map_center_y));
 
   // Assert
   ASSERT_TRUE(response.has_value());
