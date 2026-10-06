@@ -17,7 +17,6 @@
   <maintainer email="sena.matsushita@tier4.jp">Sena Matsushita</maintainer>
   <maintainer email="akiro.harada@tier4.jp">Akiro Harada</maintainer>
 
-
   <license>Apache License 2.0</license>
 
   <buildtool_depend>ament_cmake_auto</buildtool_depend>
