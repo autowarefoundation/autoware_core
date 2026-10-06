@@ -112,23 +112,6 @@ TEST_F(GetObjectParameterTest, SuffixWithCustomPriority)
   ASSERT_DOUBLE_EQ(result, 50.0);
 }
 
-TEST_F(GetObjectParameterTest, GetOrDeclareParameterWithDefault_UsesSpecifiedValue)
-{
-  node_->declare_parameter<double>("obstacle_stop.stop_planning.backward.stop_margin", 2.0);
-
-  const double result = get_or_declare_parameter_with_default<double>(
-    *node_, "obstacle_stop.stop_planning.backward.stop_margin", 5.0);
-  ASSERT_DOUBLE_EQ(result, 2.0);
-}
-
-TEST_F(GetObjectParameterTest, GetOrDeclareParameterWithDefault_FallsBackToDefault)
-{
-  const double result = get_or_declare_parameter_with_default<double>(
-    *node_, "obstacle_stop.stop_planning.backward.stop_margin", 5.0);
-  ASSERT_DOUBLE_EQ(result, 5.0);
-  ASSERT_TRUE(node_->has_parameter("obstacle_stop.stop_planning.backward.stop_margin"));
-}
-
 TEST(StopPlanningParamTest, SelectStopMarginByDrivingDirection)
 {
   StopPlanningParam param;

@@ -36,16 +36,6 @@ namespace autoware::motion_velocity_planner
 {
 using autoware_utils_rclcpp::get_or_declare_parameter;
 
-template <class T>
-T get_or_declare_parameter_with_default(
-  rclcpp::Node & node, const std::string & name, const T & default_value)
-{
-  if (node.has_parameter(name)) {
-    return node.get_parameter(name).get_value<T>();
-  }
-  return node.declare_parameter<T>(name, default_value);
-}
-
 struct CommonParam
 {
   double max_accel{};
@@ -302,11 +292,10 @@ struct StopPlanningParam
     stop_margin = get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.stop_margin");
     terminal_stop_margin =
       get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.terminal_stop_margin");
-    // NOTE: The backward margins fall back to the forward ones when they are not specified.
-    backward_stop_margin = get_or_declare_parameter_with_default<double>(
-      node, "obstacle_stop.stop_planning.backward.stop_margin", stop_margin);
-    backward_terminal_stop_margin = get_or_declare_parameter_with_default<double>(
-      node, "obstacle_stop.stop_planning.backward.terminal_stop_margin", terminal_stop_margin);
+    backward_stop_margin =
+      get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.backward.stop_margin");
+    backward_terminal_stop_margin = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.backward.terminal_stop_margin");
     min_behavior_stop_margin = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.min_behavior_stop_margin");
     behavior_stop_margin_hold_time = get_or_declare_parameter<double>(
