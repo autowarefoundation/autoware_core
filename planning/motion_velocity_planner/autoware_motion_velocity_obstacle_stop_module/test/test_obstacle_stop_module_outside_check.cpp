@@ -90,7 +90,10 @@ public:
     return object->calc_predicted_pose(time, predicted_objects_stamp);
   }
 
-  // Wrapper method for testing
+  // Wrapper method for testing.
+  // check_consistency() is private and updates stop_obstacles in place, so this wrapper exposes it
+  // to the unit tests and returns the updated stop_obstacles.
+  // Added in https://github.com/autowarefoundation/autoware_core/pull/1484
   std::vector<StopObstacle> check_consistency_wrapper(
     const rclcpp::Time & current_time, const std::vector<TrajectoryPoint> & traj_points,
     const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
@@ -100,6 +103,8 @@ public:
     return stop_obstacles;
   }
 
+  // Helper function for testing to set the previous closest stop obstacles, which are the input of
+  // check_consistency()
   void set_prev_closest_stop_obstacles(const std::vector<StopObstacle> & stop_obstacles)
   {
     prev_closest_stop_obstacles_ = stop_obstacles;
