@@ -64,6 +64,7 @@ using ndt_test::base_link_frame;
 using ndt_test::map_center_x;
 using ndt_test::map_center_y;
 using ndt_test::map_frame;
+using ndt_test::map_spacing;
 using ndt_test::ndt_base_link_frame;
 using ndt_test::second_cell_x;
 
@@ -72,6 +73,7 @@ using ndt_test::map_update_status;
 using ndt_test::ndt_align_status;
 using ndt_test::scan_matching_status;
 
+using ndt_test::make_corner_cloud;
 using ndt_test::make_empty_scan;
 using ndt_test::make_near_field_scan;
 using ndt_test::make_pose_at;
@@ -1212,12 +1214,73 @@ TEST(NdtScanMatcherCharacteristics, RejectedInitialPoseUpdatesNeitherBufferNorMa
 // ---------------------------------------------------------------------------------------------
 // Map-update timer — `MapUpdateModule`: what the timer does with the loader's answers. The stub
 // serves two cells so a drive can cross a boundary; its docstring says where the second one sits.
+// The stub is also a spy: it records every request, so the cases here can assert the conversation
+// with the loader itself, not only what the node published after it.
 // ---------------------------------------------------------------------------------------------
 
 /// The shipped configuration, with only `ndt.num_threads` fixed so results are repeatable.
 std::vector<rclcpp::Parameter> shipped_config_overrides()
 {
   return {rclcpp::Parameter("ndt.num_threads", 1)};
+}
+
+/// `dynamic_map_loading.map_radius` from the shipped yaml, copied into every request as-is.
+constexpr double shipped_map_radius = 150.0;
+
+/// The first query asks for a circle around the vehicle, says the node holds nothing, and is
+/// answered with a whole cell. Read off the loader: this is the request the node sent, not the
+/// diagnostic it published afterwards.
+TEST(NdtScanMatcherCharacteristics, FirstLoaderQueryAsksAtVehiclePositionWithShippedMapRadius)
+{
+  // Arrange
+  auto harness = make_ready_harness(shipped_config_overrides());
+  auto * loader = harness->map_loader();
+  ASSERT_NE(loader, nullptr);
+
+  // Act
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  // Assert
+  ASSERT_TRUE(harness->wait_until([&] { return loader->call_count() >= 1U; }, 5s));
+  const auto first = loader->calls().front();
+  EXPECT_NEAR(first.center_x, map_center_x, 1e-3) << "the query was not centred on the vehicle";
+  EXPECT_NEAR(first.center_y, map_center_y, 1e-3);
+  EXPECT_DOUBLE_EQ(first.radius, shipped_map_radius);
+  EXPECT_TRUE(first.cached_ids.empty()) << "the node claimed to hold cells before any were served";
+
+  // What came back. `ensure_map_loaded` returning true is the node's half: it took these points.
+  ASSERT_EQ(first.served_ids.size(), 1U);
+  EXPECT_EQ(first.served_ids.front(), "0");
+  EXPECT_EQ(first.served_points, make_corner_cloud(map_spacing, map_center_x, map_center_y).size())
+    << "the cell served was not the whole corner cloud";
+  EXPECT_TRUE(first.removed_ids.empty());
+}
+
+/// Every later query carries the ids the node already holds, which is what makes the exchange
+/// differential: a cell the loader is told about is not served again.
+TEST(NdtScanMatcherCharacteristics, RepeatedLoaderQueriesSendCachedCellIds)
+{
+  // Arrange
+  auto harness = make_ready_harness(shipped_config_overrides());
+  auto * loader = harness->map_loader();
+  ASSERT_NE(loader, nullptr);
+  ASSERT_TRUE(harness->ensure_map_loaded());
+  const size_t queries_before = loader->call_count();
+
+  // Act
+  // Past `update_distance` (20), inside `map_radius - lidar_radius` (50), so the node queries
+  // again and the query is an update rather than a rebuild.
+  ASSERT_TRUE(harness->publish_initial_pose_and_confirm(
+    make_pose_at(harness->now(), map_center_x + 21.0, map_center_y)));
+
+  // Assert
+  ASSERT_TRUE(harness->wait_until([&] { return loader->call_count() > queries_before; }, 5s));
+  const auto second = loader->calls().at(queries_before);
+  EXPECT_NEAR(second.center_x, map_center_x + 21.0, 1e-3) << "the query did not follow the vehicle";
+  ASSERT_EQ(second.cached_ids.size(), 1U) << "the node asked again without saying what it holds";
+  EXPECT_EQ(second.cached_ids.front(), "0");
+  EXPECT_TRUE(second.served_ids.empty()) << "a cell the node already holds was served again";
+  EXPECT_TRUE(second.removed_ids.empty());
 }
 
 /// `update_distance` is a strict boundary: 20.0 m does not query, 20.001 m does.
@@ -1356,6 +1419,41 @@ TEST(NdtScanMatcherCharacteristics, WithoutMapLoaderTimerWarnsOnceAndDoesNotLoad
   EXPECT_EQ(attempt->value("is_updated_map"), "False");
   EXPECT_EQ(attempt->level(), level_error) << "message was: " << attempt->message();
   expect_idle_tick_does_not_query(*harness);
+}
+
+/// The align service queries the loader at the *request* position, not the vehicle's. Only the
+/// loader can show that: the case below sees the consequence, this one sees the cause.
+TEST(NdtScanMatcherCharacteristics, AlignRequestQueriesLoaderAtRequestPosition)
+{
+  // Arrange
+  auto harness = make_ready_harness(fast_align_overrides());
+  auto * loader = harness->map_loader();
+  ASSERT_NE(loader, nullptr);
+  ASSERT_TRUE(harness->ensure_map_loaded());
+  // The vehicle has not moved since the load, so the timer measures 0 m and does not query. The
+  // next call can only be the service's.
+  const size_t queries_before = loader->call_count();
+
+  // Act
+  const auto response =
+    harness->call_ndt_align(make_pose_at(harness->now(), -map_center_x, -map_center_y));
+  ASSERT_TRUE(response.has_value());
+
+  // Assert
+  ASSERT_TRUE(harness->wait_until([&] { return loader->call_count() > queries_before; }, 5s));
+  const auto call = loader->calls().at(queries_before);
+  EXPECT_NEAR(call.center_x, -map_center_x, 1e-3)
+    << "the service queried somewhere other than the requested pose";
+  EXPECT_NEAR(call.center_y, -map_center_y, 1e-3);
+  EXPECT_DOUBLE_EQ(call.radius, shipped_map_radius);
+
+  // The node offers the cell it is standing on, and the loader takes it back: the circle drawn
+  // around the request does not reach it.
+  ASSERT_EQ(call.cached_ids.size(), 1U);
+  EXPECT_EQ(call.cached_ids.front(), "0");
+  EXPECT_TRUE(call.served_ids.empty());
+  ASSERT_EQ(call.removed_ids.size(), 1U);
+  EXPECT_EQ(call.removed_ids.front(), "0");
 }
 
 /// Looks like a bug — an align request far outside the loaded map removes the map, because the

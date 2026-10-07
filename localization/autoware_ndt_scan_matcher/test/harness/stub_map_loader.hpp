@@ -25,11 +25,36 @@
 
 #include <algorithm>
 #include <array>
+#include <cstddef>
 #include <limits>
+#include <mutex>
 #include <string>
+#include <utility>
+#include <vector>
 
 namespace ndt_test
 {
+
+/// @brief One call to `pcd_loader_service`, as the stub saw it.
+///
+/// The request half is what the node asked for; the answer half is what it was given. Both are
+/// otherwise invisible to this binary: the node reports what it did with a map, never what it
+/// asked for, so without this record a case can only infer the conversation from its result.
+struct LoaderCall
+{
+  /// @brief Centre and radius of the requested circle, as `MapUpdateModule` filled them in.
+  double center_x{0.0};
+  double center_y{0.0};
+  double radius{0.0};
+  /// @brief Cell ids the node said it already holds. The loader must not serve these again.
+  std::vector<std::string> cached_ids;
+  /// @brief Cell ids served back in `new_pointcloud_with_ids`.
+  std::vector<std::string> served_ids;
+  /// @brief Cell ids taken back in `ids_to_remove`.
+  std::vector<std::string> removed_ids;
+  /// @brief Points across every served cell, so a case can tell a real map from an empty answer.
+  size_t served_points{0};
+};
 
 /// @brief The only map in this world: `make_corner_cloud` in two cells, "0" anchored at the map
 /// center and "1" at `second_cell_x`.
@@ -41,6 +66,8 @@ namespace ndt_test
 ///
 /// Cell "1" must not move closer than x = 300: every other case queries from at most x = 125 with
 /// a radius of 150, so an anchor at x <= 275 would enter their responses and change their maps.
+///
+/// A spy as well as a stub: every call is recorded, in order, and read back through `calls()`.
 ///
 /// @note `test/stub_pcd_loader.hpp` also answers `pcd_loader_service`, for the three pre-existing
 /// node tests. Merging the two was left out of scope, so a change to how the map is served has to
@@ -57,6 +84,22 @@ public:
       std::bind(&StubMapLoader::on_get_map, this, std::placeholders::_1, std::placeholders::_2));
   }
 
+  /// @brief Every call so far, oldest first.
+  ///
+  /// A copy: the service runs on the loader's own thread, so a reference would race the next call.
+  [[nodiscard]] std::vector<LoaderCall> calls() const
+  {
+    const std::lock_guard<std::mutex> lock(calls_mutex_);
+    return calls_;
+  }
+
+  /// @brief How many times the node has called the service.
+  [[nodiscard]] size_t call_count() const
+  {
+    const std::lock_guard<std::mutex> lock(calls_mutex_);
+    return calls_.size();
+  }
+
 private:
   struct Cell
   {
@@ -68,6 +111,9 @@ private:
     {{"0", map_center_x, map_center_y}, {"1", second_cell_x, map_center_y}}};
 
   rclcpp::Service<GetDifferentialPointCloudMap>::SharedPtr service_;
+
+  mutable std::mutex calls_mutex_;
+  std::vector<LoaderCall> calls_;
 
   static bool covers(const autoware_map_msgs::msg::AreaInfo & area, const Cell & cell)
   {
@@ -99,20 +145,35 @@ private:
 
   void on_get_map(
     GetDifferentialPointCloudMap::Request::SharedPtr req,
-    GetDifferentialPointCloudMap::Response::SharedPtr res) const
+    GetDifferentialPointCloudMap::Response::SharedPtr res)
   {
     res->header.frame_id = map_frame;
+
+    LoaderCall call;
+    call.center_x = req->area.center_x;
+    call.center_y = req->area.center_y;
+    call.radius = req->area.radius;
+    call.cached_ids = req->cached_ids;
+
     for (const auto & cell : cells) {
       const bool covered = covers(req->area, cell);
       const bool cached =
         std::find(req->cached_ids.begin(), req->cached_ids.end(), cell.id) != req->cached_ids.end();
       if (cached && !covered) {
-        res->ids_to_remove.push_back(cell.id);
+        res->ids_to_remove.emplace_back(cell.id);
+        call.removed_ids.emplace_back(cell.id);
       }
       if (covered && !cached) {
-        res->new_pointcloud_with_ids.push_back(make_cell(cell));
+        auto served = make_cell(cell);
+        call.served_ids.emplace_back(cell.id);
+        call.served_points +=
+          static_cast<size_t>(served.pointcloud.width) * served.pointcloud.height;
+        res->new_pointcloud_with_ids.push_back(std::move(served));
       }
     }
+
+    const std::lock_guard<std::mutex> lock(calls_mutex_);
+    calls_.push_back(std::move(call));
   }
 };
 

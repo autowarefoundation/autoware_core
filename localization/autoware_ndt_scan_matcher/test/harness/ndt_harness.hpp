@@ -192,6 +192,12 @@ public:
 
   [[nodiscard]] DiagnosticsCapture & diag() const { return *diagnostics_; }
 
+  /// @brief The stub answering `pcd_loader_service`, or nullptr when built without one.
+  ///
+  /// It is a spy: `calls()` is this binary's only view of what the node asked the loader for, as
+  /// opposed to what it did with the answer.
+  [[nodiscard]] StubMapLoader * map_loader() const { return map_loader_.get(); }
+
   /// @brief Starts recording a topic.
   ///
   /// Must be called before the input that could publish it: a check for silence proves nothing
