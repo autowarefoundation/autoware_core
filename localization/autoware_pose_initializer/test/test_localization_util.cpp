@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/localization_util.hpp"
+#include "../src/utils/localization_util.hpp"
 
 #include <gmock/gmock.h>
 
