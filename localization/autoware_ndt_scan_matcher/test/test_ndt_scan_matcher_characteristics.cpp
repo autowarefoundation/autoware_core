@@ -1318,31 +1318,59 @@ TEST(NdtScanMatcherCharacteristics, UpdateDistanceIsStrictBoundary)
     past_boundary->value_as_double("distance_last_update_position_to_current_position"), 20.0);
 }
 
-/// Driving across a cell boundary adds the next cell and drops the one left behind. Steps of 45 m
-/// keep every query incremental: past `update_distance` (20), inside `map_radius - lidar_radius`
-/// (50). Each scan is the corner of the nearer cell, so it always has a target.
+/// Driving east across the gap between the two cells adds the one ahead and drops the one behind,
+/// and the scan keeps converging the whole way.
+///
+/// The node asks for a 150 m circle around the vehicle, so what it holds changes as it drives:
+///
+///    cell "0" anchor                                                       cell "1" anchor
+/// x:       100           145           190           235           280           300
+///           |-------------|-------------|-------------|-------------|             +
+///          scan          hop           scan          hop           scan
+///        map {0}                    map {0,1}                    map {1}
+///                                       ^ "1" added                 ^ "0" removed
+///
+/// Why the drive has this shape:
+///
+/// - Each step is 45 m: more than `update_distance` (20 m), so every one of them queries the
+///   loader, and less than `map_radius - lidar_radius` (50 m), so the node updates the map rather
+///   than rebuilding it.
+/// - Four steps rather than one, because the 50 m cap puts both events out of reach: the circle
+///   first touches cell "1" at x = 190 (190 + 150 >= 300), and first loses cell "0" at x = 280
+///   (280 - 150 > 100).
+/// - Three scans, one per map content -- {0}, {0,1}, {1}. The stops at 145 and 235 are stepping
+///   stones: they move the vehicle with an initial pose alone, which is all `update_distance` is
+///   measured on.
 TEST(NdtScanMatcherCharacteristics, WalkAcrossCellBoundaryKeepsConvergingThroughAddAndRemove)
 {
-  // Arrange
-  constexpr double step_m = 45.0;
-  constexpr int scan_count = 5;  // x = 100, 145, 190, 235, 280
+  // Where the map changes, and the two stepping stones in between.
+  constexpr double add_x = 190.0;
+  constexpr double remove_x = 280.0;
+  constexpr double stone_before_add_x = 145.0;
+  constexpr double stone_before_remove_x = 235.0;
 
+  // Arrange
   auto harness = make_ready_harness(shipped_config_overrides());
   auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
-  ASSERT_TRUE(harness->ensure_map_loaded());
-  const size_t queries_before = loader_query_count(*harness);
+  ASSERT_TRUE(harness->ensure_map_loaded());  // the rebuild at x = 100 that loads cell "0"
 
-  // Act and Assert
-  for (int i = 0; i < scan_count; ++i) {
-    const double x = map_center_x + step_m * static_cast<double>(i);
-    SCOPED_TRACE("scan " + std::to_string(i) + " at x = " + std::to_string(x));
-    const double nearer_anchor_x =
-      (x <= (map_center_x + second_cell_x) / 2.0) ? map_center_x : second_cell_x;
+  // Moves the vehicle and waits for the query that follows, without driving a scan.
+  const auto hop_to = [&](const double x) {
+    const size_t queries_before = loader_query_count(*harness);
+    ASSERT_TRUE(
+      harness->publish_initial_pose_and_confirm(make_pose_at(harness->now(), x, map_center_y)));
+    ASSERT_TRUE(
+      harness->wait_until([&] { return loader_query_count(*harness) > queries_before; }, 5s));
+  };
 
+  // Drives one scan from `x`, showing the corner of the cell anchored at `anchor_x`. Nothing
+  // stands between the two cells in this world, so a scan has to describe one of them.
+  const auto expect_scan_converges = [&](const double x, const double anchor_x) {
+    SCOPED_TRACE("scan at x = " + std::to_string(x));
     auto drive = default_drive();
     drive.initial_pose->x = x;
-    drive.make_cloud = [nearer_anchor_x, x](const builtin_interfaces::msg::Time & stamp) {
-      return make_scan_at(stamp, nearer_anchor_x - x, 0.0);
+    drive.make_cloud = [anchor_x, x](const builtin_interfaces::msg::Time & stamp) {
+      return make_scan_at(stamp, anchor_x - x, 0.0);
     };
 
     const auto outcome = harness->drive_one_scan(drive);
@@ -1350,15 +1378,24 @@ TEST(NdtScanMatcherCharacteristics, WalkAcrossCellBoundaryKeepsConvergingThrough
     EXPECT_EQ(outcome->diag.value("is_set_map_points"), "True");
     EXPECT_EQ(outcome->diag.value("skipping_publish_num"), "0")
       << "message was: " << outcome->diag.message();
+  };
 
-    // Every step after the first is a query. Let the timer see this one before moving on.
-    const size_t expected_queries = queries_before + static_cast<size_t>(i);
-    ASSERT_TRUE(
-      harness->wait_until([&] { return loader_query_count(*harness) >= expected_queries; }, 5s));
-  }
-  ASSERT_TRUE(
-    harness->wait_until([&] { return ndt_pose->count() >= static_cast<size_t>(scan_count); }, 5s))
-    << ndt_pose->count() << " of " << scan_count << " scans produced an ndt_pose";
+  // Act and Assert
+  // Standing on cell "0", the only one loaded.
+  ASSERT_NO_FATAL_FAILURE(expect_scan_converges(map_center_x, map_center_x));
+
+  // East until the circle reaches cell "1", which the loader adds: map {0} -> {0, 1}.
+  ASSERT_NO_FATAL_FAILURE(hop_to(stone_before_add_x));
+  ASSERT_NO_FATAL_FAILURE(hop_to(add_x));
+  ASSERT_NO_FATAL_FAILURE(expect_scan_converges(add_x, map_center_x));  // nearer corner: "0"
+
+  // On until cell "0" falls out of it, and the loader takes it back: map {0, 1} -> {1}.
+  ASSERT_NO_FATAL_FAILURE(hop_to(stone_before_remove_x));
+  ASSERT_NO_FATAL_FAILURE(hop_to(remove_x));
+  ASSERT_NO_FATAL_FAILURE(expect_scan_converges(remove_x, second_cell_x));  // nearer corner: "1"
+
+  ASSERT_TRUE(harness->wait_until([&] { return ndt_pose->count() >= 3U; }, 5s))
+    << ndt_pose->count() << " of 3 scans produced an ndt_pose";
 
   // The three updates that changed the map: the first rebuild, the add, and the remove.
   const auto updates = wait_for_map_update_records(*harness, changed_map, 3U, 5s);
