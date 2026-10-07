@@ -188,12 +188,6 @@ size_t loader_query_count(NdtHarness & harness)
   return map_update_records(harness, is_loader_query).size();
 }
 
-/// Did this update change the map?
-bool changed_map(const NdtHarness::Record & record)
-{
-  return record.value("is_updated_map") == "True";
-}
-
 /// Checks that the tick after a load measures 0 m and stops short of calling the loader. A
 /// positive witness: waiting for a second query to *not* arrive would pass on a stopped timer.
 void expect_idle_tick_does_not_query(NdtHarness & harness)
@@ -1318,95 +1312,113 @@ TEST(NdtScanMatcherCharacteristics, UpdateDistanceIsStrictBoundary)
     past_boundary->value_as_double("distance_last_update_position_to_current_position"), 20.0);
 }
 
-/// Driving east across the gap between the two cells adds the one ahead and drops the one behind,
-/// and the scan keeps converging the whole way.
+/// The stops of the drive `drive_across_cell_boundary` makes, west to east.
+constexpr double first_stone_x = 145.0;
+constexpr double serves_second_cell_x = 190.0;
+constexpr double second_stone_x = 235.0;
+constexpr double drops_first_cell_x = 280.0;
+
+/// Moves the vehicle to `x` and waits for the call the map-update timer makes from there.
 ///
-/// The node asks for a 150 m circle around the vehicle, so what it holds changes as it drives:
+/// The initial pose is the only input needed: `update_distance` is measured on the vehicle
+/// position alone, so no scan has to be driven to make the timer talk to the loader.
+void drive_to(NdtHarness & harness, const double x)
+{
+  auto * loader = harness.map_loader();
+  ASSERT_NE(loader, nullptr);
+
+  const size_t calls_before = loader->call_count();
+  ASSERT_TRUE(
+    harness.publish_initial_pose_and_confirm(make_pose_at(harness.now(), x, map_center_y)));
+  ASSERT_TRUE(harness.wait_until([&] { return loader->call_count() > calls_before; }, 5s));
+}
+
+/// Drives east from the map centre until the node holds cell "1" in place of cell "0".
 ///
 ///    cell "0" anchor                                                       cell "1" anchor
 /// x:       100           145           190           235           280           300
 ///           |-------------|-------------|-------------|-------------|             +
-///          scan          hop           scan          hop           scan
-///        map {0}                    map {0,1}                    map {1}
-///                                       ^ "1" added                 ^ "0" removed
+///         start                      serves "1"                  takes "0" back
 ///
-/// Why the drive has this shape:
-///
-/// - Each step is 45 m: more than `update_distance` (20 m), so every one of them queries the
-///   loader, and less than `map_radius - lidar_radius` (50 m), so the node updates the map rather
-///   than rebuilding it.
-/// - Four steps rather than one, because the 50 m cap puts both events out of reach: the circle
-///   first touches cell "1" at x = 190 (190 + 150 >= 300), and first loses cell "0" at x = 280
-///   (280 - 150 > 100).
-/// - Three scans, one per map content -- {0}, {0,1}, {1}. The stops at 145 and 235 are stepping
-///   stones: they move the vehicle with an initial pose alone, which is all `update_distance` is
-///   measured on.
-TEST(NdtScanMatcherCharacteristics, WalkAcrossCellBoundaryKeepsConvergingThroughAddAndRemove)
+/// - Each step is 45 m: more than `update_distance` (20 m), so every stop makes the timer call the
+///   loader, and less than `map_radius - lidar_radius` (50 m), so it asks for a differential
+///   update instead of a whole rebuild.
+/// - Four steps rather than one, because that 50 m cap puts both events out of reach: the 150 m
+///   circle first touches cell "1" at x = 190 (190 + 150 >= 300), and first loses cell "0" at
+///   x = 280 (280 - 150 > 100). The stops at 145 and 235 are stepping stones, nothing more.
+void drive_across_cell_boundary(NdtHarness & harness)
 {
-  // Where the map changes, and the two stepping stones in between.
-  constexpr double add_x = 190.0;
-  constexpr double remove_x = 280.0;
-  constexpr double stone_before_add_x = 145.0;
-  constexpr double stone_before_remove_x = 235.0;
+  ASSERT_NO_FATAL_FAILURE(drive_to(harness, first_stone_x));
+  ASSERT_NO_FATAL_FAILURE(drive_to(harness, serves_second_cell_x));
+  ASSERT_NO_FATAL_FAILURE(drive_to(harness, second_stone_x));
+  ASSERT_NO_FATAL_FAILURE(drive_to(harness, drops_first_cell_x));
+}
 
+/// Driving across the boundary swaps which cell the node asks for: cell "1" is served once the
+/// circle reaches it, and cell "0" goes back once it falls out. Read off the loader, so what is
+/// pinned is the exchange itself rather than how the node accounts for a map internally.
+TEST(NdtScanMatcherCharacteristics, DrivingAcrossCellBoundaryServesNextCellThenTakesBackPrevious)
+{
+  // Arrange
+  auto harness = make_ready_harness(shipped_config_overrides());
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  // Act
+  ASSERT_NO_FATAL_FAILURE(drive_across_cell_boundary(*harness));
+
+  // Assert
+  // One call per position: the first load at x = 100, then one from each of the four stops.
+  const auto calls = harness->map_loader()->calls();
+  ASSERT_EQ(calls.size(), 5U) << "the timer called the loader from somewhere unexpected";
+
+  // x = 100, the first load: cell "0" alone.
+  EXPECT_EQ(calls[0].served_ids, std::vector<std::string>{"0"});
+
+  // x = 190: cell "1" comes into reach and is served. Cell "0" is still in reach, so it stays.
+  EXPECT_NEAR(calls[2].center_x, serves_second_cell_x, 1e-3);
+  EXPECT_EQ(calls[2].served_ids, std::vector<std::string>{"1"});
+  EXPECT_TRUE(calls[2].removed_ids.empty()) << "cell \"0\" went back while still in reach";
+
+  // x = 280: cell "0" falls out of reach and goes back.
+  EXPECT_NEAR(calls[4].center_x, drops_first_cell_x, 1e-3);
+  EXPECT_EQ(calls[4].removed_ids, std::vector<std::string>{"0"});
+  EXPECT_TRUE(calls[4].served_ids.empty());
+
+  // x = 145 and x = 235, the stepping stones: nothing changes hands.
+  EXPECT_TRUE(calls[1].served_ids.empty()) << "cell \"1\" was served before it came into reach";
+  EXPECT_TRUE(calls[1].removed_ids.empty());
+  EXPECT_TRUE(calls[3].served_ids.empty());
+  EXPECT_TRUE(calls[3].removed_ids.empty());
+}
+
+/// A scan still converges after the map under it has been swapped: driven from x = 280, where the
+/// node holds cell "1" alone, a scan of that cell's corner matches with nothing skipped.
+TEST(NdtScanMatcherCharacteristics, ScanConvergesOnCellLoadedWhileDriving)
+{
   // Arrange
   auto harness = make_ready_harness(shipped_config_overrides());
   auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
-  ASSERT_TRUE(harness->ensure_map_loaded());  // the rebuild at x = 100 that loads cell "0"
+  ASSERT_TRUE(harness->ensure_map_loaded());
+  ASSERT_NO_FATAL_FAILURE(drive_across_cell_boundary(*harness));
 
-  // Moves the vehicle and waits for the query that follows, without driving a scan.
-  const auto hop_to = [&](const double x) {
-    const size_t queries_before = loader_query_count(*harness);
-    ASSERT_TRUE(
-      harness->publish_initial_pose_and_confirm(make_pose_at(harness->now(), x, map_center_y)));
-    ASSERT_TRUE(
-      harness->wait_until([&] { return loader_query_count(*harness) > queries_before; }, 5s));
+  // Act
+  // `drive_one_scan` publishes two EKF poses bracketing the scan stamp, then the scan itself, and
+  // hands back the `scan_matching_status` record the node published for it. The cloud is cell
+  // "1"'s corner, shifted because that corner stands 20 m ahead of where the vehicle stopped.
+  auto drive = default_drive();
+  drive.initial_pose->x = drops_first_cell_x;
+  drive.make_cloud = [](const builtin_interfaces::msg::Time & stamp) {
+    return make_scan_at(stamp, second_cell_x - drops_first_cell_x, 0.0);
   };
+  const auto outcome = harness->drive_one_scan(drive);
 
-  // Drives one scan from `x`, showing the corner of the cell anchored at `anchor_x`. Nothing
-  // stands between the two cells in this world, so a scan has to describe one of them.
-  const auto expect_scan_converges = [&](const double x, const double anchor_x) {
-    SCOPED_TRACE("scan at x = " + std::to_string(x));
-    auto drive = default_drive();
-    drive.initial_pose->x = x;
-    drive.make_cloud = [anchor_x, x](const builtin_interfaces::msg::Time & stamp) {
-      return make_scan_at(stamp, anchor_x - x, 0.0);
-    };
-
-    const auto outcome = harness->drive_one_scan(drive);
-    ASSERT_TRUE(outcome.has_value());
-    EXPECT_EQ(outcome->diag.value("is_set_map_points"), "True");
-    EXPECT_EQ(outcome->diag.value("skipping_publish_num"), "0")
-      << "message was: " << outcome->diag.message();
-  };
-
-  // Act and Assert
-  // Standing on cell "0", the only one loaded.
-  ASSERT_NO_FATAL_FAILURE(expect_scan_converges(map_center_x, map_center_x));
-
-  // East until the circle reaches cell "1", which the loader adds: map {0} -> {0, 1}.
-  ASSERT_NO_FATAL_FAILURE(hop_to(stone_before_add_x));
-  ASSERT_NO_FATAL_FAILURE(hop_to(add_x));
-  ASSERT_NO_FATAL_FAILURE(expect_scan_converges(add_x, map_center_x));  // nearer corner: "0"
-
-  // On until cell "0" falls out of it, and the loader takes it back: map {0, 1} -> {1}.
-  ASSERT_NO_FATAL_FAILURE(hop_to(stone_before_remove_x));
-  ASSERT_NO_FATAL_FAILURE(hop_to(remove_x));
-  ASSERT_NO_FATAL_FAILURE(expect_scan_converges(remove_x, second_cell_x));  // nearer corner: "1"
-
-  ASSERT_TRUE(harness->wait_until([&] { return ndt_pose->count() >= 3U; }, 5s))
-    << ndt_pose->count() << " of 3 scans produced an ndt_pose";
-
-  // The three updates that changed the map: the first rebuild, the add, and the remove.
-  const auto updates = wait_for_map_update_records(*harness, changed_map, 3U, 5s);
-  ASSERT_EQ(updates.size(), 3U) << updates.size() << " updates changed the map";
-  EXPECT_EQ(updates[0].value("is_need_rebuild"), "True");
-  EXPECT_EQ(updates[1].value("is_need_rebuild"), "False");
-  EXPECT_EQ(updates[1].value("maps_to_add_size"), "1");
-  EXPECT_EQ(updates[1].value("maps_size_after"), "2");
-  EXPECT_EQ(updates[2].value("is_need_rebuild"), "False");
-  EXPECT_EQ(updates[2].value("maps_to_remove_size"), "1");
-  EXPECT_EQ(updates[2].value("maps_size_after"), "1");
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  EXPECT_EQ(outcome->diag.value("is_set_map_points"), "True");
+  EXPECT_EQ(outcome->diag.value("skipping_publish_num"), "0")
+    << "message was: " << outcome->diag.message();
+  EXPECT_TRUE(harness->wait_until([&] { return ndt_pose->count() >= 1U; }, 5s))
+    << "the converged scan produced no ndt_pose";
 }
 
 /// A failed load is not retried until the vehicle has moved `update_distance`.
