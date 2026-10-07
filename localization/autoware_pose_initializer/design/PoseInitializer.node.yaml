@@ -10,7 +10,7 @@ package:
   provider: autoware
 
 launch:
-  plugin: autoware::pose_initializer::PoseInitializer
+  plugin: autoware::pose_initializer::PoseInitializerNode
   executable: autoware_pose_initializer_node
   node_output: screen
 
