@@ -2,6 +2,34 @@
 Changelog for package autoware_adapi_adaptors
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(api, motion_velocity_planner): add the node designs required by the AD API and motion planning design modules (`#1456 <https://github.com/autowarefoundation/autoware_core/issues/1456>`_)
+  * feat(api): add node designs for the default AD API nodes and RViz adaptors
+  * fix(autoware_motion_velocity_planner): add additional planning factors to publishers in the node design
+  ---------
+* feat(map_height_fitter, pose_initializer, adapi_adaptors): move the nodes to agnocast_wrapper::Node (`#1445 <https://github.com/autowarefoundation/autoware_core/issues/1445>`_)
+  * feat(map_height_fitter, pose_initializer, adapi_adaptors): move the nodes to agnocast_wrapper::Node
+  * refactor(map_height_fitter, pose_initializer, adapi_adaptors): use AgnocastOnlyCallbackIsolatedExecutor and drop redundant comments
+  * refactor(map_height_fitter, pose_initializer, adapi_adaptors): drop the comments that restate the code
+  * docs(map_height_fitter, pose_initializer, adapi_adaptors): note what the agnocast_env include provides
+  * docs(map_height_fitter, pose_initializer): explain the ENABLE_AGNOCAST test gate
+  ---------
+* fix(autoware_adapi_adaptors): declare the dependencies it includes (`#1356 <https://github.com/autowarefoundation/autoware_core/issues/1356>`_)
+  The package includes headers from packages it never declares. It builds today
+  only because another declared dependency re-exports them, so a change in an
+  unrelated repository can break it without anything here changing.
+* fix(component_interface_utils): fix build errors related to NodeAdaptor (`#1339 <https://github.com/autowarefoundation/autoware_core/issues/1339>`_)
+* refactor(autoware_adapi_adaptors): create endpoints through NodeAdaptor (`#1330 <https://github.com/autowarefoundation/autoware_core/issues/1330>`_)
+  Five endpoints re-derived their name and QoS from specs that already
+  carry both. Create them through NodeAdaptor instead.
+  One of them, the route-state subscription, built its QoS by writing out
+  the body of get_qos<RouteState>() into a local: depth, reliability and
+  durability read off the same spec. That local is now redundant and is
+  removed with the call site it served. No wire change.
+* Contributors: Koichi Imai, Mete Fatih Cırıt, Taekjin LEE, Takagi, Isamu, Yutaka Kondo, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

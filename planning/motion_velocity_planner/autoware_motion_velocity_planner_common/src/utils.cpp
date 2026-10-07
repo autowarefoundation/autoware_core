@@ -20,13 +20,17 @@
 #include "autoware/motion_velocity_planner_common/planner_data.hpp"
 #include "autoware/motion_velocity_planner_common/velocity_planning_result.hpp"
 
+#include <autoware_utils_geometry/geometry.hpp>
 #include <autoware_utils_visualization/marker_helper.hpp>
 
 #include <boost/geometry.hpp>
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <memory>
+#include <optional>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -36,12 +40,77 @@ namespace autoware::motion_velocity_planner::utils
 {
 namespace
 {
-TrajectoryPoint extend_trajectory_point(
-  const double extend_distance, const TrajectoryPoint & goal_point, const bool is_driving_forward)
+// Below this curvature the arc formula divides by an almost-zero curvature, and the road is
+// straight enough that the difference is irrelevant: 1e-4 corresponds to a 10 km radius.
+constexpr double min_curvature_for_arc = 1e-4;
+
+// Index of the point roughly `distance` metres back from the end of `points`, clamped to the
+// start. Used to spread the curvature samples over a fixed baseline rather than over whatever
+// spacing the trajectory happens to have.
+size_t index_before_end(const std::vector<TrajectoryPoint> & points, const double distance)
 {
+  if (points.empty()) {
+    throw std::invalid_argument("index_before_end requires a non-empty trajectory");
+  }
+
+  double travelled = 0.0;
+  for (size_t i = points.size() - 1; i > 0; --i) {
+    travelled += autoware_utils_geometry::calc_distance2d(
+      points.at(i).pose.position, points.at(i - 1).pose.position);
+    if (travelled >= distance) {
+      return i - 1;
+    }
+  }
+  return 0;
+}
+
+// Curvature at the end of `points`, from three points spaced `baseline_length` apart to
+// suppress noise on dense trajectories. Returns 0.0 if the points cannot define a circle.
+// See ../docs/trajectory-extension.png for the extension geometry.
+double estimate_goal_curvature(
+  const std::vector<TrajectoryPoint> & points, const double baseline_length)
+{
+  if (points.size() < 3) {
+    return 0.0;
+  }
+  size_t middle = index_before_end(points, baseline_length);
+  size_t first = index_before_end(points, 2.0 * baseline_length);
+  // Fall back to the last three points when the trajectory is shorter than the baseline.
+  if (first == middle || middle == points.size() - 1) {
+    first = points.size() - 3;
+    middle = points.size() - 2;
+  }
+  try {
+    return autoware_utils_geometry::calc_curvature(
+      points.at(first).pose.position, points.at(middle).pose.position, points.back().pose.position);
+  } catch (const std::runtime_error &) {
+    return 0.0;
+  }
+}
+
+TrajectoryPoint extend_trajectory_point(
+  const double extend_distance, const TrajectoryPoint & goal_point, const bool is_driving_forward,
+  const double curvature)
+{
+  const double signed_distance = extend_distance * (is_driving_forward ? 1.0 : -1.0);
+
+  // Follow the road rather than the tangent. In the goal frame, travelling signed_distance along a
+  // circle of the given curvature lands at (sin(t) / k, (1 - cos(t)) / k) having turned by
+  // t = k * signed_distance. As k tends to zero this tends to (signed_distance, 0) with no turn,
+  // which is the straight extension used below the threshold.
+  double x = signed_distance;
+  double y = 0.0;
+  double yaw = 0.0;
+  if (std::abs(curvature) >= min_curvature_for_arc) {
+    const double turn = curvature * signed_distance;
+    x = std::sin(turn) / curvature;
+    y = (1.0 - std::cos(turn)) / curvature;
+    yaw = turn;
+  }
+
   TrajectoryPoint extended_trajectory_point;
-  extended_trajectory_point.pose = autoware_utils_geometry::calc_offset_pose(
-    goal_point.pose, extend_distance * (is_driving_forward ? 1.0 : -1.0), 0.0, 0.0);
+  extended_trajectory_point.pose =
+    autoware_utils_geometry::calc_offset_pose(goal_point.pose, x, y, 0.0, yaw);
   extended_trajectory_point.longitudinal_velocity_mps = goal_point.longitudinal_velocity_mps;
   extended_trajectory_point.lateral_velocity_mps = goal_point.lateral_velocity_mps;
   extended_trajectory_point.acceleration_mps2 = goal_point.acceleration_mps2;
@@ -52,7 +121,7 @@ TrajectoryPoint extend_trajectory_point(
 
 std::vector<TrajectoryPoint> get_extended_trajectory_points(
   const std::vector<TrajectoryPoint> & input_points, const double extend_distance,
-  const double step_length)
+  const double step_length, const std::optional<double> curvature)
 {
   auto output_points = input_points;
   const auto is_driving_forward_opt =
@@ -72,11 +141,19 @@ std::vector<TrajectoryPoint> get_extended_trajectory_points(
   }
 
   const auto goal_point = input_points.back();
+  // calc_curvature() signs the curvature by the order of the points it is given, which runs
+  // along the direction of travel. The arc formula below needs it in the vehicle frame, where
+  // the heading does not flip when reversing, so undo the sign the point order imposed.
+  const double point_order_curvature =
+    curvature.value_or(estimate_goal_curvature(input_points, step_length));
+  const double goal_curvature = is_driving_forward ? point_order_curvature : -point_order_curvature;
   for (double extend_sum = step_length; extend_sum < extend_distance - step_length;
        extend_sum += step_length) {
-    output_points.push_back(extend_trajectory_point(extend_sum, goal_point, is_driving_forward));
+    output_points.push_back(
+      extend_trajectory_point(extend_sum, goal_point, is_driving_forward, goal_curvature));
   }
-  output_points.push_back(extend_trajectory_point(extend_distance, goal_point, is_driving_forward));
+  output_points.push_back(
+    extend_trajectory_point(extend_distance, goal_point, is_driving_forward, goal_curvature));
 
   return output_points;
 }
@@ -109,10 +186,19 @@ std::vector<TrajectoryPoint> decimate_trajectory_points_from_ego(
   const auto decimated_traj_points_from_ego =
     resample_trajectory_points(traj_points_from_ego, decimate_trajectory_step_length);
 
-  // extend trajectory
+  // Extend the trajectory. Both the curvature and the terminal orientation are taken
+  // from the untrimmed trajectory. Resampling recomputes orientations with a spline whose error
+  // is largest at the end points, and close to the goal the trimmed and decimated trajectory is
+  // only a couple of points long -- which is exactly when the extension past the goal decides
+  // whether an obstacle beyond it is seen.
+  auto extension_input = decimated_traj_points_from_ego;
+  if (!extension_input.empty() && !traj_points.empty()) {
+    extension_input.back().pose.orientation = traj_points.back().pose.orientation;
+  }
+
   const auto extended_traj_points_from_ego = get_extended_trajectory_points(
-    decimated_traj_points_from_ego, goal_extended_trajectory_length,
-    decimate_trajectory_step_length);
+    extension_input, goal_extended_trajectory_length, decimate_trajectory_step_length,
+    estimate_goal_curvature(traj_points, decimate_trajectory_step_length));
   if (extended_traj_points_from_ego.size() < 2) {
     return traj_points;
   }

@@ -27,6 +27,54 @@ Changelog for package autoware_test_utils
 * chore: include iostream and link yaml-cpp for Jazzy (`#351 <https://github.com/autowarefoundation/autoware_core/issues/351>`_)
 * Contributors: Mitsuhiro Sakamoto, Tim Clephas
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_test_utils): fix the planning test manager links (`#1425 <https://github.com/autowarefoundation/autoware_core/issues/1425>`_)
+  docs(autoware_test_utils): point the planning test manager links at its new path
+  The package moved from testing/ to planning/ in `#1383 <https://github.com/autowarefoundation/autoware_core/issues/1383>`_, and these two
+  links still point at the old path, so both return 404.
+* fix(testing): declare the dependencies these packages use (`#1374 <https://github.com/autowarefoundation/autoware_core/issues/1374>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers. Boost.Serialization is declared separately from
+  libboost-dev because it needs its own library at link time.
+* fix(autoware_test_utils): guard the yaml-cpp target for humble (`#1354 <https://github.com/autowarefoundation/autoware_core/issues/1354>`_)
+  The link moved to yaml-cpp::yaml-cpp. Ubuntu 24.04 ships yaml-cpp 0.8, which
+  exports that namespaced target, so jazzy passes. Ubuntu 22.04 ships 0.7, which
+  exports the target without a namespace, so every humble build of this package
+  stops at the CMake generate step:
+  Target "autoware_test_utils" links to target "yaml-cpp::yaml-cpp" but the
+  target was not found.
+  Keep the namespaced target, and define it when the config does not give one.
+  The guard is copied from autoware_map_loader, which already carries it. Use the
+  same target for topic_snapshot_saver, so both link lines agree.
+  - `autowarefoundation/autoware_core#1272 <https://github.com/autowarefoundation/autoware_core/issues/1272>`_
+* fix(autoware_test_utils): link to yaml-cpp target (`#1272 <https://github.com/autowarefoundation/autoware_core/issues/1272>`_)
+  Link autoware_test_utils to yaml-cpp target
+  This upstreams RoboStack downstream patch `patch/ros-rolling-autoware-test-utils.patch`.
+  Best-guess rationale: using yaml-cpp::yaml-cpp makes the dependency explicit for CMake-based package managers, and suppressing deprecated declaration warnings outside MSVC keeps current dependency warnings from breaking strict builds.
+  Co-authored-by: Daisuke Nishimatsu <nishimarudai@gmail.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* fix: autoware_test_manager:Fix flaky No subscriber for <topic> failure (`#1181 <https://github.com/autowarefoundation/autoware_core/issues/1181>`_)
+  * fix:autoware_test_manager:Fix flaky No subscriber for <topic> failures in autoware_planning_test_manager CI tests (closes `#1177 <https://github.com/autowarefoundation/autoware_core/issues/1177>`_)
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
+* feat(test_utils): templatize NodePtrT of test_utils (`#1208 <https://github.com/autowarefoundation/autoware_core/issues/1208>`_)
+  * templatize NodePtrT
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Kazuki Komiya, Koichi Imai, Mete Fatih Cırıt, Tobias Fischer, github-actions, 心刚
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

@@ -5,6 +5,19 @@ Changelog for package autoware_qp_interface
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* chore: update package maintainer (`#1384 <https://github.com/autowarefoundation/autoware_core/issues/1384>`_)
+  chore: update package author metadata
+* fix(autoware_qp_interface): use CMake targets (`#1269 <https://github.com/autowarefoundation/autoware_core/issues/1269>`_)
+  Use CMake targets in autoware_qp_interface
+  This upstreams RoboStack downstream patch `patch/ros-rolling-autoware-qp-interface.patch`.
+  Best-guess rationale: linking against Eigen3::Eigen, osqp::osqp, and proxsuite::proxsuite makes the target dependencies explicit, and reserving enough CSC storage avoids under-reserving during matrix conversion.
+  Co-authored-by: Daisuke Nishimatsu <nishimarudai@gmail.com>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Satoshi OTA, Tobias Fischer, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

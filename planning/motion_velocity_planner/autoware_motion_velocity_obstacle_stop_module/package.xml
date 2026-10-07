@@ -2,7 +2,7 @@
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>autoware_motion_velocity_obstacle_stop_module</name>
-  <version>1.9.0</version>
+  <version>1.10.0</version>
   <description>obstacle stop feature in motion_velocity_planner</description>
 
   <maintainer email="takayuki.murooka@tier4.jp">Takayuki Murooka</maintainer>
@@ -11,6 +11,11 @@
   <maintainer email="arjun.ram@tier4.jp">Arjun Ram</maintainer>
   <maintainer email="berkay@leodrive.ai">Berkay Karaman</maintainer>
   <maintainer email="takumi.odashima@tier4.jp">Takumi Odashima</maintainer>
+  <maintainer email="akihisa.nagata@tier4.jp">Akihisa Nagata</maintainer>
+  <maintainer email="masahiro.kubota@tier4.jp">Masahiro Kubota</maintainer>
+  <maintainer email="riku.kimura.2@tier4.jp">Riku Kimura</maintainer>
+  <maintainer email="sena.matsushita@tier4.jp">Sena Matsushita</maintainer>
+  <maintainer email="akiro.harada@tier4.jp">Akiro Harada</maintainer>
 
   <license>Apache License 2.0</license>
 

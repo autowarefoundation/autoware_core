@@ -5,6 +5,66 @@ Changelog for package autoware_velocity_smoother
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* test(autoware_velocity_smoother): add a new unit test suite for jerk smoother (`#1468 <https://github.com/autowarefoundation/autoware_core/issues/1468>`_)
+* fix(design): align the autoware_core node designs with the packages they describe (`#1416 <https://github.com/autowarefoundation/autoware_core/issues/1416>`_)
+  * fix(autoware_velocity_smoother): correct the velocity limit message type in the node design
+  The node publishes current_velocity_limit_mps as
+  autoware_internal_planning_msgs/msg/VelocityLimit (node.hpp), while the
+  design declared the pre-migration tier4_planning_msgs type, failing the
+  connection check against downstream ports.
+  * fix(autoware_motion_velocity_planner): correct the velocity limit message types and drop absent publishers in the node design
+  * fix(autoware_path_generator): correct the path publisher message type in the node design
+  The node publishes autoware_internal_planning_msgs/msg/PathWithLaneId on
+  ~/output/path (node.hpp:84), not autoware_planning_msgs/msg/Path.
+  * fix(autoware_velocity_smoother): declare the kinematic state subscriber in the node design
+  The node polls /localization/kinematic_state for the ego odometry
+  (node.hpp:94-97); the design did not list the input at all.
+  * fix(autoware_motion_velocity_planner): name the module-side subscriber topics in the node design
+  The boundary departure prevention module subscribes on absolute topic
+  names, so the default ~/input/<name> remap targets addressed topics the
+  node never opens and the module connections resolved to nothing. Declare
+  the real names and add the steering status input the module also takes.
+  * fix(autoware_gnss_poser): declare the map projector info subscriber in the node design
+  The node blocks pose conversion until /map/map_projector_info arrives
+  (gnss_poser_node.cpp:43); the design did not list the input at all.
+  * fix(autoware_behavior_velocity_planner): add additional planning factors to publishers in the node design
+  ---------
+* fix(autoware_velocity_smoother): use the mode-agnostic ok() so that resampling runs under Agnocast (`#1418 <https://github.com/autowarefoundation/autoware_core/issues/1418>`_)
+* fix(planning): declare the dependencies these packages use (`#1372 <https://github.com/autowarefoundation/autoware_core/issues/1372>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+  A clean-context review of the pull request found five more direct uses with no manifest entry. Add one entry for each:
+  - autoware_path_generator: tf2 (tf2::getYaw in src/utils.cpp)
+  - autoware_motion_velocity_planner_common: tf2 (tf2::getYaw in src/planner_data.cpp and src/polygon_utils.cpp)
+  - autoware_motion_velocity_obstacle_stop_module: autoware_planning_factor_interface (constructed in src/obstacle_stop_module.cpp)
+  - autoware_behavior_velocity_stop_line_module: autoware_planning_factor_interface (used in src/experimental/scene.cpp)
+  - autoware_velocity_smoother: rclcpp_components (register_node_macro.hpp in src/node.cpp)
+* refactor: migrate node design files from autoware_universe (`#1381 <https://github.com/autowarefoundation/autoware_core/issues/1381>`_)
+  Node design files for packages that moved to autoware_core, placed at
+  the in-package convention <package>/design/<Name>.node.yaml.
+  Co-authored-by: Claude Fable 5 <noreply@anthropic.com>
+* feat(velocity_smoother): apply agnocast_wrapper::Node to autoware_velocity_smoother (`#1264 <https://github.com/autowarefoundation/autoware_core/issues/1264>`_)
+  * feat(autoware_velocity_smoother): apply agnocast_wrapper::Node and migrate polling to agnocast_wrapper::polling:: API
+  * refactor: subscriber
+  * style(pre-commit): autofix
+  * fix: skip test in cmake
+  * refatcor: move smoother constructor definitions back to cpp
+  * fix: build
+  * refactor: address review comments
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Mete Fatih Cırıt, Taekjin LEE, Tran Huu Nhat Huy, Yutaro Kobayashi, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
