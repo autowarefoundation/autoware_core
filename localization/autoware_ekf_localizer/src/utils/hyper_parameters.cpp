@@ -42,6 +42,7 @@ HyperParameters load_hyper_parameters(autoware::agnocast_wrapper::Node * node)
   p.twist_gate_dist = node->declare_parameter<double>("twist_measurement.twist_gate_dist");
   p.twist_smoothing_steps = node->declare_parameter<int>("twist_measurement.twist_smoothing_steps");
   p.max_twist_queue_size = node->declare_parameter<int>("twist_measurement.max_twist_queue_size");
+  p.proc_stddev_xy_c = node->declare_parameter<double>("process_noise.proc_stddev_xy_c");
   p.proc_stddev_vx_c = node->declare_parameter<double>("process_noise.proc_stddev_vx_c");
   p.proc_stddev_wz_c = node->declare_parameter<double>("process_noise.proc_stddev_wz_c");
   p.proc_stddev_yaw_c = node->declare_parameter<double>("process_noise.proc_stddev_yaw_c");
