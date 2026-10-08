@@ -260,6 +260,8 @@ struct StopPlanningParam
 {
   double stop_margin{};
   double terminal_stop_margin{};
+  double backward_stop_margin{};
+  double backward_terminal_stop_margin{};
   double min_behavior_stop_margin{};
   double behavior_stop_margin_hold_time{};
   double max_negative_velocity{};
@@ -290,6 +292,10 @@ struct StopPlanningParam
     stop_margin = get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.stop_margin");
     terminal_stop_margin =
       get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.terminal_stop_margin");
+    backward_stop_margin =
+      get_or_declare_parameter<double>(node, "obstacle_stop.stop_planning.backward.stop_margin");
+    backward_terminal_stop_margin = get_or_declare_parameter<double>(
+      node, "obstacle_stop.stop_planning.backward.terminal_stop_margin");
     min_behavior_stop_margin = get_or_declare_parameter<double>(
       node, "obstacle_stop.stop_planning.min_behavior_stop_margin");
     behavior_stop_margin_hold_time = get_or_declare_parameter<double>(
@@ -350,6 +356,15 @@ struct StopPlanningParam
         object_type_specific_param_map.emplace(type_str, param);
       }
     }
+  }
+
+  double get_stop_margin(const bool is_driving_forward) const
+  {
+    return is_driving_forward ? stop_margin : backward_stop_margin;
+  }
+  double get_terminal_stop_margin(const bool is_driving_forward) const
+  {
+    return is_driving_forward ? terminal_stop_margin : backward_terminal_stop_margin;
   }
 
   std::string get_param_type(const StopObstacleClassification & stop_obstacle_classification) const

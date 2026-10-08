@@ -192,7 +192,7 @@ VelocityPlanningResult ObstacleStopModule::plan(
     raw_trajectory_points, planner_data->current_odometry.pose.pose,
     planner_data->ego_nearest_dist_threshold, planner_data->ego_nearest_yaw_threshold,
     planner_data->trajectory_polygon_collision_check.decimate_trajectory_step_length,
-    stop_planning_param_.stop_margin);
+    stop_planning_param_.get_stop_margin(planner_data->is_driving_forward));
 
   // 3. filter obstacles of predicted objects
   auto stop_obstacles_for_predicted_object = filter_stop_obstacle_for_predicted_object(
@@ -940,13 +940,15 @@ double ObstacleStopModule::calc_desired_stop_margin(
   const double dist_to_collide_on_ref_traj)
 {
   // calculate default stop margin
+  const bool is_driving_forward = planner_data->is_driving_forward;
   const double default_stop_margin = [&]() {
     const double v_ego = planner_data->current_odometry.twist.twist.linear.x;
     const double v_obs = stop_obstacle.velocity;
 
     const auto ref_traj_length =
       autoware::motion_utils::calcSignedArcLength(traj_points, 0, traj_points.size() - 1);
-    if (v_obs < stop_planning_param_.max_negative_velocity) {
+    // NOTE: The margin for opposing traffic assumes forward driving.
+    if (is_driving_forward && v_obs < stop_planning_param_.max_negative_velocity) {
       const double a_ego = stop_planning_param_.effective_deceleration_opposing_traffic;
       const double & bumper_to_bumper_distance = stop_obstacle.dist_to_collide_on_decimated_traj;
 
@@ -982,10 +984,10 @@ double ObstacleStopModule::calc_desired_stop_margin(
 
     if (dist_to_collide_on_ref_traj > ref_traj_length) {
       // Use terminal margin (terminal_stop_margin) for obstacle stop
-      return stop_planning_param_.terminal_stop_margin;
+      return stop_planning_param_.get_terminal_stop_margin(is_driving_forward);
     }
 
-    return stop_planning_param_.stop_margin;
+    return stop_planning_param_.get_stop_margin(is_driving_forward);
   }();
 
   // calculate stop margin on curve
@@ -1313,8 +1315,9 @@ double ObstacleStopModule::calc_margin_from_obstacle_on_curve(
   const std::vector<TrajectoryPoint> & traj_points, const StopObstacle & stop_obstacle,
   const double x_offset_to_bumper, const double default_stop_margin) const
 {
+  // NOTE: Approaching on curve assumes forward driving.
   if (
-    !stop_planning_param_.enable_approaching_on_curve ||
+    !stop_planning_param_.enable_approaching_on_curve || !planner_data->is_driving_forward ||
     stop_obstacle.classification.label == StopObstacleClassification::Type::POINTCLOUD) {
     return default_stop_margin;
   }

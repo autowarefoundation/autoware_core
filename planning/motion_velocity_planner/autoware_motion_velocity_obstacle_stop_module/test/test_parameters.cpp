@@ -112,4 +112,18 @@ TEST_F(GetObjectParameterTest, SuffixWithCustomPriority)
   ASSERT_DOUBLE_EQ(result, 50.0);
 }
 
+TEST(StopPlanningParamTest, SelectStopMarginByDrivingDirection)
+{
+  StopPlanningParam param;
+  param.stop_margin = 5.0;
+  param.terminal_stop_margin = 3.0;
+  param.backward_stop_margin = 2.0;
+  param.backward_terminal_stop_margin = 1.0;
+
+  EXPECT_DOUBLE_EQ(param.get_stop_margin(true), 5.0);
+  EXPECT_DOUBLE_EQ(param.get_stop_margin(false), 2.0);
+  EXPECT_DOUBLE_EQ(param.get_terminal_stop_margin(true), 3.0);
+  EXPECT_DOUBLE_EQ(param.get_terminal_stop_margin(false), 1.0);
+}
+
 }  // namespace autoware::motion_velocity_planner
