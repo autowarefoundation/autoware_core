@@ -55,6 +55,21 @@ autoware_perception_msgs::msg::PredictedPath resamplePredictedPath(
     throw std::invalid_argument("input path or resampled_time is empty");
   }
 
+  autoware_perception_msgs::msg::PredictedPath resampled_path;
+  resampled_path.confidence = path.confidence;
+  // Handle special case: If the input path has only one point
+  if (path.path.size() == 1) {
+    // Copy the confidence and time_step
+    resampled_path.confidence = path.confidence;
+    resampled_path.time_step = path.time_step;
+
+    // Copy the single point
+    resampled_path.path.push_back(path.path.front());
+
+    return resampled_path;
+  }
+
+  // Normal cases: proceed with interpolation
   const double & time_step = rclcpp::Duration(path.time_step).seconds();
   std::vector<double> input_time(path.path.size());
   std::vector<double> x(path.path.size());
@@ -84,9 +99,7 @@ autoware_perception_msgs::msg::PredictedPath resamplePredictedPath(
   const auto interpolated_z = use_spline_for_z ? spline(z) : lerp(z);
   const auto interpolated_quat = slerp(quat);
 
-  autoware_perception_msgs::msg::PredictedPath resampled_path;
   const auto resampled_size = std::min(resampled_path.path.max_size(), resampled_time.size());
-  resampled_path.confidence = path.confidence;
   resampled_path.path.resize(resampled_size);
 
   // Set Position
