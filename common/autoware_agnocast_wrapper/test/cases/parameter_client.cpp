@@ -19,17 +19,15 @@
 #include "autoware/agnocast_wrapper/parameter_client.hpp"
 
 #include "autoware/agnocast_wrapper/node.hpp"
-#include "autoware/agnocast_wrapper/runtime.hpp"
+#include "heaphook_probe.hpp"
 
 #include <rclcpp/rclcpp.hpp>
 
 #include <gtest/gtest.h>
 
 #include <chrono>
-#include <cstdlib>
 #include <memory>
 #include <stdexcept>
-#include <string>
 #include <type_traits>
 
 namespace
@@ -43,26 +41,10 @@ static_assert(!std::is_copy_assignable_v<AsyncParametersClient>);
 static_assert(!std::is_move_constructible_v<AsyncParametersClient>);
 static_assert(!std::is_move_assignable_v<AsyncParametersClient>);
 
-/// Same probe as test/cases/polling_subscriber.cpp: agnocast exits the process from inside the
-/// constructor when LD_PRELOAD lacks the heaphook, which would take the whole test binary down
-/// instead of failing one case.
-bool agnocast_heaphook_loaded()
-{
-  const char * ld_preload = std::getenv("LD_PRELOAD");
-  return ld_preload != nullptr &&
-         std::string(ld_preload).find("libagnocast_heaphook.so") != std::string::npos;
-}
-
 class AsyncParametersClientTest : public testing::Test
 {
 protected:
-  void SetUp() override
-  {
-    if (autoware::agnocast_wrapper::use_agnocast() && !agnocast_heaphook_loaded()) {
-      GTEST_SKIP() << "ENABLE_AGNOCAST=1 without the agnocast heaphook: the agnocast backend "
-                      "cannot be exercised in this environment.";
-    }
-  }
+  void SetUp() override { AUTOWARE_SKIP_WITHOUT_AGNOCAST_HEAPHOOK(); }
 };
 
 TEST_F(AsyncParametersClientTest, RejectsATransientLocalQos)
