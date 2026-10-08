@@ -34,10 +34,10 @@
   <depend>lanelet2_routing</depend>
   <depend>lanelet2_traffic_rules</depend>
   <depend>libboost-dev</depend>
+  <depend>libexpected-dev</depend>
   <depend>rclcpp</depend>
   <depend>tf2</depend>
   <depend>tf2_geometry_msgs</depend>
-  <depend>tl_expected</depend>
 
   <test_depend>ament_cmake_auto</test_depend>
   <test_depend>ament_index_cpp</test_depend>
