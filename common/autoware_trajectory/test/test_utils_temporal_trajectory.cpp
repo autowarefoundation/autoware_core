@@ -148,6 +148,29 @@ TEST(FindIntervalsTemporal, ReturnsStopIntervalWithDistance)
   EXPECT_NEAR(intervals.front().end.distance, 2.0, 1e-3);
 }
 
+TEST(FindIntervalsTemporal, ReturnsStopIntervalAtLastPoint)
+{
+  const auto points = make_points({
+    {0.0, 0.0, 2.0F},
+    {1.0, 1.0, 1.0F},
+    {2.0, 2.0, 0.0F},
+  });
+
+  const auto trajectory_result = TemporalTrajectory::Builder{}.build(points);
+  ASSERT_TRUE(trajectory_result.has_value());
+
+  const auto intervals = autoware::experimental::trajectory::find_intervals(
+    trajectory_result.value(), [](const auto & point) {
+      return std::abs(point.longitudinal_velocity_mps) <=
+             autoware::experimental::trajectory::k_epsilon_velocity;
+    });
+  ASSERT_EQ(intervals.size(), 1U);
+  EXPECT_NEAR(intervals.front().start.time, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().end.time, 2.0, 1e-6);
+  EXPECT_NEAR(intervals.front().start.distance, 2.0, 1e-3);
+  EXPECT_NEAR(intervals.front().end.distance, 2.0, 1e-3);
+}
+
 TEST(FindIntervalsTemporal, RespectsVelocityThreshold)
 {
   const auto points = make_points({
