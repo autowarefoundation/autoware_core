@@ -16,6 +16,7 @@
   <arg name="launch_perception" default="true" description="launch perception"/>
   <arg name="launch_planning" default="true" description="launch planning"/>
   <arg name="launch_control" default="true" description="launch control"/>
+  <arg name="launch_command_gate" default="true" description="launch the Core command gate"/>
   <arg name="launch_vehicle" default="true" description="launch vehicle"/>
   <arg name="launch_api" default="true" description="launch api"/>
 
@@ -59,7 +60,9 @@
 
   <!-- Control -->
   <group if="$(var launch_control)">
-    <include file="$(find-pkg-share autoware_core_control)/launch/autoware_core_control.launch.xml"/>
+    <include file="$(find-pkg-share autoware_core_control)/launch/autoware_core_control.launch.xml">
+      <arg name="launch_command_gate" value="$(var launch_command_gate)"/>
+    </include>
   </group>
 
   <group if="$(var launch_vehicle)">

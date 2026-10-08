@@ -10,12 +10,19 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/interface.cpp
   src/localization.cpp
   src/routing.cpp
+  src/operation_mode.cpp
   src/utils/localization_conversion.cpp
   src/utils/route_conversion.cpp
 )
 ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
 autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
+autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
+  PLUGIN "autoware::default_adapi::CoreOperationModeNode"
+  EXECUTABLE operation_mode_node
+  ROS2_EXECUTOR MultiThreadedExecutor
+  AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
+)
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::default_adapi::InterfaceNode"
   EXECUTABLE interface_node
@@ -37,7 +44,21 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
 
 if(BUILD_TESTING)
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
-    add_launch_test(test/main.test.py)
+    find_package(ament_cmake_ros REQUIRED)
+    add_launch_test(test/main.test.py
+      RUNNER "${ament_cmake_ros_DIR}/run_test_isolated.py"
+    )
+    add_launch_test(test/operation_mode.test.py
+      RUNNER "${ament_cmake_ros_DIR}/run_test_isolated.py"
+    )
+
+    ament_add_ros_isolated_gtest(test_operation_mode_timeout test/test_operation_mode_timeout.cpp)
+    target_include_directories(test_operation_mode_timeout PRIVATE src)
+    target_link_libraries(test_operation_mode_timeout ${PROJECT_NAME})
+
+    ament_add_ros_isolated_gtest(test_operation_mode test/test_operation_mode.cpp)
+    target_include_directories(test_operation_mode PRIVATE src)
+    target_link_libraries(test_operation_mode ${PROJECT_NAME})
   endif()
 
   ament_auto_add_gtest(test_${PROJECT_NAME}
