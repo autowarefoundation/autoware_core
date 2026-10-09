@@ -146,8 +146,6 @@ private:
   void publish_loaded_map_if_present(
     MapUpdateModule::UpdateResult & result, const rclcpp::Time & stamp) const;
 
-  static int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
-
   Eigen::Matrix2d estimate_covariance(
     const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
     const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);

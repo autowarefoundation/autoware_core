@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "ndt_scan_matcher_helper.hpp"
+#include "scan_match_evaluation.hpp"
 
 #include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/tree_structured_parzen_estimator.hpp>
@@ -557,103 +558,22 @@ bool NDTScanMatcher::callback_sensor_points_main(
       transformation_msg_array.push_back(pose_ros);
     }
 
-    // check iteration_num
-    diagnostics_scan_points_->add_key_value("iteration_num", ndt_result.iteration_num);
-    const bool is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->getMaximumIterations());
-    if (!is_ok_iteration_num) {
-      std::stringstream message;
-      message << "The number of iterations has reached its upper limit. The number of iterations: "
-              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->getMaximumIterations() << ".";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    }
-
-    // check local_optimal_solution_oscillation_num
-    constexpr int oscillation_num_threshold = 10;
-    const int oscillation_num = count_oscillation(transformation_msg_array);
-    diagnostics_scan_points_->add_key_value(
-      "local_optimal_solution_oscillation_num", oscillation_num);
-    const bool is_local_optimal_solution_oscillation =
-      (oscillation_num > oscillation_num_threshold);
-    if (is_local_optimal_solution_oscillation) {
-      std::stringstream message;
-      message << "There is a possibility of oscillation in a local minimum";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    }
-
-    // check score
-    diagnostics_scan_points_->add_key_value(
-      "transform_probability", ndt_result.transform_probability);
-    diagnostics_scan_points_->add_key_value(
-      "nearest_voxel_transformation_likelihood",
-      ndt_result.nearest_voxel_transformation_likelihood);
-    double score = 0.0;
-    double score_threshold = 0.0;
-    if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {
-      score = ndt_result.transform_probability;
-      score_threshold = param_.score_estimation.converged_param_transform_probability;
-    } else if (
-      param_.score_estimation.converged_param_type ==
-      ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD) {
-      score = ndt_result.nearest_voxel_transformation_likelihood;
-      score_threshold =
-        param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
-    } else {
-      std::stringstream message;
-      message
-        << "Unknown converged param type. Please check `score_estimation.converged_param_type`";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+    DiagnosticsReport evaluation_report;
+    const std::optional<ScanMatchEvaluation> evaluation = evaluate_scan_match_result(
+      ndt_result, ndt_ptr->getMaximumIterations(), transformation_msg_array,
+      param_.score_estimation, evaluation_report);
+    apply_diagnostics_update(*diagnostics_scan_points_, evaluation_report);
+    if (!evaluation.has_value()) {
       return false;
     }
 
-    // check score diff
-    const std::vector<float> & tp_array = ndt_result.transform_probability_array;
-    if (static_cast<int>(tp_array.size()) != ndt_result.iteration_num + 1) {
-      // only publish warning to /diagnostics, not skip publishing pose
+    if (!evaluation->is_ok_score) {
       std::stringstream message;
-      message << "transform_probability_array size is not equal to iteration_num + 1."
-              << " transform_probability_array size: " << tp_array.size()
-              << ", iteration_num: " << ndt_result.iteration_num;
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    } else {
-      const float diff = tp_array.back() - tp_array.front();
-      diagnostics_scan_points_->add_key_value("transform_probability_diff", diff);
-      diagnostics_scan_points_->add_key_value("transform_probability_before", tp_array.front());
-    }
-    const std::vector<float> & nvtl_array =
-      ndt_result.nearest_voxel_transformation_likelihood_array;
-    if (static_cast<int>(nvtl_array.size()) != ndt_result.iteration_num + 1) {
-      // only publish warning to /diagnostics, not skip publishing pose
-      std::stringstream message;
-      message
-        << "nearest_voxel_transformation_likelihood_array size is not equal to iteration_num + 1."
-        << " nearest_voxel_transformation_likelihood_array size: " << nvtl_array.size()
-        << ", iteration_num: " << ndt_result.iteration_num;
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    } else {
-      const float diff = nvtl_array.back() - nvtl_array.front();
-      diagnostics_scan_points_->add_key_value("nearest_voxel_transformation_likelihood_diff", diff);
-      diagnostics_scan_points_->add_key_value(
-        "nearest_voxel_transformation_likelihood_before", nvtl_array.front());
-    }
-
-    bool is_ok_score = (score > score_threshold);
-    if (!is_ok_score) {
-      std::stringstream message;
-      message << "Score is below the threshold. Score: " << score
-              << ", Threshold: " << score_threshold;
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+      message << "Score is below the threshold. Score: " << evaluation->score
+              << ", Threshold: " << evaluation->score_threshold;
       RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
     }
-
-    // check is_converged
-    bool is_converged =
-      (is_ok_iteration_num || is_local_optimal_solution_oscillation) && is_ok_score;
+    const bool is_converged = evaluation->is_converged;
 
     // covariance estimation
     const Eigen::Quaterniond map_to_base_link_quat = Eigen::Quaterniond(
@@ -911,12 +831,6 @@ void NDTScanMatcher::publish_initial_to_result(
     initial_pose_new_msg.pose.pose.position, result_pose_msg.position));
   initial_to_result_distance_new_pub_->publish(
     make_float32_stamped(sensor_ros_time, initial_to_result_distance_new));
-}
-
-int NDTScanMatcher::count_oscillation(
-  const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array)
-{
-  return autoware::ndt_scan_matcher::count_oscillation(result_pose_msg_array);
 }
 
 Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
