@@ -244,7 +244,7 @@ NDTScanMatcher::get_differential_point_cloud_map(
 }
 
 void NDTScanMatcher::apply_diagnostics_update(
-  DiagnosticsInterface & diagnostics, const MapUpdateModule::DiagnosticsReport & report)
+  DiagnosticsInterface & diagnostics, const DiagnosticsReport & report)
 {
   for (const auto & key_value : report.key_values) {
     std::visit(
