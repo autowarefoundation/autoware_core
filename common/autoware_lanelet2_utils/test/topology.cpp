@@ -19,12 +19,17 @@
 
 #include <gtest/gtest.h>
 #include <lanelet2_core/LaneletMap.h>
+#include <lanelet2_core/geometry/Lanelet.h>
+#include <lanelet2_core/utility/Utilities.h>
 #include <lanelet2_io/Io.h>
+#include <lanelet2_routing/RoutingGraph.h>
 
+#include <cmath>
 #include <filesystem>
 #include <limits>
 #include <set>
 #include <string>
+#include <utility>
 #include <vector>
 
 namespace fs = std::filesystem;
@@ -535,6 +540,116 @@ TEST_F(TestWithIntersectionCrossingMap, ordinary_preceding_lanelet_sequences_exc
   // check the last lanelet sequence
   ASSERT_EQ(preceding_lanelet_sequences.back().size(), 1);
   EXPECT_EQ(preceding_lanelet_sequences.back()[0].id(), 2283);
+}
+
+/**
+ * A ring road of four lanelets, 0 -> 1 -> 2 -> 3 -> 0, around a square: every lanelet follows and
+ * precedes another, so a search by length alone never runs out of lanelets.
+ */
+class TestWithRingRoad : public ::testing::Test
+{
+protected:
+  lanelet::LaneletMapPtr lanelet_map_ptr_{nullptr};
+  lanelet::routing::RoutingGraphConstPtr routing_graph_ptr_{nullptr};
+  std::vector<lanelet::Lanelet> ring_;
+
+  void SetUp() override
+  {
+    // The inner square is the left bound (counterclockwise travel), the outer one the right.
+    const std::vector<std::pair<double, double>> inner{{1, 1}, {9, 1}, {9, 9}, {1, 9}};
+    const std::vector<std::pair<double, double>> outer{{-1, -1}, {11, -1}, {11, 11}, {-1, 11}};
+    lanelet::Id id = 1000;
+    std::vector<lanelet::Point3d> left;
+    std::vector<lanelet::Point3d> right;
+    for (size_t i = 0; i < inner.size(); ++i) {
+      left.emplace_back(id++, inner[i].first, inner[i].second, 0.0);
+      right.emplace_back(id++, outer[i].first, outer[i].second, 0.0);
+    }
+    for (size_t i = 0; i < inner.size(); ++i) {
+      const size_t j = (i + 1) % inner.size();
+      lanelet::LineString3d left_bound(id++, {left[i], left[j]});
+      lanelet::LineString3d right_bound(id++, {right[i], right[j]});
+      lanelet::Lanelet lanelet(id++, left_bound, right_bound);
+      lanelet.attributes()[lanelet::AttributeName::Subtype] = lanelet::AttributeValueString::Road;
+      lanelet.attributes()[lanelet::AttributeName::Location] = lanelet::AttributeValueString::Urban;
+      ring_.push_back(lanelet);
+    }
+    lanelet_map_ptr_ = lanelet::utils::createMap(ring_);
+    routing_graph_ptr_ =
+      lanelet2_utils::instantiate_routing_graph_and_traffic_rules(lanelet_map_ptr_).first;
+  }
+};
+
+TEST_F(TestWithRingRoad, the_ring_is_a_loop)
+{
+  for (size_t i = 0; i < ring_.size(); ++i) {
+    const auto following = routing_graph_ptr_->following(ring_[i]);
+    ASSERT_EQ(following.size(), 1);
+    EXPECT_EQ(following[0].id(), ring_[(i + 1) % ring_.size()].id());
+  }
+}
+
+TEST_F(TestWithRingRoad, succeeding_sequences_stop_before_closing_the_loop)
+{
+  for (const double length :
+       {std::numeric_limits<double>::max(), std::numeric_limits<double>::infinity(), 1.0e6}) {
+    const auto sequences =
+      lanelet2_utils::get_succeeding_lanelet_sequences(ring_[0], routing_graph_ptr_, length);
+    ASSERT_EQ(sequences.size(), 1);
+    // closest -> furthest, and not back to the input lanelet
+    ASSERT_EQ(sequences[0].size(), 3);
+    EXPECT_EQ(sequences[0][0].id(), ring_[1].id());
+    EXPECT_EQ(sequences[0][1].id(), ring_[2].id());
+    EXPECT_EQ(sequences[0][2].id(), ring_[3].id());
+  }
+}
+
+TEST_F(TestWithRingRoad, preceding_sequences_stop_before_closing_the_loop)
+{
+  for (const double length :
+       {std::numeric_limits<double>::max(), std::numeric_limits<double>::infinity(), 1.0e6}) {
+    const auto sequences =
+      lanelet2_utils::get_preceding_lanelet_sequences(ring_[0], routing_graph_ptr_, length, {});
+    ASSERT_EQ(sequences.size(), 1);
+    // furthest -> closest, and not back to the input lanelet
+    ASSERT_EQ(sequences[0].size(), 3);
+    EXPECT_EQ(sequences[0][0].id(), ring_[1].id());
+    EXPECT_EQ(sequences[0][1].id(), ring_[2].id());
+    EXPECT_EQ(sequences[0][2].id(), ring_[3].id());
+  }
+}
+
+TEST_F(TestWithRingRoad, a_length_that_is_not_a_number_ends_the_search)
+{
+  // NaN compares false with everything: without the guard the search would go around forever.
+  const double nan = std::numeric_limits<double>::quiet_NaN();
+
+  const auto succeeding =
+    lanelet2_utils::get_succeeding_lanelet_sequences(ring_[0], routing_graph_ptr_, nan);
+  ASSERT_EQ(succeeding.size(), 1);
+  ASSERT_EQ(succeeding[0].size(), 1);
+  EXPECT_EQ(succeeding[0][0].id(), ring_[1].id());
+
+  const auto preceding =
+    lanelet2_utils::get_preceding_lanelet_sequences(ring_[0], routing_graph_ptr_, nan, {});
+  ASSERT_EQ(preceding.size(), 1);
+  ASSERT_EQ(preceding[0].size(), 1);
+  EXPECT_EQ(preceding[0][0].id(), ring_[3].id());
+}
+
+TEST_F(TestWithRingRoad, a_lanelet_whose_length_is_not_a_number_ends_the_search)
+{
+  // A bound point at NaN, as a centerline resampled over a zero-length bound segment gives.
+  ring_[2].leftBound()[1].x() = std::numeric_limits<double>::quiet_NaN();
+  ASSERT_TRUE(std::isnan(lanelet::geometry::length2d(lanelet::ConstLanelet(ring_[2]))));
+
+  const auto sequences = lanelet2_utils::get_succeeding_lanelet_sequences(
+    ring_[0], routing_graph_ptr_, std::numeric_limits<double>::max());
+  ASSERT_EQ(sequences.size(), 1);
+  // the search ends at the lanelet it cannot measure
+  ASSERT_EQ(sequences[0].size(), 2);
+  EXPECT_EQ(sequences[0][0].id(), ring_[1].id());
+  EXPECT_EQ(sequences[0][1].id(), ring_[2].id());
 }
 }  // namespace autoware::experimental
 

@@ -21,59 +21,108 @@
 #include <lanelet2_core/primitives/Lanelet.h>
 #include <lanelet2_routing/RoutingGraph.h>
 
+#include <cmath>
 #include <limits>
 #include <vector>
 
 namespace
 {
+/**
+ * @brief whether the search along a lanelet sequence ends at `current_lanelet`, by its length.
+ * @details It ends once `current_lanelet` covers the remaining length. A length that is not a
+ * number cannot be measured against, so it ends the search too instead of never doing so: a
+ * lanelet whose length is NaN (a centerline resampled over a bound segment of length zero gives
+ * one) would otherwise leave the remaining length NaN, and `>=` false, for every lanelet after it.
+ */
+bool ends_search(
+  const lanelet::ConstLanelet & current_lanelet, const double current_lanelet_length,
+  const double remaining_length)
+{
+  if (std::isnan(current_lanelet_length) || std::isnan(remaining_length)) {
+    RCLCPP_WARN(
+      rclcpp::get_logger("autoware_lanelet2_utils"),
+      "Lanelet sequence search stops at lanelet %ld: its length (%f) or the remaining length "
+      "(%f) is not a number.",
+      current_lanelet.id(), current_lanelet_length, remaining_length);
+    return true;
+  }
+  return current_lanelet_length >= remaining_length;
+}
+
+/**
+ * @brief `current_lanelet`'s neighbors that do not close a loop.
+ * @details A neighbor already in `path` -- the lanelets the search went through to reach
+ * `current_lanelet`, the input lanelet among them -- or `current_lanelet` itself would take the
+ * search around the same loop again; on a ring road with a long enough length it would never
+ * stop.
+ */
+lanelet::ConstLanelets not_closing_a_loop(
+  const lanelet::ConstLanelets & neighbors, const lanelet::ConstLanelet & current_lanelet,
+  const lanelet::ConstLanelets & path)
+{
+  lanelet::ConstLanelets open;
+  for (const auto & neighbor : neighbors) {
+    if (neighbor.id() != current_lanelet.id() && !lanelet::utils::contains(path, neighbor)) {
+      open.push_back(neighbor);
+    }
+  }
+  return open;
+}
+
 std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences_recursive(
   const lanelet::ConstLanelet & current_lanelet,
-  const lanelet::routing::RoutingGraphConstPtr & routing_graph, double remaining_length)
+  const lanelet::routing::RoutingGraphConstPtr & routing_graph, double remaining_length,
+  lanelet::ConstLanelets & path)
 {
   std::vector<lanelet::ConstLanelets> succeeding_lanelet_sequences;
 
-  const auto next_lanelets = routing_graph->following(current_lanelet);
+  const auto next_lanelets =
+    not_closing_a_loop(routing_graph->following(current_lanelet), current_lanelet, path);
   const double current_lanelet_length = lanelet::geometry::length2d(current_lanelet);
 
-  // TODO(sarun-hub): no loop check yet
-
   // end condition of the recursive function
-  if (next_lanelets.empty() || current_lanelet_length >= remaining_length) {
+  if (
+    next_lanelets.empty() ||
+    ends_search(current_lanelet, current_lanelet_length, remaining_length)) {
     succeeding_lanelet_sequences.push_back({current_lanelet});
     return succeeding_lanelet_sequences;
   }
 
+  path.push_back(current_lanelet);
   for (const auto & next_lanelet : next_lanelets) {
     // get lanelet sequence after next_lanelet
     auto tmp_lanelet_sequences = get_succeeding_lanelet_sequences_recursive(
-      next_lanelet, routing_graph, remaining_length - current_lanelet_length);
+      next_lanelet, routing_graph, remaining_length - current_lanelet_length, path);
     for (auto & tmp_lanelet_sequence : tmp_lanelet_sequences) {
       // fill from bottom to top node (from furthest to closest)
       tmp_lanelet_sequence.push_back(current_lanelet);
       succeeding_lanelet_sequences.push_back(tmp_lanelet_sequence);
     }
   }
+  path.pop_back();
   return succeeding_lanelet_sequences;
 }
 
 std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences_recursive(
   const lanelet::ConstLanelet & current_lanelet,
   const lanelet::routing::RoutingGraphConstPtr & routing_graph, double remaining_length,
-  const lanelet::ConstLanelets & exclude_lanelets)
+  const lanelet::ConstLanelets & exclude_lanelets, lanelet::ConstLanelets & path)
 {
   std::vector<lanelet::ConstLanelets> preceding_lanelet_sequences;
 
-  const auto prev_lanelets = routing_graph->previous(current_lanelet);
+  const auto prev_lanelets =
+    not_closing_a_loop(routing_graph->previous(current_lanelet), current_lanelet, path);
   const double current_lanelet_length = lanelet::geometry::length2d(current_lanelet);
 
-  // TODO(sarun-hub): no loop check yet
-
   // end condition of the recursive function
-  if (prev_lanelets.empty() || current_lanelet_length >= remaining_length) {
+  if (
+    prev_lanelets.empty() ||
+    ends_search(current_lanelet, current_lanelet_length, remaining_length)) {
     preceding_lanelet_sequences.push_back({current_lanelet});
     return preceding_lanelet_sequences;
   }
 
+  path.push_back(current_lanelet);
   for (const auto & prev_lanelet : prev_lanelets) {
     if (lanelet::utils::contains(exclude_lanelets, prev_lanelet)) {
       // if prev_lanelet is included in exclude_lanelets,
@@ -82,13 +131,15 @@ std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences_recursive(
     }
     // get lanelet sequence after prev_lanelet
     auto tmp_lanelet_sequences = get_preceding_lanelet_sequences_recursive(
-      prev_lanelet, routing_graph, remaining_length - current_lanelet_length, exclude_lanelets);
+      prev_lanelet, routing_graph, remaining_length - current_lanelet_length, exclude_lanelets,
+      path);
     for (auto & tmp_lanelet_sequence : tmp_lanelet_sequences) {
       // fill from bottom to top node (from furthest to closest)
       tmp_lanelet_sequence.push_back(current_lanelet);
       preceding_lanelet_sequences.push_back(tmp_lanelet_sequence);
     }
   }
+  path.pop_back();
   // In case that exclude all prev_lanelets
   if (preceding_lanelet_sequences.empty()) {
     preceding_lanelet_sequences.push_back({current_lanelet});
@@ -331,11 +382,16 @@ std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences(
   std::vector<lanelet::ConstLanelets> succeeding_lanelet_sequences;
 
   const auto next_lanelets = routing_graph->following(lanelet);
+  // The input lanelet is on the path: a sequence coming back to it has closed a loop.
+  lanelet::ConstLanelets path{lanelet};
   // start from next_lanelet
   for (const auto & next_lanelet : next_lanelets) {
+    if (next_lanelet.id() == lanelet.id()) {
+      continue;
+    }
     // recursive starts
     auto tmp_succeeding_lanelet_sequences =
-      get_succeeding_lanelet_sequences_recursive(next_lanelet, routing_graph, length);
+      get_succeeding_lanelet_sequences_recursive(next_lanelet, routing_graph, length, path);
     // reverse to get closest to furthest
     for (auto & tmp_lanelet_sequence : tmp_succeeding_lanelet_sequences) {
       std::reverse(tmp_lanelet_sequence.begin(), tmp_lanelet_sequence.end());
@@ -355,8 +411,13 @@ std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences(
   std::vector<lanelet::ConstLanelets> preceding_lanelet_sequences;
 
   const auto prev_lanelets = routing_graph->previous(lanelet);
+  // The input lanelet is on the path: a sequence coming back to it has closed a loop.
+  lanelet::ConstLanelets path{lanelet};
   // start from prev_lanelet
   for (const auto & prev_lanelet : prev_lanelets) {
+    if (prev_lanelet.id() == lanelet.id()) {
+      continue;
+    }
     if (lanelet::utils::contains(exclude_lanelets, prev_lanelet)) {
       // if prev_lanelet is included in exclude_lanelets,
       // remove prev_lanelet from preceding_lanelet_sequences
@@ -364,7 +425,7 @@ std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences(
     }
     // recursive starts
     auto tmp_preceding_lanelet_sequences = get_preceding_lanelet_sequences_recursive(
-      prev_lanelet, routing_graph, length, exclude_lanelets);
+      prev_lanelet, routing_graph, length, exclude_lanelets, path);
     // does not reverse (order from furthest to closest)
     preceding_lanelet_sequences.insert(
       preceding_lanelet_sequences.end(), tmp_preceding_lanelet_sequences.begin(),
