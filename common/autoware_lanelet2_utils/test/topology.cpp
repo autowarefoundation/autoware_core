@@ -566,6 +566,21 @@ protected:
     return lanelet;
   }
 
+  // the ids of each sequence, in any order of the sequences
+  static std::set<std::vector<lanelet::Id>> ids_of(
+    const std::vector<lanelet::ConstLanelets> & sequences)
+  {
+    std::set<std::vector<lanelet::Id>> ids;
+    for (const auto & sequence : sequences) {
+      std::vector<lanelet::Id> sequence_ids;
+      for (const auto & lanelet : sequence) {
+        sequence_ids.push_back(lanelet.id());
+      }
+      ids.insert(sequence_ids);
+    }
+    return ids;
+  }
+
   // lanelets to put in the map besides the ring
   virtual std::vector<lanelet::Lanelet> other_lanelets() { return {}; }
 
@@ -747,18 +762,69 @@ TEST_F(TestWithRingRoadAndLeadIn, preceding_sequences_keep_the_branch_off_the_lo
     ring_[1], routing_graph_ptr_, std::numeric_limits<double>::max(), {});
   ASSERT_EQ(sequences.size(), 2);
 
-  std::set<std::vector<lanelet::Id>> ids;
-  for (const auto & sequence : sequences) {
-    std::vector<lanelet::Id> sequence_ids;
-    for (const auto & lanelet : sequence) {
-      sequence_ids.push_back(lanelet.id());
-    }
-    ids.insert(sequence_ids);
-  }
   // furthest -> closest
   const std::set<std::vector<lanelet::Id>> expected{
     {ring_[2].id(), ring_[3].id(), ring_[0].id()}, {lead_in_.id(), ring_[0].id()}};
-  EXPECT_EQ(ids, expected);
+  EXPECT_EQ(ids_of(sequences), expected);
+}
+
+TEST_F(TestWithRingRoadAndLeadIn, preceding_sequences_keep_the_loop_next_to_a_branch_off_it)
+{
+  // Going back from ring_[3], ring_[0] has two predecessors: ring_[3] closes the loop, the lead-in
+  // goes off it. The sequence that would close the loop ends at ring_[0], next to the other one.
+  const auto sequences = lanelet2_utils::get_preceding_lanelet_sequences(
+    ring_[3], routing_graph_ptr_, std::numeric_limits<double>::max(), {});
+  ASSERT_EQ(sequences.size(), 2);
+
+  // furthest -> closest
+  const std::set<std::vector<lanelet::Id>> expected{
+    {ring_[0].id(), ring_[1].id(), ring_[2].id()},
+    {lead_in_.id(), ring_[0].id(), ring_[1].id(), ring_[2].id()}};
+  EXPECT_EQ(ids_of(sequences), expected);
+}
+
+/**
+ * The ring road, with an exit lanelet leaving it where ring_[3] ends:
+ * 0 -> 1 -> 2 -> 3 -> 0, and 3 -> exit.
+ */
+class TestWithRingRoadAndExit : public TestWithRingRoad
+{
+protected:
+  lanelet::Lanelet exit_;
+
+  std::vector<lanelet::Lanelet> other_lanelets() override
+  {
+    // It starts where ring_[3] ends, so it shares those bound points, and goes straight on.
+    lanelet::Point3d left_end(id_++, 1.0, -9.0, 0.0);
+    lanelet::Point3d right_end(id_++, -1.0, -9.0, 0.0);
+    lanelet::LineString3d left_bound(id_++, {left_[0], left_end});
+    lanelet::LineString3d right_bound(id_++, {right_[0], right_end});
+    exit_ = road(id_++, left_bound, right_bound);
+    return {exit_};
+  }
+};
+
+TEST_F(TestWithRingRoadAndExit, the_exit_leaves_the_ring)
+{
+  const auto following = routing_graph_ptr_->following(ring_[3]);
+  ASSERT_EQ(following.size(), 2);
+  EXPECT_TRUE(lanelet::utils::contains(following, lanelet::ConstLanelet(exit_)));
+  EXPECT_TRUE(lanelet::utils::contains(following, lanelet::ConstLanelet(ring_[0])));
+}
+
+TEST_F(TestWithRingRoadAndExit, succeeding_sequences_keep_the_loop_next_to_a_branch_off_it)
+{
+  // ring_[3] has two successors: ring_[0] closes the loop, the exit goes off it. The sequence that
+  // would close the loop ends at ring_[3], next to the one through the exit.
+  const auto sequences = lanelet2_utils::get_succeeding_lanelet_sequences(
+    ring_[0], routing_graph_ptr_, std::numeric_limits<double>::max());
+  ASSERT_EQ(sequences.size(), 2);
+
+  // closest -> furthest
+  const std::set<std::vector<lanelet::Id>> expected{
+    {ring_[1].id(), ring_[2].id(), ring_[3].id()},
+    {ring_[1].id(), ring_[2].id(), ring_[3].id(), exit_.id()}};
+  EXPECT_EQ(ids_of(sequences), expected);
 }
 }  // namespace autoware::experimental
 

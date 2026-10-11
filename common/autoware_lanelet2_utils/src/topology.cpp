@@ -53,8 +53,9 @@ std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences_recursive(
 {
   std::vector<lanelet::ConstLanelets> succeeding_lanelet_sequences;
 
-  const auto next_lanelets =
-    not_closing_a_loop(routing_graph->following(current_lanelet), current_lanelet, path);
+  const auto following_lanelets = routing_graph->following(current_lanelet);
+  const auto next_lanelets = not_closing_a_loop(following_lanelets, current_lanelet, path);
+  const bool closes_a_loop = next_lanelets.size() < following_lanelets.size();
   const double current_lanelet_length = lanelet::geometry::length2d(current_lanelet);
 
   // end condition of the recursive function
@@ -75,6 +76,10 @@ std::vector<lanelet::ConstLanelets> get_succeeding_lanelet_sequences_recursive(
     }
   }
   path.pop_back();
+  // A sequence that goes on to close a loop ends here, next to the ones that go elsewhere.
+  if (closes_a_loop) {
+    succeeding_lanelet_sequences.push_back({current_lanelet});
+  }
   return succeeding_lanelet_sequences;
 }
 
@@ -85,8 +90,9 @@ std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences_recursive(
 {
   std::vector<lanelet::ConstLanelets> preceding_lanelet_sequences;
 
-  const auto prev_lanelets =
-    not_closing_a_loop(routing_graph->previous(current_lanelet), current_lanelet, path);
+  const auto previous_lanelets = routing_graph->previous(current_lanelet);
+  const auto prev_lanelets = not_closing_a_loop(previous_lanelets, current_lanelet, path);
+  const bool closes_a_loop = prev_lanelets.size() < previous_lanelets.size();
   const double current_lanelet_length = lanelet::geometry::length2d(current_lanelet);
 
   // end condition of the recursive function
@@ -113,8 +119,9 @@ std::vector<lanelet::ConstLanelets> get_preceding_lanelet_sequences_recursive(
     }
   }
   path.pop_back();
-  // In case that exclude all prev_lanelets
-  if (preceding_lanelet_sequences.empty()) {
+  // A sequence that goes on to close a loop ends here, next to the ones that go elsewhere;
+  // so does one whose prev_lanelets are all excluded.
+  if (closes_a_loop || preceding_lanelet_sequences.empty()) {
     preceding_lanelet_sequences.push_back({current_lanelet});
   }
   return preceding_lanelet_sequences;
