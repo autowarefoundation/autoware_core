@@ -208,6 +208,23 @@ TEST_F(GenericServiceTest, ServiceAndClientReportTheResolvedName)
   EXPECT_STREQ(client->get_service_name(), "/relative/name");
 }
 
+// A remap rule is applied once, as rclcpp does: a chain a -> b -> c resolves a to b, not c.
+TEST_F(GenericServiceTest, RemapRulesAreAppliedOnce)
+{
+  rclcpp::NodeOptions options;
+  options.use_global_arguments(false);
+  options.arguments(
+    {"--ros-args", "-r", "/test/remap/a:=/test/remap/b", "-r", "/test/remap/b:=/test/remap/c"});
+  const auto node = std::make_shared<Node>("generic_service_test_remap", options);
+
+  std::vector<bool> received;
+  const auto service =
+    node->create_generic_service("/test/remap/a", set_bool_type, echo_callback(received));
+  const auto client = node->create_generic_client("/test/remap/a", set_bool_type);
+  EXPECT_STREQ(service->get_service_name(), "/test/remap/b");
+  EXPECT_STREQ(client->get_service_name(), "/test/remap/b");
+}
+
 TEST_F(GenericServiceTest, UnknownServiceTypeThrows)
 {
   EXPECT_THROW(
