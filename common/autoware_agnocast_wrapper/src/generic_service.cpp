@@ -231,13 +231,15 @@ public:
     rclcpp::Node * node, const std::string & service_name, const std::string & service_type,
     Callback callback, const rclcpp::QoS & qos, const rclcpp::CallbackGroup::SharedPtr & group)
   : callback_(std::move(callback)),
-    service_(std::make_shared<RclcppGenericServiceImpl>(
-      node->get_node_base_interface()->get_shared_rcl_node_handle(), service_name, service_type,
-      [this](std::shared_ptr<rmw_request_id_t> header, std::shared_ptr<void> payload) {
-        callback_(
-          shared_from_this(), std::make_shared<ROS2Request>(std::move(header), std::move(payload)));
-      },
-      make_service_options(qos)))
+    service_(
+      std::make_shared<RclcppGenericServiceImpl>(
+        node->get_node_base_interface()->get_shared_rcl_node_handle(), service_name, service_type,
+        [this](std::shared_ptr<rmw_request_id_t> header, std::shared_ptr<void> payload) {
+          callback_(
+            shared_from_this(),
+            std::make_shared<ROS2Request>(std::move(header), std::move(payload)));
+        },
+        make_service_options(qos)))
   {
     node->get_node_services_interface()->add_service(
       std::dynamic_pointer_cast<rclcpp::ServiceBase>(service_), group);
@@ -357,9 +359,10 @@ public:
   ROS2GenericClient(
     rclcpp::Node * node, const std::string & service_name, const std::string & service_type,
     const rclcpp::QoS & qos, const rclcpp::CallbackGroup::SharedPtr & group)
-  : client_(std::make_shared<RclcppGenericClientImpl>(
-      node->get_node_base_interface().get(), node->get_node_graph_interface(), service_name,
-      service_type, make_client_options(qos)))
+  : client_(
+      std::make_shared<RclcppGenericClientImpl>(
+        node->get_node_base_interface().get(), node->get_node_graph_interface(), service_name,
+        service_type, make_client_options(qos)))
   {
     node->get_node_services_interface()->add_client(
       std::dynamic_pointer_cast<rclcpp::ClientBase>(client_), group);
