@@ -394,7 +394,7 @@ public:
   {
   }
 
-  bool copy(const void * src, void * dst) const
+  bool copy_message(const void * src, void * dst) const
   {
     rclcpp::SerializedMessage serialized;
     if (rmw_serialize(src, ts_, &serialized.get_rcl_serialized_message()) != RMW_RET_OK) {
@@ -459,7 +459,7 @@ public:
     agnocast_request->answered_ = true;
 
     auto agnocast_response = service_->borrow_loaned_response(agnocast_request->payload_);
-    if (!response_copier_.copy(response, agnocast_response.get())) {
+    if (!response_copier_.copy_message(response, agnocast_response.get())) {
       service_->cancel_response(
         std::move(agnocast_request->payload_), std::move(agnocast_response));
       throw std::runtime_error("send_response(): failed to copy the response");
@@ -492,7 +492,7 @@ public:
   SharedFuture async_send_request(const void * request, Callback callback) override
   {
     auto agnocast_request = client_->borrow_loaned_request();
-    if (!request_copier_.copy(request, agnocast_request.get())) {
+    if (!request_copier_.copy_message(request, agnocast_request.get())) {
       client_->cancel_request(std::move(agnocast_request));
       throw std::runtime_error("async_send_request(): failed to copy the request");
     }
