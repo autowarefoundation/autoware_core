@@ -478,6 +478,42 @@ public:
       service_name, std::forward<Func>(callback), detail::to_qos(qos_profile), group);
   }
 
+  // ===== Generic (type-erased) client / service =====
+  /// @throws std::runtime_error if service_type is unknown or its typesupport libraries cannot be
+  ///         loaded (see GenericService / GenericClient).
+  GenericService::SharedPtr create_generic_service(
+    const std::string & service_name, const std::string & service_type,
+    GenericService::Callback callback, const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return visit_node([&](auto & n) -> GenericService::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return detail::create_agnocast_generic_service(
+          n.get(), service_name, service_type, std::move(callback), qos, group);
+      } else {
+        return detail::create_ros2_generic_service(
+          n.get(), service_name, service_type, std::move(callback), qos, group);
+      }
+    });
+  }
+
+  GenericClient::SharedPtr create_generic_client(
+    const std::string & service_name, const std::string & service_type,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return visit_node([&](auto & n) -> GenericClient::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return detail::create_agnocast_generic_client(
+          n.get(), service_name, service_type, qos, group);
+      } else {
+        return detail::create_ros2_generic_client(n.get(), service_name, service_type, qos, group);
+      }
+    });
+  }
+
   // ===== Timer =====
   template <typename DurationRepT = int64_t, typename DurationT = std::milli, typename CallbackT>
   Timer::SharedPtr create_wall_timer(
@@ -975,6 +1011,26 @@ public:
   {
     return create_service<ServiceT>(
       service_name, std::forward<Func>(callback), detail::to_qos(qos_profile), group);
+  }
+
+  // ===== Generic (type-erased) client / service =====
+  /// @throws std::runtime_error if service_type is unknown or its typesupport libraries cannot be
+  ///         loaded (see GenericService / GenericClient).
+  GenericService::SharedPtr create_generic_service(
+    const std::string & service_name, const std::string & service_type,
+    GenericService::Callback callback, const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return detail::create_ros2_generic_service(
+      node_.get(), service_name, service_type, std::move(callback), qos, group);
+  }
+
+  GenericClient::SharedPtr create_generic_client(
+    const std::string & service_name, const std::string & service_type,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    rclcpp::CallbackGroup::SharedPtr group = nullptr)
+  {
+    return detail::create_ros2_generic_client(node_.get(), service_name, service_type, qos, group);
   }
 
   // ===== Timer =====

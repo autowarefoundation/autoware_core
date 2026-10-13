@@ -27,6 +27,7 @@
   <depend>rcl_interfaces</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
+  <depend>rosidl_typesupport_introspection_cpp</depend>
   <depend>tf2</depend>
   <depend>tf2_ros</depend>
 
@@ -41,6 +42,7 @@
   <test_depend>autoware_lint_common</test_depend>
   <test_depend>launch_xml</test_depend>
   <test_depend>std_msgs</test_depend>
+  <test_depend>std_srvs</test_depend>
 
   <export>
     <build_type>ament_cmake</build_type>

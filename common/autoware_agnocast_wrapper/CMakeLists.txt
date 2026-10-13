@@ -13,6 +13,7 @@ find_package(tf2 REQUIRED)
 find_package(tf2_ros REQUIRED)
 find_package(glog REQUIRED)
 find_package(ament_cmake_python REQUIRED)
+find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 
 if(DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
   find_package(agnocastlib 2.4.0 REQUIRED)
@@ -23,6 +24,7 @@ include_directories(
 )
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/generic_service.cpp
   src/node.cpp
   src/runtime.cpp
 )
@@ -41,6 +43,7 @@ if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
     tf2
     tf2_ros
     glog
+    rosidl_typesupport_introspection_cpp
   )
   target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AGNOCAST_ENABLED)
 else()
@@ -53,6 +56,7 @@ else()
     tf2
     tf2_ros
     glog
+    rosidl_typesupport_introspection_cpp
   )
 endif()
 
@@ -120,11 +124,12 @@ if(BUILD_TESTING)
   )
 
   find_package(std_msgs REQUIRED)
+  find_package(std_srvs REQUIRED)
   file(GLOB_RECURSE test_files test/main.cpp test/cases/*.cpp)
   ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})
   target_include_directories(test_${PROJECT_NAME} PRIVATE test)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})
-  ament_target_dependencies(test_${PROJECT_NAME} std_msgs)
+  ament_target_dependencies(test_${PROJECT_NAME} std_msgs std_srvs)
 endif()
 
 autoware_ament_auto_package()

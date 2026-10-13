@@ -18,6 +18,7 @@
 
 #include "autoware/agnocast_wrapper/client.hpp"
 #include "autoware/agnocast_wrapper/generic_publisher.hpp"
+#include "autoware/agnocast_wrapper/generic_service.hpp"
 #include "autoware/agnocast_wrapper/generic_subscription.hpp"
 #include "autoware/agnocast_wrapper/macros.hpp"
 #include "autoware/agnocast_wrapper/message_ptr.hpp"

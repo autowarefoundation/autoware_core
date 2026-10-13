@@ -42,6 +42,7 @@ The following members / free functions are provided. Unless noted, signatures mi
 | Publisher                                    | `create_publisher<MessageT>()` (`QoS` and depth overloads) — see [Publisher API](#publisher-api)                                                                                                                                                                                                                                                                                                                      |
 | Subscription                                 | `create_subscription<MessageT>()` (`QoS` and depth overloads, plus a callback-less form read with `take()`) — see [Subscription API](#subscription-api)                                                                                                                                                                                                                                                               |
 | Generic (type-erased) publisher/subscription | `create_generic_publisher()` / `create_generic_subscription()` (`QoS` and depth overloads) — runtime `topic_type` string instead of a compile-time `MessageT`, for a node that relays arbitrary topics; see [Generic publisher/subscription](#generic-type-erased-publishersubscription)                                                                                                                              |
+| Generic (type-erased) client/service         | `create_generic_service()` / `create_generic_client()` (`QoS` overloads) — runtime `service_type` string instead of a compile-time `ServiceT`, for a node that forwards arbitrary services; see [Generic client/service](#generic-type-erased-clientservice)                                                                                                                                                          |
 | Client                                       | `create_client<ServiceT>()` (`rclcpp::QoS`); `async_send_request()` takes `allocate_output_service_request()`'s result, or a plain `std::shared_ptr<S::Request>` that the Agnocast backend copies                                                                                                                                                                                                                     |
 | Service                                      | `create_service<ServiceT>()` (`rclcpp::QoS`) — `message_ptr` callback form and an rclcpp-style `shared_ptr` callback form                                                                                                                                                                                                                                                                                             |
 | Timer                                        | `create_wall_timer()`; free `create_timer(node, clock, period, cb, group)` and free `set_period(timer, period)` (see [Timer notes](#timer-notes))                                                                                                                                                                                                                                                                     |
@@ -274,6 +275,43 @@ This surface is narrower than the typed publisher/subscription above:
 - `qos_overriding_options` is rejected (`std::invalid_argument`), on both the publisher and the
   subscription, rather than honored: rclcpp's generic publisher/subscription silently drop it,
   while Agnocast's apply it, so honoring it would behave differently per backend.
+
+#### Generic (type-erased) client/service
+
+The service counterpart of the generic publisher/subscription: the service type is a runtime string
+(e.g. `"std_srvs/srv/SetBool"`), for a node — such as `autoware_generic_service_divider` — that
+forwards arbitrary services without linking against their interface packages. Humble's rclcpp has
+neither a generic service nor a generic client, so unlike the generic publisher/subscription both
+builds return the wrapper's own `GenericService` / `GenericClient`, and the rclcpp backend is
+implemented by the wrapper itself.
+
+Requests and responses are passed as `void` pointers to the typed `ServiceT::Request` /
+`ServiceT::Response`, and the wrapper copies them into the backend:
+
+```cpp
+service_ = node->create_generic_service(
+  "input", "std_srvs/srv/SetBool",
+  [this](const GenericService::SharedPtr & service, const GenericService::RequestPtr & request) {
+    const auto & req = *static_cast<const std_srvs::srv::SetBool::Request *>(request->get());
+    std_srvs::srv::SetBool::Response res;
+    res.success = req.data;
+    service->send_response(request, &res);  // may also be called after the callback returns
+  });
+
+client_ = node->create_generic_client("output", "std_srvs/srv/SetBool");
+std_srvs::srv::SetBool::Request req;
+client_->async_send_request(&req, [](GenericClient::SharedFuture future) {
+  const auto * res = static_cast<const std_srvs::srv::SetBool::Response *>(future.get().get());
+});
+```
+
+- The response is sent through `send_response()`, from inside the callback or later. Keep the
+  `RequestPtr` until then; on the Agnocast path it holds the request's shared-memory entry. A
+  second `send_response()` for the same request throws `std::runtime_error`.
+- The client response is a `std::shared_ptr<const void>`. On the Agnocast path it aliases the
+  received entry, so it must not outlive the client, the same rule as for the typed client.
+- Both constructors throw `std::runtime_error` if `service_type` is unknown or its typesupport
+  libraries cannot be loaded.
 
 #### CMake setup
 
