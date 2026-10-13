@@ -23,6 +23,7 @@
 
 #include <rcl/client.h>
 #include <rcl/service.h>
+#include <rclcpp/version.h>
 #include <rmw/error_handling.h>
 #include <rmw/rmw.h>
 #include <rosidl_runtime_c/service_type_support_struct.h>
@@ -145,6 +146,7 @@ rcl_client_options_t make_client_options(const rclcpp::QoS & qos)
 
 // ===== rclcpp backend =====
 
+// TODO(Kilted): Use rclcpp::GenericService instead of this once Jazzy is dropped.
 /// rclcpp::ServiceBase for a runtime service type. Humble's ServiceBase does not allocate the rcl
 /// handle itself, so this does.
 class RclcppGenericServiceImpl : public rclcpp::ServiceBase
@@ -263,6 +265,7 @@ private:
   std::mutex mutex_;
 };
 
+// TODO(Jazzy): Use rclcpp::GenericClient instead of this once Humble is dropped.
 /// rclcpp::ClientBase for a runtime service type.
 class RclcppGenericClientImpl : public rclcpp::ClientBase
 {
@@ -386,7 +389,11 @@ class MessageCopier
 public:
   explicit MessageCopier(const std::string & message_type)
   : lib_(rclcpp::get_typesupport_library(message_type, "rosidl_typesupport_cpp")),
+#if RCLCPP_VERSION_MAJOR >= 28
+    ts_(rclcpp::get_message_typesupport_handle(message_type, "rosidl_typesupport_cpp", *lib_))
+#else
     ts_(rclcpp::get_typesupport_handle(message_type, "rosidl_typesupport_cpp", *lib_))
+#endif
   {
   }
 
