@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef COPY_VECTOR_TO_ARRAY_HPP_
-#define COPY_VECTOR_TO_ARRAY_HPP_
+#ifndef UTILS__COPY_VECTOR_TO_ARRAY_HPP_
+#define UTILS__COPY_VECTOR_TO_ARRAY_HPP_
 
 #include <algorithm>
 #include <array>
@@ -47,4 +47,4 @@ std::array<double, 36> get_covariance_parameter(NodeT * node, const std::string 
 }
 }  // namespace autoware::pose_initializer
 
-#endif  // COPY_VECTOR_TO_ARRAY_HPP_
+#endif  // UTILS__COPY_VECTOR_TO_ARRAY_HPP_
