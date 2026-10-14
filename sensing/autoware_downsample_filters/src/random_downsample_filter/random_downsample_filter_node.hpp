@@ -90,4 +90,3 @@ private:
 
 // clang-format off
 #endif  // RANDOM_DOWNSAMPLE_FILTER__RANDOM_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
-// clang-format on
