@@ -42,6 +42,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <functional>
@@ -186,6 +187,22 @@ bool is_loader_query(const NdtHarness::Record & record)
 size_t loader_query_count(NdtHarness & harness)
 {
   return map_update_records(harness, is_loader_query).size();
+}
+
+/// @brief Waits for the timer to query the loader *and* for the tick that did it to finish.
+///
+/// Not interchangeable with waiting on `StubMapLoader::call_count()`, which the stub raises from
+/// inside its service handler -- that is, while the node is still blocked in
+/// `get_differential_point_cloud_map` waiting for the response. Returning there puts the end of
+/// the test inside the exchange, and tearing the harness down at that moment hangs the whole
+/// binary; `NdtHarness::wait_for_timer_tick_to_finish` has the mechanism. `map_update_status` is
+/// published at the very end of `callback_timer`, so a new record of a querying tick means the
+/// answer is already in the node and the next query is a timer period away.
+bool wait_for_timer_query(
+  NdtHarness & harness, const size_t queries_before,
+  const std::chrono::nanoseconds timeout = std::chrono::seconds(5))
+{
+  return harness.wait_until([&] { return loader_query_count(harness) > queries_before; }, timeout);
 }
 
 /// Checks that the tick after a load measures 0 m and stops short of calling the loader. A
@@ -1259,7 +1276,8 @@ TEST(NdtScanMatcherCharacteristics, RepeatedLoaderQueriesSendCachedCellIds)
   auto * loader = harness->map_loader();
   ASSERT_NE(loader, nullptr);
   ASSERT_TRUE(harness->ensure_map_loaded());
-  const size_t queries_before = loader->call_count();
+  const size_t calls_before = loader->call_count();
+  const size_t queries_before = loader_query_count(*harness);
 
   // Act
   // Past `update_distance` (20), inside `map_radius - lidar_radius` (50), so the node queries
@@ -1268,8 +1286,8 @@ TEST(NdtScanMatcherCharacteristics, RepeatedLoaderQueriesSendCachedCellIds)
     make_pose_at(harness->now(), map_center_x + 21.0, map_center_y)));
 
   // Assert
-  ASSERT_TRUE(harness->wait_until([&] { return loader->call_count() > queries_before; }, 5s));
-  const auto second = loader->calls().at(queries_before);
+  ASSERT_TRUE(wait_for_timer_query(*harness, queries_before));
+  const auto second = loader->calls().at(calls_before);
   EXPECT_NEAR(second.center_x, map_center_x + 21.0, 1e-3) << "the query did not follow the vehicle";
   ASSERT_EQ(second.cached_ids.size(), 1U) << "the node asked again without saying what it holds";
   EXPECT_EQ(second.cached_ids.front(), "0");
@@ -1327,10 +1345,10 @@ void drive_to(NdtHarness & harness, const double x)
   auto * loader = harness.map_loader();
   ASSERT_NE(loader, nullptr);
 
-  const size_t calls_before = loader->call_count();
+  const size_t queries_before = loader_query_count(harness);
   ASSERT_TRUE(
     harness.publish_initial_pose_and_confirm(make_pose_at(harness.now(), x, map_center_y)));
-  ASSERT_TRUE(harness.wait_until([&] { return loader->call_count() > calls_before; }, 5s));
+  ASSERT_TRUE(wait_for_timer_query(harness, queries_before));
 }
 
 /// Drives east from the map centre until the node holds cell "1" in place of cell "0".
