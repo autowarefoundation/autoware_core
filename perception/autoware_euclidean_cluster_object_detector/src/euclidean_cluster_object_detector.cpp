@@ -89,7 +89,9 @@ EuclideanClusterObjectDetector::cluster_standard(
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> pcl_euclidean_cluster;
   pcl_euclidean_cluster.setClusterTolerance(param_.tolerance);
   pcl_euclidean_cluster.setMinClusterSize(1);
-  pcl_euclidean_cluster.setMaxClusterSize(param_.max_cluster_size);
+  // Do not bound the clusters here. PCL would drop an oversized cluster without a count.
+  // The check below applies `max_cluster_size` and counts the skipped clusters.
+  pcl_euclidean_cluster.setMaxClusterSize(static_cast<int>(pointcloud_ptr->size()));
   pcl_euclidean_cluster.setSearchMethod(tree);
   pcl_euclidean_cluster.setInputCloud(pointcloud_ptr);
   pcl_euclidean_cluster.extract(cluster_indices);

@@ -134,6 +134,19 @@ TEST_F(EuclideanClusterTest, TestClusteringWithMinSizeFilter)
   EXPECT_EQ(result.cluster_message.objects.size(), 0u);  // No clusters should pass the size filter
 }
 
+TEST_F(EuclideanClusterTest, TestClusteringWithMaxSizeFilterCountsSkippedClusters)
+{
+  // Both clusters have 5 points, so both exceed max_cluster_size.
+  auto param = get_default_params();
+  param.max_cluster_size = 4;
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector detector(param);
+  auto result = detector.cluster(ros_test_cloud_);
+
+  // The oversized clusters are dropped, and each one is counted as skipped.
+  EXPECT_EQ(result.cluster_message.objects.size(), 0u);
+  EXPECT_EQ(result.skipped_cluster_count, 2u);
+}
+
 int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
