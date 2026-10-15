@@ -147,6 +147,18 @@ TEST_F(EuclideanClusterTest, TestClusteringWithMaxSizeFilterCountsSkippedCluster
   EXPECT_EQ(result.skipped_cluster_count, 2u);
 }
 
+TEST_F(EuclideanClusterTest, TestClusteringWithMaxSizeAtLimitKeepsClusters)
+{
+  // Both clusters have exactly max_cluster_size points, so both are kept.
+  auto param = get_default_params();
+  param.max_cluster_size = 5;
+  autoware::euclidean_cluster::EuclideanClusterObjectDetector detector(param);
+  auto result = detector.cluster(ros_test_cloud_);
+
+  EXPECT_EQ(result.cluster_message.objects.size(), 2u);
+  EXPECT_EQ(result.skipped_cluster_count, 0u);
+}
+
 int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);
