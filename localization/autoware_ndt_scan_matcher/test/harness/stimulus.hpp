@@ -48,6 +48,10 @@ inline constexpr const char * initial_pose_status =
   "ndt_scan_matcher: initial_pose_subscriber_status";
 inline constexpr const char * map_update_status = "ndt_scan_matcher: map_update_status";
 inline constexpr const char * ndt_align_status = "ndt_scan_matcher: ndt_align_service_status";
+/// Published only when `ndt.regularization.enable` is true; the node creates no subscriber or
+/// diagnostics publisher for it otherwise.
+inline constexpr const char * regularization_pose_status =
+  "ndt_scan_matcher: regularization_pose_subscriber_status";
 
 /// @brief The map is served by `StubMapLoader` centered here, so all valid poses sit at (100, 100).
 inline constexpr double map_center_x = 100.0;

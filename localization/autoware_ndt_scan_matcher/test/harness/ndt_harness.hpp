@@ -129,6 +129,11 @@ public:
 
     initial_pose_pub_ = observer_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
       "/ekf_pose_with_covariance", 10);
+    // Created unconditionally; the node only subscribes when `ndt.regularization.enable` is true,
+    // so `publish_regularization_pose` waits for that subscription rather than assuming it.
+    regularization_pose_pub_ =
+      observer_->create_publisher<geometry_msgs::msg::PoseWithCovarianceStamped>(
+        "/regularization_pose_with_covariance", 10);
     // Reliable publisher into the node's best-effort `SensorDataQoS` subscription: a compatible
     // match that maximizes the chance of delivery. Drops are still possible, which is why
     // `drive_one_scan` retries on a fresh time window.
@@ -397,6 +402,22 @@ public:
     initial_pose_pub_->publish(pose);
   }
 
+  /// @brief Publish one regularization pose and wait until the node has reported receiving it.
+  ///
+  /// Waits for the subscription first: the node creates it only under
+  /// `ndt.regularization.enable`, and publishing into no subscriber loses the message silently.
+  bool publish_regularization_pose(
+    const geometry_msgs::msg::PoseWithCovarianceStamped & pose,
+    const std::chrono::nanoseconds timeout = 10s)
+  {
+    if (!wait_until(
+          [&] { return regularization_pose_pub_->get_subscription_count() >= 1; }, timeout)) {
+      return false;
+    }
+    regularization_pose_pub_->publish(pose);
+    return wait_for_diag_stamp(regularization_pose_status, pose.header.stamp, timeout).has_value();
+  }
+
   void publish_scan(const sensor_msgs::msg::PointCloud2 & cloud) { scan_pub_->publish(cloud); }
 
   /// @brief Wait until the node's subscriptions have matched our publishers.
@@ -580,6 +601,8 @@ private:
   std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;
 
   rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr initial_pose_pub_;
+  rclcpp::Publisher<geometry_msgs::msg::PoseWithCovarianceStamped>::SharedPtr
+    regularization_pose_pub_;
   rclcpp::Publisher<sensor_msgs::msg::PointCloud2>::SharedPtr scan_pub_;
   rclcpp::Client<std_srvs::srv::SetBool>::SharedPtr trigger_client_;
   rclcpp::Client<AlignService>::SharedPtr align_client_;
