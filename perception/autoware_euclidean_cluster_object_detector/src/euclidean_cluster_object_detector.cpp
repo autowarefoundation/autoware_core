@@ -187,7 +187,10 @@ VoxelGridBasedEuclideanClusterDetector::cluster_voxel_grid(
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
   ec.setClusterTolerance(param_.tolerance);
   ec.setMinClusterSize(1);
-  ec.setMaxClusterSize(param_.max_cluster_size);
+  // `max_cluster_size` counts points, not voxels, so do not bound the voxel clusters here.
+  // A voxel cluster dropped here would vanish without a count. Step 7 applies the limit to the
+  // raw points and counts the skipped clusters.
+  ec.setMaxClusterSize(static_cast<int>(flattened_centroids->points.size()));
   ec.setSearchMethod(tree);
   ec.setInputCloud(flattened_centroids);
   ec.extract(cluster_indices);
