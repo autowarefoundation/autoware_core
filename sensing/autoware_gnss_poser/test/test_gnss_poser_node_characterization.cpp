@@ -15,7 +15,7 @@
 // cspell:ignore SBAS GBAS
 
 // =====================================================================================
-// Characterization tests for autoware::gnss_poser::GNSSPoser.
+// Characterization tests for autoware::gnss_poser::GnssPoserNode.
 //
 // These tests pin down the *currently observable* behavior of the node as seen through its
 // public ROS interface (parameters, topics, TF) so that a later refactoring can be verified
@@ -467,7 +467,7 @@ protected:
   // Creates the node under test and waits for pub/sub discovery to complete.
   void build_node(const NodeParams & params)
   {
-    node_ = std::make_shared<autoware::gnss_poser::GNSSPoser>(params.to_options());
+    node_ = std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options());
     executor_->add_node(node_->get_node_base_interface());
     ASSERT_TRUE(pump_until([this] { return peer_->all_endpoints_matched(); }, discovery_budget))
       << "pub/sub discovery between the peer and gnss_poser did not complete";
@@ -601,7 +601,7 @@ protected:
   const TransformStamped & last_tf() const { return peer_->broadcast_tfs.back(); }
 
   std::shared_ptr<PeerNode> peer_;
-  std::shared_ptr<autoware::gnss_poser::GNSSPoser> node_;
+  std::shared_ptr<autoware::gnss_poser::GnssPoserNode> node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
 };
 
@@ -645,7 +645,8 @@ TEST_F(GnssPoserCharacterization, Construct_MissingAnyRequiredParameter_FailsToS
   const NodeParams params;
   for (const auto & missing : NodeParams::names()) {
     EXPECT_THROW(
-      std::make_shared<autoware::gnss_poser::GNSSPoser>(params.to_options(missing)), std::exception)
+      std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options(missing)),
+      std::exception)
       << "missing parameter: " << missing;
   }
 }
@@ -666,7 +667,7 @@ TEST_F(GnssPoserCharacterization, Construct_WrongParameterType_FailsToStart)
   for (const auto & [name, value] : wrong_typed) {
     rclcpp::NodeOptions options = NodeParams{}.to_options(name);
     options.append_parameter_override(name, value);
-    EXPECT_THROW(std::make_shared<autoware::gnss_poser::GNSSPoser>(options), std::exception)
+    EXPECT_THROW(std::make_shared<autoware::gnss_poser::GnssPoserNode>(options), std::exception)
       << "parameter: " << name;
   }
 }
@@ -681,7 +682,7 @@ TEST_F(GnssPoserCharacterization, Construct_UnknownPubMethod_FailsToStart)
     params.gnss_pose_pub_method = method;
     params.buff_epoch = 3;
     EXPECT_THROW(
-      std::make_shared<autoware::gnss_poser::GNSSPoser>(params.to_options()), std::exception)
+      std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options()), std::exception)
       << "gnss_pose_pub_method=" << method;
   }
 }
@@ -697,7 +698,7 @@ TEST_F(GnssPoserCharacterization, Construct_BuffEpochBelowOne_FailsToStart)
       params.gnss_pose_pub_method = method;
       params.buff_epoch = buff_epoch;
       EXPECT_THROW(
-        std::make_shared<autoware::gnss_poser::GNSSPoser>(params.to_options()), std::exception)
+        std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options()), std::exception)
         << "gnss_pose_pub_method=" << method << " buff_epoch=" << buff_epoch;
     }
   }
@@ -711,7 +712,7 @@ TEST_F(GnssPoserCharacterization, Construct_WithShippedParamFile_MatchesDocument
   rclcpp::NodeOptions options;
   options.arguments(
     {"--ros-args", "--params-file", GNSS_POSER_CONFIG_DIR "/gnss_poser.param.yaml"});
-  const auto node = std::make_shared<autoware::gnss_poser::GNSSPoser>(options);
+  const auto node = std::make_shared<autoware::gnss_poser::GnssPoserNode>(options);
 
   EXPECT_EQ(node->get_parameter("base_frame").as_string(), "base_link");
   EXPECT_EQ(node->get_parameter("gnss_base_frame").as_string(), "gnss_base_link");
