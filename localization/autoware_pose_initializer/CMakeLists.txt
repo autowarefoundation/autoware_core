@@ -4,20 +4,22 @@ project(autoware_pose_initializer)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 find_package(autoware_agnocast_wrapper REQUIRED)
+find_package(autoware_map_height_fitter REQUIRED)
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
-  src/pose_initializer_core.cpp
-  src/gnss_module.cpp
-  src/localization_module.cpp
-  src/stop_check_module.cpp
-  src/pose_error_check_module.cpp
-  src/localization_trigger_module.cpp
+  src/pose_initializer.cpp
+  src/pose_initializer_node.cpp
+  src/utils/gnss_module.cpp
+  src/utils/localization_module.cpp
+  src/utils/stop_check_module.cpp
+  src/utils/pose_error_check_module.cpp
+  src/utils/localization_trigger_module.cpp
 )
-ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
+ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper autoware_map_height_fitter)
 autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::pose_initializer::PoseInitializer"
+  PLUGIN "autoware::pose_initializer::PoseInitializerNode"
   EXECUTABLE ${PROJECT_NAME}_node
   ROS2_EXECUTOR MultiThreadedExecutor
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
@@ -46,7 +48,7 @@ if(BUILD_TESTING)
     target_include_directories(test_pose_initializer_node_integration PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_link_libraries(test_pose_initializer_node_integration ${PROJECT_NAME})
     ament_target_dependencies(test_pose_initializer_node_integration ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
-    ament_target_dependencies(test_pose_initializer_node_integration autoware_agnocast_wrapper)
+    ament_target_dependencies(test_pose_initializer_node_integration autoware_agnocast_wrapper autoware_map_height_fitter)
     autoware_agnocast_wrapper_setup(test_pose_initializer_node_integration)
   endif()
 endif()

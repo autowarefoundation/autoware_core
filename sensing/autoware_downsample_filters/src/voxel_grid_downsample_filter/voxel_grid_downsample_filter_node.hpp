@@ -65,4 +65,3 @@ private:
 
 // clang-format off
 #endif  // VOXEL_GRID_DOWNSAMPLE_FILTER__VOXEL_GRID_DOWNSAMPLE_FILTER_NODE_HPP_  // NOLINT
-// clang-format on
