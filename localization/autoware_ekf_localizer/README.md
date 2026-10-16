@@ -93,8 +93,6 @@ The parameters are set in `launch/ekf_localizer.launch` .
 
 {{ json_to_markdown("localization/autoware_ekf_localizer/schema/sub/process_noise.sub_schema.json") }}
 
-note: process noise for positions x & y are calculated automatically from nonlinear dynamics.
-
 ### Simple 1D Filter Parameters
 
 {{ json_to_markdown("localization/autoware_ekf_localizer/schema/sub/simple_1d_filter_parameters.sub_schema.json") }}
@@ -126,6 +124,7 @@ Increasing the number will improve the smoothness of the estimation, but may hav
 
 ### 2. Tune process model parameters
 
+- `proc_stddev_xy_c` : Standard deviation of position noise added directly to x and y each step, independent of the motion model. Keeps position covariance from collapsing toward zero while the vehicle is stationary and pose measurements keep arriving. Should be small so it is negligible during normal driving, but must be non-zero.
 - `proc_stddev_vx_c` : set to maximum linear acceleration
 - `proc_stddev_wz_c` : set to maximum angular acceleration
 - `proc_stddev_yaw_c` : This parameter describes the correlation between the yaw and yaw rate. A large value means the change in yaw does not correlate to the estimated yaw rate. If this is set to 0, it means the change in estimated yaw is equal to yaw rate. Usually, this should be set to 0.

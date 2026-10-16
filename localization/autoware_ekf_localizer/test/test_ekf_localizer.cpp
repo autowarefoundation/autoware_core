@@ -61,6 +61,7 @@ HyperParameters make_params()
   params.twist_gate_dist = 10000.0;
   params.twist_smoothing_steps = 2;
   params.max_twist_queue_size = 5;
+  params.proc_stddev_xy_c = 0.1;
   params.proc_stddev_vx_c = 10.0;
   params.proc_stddev_wz_c = 5.0;
   params.proc_stddev_yaw_c = 0.005;
@@ -574,6 +575,86 @@ TEST_F(MeasurementUpdatePose, RejectsOnMahalanobisGate)
   EXPECT_GT(diag.mahalanobis_distance, 0.0);
 }
 
+TEST_F(MeasurementUpdatePose, RealisticGateRejectsOutsideChiSquareBound)
+{
+  // Distance lies between sqrt(pose_gate_dist) and pose_gate_dist, so only a squared comparison
+  // rejects it.
+  params_.pose_gate_dist = 49.5;
+  reset_ekf_localizer();
+
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  auto pose = make_pose(20.0, 0.0, 0.0, "map", t_curr);
+
+  std::vector<CoreWarning> warnings;
+  EKFDiagnosticInfo diag;
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
+
+  EXPECT_FALSE(ok);
+  EXPECT_TRUE(diag.is_passed_delay_gate);
+  EXPECT_FALSE(diag.is_passed_mahalanobis_gate);
+  EXPECT_GT(diag.mahalanobis_distance, 15.0);
+  EXPECT_LT(diag.mahalanobis_distance, 25.0);
+}
+
+TEST_F(MeasurementUpdatePose, RealisticGateAcceptsInsideChiSquareBound)
+{
+  params_.pose_gate_dist = 49.5;
+  reset_ekf_localizer();
+
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  auto pose = make_pose(2.0, 0.0, 0.0, "map", t_curr);
+
+  std::vector<CoreWarning> warnings;
+  EKFDiagnosticInfo diag;
+  const bool ok = ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), diag, warnings);
+
+  EXPECT_TRUE(ok);
+  EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
+  EXPECT_GT(diag.mahalanobis_distance, 1.0);
+  EXPECT_LT(diag.mahalanobis_distance, 3.0);
+}
+
+TEST_F(MeasurementUpdatePose, StationaryPositionCovarianceDoesNotCollapse)
+{
+  using COV_IDX = autoware_utils_geometry::xyzrpy_covariance_index::XYZRPY_COV_IDX;
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+
+  auto pose = make_pose(0.0, 0.0, 0.0, "map", t_curr);
+  pose.pose.covariance[COV_IDX::X_X] = 0.0225;
+  pose.pose.covariance[COV_IDX::Y_Y] = 0.0225;
+  pose.pose.covariance[COV_IDX::YAW_YAW] = 6.25e-4;
+  auto twist = make_twist(0.0, 0.0, "base_link", t_curr);
+  twist.twist.covariance[COV_IDX::X_X] = 1e-5;
+  twist.twist.covariance[COV_IDX::YAW_YAW] = 1e-5;
+
+  const auto run_stationary = [&]() {
+    const int num_steps = static_cast<int>(60.0 / params_.ekf_dt);
+    for (int i = 0; i < num_steps; ++i) {
+      std::vector<CoreWarning> warnings;
+      EKFDiagnosticInfo pose_diag;
+      EKFDiagnosticInfo twist_diag;
+      ekf_localizer_->predict_with_delay(params_.ekf_dt);
+      EXPECT_TRUE(
+        ekf_localizer_->measurement_update_pose(pose, t_curr.seconds(), pose_diag, warnings));
+      EXPECT_TRUE(
+        ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), twist_diag, warnings));
+    }
+    return ekf_localizer_->get_current_pose_covariance();
+  };
+
+  const auto cov_with_noise = run_stationary();
+  EXPECT_GT(cov_with_noise[COV_IDX::X_X], 1e-4);
+  EXPECT_GT(cov_with_noise[COV_IDX::Y_Y], 1e-4);
+
+  params_.proc_stddev_xy_c = 0.0;
+  reset_ekf_localizer();
+  const auto cov_without_noise = run_stationary();
+  // Y has no coupling into vx/yaw uncertainty at yaw=0 and v=0, so it collapses
+  // unconditionally with no xy process noise; X is also fed indirectly through
+  // the vx state and so is setup-dependent, hence checking Y only here.
+  EXPECT_LT(cov_without_noise[COV_IDX::Y_Y], 1e-4);
+}
+
 // ---------------------------------------------------------------------------
 // measurement_update_twist: success and safety-critical rejection branches
 // ---------------------------------------------------------------------------
@@ -694,6 +775,43 @@ TEST_F(MeasurementUpdateTwist, RejectsOnMahalanobisGate)
   EXPECT_TRUE(diag.is_passed_delay_gate);
   EXPECT_FALSE(diag.is_passed_mahalanobis_gate);
   EXPECT_GT(diag.mahalanobis_distance, 0.0);
+}
+
+TEST_F(MeasurementUpdateTwist, RealisticGateRejectsOutsideChiSquareBound)
+{
+  params_.twist_gate_dist = 46.1;
+  reset_ekf_localizer();
+
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  auto twist = make_twist(4.5, 0.0, "base_link", t_curr);
+
+  std::vector<CoreWarning> warnings;
+  EKFDiagnosticInfo diag;
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
+
+  EXPECT_FALSE(ok);
+  EXPECT_TRUE(diag.is_passed_delay_gate);
+  EXPECT_FALSE(diag.is_passed_mahalanobis_gate);
+  EXPECT_GT(diag.mahalanobis_distance, 15.0);
+  EXPECT_LT(diag.mahalanobis_distance, 25.0);
+}
+
+TEST_F(MeasurementUpdateTwist, RealisticGateAcceptsInsideChiSquareBound)
+{
+  params_.twist_gate_dist = 46.1;
+  reset_ekf_localizer();
+
+  const rclcpp::Time t_curr(100, 0, RCL_ROS_TIME);
+  auto twist = make_twist(0.5, 0.0, "base_link", t_curr);
+
+  std::vector<CoreWarning> warnings;
+  EKFDiagnosticInfo diag;
+  const bool ok = ekf_localizer_->measurement_update_twist(twist, t_curr.seconds(), diag, warnings);
+
+  EXPECT_TRUE(ok);
+  EXPECT_TRUE(diag.is_passed_mahalanobis_gate);
+  EXPECT_GT(diag.mahalanobis_distance, 1.0);
+  EXPECT_LT(diag.mahalanobis_distance, 3.0);
 }
 
 }  // namespace autoware::ekf_localizer

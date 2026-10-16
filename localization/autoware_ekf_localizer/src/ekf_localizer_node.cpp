@@ -175,7 +175,7 @@ void EKFLocalizerNode::timer_callback()
     update_result.pose_diag_info.delay_time, update_result.pose_diag_info.delay_time_threshold));
   diag_status_array.push_back(check_measurement_mahalanobis_gate(
     "pose", update_result.pose_diag_info.is_passed_mahalanobis_gate,
-    update_result.pose_diag_info.mahalanobis_distance, params_.pose_gate_dist));
+    update_result.pose_diag_info.mahalanobis_distance, std::sqrt(params_.pose_gate_dist)));
 
   // Add twist-related diagnostics after twist processing
   diag_status_array.push_back(check_measurement_updated(
@@ -188,7 +188,7 @@ void EKFLocalizerNode::timer_callback()
     update_result.twist_diag_info.delay_time, update_result.twist_diag_info.delay_time_threshold));
   diag_status_array.push_back(check_measurement_mahalanobis_gate(
     "twist", update_result.twist_diag_info.is_passed_mahalanobis_gate,
-    update_result.twist_diag_info.mahalanobis_distance, params_.twist_gate_dist));
+    update_result.twist_diag_info.mahalanobis_distance, std::sqrt(params_.twist_gate_dist)));
 
   diag_status_array.push_back(check_covariance_ellipse(
     "cov_ellipse_long_axis", update_result.ellipse_long_radius, params_.warn_ellipse_size,
