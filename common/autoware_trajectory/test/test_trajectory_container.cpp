@@ -889,6 +889,81 @@ TEST_F(TrajectoryTest, FindIntervalWithBinarySearch)
   EXPECT_GT(interval_0_end_error_decrease, 0);
 }
 
+TEST_F(TrajectoryTest, FindFirstInterval)
+{
+  ASSERT_TRUE(trajectory);
+  const auto interval_opt = autoware::experimental::trajectory::find_first_interval(
+    *trajectory, [](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+      return point.lane_ids[0] == 1;
+    });
+  ASSERT_TRUE(interval_opt.has_value());
+  const auto & interval = *interval_opt;
+  EXPECT_LT(0, interval.start);
+  EXPECT_LT(interval.start, interval.end);
+  EXPECT_NEAR(interval.end, trajectory->length(), 0.1);
+}
+
+TEST_F(TrajectoryTest, FindFirstIntervalWithDistanceConstraint)
+{
+  ASSERT_TRUE(trajectory);
+  const double start_s = trajectory->length() * 0.25;
+  const double end_s = trajectory->length() * 0.75;
+
+  const auto interval_opt = autoware::experimental::trajectory::find_first_interval(
+    *trajectory, [start_s, end_s](const double s) { return start_s <= s && s <= end_s; });
+
+  ASSERT_TRUE(interval_opt.has_value());
+  const auto & interval = *interval_opt;
+  EXPECT_LE(start_s, interval.start);
+  EXPECT_LE(interval.start, interval.end);
+  EXPECT_LE(interval.end, end_s);
+}
+
+TEST_F(TrajectoryTest, FindFirstIntervalWithBinarySearch)
+{
+  ASSERT_TRUE(trajectory);
+  geometry_msgs::msg::Point base_point;
+  base_point.x = 6.0;
+  base_point.y = 2.0;
+  const double radius = 3.0;
+
+  auto interval_0_opt = autoware::experimental::trajectory::find_first_interval(
+    *trajectory, [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+      return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+             radius;
+    });
+  ASSERT_TRUE(interval_0_opt.has_value());
+
+  auto interval_1_opt = autoware::experimental::trajectory::find_first_interval(
+    *trajectory,
+    [&](const autoware_internal_planning_msgs::msg::PathPointWithLaneId & point) {
+      return autoware_utils_geometry::calc_distance2d(point.point.pose.position, base_point) <
+             radius;
+    },
+    10);
+
+  ASSERT_TRUE(interval_1_opt.has_value());
+
+  const auto & interval_0 = *interval_0_opt;
+  const auto & interval_1 = *interval_1_opt;
+
+  // interval_1 should be accurate than interval_0
+  double interval_0_start_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(interval_0.start).point.pose.position, base_point);
+  double interval_0_end_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(interval_0.end).point.pose.position, base_point);
+  double interval_1_start_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(interval_1.start).point.pose.position, base_point);
+  double interval_1_end_distance = autoware_utils_geometry::calc_distance2d(
+    trajectory->compute(interval_1.end).point.pose.position, base_point);
+  double interval_0_start_error_decrease =
+    std::fabs(interval_0_start_distance - radius) - std::fabs(interval_1_start_distance - radius);
+  double interval_0_end_error_decrease =
+    std::fabs(interval_0_end_distance - radius) - std::fabs(interval_1_end_distance - radius);
+  EXPECT_GT(interval_0_start_error_decrease, 0);
+  EXPECT_GT(interval_0_end_error_decrease, 0);
+}
+
 TEST_F(TrajectoryTest, MaxCurvature)
 {
   ASSERT_TRUE(trajectory);
