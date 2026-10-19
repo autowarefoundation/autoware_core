@@ -194,5 +194,6 @@ void PathGeneratorNode::publishStopWatchTime()
 }  // namespace autoware::path_generator
 
 #include "rclcpp_components/register_node_macro.hpp"
+// cppcheck-suppress unknownMacro
 RCLCPP_COMPONENTS_REGISTER_NODE(autoware::path_generator::PathGeneratorNode)
 RCLCPP_COMPONENTS_REGISTER_NODE(autoware::path_generator::PathGenerator)
