@@ -1,4 +1,4 @@
-// Copyright 2024-2026 TIER IV, Inc.
+// Copyright 2024 TIER IV, Inc.
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -100,13 +100,13 @@ PathGeneratorNode::InputData PathGeneratorNode::take_data()
 {
   InputData input_data;
 
-  // map
+  // Map
   if (const auto msg = vector_map_subscriber_.take_data()) {
     route_manager_data_.lanelet_map_bin_ptr = msg;
     path_generator_.reset_route_manager();
   }
 
-  // route
+  // Route
   if (const auto msg = route_subscriber_.take_data()) {
     if (msg->segments.empty()) {
       RCLCPP_ERROR(get_logger(), "input route is empty, ignoring...");
@@ -116,7 +116,7 @@ PathGeneratorNode::InputData PathGeneratorNode::take_data()
     }
   }
 
-  // odometry
+  // Odometry
   if (const auto msg = odometry_subscriber_.take_data()) {
     input_data.odometry_ptr = msg;
   }
