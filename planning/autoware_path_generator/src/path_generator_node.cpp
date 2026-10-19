@@ -20,7 +20,7 @@
 
 namespace autoware::path_generator
 {
-PathGeneratorNode::PathGeneratorNode(const rclcpp::NodeOptions & node_options)
+PathGenerator::PathGenerator(const rclcpp::NodeOptions & node_options)
 : Node("path_generator", node_options)
 {
   param_listener_ =
@@ -45,17 +45,16 @@ PathGeneratorNode::PathGeneratorNode(const rclcpp::NodeOptions & node_options)
   const auto params = param_listener_->get_params();
 
   PathGeneratorConfig config;
-  config.params = params;
   config.vehicle_length_m = vehicle_info_.vehicle_length_m;
   config.max_longitudinal_offset_m = vehicle_info_.max_longitudinal_offset_m;
   path_generator_ = PathGeneratorCore(config);
 
   timer_ = rclcpp::create_timer(
     this, get_clock(), rclcpp::Rate(params.planning_hz).period(),
-    std::bind(&PathGeneratorNode::run, this));
+    std::bind(&PathGenerator::run, this));
 }
 
-void PathGeneratorNode::run()
+void PathGenerator::run()
 {
   autoware_utils_debug::ScopedTimeTrack st(__func__, *time_keeper_);
 
@@ -66,24 +65,13 @@ void PathGeneratorNode::run()
     return;
   }
 
-  if (!path_generator_.is_ready()) {
-    const auto res = path_generator_.set_map_and_route(
-      *route_manager_data_.lanelet_map_bin_ptr, *route_manager_data_.route_ptr,
-      input_data.odometry_ptr->pose.pose);
-    if (!res) {
-      RCLCPP_ERROR(get_logger(), "%s", res.error().c_str());
-      return;
-    }
-  }
+  PathGeneratorInput input;
+  input.map_ptr = route_manager_data_.lanelet_map_bin_ptr;
+  input.route_ptr = route_manager_data_.route_ptr;
+  input.odometry = *input_data.odometry_ptr;
+  input.params = param_listener_->get_params();
 
-  // Update config from dynamic parameters
-  PathGeneratorConfig config;
-  config.params = param_listener_->get_params();
-  config.vehicle_length_m = vehicle_info_.vehicle_length_m;
-  config.max_longitudinal_offset_m = vehicle_info_.max_longitudinal_offset_m;
-  path_generator_.set_config(config);
-
-  const auto result = path_generator_.generate(*input_data.odometry_ptr);
+  const auto result = path_generator_.generate(input);
   if (!result) {
     RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000, "%s", result.error().c_str());
     return;
@@ -96,14 +84,13 @@ void PathGeneratorNode::run()
   publishStopWatchTime();
 }
 
-PathGeneratorNode::InputData PathGeneratorNode::take_data()
+PathGenerator::InputData PathGenerator::take_data()
 {
   InputData input_data;
 
   // Map
   if (const auto msg = vector_map_subscriber_.take_data()) {
     route_manager_data_.lanelet_map_bin_ptr = msg;
-    path_generator_.reset_route_manager();
   }
 
   // Route
@@ -112,7 +99,6 @@ PathGeneratorNode::InputData PathGeneratorNode::take_data()
       RCLCPP_ERROR(get_logger(), "input route is empty, ignoring...");
     } else {
       route_manager_data_.route_ptr = msg;
-      path_generator_.reset_route_manager();
     }
   }
 
@@ -124,7 +110,7 @@ PathGeneratorNode::InputData PathGeneratorNode::take_data()
   return input_data;
 }
 
-bool PathGeneratorNode::is_data_ready(const InputData & input_data)
+bool PathGenerator::is_data_ready(const InputData & input_data)
 {
   const auto notify_waiting = [this](const std::string & name) {
     RCLCPP_INFO_SKIPFIRST_THROTTLE(
@@ -149,8 +135,9 @@ bool PathGeneratorNode::is_data_ready(const InputData & input_data)
   return true;
 }
 
-void PathGeneratorNode::initialize_route_manager(
-  const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose)
+void PathGenerator::initialize_route_manager(
+  const RouteManagerData & route_manager_data,
+  [[maybe_unused]] const geometry_msgs::msg::Pose & initial_pose)
 {
   if (!route_manager_data.lanelet_map_bin_ptr) {
     RCLCPP_ERROR(get_logger(), "Lanelet map is not set");
@@ -162,29 +149,33 @@ void PathGeneratorNode::initialize_route_manager(
   }
 
   route_manager_data_ = route_manager_data;
-  const auto res = path_generator_.set_map_and_route(
-    *route_manager_data.lanelet_map_bin_ptr, *route_manager_data.route_ptr, initial_pose);
-  if (!res) {
-    RCLCPP_ERROR(get_logger(), "%s", res.error().c_str());
-  }
 }
 
-std::optional<PathWithLaneId> PathGeneratorNode::generate_path(
+std::optional<PathWithLaneId> PathGenerator::generate_path(
   const geometry_msgs::msg::Pose & current_pose, const Params & params)
 {
-  auto config = path_generator_.get_config();
-  config.params = params;
-  path_generator_.set_config(config);
+  if (!route_manager_data_.lanelet_map_bin_ptr || !route_manager_data_.route_ptr) {
+    RCLCPP_ERROR(get_logger(), "Map or route is not set");
+    return std::nullopt;
+  }
 
-  const auto res = path_generator_.generate_path(current_pose, now());
+  PathGeneratorInput input;
+  input.map_ptr = route_manager_data_.lanelet_map_bin_ptr;
+  input.route_ptr = route_manager_data_.route_ptr;
+  input.odometry.header.frame_id = "map";
+  input.odometry.header.stamp = now();
+  input.odometry.pose.pose = current_pose;
+  input.params = params;
+
+  const auto res = path_generator_.generate(input);
   if (!res) {
     RCLCPP_ERROR(get_logger(), "%s", res.error().c_str());
     return std::nullopt;
   }
-  return *res;
+  return res->path;
 }
 
-void PathGeneratorNode::publishStopWatchTime()
+void PathGenerator::publishStopWatchTime()
 {
   Float64Stamped calculation_time_data{};
   calculation_time_data.stamp = this->now();
@@ -194,6 +185,4 @@ void PathGeneratorNode::publishStopWatchTime()
 }  // namespace autoware::path_generator
 
 #include "rclcpp_components/register_node_macro.hpp"
-// cppcheck-suppress unknownMacro
-RCLCPP_COMPONENTS_REGISTER_NODE(autoware::path_generator::PathGeneratorNode)
 RCLCPP_COMPONENTS_REGISTER_NODE(autoware::path_generator::PathGenerator)

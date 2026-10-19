@@ -46,7 +46,7 @@ using autoware_vehicle_msgs::msg::TurnIndicatorsCommand;
 using nav_msgs::msg::Odometry;
 using ::path_generator::Params;
 
-class PathGeneratorNode : public rclcpp::Node
+class PathGenerator : public rclcpp::Node
 {
 public:
   struct RouteManagerData
@@ -55,7 +55,7 @@ public:
     LaneletRoute::ConstSharedPtr route_ptr{nullptr};
   };
 
-  explicit PathGeneratorNode(const rclcpp::NodeOptions & node_options);
+  explicit PathGenerator(const rclcpp::NodeOptions & node_options);
 
   void initialize_route_manager(
     const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose);
@@ -103,11 +103,7 @@ private:
   void publishStopWatchTime();
 };
 
-class PathGenerator : public PathGeneratorNode
-{
-public:
-  using PathGeneratorNode::PathGeneratorNode;
-};
+using PathGeneratorNode = PathGenerator;
 
 }  // namespace autoware::path_generator
 
