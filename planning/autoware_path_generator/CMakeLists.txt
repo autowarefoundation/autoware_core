@@ -21,7 +21,7 @@ target_compile_options(${PROJECT_NAME} PUBLIC
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::path_generator::PathGenerator"
+  PLUGIN "autoware::path_generator::PathGeneratorNode"
   EXECUTABLE path_generator_node
 )
 
