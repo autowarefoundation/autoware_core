@@ -21,10 +21,9 @@ target_compile_options(${PROJECT_NAME} PUBLIC
 )
 
 rclcpp_components_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::path_generator::PathGeneratorNode"
+  PLUGIN "autoware::path_generator::PathGenerator"
   EXECUTABLE path_generator_node
 )
-rclcpp_components_register_nodes(${PROJECT_NAME} "autoware::path_generator::PathGenerator")
 
 if(BUILD_TESTING)
   # The node-interface test spins real ROS nodes (pub/sub, executor, 10Hz timer).
