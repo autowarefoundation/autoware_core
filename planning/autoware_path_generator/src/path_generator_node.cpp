@@ -48,7 +48,7 @@ PathGeneratorNode::PathGeneratorNode(const rclcpp::NodeOptions & node_options)
   config.params = params;
   config.vehicle_length_m = vehicle_info_.vehicle_length_m;
   config.max_longitudinal_offset_m = vehicle_info_.max_longitudinal_offset_m;
-  path_generator_ = PathGenerator(config);
+  path_generator_ = PathGeneratorCore(config);
 
   timer_ = rclcpp::create_timer(
     this, get_clock(), rclcpp::Rate(params.planning_hz).period(),
@@ -195,3 +195,4 @@ void PathGeneratorNode::publishStopWatchTime()
 
 #include "rclcpp_components/register_node_macro.hpp"
 RCLCPP_COMPONENTS_REGISTER_NODE(autoware::path_generator::PathGeneratorNode)
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::path_generator::PathGenerator)

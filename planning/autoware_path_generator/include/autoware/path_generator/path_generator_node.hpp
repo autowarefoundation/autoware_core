@@ -92,7 +92,7 @@ private:
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
   RouteManagerData route_manager_data_;
 
-  PathGenerator path_generator_;
+  PathGeneratorCore path_generator_;
 
   mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{nullptr};
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
@@ -101,6 +101,12 @@ private:
   InputData take_data();
   bool is_data_ready(const InputData & input_data);
   void publishStopWatchTime();
+};
+
+class PathGenerator : public PathGeneratorNode
+{
+public:
+  using PathGeneratorNode::PathGeneratorNode;
 };
 
 }  // namespace autoware::path_generator

@@ -32,7 +32,7 @@
 namespace autoware::path_generator
 {
 
-PathGenerator::PathGenerator(const PathGeneratorConfig & config) : config_(config)
+PathGeneratorCore::PathGeneratorCore(const PathGeneratorConfig & config) : config_(config)
 {
   if (config_.vehicle_length_m < 0.0) {
     throw std::invalid_argument("vehicle_length_m must not be negative");
@@ -42,7 +42,7 @@ PathGenerator::PathGenerator(const PathGeneratorConfig & config) : config_(confi
   }
 }
 
-tl::expected<void, std::string> PathGenerator::set_map_and_route(
+tl::expected<void, std::string> PathGeneratorCore::set_map_and_route(
   const LaneletMapBin & map_bin, const LaneletRoute & route,
   const geometry_msgs::msg::Pose & initial_pose)
 {
@@ -54,18 +54,19 @@ tl::expected<void, std::string> PathGenerator::set_map_and_route(
   return {};
 }
 
-void PathGenerator::reset_route_manager()
+void PathGeneratorCore::reset_route_manager()
 {
   route_manager_.reset();
   route_.reset();
 }
 
-bool PathGenerator::is_ready() const
+bool PathGeneratorCore::is_ready() const
 {
   return route_manager_.has_value();
 }
 
-tl::expected<PathGeneratorResult, std::string> PathGenerator::generate(const Odometry & odometry)
+tl::expected<PathGeneratorResult, std::string> PathGeneratorCore::generate(
+  const Odometry & odometry)
 {
   if (!route_manager_) {
     return tl::make_unexpected("Route manager is not initialized");
@@ -93,7 +94,7 @@ tl::expected<PathGeneratorResult, std::string> PathGenerator::generate(const Odo
   return result;
 }
 
-tl::expected<PathWithLaneId, std::string> PathGenerator::generate_path(
+tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   const geometry_msgs::msg::Pose & current_pose,
   const std::optional<builtin_interfaces::msg::Time> & stamp)
 {
@@ -166,7 +167,7 @@ tl::expected<PathWithLaneId, std::string> PathGenerator::generate_path(
   return generate_path(lanelets, current_pose, s_ego, s_start, s_end, connect_to_goal, stamp);
 }
 
-tl::expected<PathWithLaneId, std::string> PathGenerator::generate_path(
+tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & current_pose,
   const double s_ego, const double s_start, const double s_end, const bool connect_to_goal,
   const std::optional<builtin_interfaces::msg::Time> & stamp) const
@@ -235,12 +236,12 @@ tl::expected<PathWithLaneId, std::string> PathGenerator::generate_path(
   return finalized_path_with_lane_id;
 }
 
-void PathGenerator::set_config(const PathGeneratorConfig & config)
+void PathGeneratorCore::set_config(const PathGeneratorConfig & config)
 {
   config_ = config;
 }
 
-const PathGeneratorConfig & PathGenerator::get_config() const
+const PathGeneratorConfig & PathGeneratorCore::get_config() const
 {
   return config_;
 }

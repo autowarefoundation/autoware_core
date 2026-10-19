@@ -59,11 +59,11 @@ struct PathGeneratorResult
   HazardLightsCommand hazard_lights_cmd;
 };
 
-class PathGenerator
+class PathGeneratorCore
 {
 public:
-  PathGenerator() = default;
-  explicit PathGenerator(const PathGeneratorConfig & config);
+  PathGeneratorCore() = default;
+  explicit PathGeneratorCore(const PathGeneratorConfig & config);
 
   tl::expected<void, std::string> set_map_and_route(
     const LaneletMapBin & map_bin, const LaneletRoute & route,
@@ -92,6 +92,11 @@ private:
   std::optional<LaneletRoute> route_{std::nullopt};
   std::optional<experimental::lanelet2_utils::RouteManager> route_manager_{std::nullopt};
 };
+
+namespace core
+{
+using PathGenerator = PathGeneratorCore;
+}
 
 }  // namespace autoware::path_generator
 
