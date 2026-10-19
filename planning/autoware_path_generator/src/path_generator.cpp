@@ -42,50 +42,48 @@ PathGeneratorCore::PathGeneratorCore(const PathGeneratorConfig & config) : confi
   }
 }
 
-tl::expected<void, std::string> PathGeneratorCore::set_map_and_route(
-  const LaneletMapBin & map_bin, const LaneletRoute & route,
-  const geometry_msgs::msg::Pose & initial_pose)
-{
-  route_ = route;
-  route_manager_ = experimental::lanelet2_utils::RouteManager::create(map_bin, route, initial_pose);
-  if (!route_manager_) {
-    return tl::make_unexpected("Failed to create route manager");
-  }
-  return {};
-}
-
-void PathGeneratorCore::reset_route_manager()
-{
-  route_manager_.reset();
-  route_.reset();
-}
-
-bool PathGeneratorCore::is_ready() const
-{
-  return route_manager_.has_value();
-}
-
 tl::expected<PathGeneratorResult, std::string> PathGeneratorCore::generate(
-  const Odometry & odometry)
+  const PathGeneratorInput & input)
 {
-  if (!route_manager_) {
-    return tl::make_unexpected("Route manager is not initialized");
+  if (!input.map_ptr) {
+    return tl::make_unexpected("Vector map is not provided");
+  }
+  if (!input.route_ptr) {
+    return tl::make_unexpected("Route is not provided");
+  }
+  if (input.route_ptr->segments.empty()) {
+    return tl::make_unexpected("Input route is empty");
   }
 
-  const auto path_result = generate_path(odometry.pose.pose, odometry.header.stamp);
+  if (!route_manager_ || input.map_ptr != prev_map_ptr_ || input.route_ptr != prev_route_ptr_) {
+    route_manager_ = experimental::lanelet2_utils::RouteManager::create(
+      *input.map_ptr, *input.route_ptr, input.odometry.pose.pose);
+    if (!route_manager_) {
+      prev_map_ptr_.reset();
+      prev_route_ptr_.reset();
+      route_.reset();
+      return tl::make_unexpected("Failed to create route manager");
+    }
+    prev_map_ptr_ = input.map_ptr;
+    prev_route_ptr_ = input.route_ptr;
+    route_ = *input.route_ptr;
+  }
+
+  const auto path_result =
+    generate_path(input.odometry.pose.pose, input.params, input.odometry.header.stamp);
   if (!path_result) {
     return tl::make_unexpected(path_result.error());
   }
 
   auto turn_signal = utils::get_turn_signal(
-    *path_result, *route_manager_, odometry.pose.pose, odometry.twist.twist.linear.x,
-    config_.params.turn_signal.search_distance, config_.params.turn_signal.search_time,
-    config_.params.turn_signal.angle_threshold_deg, config_.max_longitudinal_offset_m);
-  turn_signal.stamp = odometry.header.stamp;
+    *path_result, *route_manager_, input.odometry.pose.pose, input.odometry.twist.twist.linear.x,
+    input.params.turn_signal.search_distance, input.params.turn_signal.search_time,
+    input.params.turn_signal.angle_threshold_deg, config_.max_longitudinal_offset_m);
+  turn_signal.stamp = input.odometry.header.stamp;
 
   HazardLightsCommand hazard_signal;
   hazard_signal.command = HazardLightsCommand::NO_COMMAND;
-  hazard_signal.stamp = odometry.header.stamp;
+  hazard_signal.stamp = input.odometry.header.stamp;
 
   PathGeneratorResult result;
   result.path = std::move(*path_result);
@@ -95,32 +93,32 @@ tl::expected<PathGeneratorResult, std::string> PathGeneratorCore::generate(
 }
 
 tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
-  const geometry_msgs::msg::Pose & current_pose,
+  const geometry_msgs::msg::Pose & current_pose, const Params & params,
   const std::optional<builtin_interfaces::msg::Time> & stamp)
 {
   if (!route_manager_) {
     return tl::make_unexpected("Route manager is not initialized");
   }
 
-  route_manager_ = std::move(*route_manager_)
-                     .update_current_pose(
-                       current_pose, config_.params.ego_nearest_dist_threshold,
-                       config_.params.ego_nearest_yaw_threshold);
+  route_manager_ =
+    std::move(*route_manager_)
+      .update_current_pose(
+        current_pose, params.ego_nearest_dist_threshold, params.ego_nearest_yaw_threshold);
   if (!route_manager_) {
     return tl::make_unexpected("Failed to update current lanelet");
   }
 
   auto lanelets = route_manager_
                     ->get_lanelet_sequence_outward_route(
-                      config_.params.path_length.forward + config_.max_longitudinal_offset_m,
-                      config_.params.path_length.backward + config_.max_longitudinal_offset_m)
+                      params.path_length.forward + config_.max_longitudinal_offset_m,
+                      params.path_length.backward + config_.max_longitudinal_offset_m)
                     .as_lanelets();
 
   const auto & current_lanelet = route_manager_->current_lanelet();
   auto s_ego =
     experimental::lanelet2_utils::get_arc_coordinates({current_lanelet}, current_pose).length;
-  auto s_start = s_ego - config_.params.path_length.backward;
-  auto s_end = s_ego + config_.params.path_length.forward;
+  auto s_start = s_ego - params.path_length.backward;
+  auto s_end = s_ego + params.path_length.forward;
   auto current_lanelet_seen = false;
 
   const auto & goal_lanelet = route_manager_->goal_lanelet();
@@ -164,13 +162,14 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
     }
   }
 
-  return generate_path(lanelets, current_pose, s_ego, s_start, s_end, connect_to_goal, stamp);
+  return generate_path(
+    lanelets, current_pose, s_ego, s_start, s_end, connect_to_goal, params, stamp);
 }
 
 tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & current_pose,
   const double s_ego, const double s_start, const double s_end, const bool connect_to_goal,
-  const std::optional<builtin_interfaces::msg::Time> & stamp) const
+  const Params & params, const std::optional<builtin_interfaces::msg::Time> & stamp) const
 {
   if (lanelet_sequence.empty()) {
     return tl::make_unexpected("Lanelet sequence is empty");
@@ -199,8 +198,7 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   if (connect_to_goal) {
     path_to_goal = utils::connect_path_to_goal_inside_lanelet_sequence(
       *path, lanelet_sequence, *route_manager_, route_->goal_pose, s_end,
-      config_.params.goal_connection.connection_section_length,
-      config_.params.goal_connection.pre_goal_offset);
+      params.goal_connection.connection_section_length, params.goal_connection.pre_goal_offset);
 
     if (!path_to_goal) {
       return tl::make_unexpected("Failed to connect path to goal");
