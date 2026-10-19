@@ -61,16 +61,14 @@ tl::expected<PathGeneratorResult, std::string> PathGeneratorCore::generate(
     if (!route_manager_) {
       prev_map_ptr_.reset();
       prev_route_ptr_.reset();
-      route_.reset();
       return tl::make_unexpected("Failed to create route manager");
     }
     prev_map_ptr_ = input.map_ptr;
     prev_route_ptr_ = input.route_ptr;
-    route_ = *input.route_ptr;
   }
 
-  const auto path_result =
-    generate_path(input.odometry.pose.pose, input.params, input.odometry.header.stamp);
+  const auto path_result = generate_path(
+    input.odometry.pose.pose, *input.route_ptr, input.params, input.odometry.header.stamp);
   if (!path_result) {
     return tl::make_unexpected(path_result.error());
   }
@@ -93,7 +91,7 @@ tl::expected<PathGeneratorResult, std::string> PathGeneratorCore::generate(
 }
 
 tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
-  const geometry_msgs::msg::Pose & current_pose, const Params & params,
+  const geometry_msgs::msg::Pose & current_pose, const LaneletRoute & route, const Params & params,
   const std::optional<builtin_interfaces::msg::Time> & stamp)
 {
   if (!route_manager_) {
@@ -135,7 +133,7 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
     if (goal_lanelet.id() == lane_id) {
       const auto s_goal =
         s +
-        experimental::lanelet2_utils::get_arc_coordinates({goal_lanelet}, route_->goal_pose).length;
+        experimental::lanelet2_utils::get_arc_coordinates({goal_lanelet}, route.goal_pose).length;
       if (s_goal < s_end) {
         s_end = s_goal;
         connect_to_goal = true;
@@ -163,13 +161,14 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   }
 
   return generate_path(
-    lanelets, current_pose, s_ego, s_start, s_end, connect_to_goal, params, stamp);
+    lanelets, current_pose, s_ego, s_start, s_end, connect_to_goal, route, params, stamp);
 }
 
 tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & current_pose,
   const double s_ego, const double s_start, const double s_end, const bool connect_to_goal,
-  const Params & params, const std::optional<builtin_interfaces::msg::Time> & stamp) const
+  const LaneletRoute & route, const Params & params,
+  const std::optional<builtin_interfaces::msg::Time> & stamp) const
 {
   if (lanelet_sequence.empty()) {
     return tl::make_unexpected("Lanelet sequence is empty");
@@ -197,7 +196,7 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   std::optional<Trajectory> path_to_goal = *path;
   if (connect_to_goal) {
     path_to_goal = utils::connect_path_to_goal_inside_lanelet_sequence(
-      *path, lanelet_sequence, *route_manager_, route_->goal_pose, s_end,
+      *path, lanelet_sequence, *route_manager_, route.goal_pose, s_end,
       params.goal_connection.connection_section_length, params.goal_connection.pre_goal_offset);
 
     if (!path_to_goal) {
@@ -218,9 +217,7 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   }
 
   // Set header which is needed to engage
-  if (route_.has_value()) {
-    finalized_path_with_lane_id.header.frame_id = route_->header.frame_id;
-  }
+  finalized_path_with_lane_id.header.frame_id = route.header.frame_id;
   if (stamp.has_value()) {
     finalized_path_with_lane_id.header.stamp = *stamp;
   }
