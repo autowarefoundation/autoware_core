@@ -15,7 +15,7 @@
 // cspell:ignore SBAS GBAS
 
 // Unit tests of the rclcpp-free logic in gnss_poser.hpp. They run without a ROS context; the
-// node-level behavior is covered by test_gnss_poser_node.cpp and the characterization suite.
+// node-level behavior is covered by test_gnss_poser_node.cpp.
 //
 // The GnssPoser cases come from the characterization suite, under the same names: what the node
 // published for a fix is what GnssPoser::input_fix() returns for it. Each case is written as

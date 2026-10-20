@@ -15,14 +15,17 @@
 // cspell:ignore SBAS GBAS
 
 // =====================================================================================
-// Characterization tests for autoware::gnss_poser::GnssPoserNode.
+// Integration test of autoware::gnss_poser::GnssPoserNode, the ROS layer of the GNSS poser.
 //
-// These tests pin down the *currently observable* behavior of the node as seen through its
-// public ROS interface (parameters, topics, TF) so that a later refactoring can be verified
-// to preserve it. They deliberately describe what the node does today, not what it should
-// do. Where the observed behavior looks like a latent defect it is still asserted as-is and
-// marked with "NOTE(characterization)" so that a follow-up phase can decide whether to keep
-// or change it, and update the corresponding test on purpose.
+// The pose computation itself (GnssPoser) is unit-tested in test_gnss_poser.cpp without ROS. What
+// is checked here, over real topics, is what only the node does: declare the parameters, offer the
+// topics, hand the inputs and the parameters to the logic, publish the right topics for each
+// outcome with the right headers, and look up the antenna transform.
+//
+// The cases come from the characterization suite that pinned the node before its logic was
+// separated, and from the node test that came with the package. Where the pinned behavior looks
+// like a latent defect it is marked "NOTE(characterization)", so that a later change can update
+// the corresponding case on purpose.
 //
 // Test naming: <Aspect>_<Condition>_<ObservedBehavior>
 //
@@ -330,7 +333,7 @@ class PeerNode : public rclcpp::Node
 {
 public:
   PeerNode()
-  : rclcpp::Node("gnss_poser_characterization_peer"),
+  : rclcpp::Node("gnss_poser_integration_peer"),
     tf_buffer_(get_clock()),
     tf_listener_(tf_buffer_, this, /*spin_thread=*/false)
   {
@@ -402,7 +405,7 @@ public:
 // test side: the executor holding both the peer and the node is pumped only from here, and only one
 // input is ever in flight, so a scenario's steps reach the node in the order written. (The node's
 // own TF listener runs its usual dedicated thread.)
-class GnssPoserCharacterization : public ::testing::Test
+class GnssPoserNodeIntegration : public ::testing::Test
 {
 protected:
   void SetUp() override
@@ -673,7 +676,7 @@ std::string int_param_name(int value)
   return (value < 0 ? "Minus" : "") + std::to_string(std::abs(value));
 }
 
-class GnssPoserMissingParameter : public GnssPoserCharacterization,
+class GnssPoserMissingParameter : public GnssPoserNodeIntegration,
                                   public ::testing::WithParamInterface<std::string>
 {
 };
@@ -690,17 +693,17 @@ std::ostream & operator<<(std::ostream & os, const WrongTypedParameter & paramet
   return os << parameter.name << " = " << rclcpp::to_string(parameter.value);
 }
 
-class GnssPoserWrongParameterType : public GnssPoserCharacterization,
+class GnssPoserWrongParameterType : public GnssPoserNodeIntegration,
                                     public ::testing::WithParamInterface<WrongTypedParameter>
 {
 };
 
-class GnssPoserUnknownPubMethod : public GnssPoserCharacterization,
+class GnssPoserUnknownPubMethod : public GnssPoserNodeIntegration,
                                   public ::testing::WithParamInterface<int>
 {
 };
 
-class GnssPoserBuffEpochBelowOne : public GnssPoserCharacterization,
+class GnssPoserBuffEpochBelowOne : public GnssPoserNodeIntegration,
                                    public ::testing::WithParamInterface<std::tuple<int, int>>
 {
 };
@@ -713,7 +716,7 @@ class GnssPoserBuffEpochBelowOne : public GnssPoserCharacterization,
 
 // The node is named `gnss_poser` in the root namespace and declares the six parameters the README
 // documents; every override is read back unchanged.
-TEST_F(GnssPoserCharacterization, Construct_WithAllParameters_DeclaresThemAndIsNamedGnssPoser)
+TEST_F(GnssPoserNodeIntegration, Construct_WithAllParameters_DeclaresThemAndIsNamedGnssPoser)
 {
   // Arrange
   NodeParams params;
@@ -826,7 +829,7 @@ INSTANTIATE_TEST_SUITE_P(
 // The node has no built-in defaults: the values README.md and the schema document as defaults live
 // in config/gnss_poser.param.yaml, which the launch file loads. That file must keep constructing
 // the node and read back exactly as documented.
-TEST_F(GnssPoserCharacterization, Construct_WithShippedParamFile_MatchesDocumentedDefaults)
+TEST_F(GnssPoserNodeIntegration, Construct_WithShippedParamFile_MatchesDocumentedDefaults)
 {
   // Arrange
   rclcpp::NodeOptions options;
@@ -850,7 +853,7 @@ TEST_F(GnssPoserCharacterization, Construct_WithShippedParamFile_MatchesDocument
 // subscription.
 //
 // Queue depths are not pinned: they are not visible through discovery.
-TEST_F(GnssPoserCharacterization, Interface_TopicsAndQos)
+TEST_F(GnssPoserNodeIntegration, Interface_TopicsAndQos)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
@@ -888,7 +891,7 @@ TEST_F(GnssPoserCharacterization, Interface_TopicsAndQos)
 // Until a usable projector has been received, a fix produces nothing at all, not even `gnss_fixed`.
 // The arrival of a projector publishes nothing by itself either: dropped fixes are not replayed,
 // the next fix is simply the first one processed.
-TEST_F(GnssPoserCharacterization, Gate_BeforeMapProjectorInfo_PublishesNothing)
+TEST_F(GnssPoserNodeIntegration, Gate_BeforeMapProjectorInfo_PublishesNothing)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
@@ -901,7 +904,7 @@ TEST_F(GnssPoserCharacterization, Gate_BeforeMapProjectorInfo_PublishesNothing)
   expect_output_counts(0, 0, 0, 0);
 }
 
-TEST_F(GnssPoserCharacterization, Gate_LocalProjectorArrival_PublishesNothing)
+TEST_F(GnssPoserNodeIntegration, Gate_LocalProjectorArrival_PublishesNothing)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
@@ -916,7 +919,7 @@ TEST_F(GnssPoserCharacterization, Gate_LocalProjectorArrival_PublishesNothing)
   expect_output_counts(0, 0, 0, 0);
 }
 
-TEST_F(GnssPoserCharacterization, Gate_FixUnderLocalProjector_PublishesNothing)
+TEST_F(GnssPoserNodeIntegration, Gate_FixUnderLocalProjector_PublishesNothing)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
@@ -932,7 +935,7 @@ TEST_F(GnssPoserCharacterization, Gate_FixUnderLocalProjector_PublishesNothing)
   expect_output_counts(0, 0, 0, 0);
 }
 
-TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorArrival_DoesNotReplayDroppedFixes)
+TEST_F(GnssPoserNodeIntegration, Gate_MgrsProjectorArrival_DoesNotReplayDroppedFixes)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
@@ -950,7 +953,7 @@ TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorArrival_DoesNotReplayDropped
   expect_output_counts(0, 0, 0, 0);
 }
 
-TEST_F(GnssPoserCharacterization, Gate_FirstFixAfterMgrsProjector_PublishesOneOfEachOutput)
+TEST_F(GnssPoserNodeIntegration, Gate_FirstFixAfterMgrsProjector_PublishesOneOfEachOutput)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
@@ -971,7 +974,7 @@ TEST_F(GnssPoserCharacterization, Gate_FirstFixAfterMgrsProjector_PublishesOneOf
   expect_output_counts(1, 1, 1, 1);
 }
 
-TEST_F(GnssPoserCharacterization, Gate_LocalProjectorAfterMgrs_ArrivalPublishesNothing)
+TEST_F(GnssPoserNodeIntegration, Gate_LocalProjectorAfterMgrs_ArrivalPublishesNothing)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
@@ -985,7 +988,7 @@ TEST_F(GnssPoserCharacterization, Gate_LocalProjectorAfterMgrs_ArrivalPublishesN
   expect_output_counts(1, 1, 1, 1);
 }
 
-TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorAfterLocal_ArrivalPublishesNothing)
+TEST_F(GnssPoserNodeIntegration, Gate_MgrsProjectorAfterLocal_ArrivalPublishesNothing)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
@@ -1004,7 +1007,7 @@ TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorAfterLocal_ArrivalPublishesN
 
 // A fix without a position solution (STATUS_NO_FIX) publishes `gnss_fixed = false` and nothing
 // else.
-TEST_F(GnssPoserCharacterization, Gate_StatusNoFix_PublishesOnlyGnssFixedFalse)
+TEST_F(GnssPoserNodeIntegration, Gate_StatusNoFix_PublishesOnlyGnssFixedFalse)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
@@ -1020,7 +1023,7 @@ TEST_F(GnssPoserCharacterization, Gate_StatusNoFix_PublishesOnlyGnssFixedFalse)
 }
 
 // `gnss_fixed` carries the header stamp of the fix it reports on, like every other output.
-TEST_F(GnssPoserCharacterization, GnssFixed_StampIsFixHeaderStamp)
+TEST_F(GnssPoserNodeIntegration, GnssFixed_StampIsFixHeaderStamp)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
@@ -1047,7 +1050,7 @@ TEST_F(GnssPoserCharacterization, GnssFixed_StampIsFixHeaderStamp)
 // No antenna -> base_link TF is available here, so the antenna position is published unchanged;
 // that fallback, and the composition when a TF exists, are pinned by the TF cases. Orientation is
 // left to the orientation cases.
-TEST_F(GnssPoserCharacterization, MethodInstant_PublishesProjectedAntennaPosition)
+TEST_F(GnssPoserNodeIntegration, MethodInstant_PublishesProjectedAntennaPosition)
 {
   // Arrange
   NodeParams params;
@@ -1088,7 +1091,7 @@ TEST_F(GnssPoserCharacterization, MethodInstant_PublishesProjectedAntennaPositio
 // With method 1 nothing is published until `buff_epoch` fixes have been buffered (each of them
 // still publishes `gnss_fixed`); from then on every fix publishes the mean of the last `buff_epoch`
 // positions as a sliding window.
-TEST_F(GnssPoserCharacterization, MethodAverage_BufferNotFull_PublishesOnlyGnssFixed)
+TEST_F(GnssPoserNodeIntegration, MethodAverage_BufferNotFull_PublishesOnlyGnssFixed)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 3)));
@@ -1112,7 +1115,7 @@ TEST_F(GnssPoserCharacterization, MethodAverage_BufferNotFull_PublishesOnlyGnssF
 // the lever arm and the yaws add up. Non-default frame names pin which parameter names which frame.
 // The /tf broadcast map_frame -> gnss_base_frame mirrors the pose exactly at the fix stamp, and one
 // processed fix yields exactly one of each output.
-TEST_F(GnssPoserCharacterization, Tf_StaticAntennaToBaseTransform_IsComposedAndBroadcast)
+TEST_F(GnssPoserNodeIntegration, Tf_StaticAntennaToBaseTransform_IsComposedAndBroadcast)
 {
   // Arrange
   NodeParams params;
@@ -1173,7 +1176,7 @@ TEST_F(GnssPoserCharacterization, Tf_StaticAntennaToBaseTransform_IsComposedAndB
 // antenna position as base_link, with the receiver's covariance and only a throttled warning. The
 // node does not distinguish this from a transform that is merely not available yet. The
 // frame_id == base_frame shortcut, by contrast, is a legitimate configuration.
-TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_UnknownFrameFallsBackToIdentity)
+TEST_F(GnssPoserNodeIntegration, Tf_AntennaFrameComesFromFixHeader_UnknownFrameFallsBackToIdentity)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_static_antenna_tf());
@@ -1189,7 +1192,7 @@ TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_UnknownFrame
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
 }
 
-TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_BaseFrameUsesIdentity)
+TEST_F(GnssPoserNodeIntegration, Tf_AntennaFrameComesFromFixHeader_BaseFrameUsesIdentity)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_static_antenna_tf());
@@ -1204,7 +1207,7 @@ TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_BaseFrameUse
   expect_point_near(last_pose().pose.position, project_mgrs(fix_base));
 }
 
-TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_KnownFrameAppliesTransform)
+TEST_F(GnssPoserNodeIntegration, Tf_AntennaFrameComesFromFixHeader_KnownFrameAppliesTransform)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_static_antenna_tf());
@@ -1231,7 +1234,7 @@ TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_KnownFrameAp
 // ignored; a time-stamped transform is the only way to observe which time the node asks for. What
 // this pins is the lookup policy, which decides how the node reacts when the receiver's clock and
 // the TF clock disagree.
-TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_FixAtTransformStampAppliesIt)
+TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_FixAtTransformStampAppliesIt)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
@@ -1247,7 +1250,7 @@ TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_FixAtTransformStam
     last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z));
 }
 
-TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_LaterFixFallsBackToIdentity)
+TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_LaterFixFallsBackToIdentity)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
@@ -1263,7 +1266,7 @@ TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_LaterFixFallsBackT
   EXPECT_EQ(last_pose().header.stamp, make_stamp(1001, 0));
 }
 
-TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_ZeroStampAppliesLatest)
+TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_ZeroStampAppliesLatest)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
@@ -1285,7 +1288,7 @@ TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_ZeroStampAppliesLa
 //
 // The relation is rigid in practice; this pins that the node does not cache or latch a transform
 // but resolves it per fix, so a moving relation (a calibration rig, a trailer) would be honored.
-TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_FirstStampUsesFirstRelation)
+TEST_F(GnssPoserNodeIntegration, Tf_ChangingRelation_FirstStampUsesFirstRelation)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_changing_antenna_tf());
@@ -1304,7 +1307,7 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_FirstStampUsesFirstRelatio
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), 0.0, angle_tolerance);
 }
 
-TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_SecondStampUsesSecondRelation)
+TEST_F(GnssPoserNodeIntegration, Tf_ChangingRelation_SecondStampUsesSecondRelation)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_changing_antenna_tf());
@@ -1323,7 +1326,7 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_SecondStampUsesSecondRelat
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
 }
 
-TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStamp)
+TEST_F(GnssPoserNodeIntegration, Tf_ChangingRelationIsInterpolatedAtEachFixStamp)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_changing_antenna_tf());
@@ -1350,7 +1353,7 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStam
 
 // The orientation source selected by use_gnss_ins_orientation = false reaches the logic: moving
 // north yields a yaw of about pi/2.
-TEST_F(GnssPoserCharacterization, TestOrientationSources)
+TEST_F(GnssPoserNodeIntegration, TestOrientationSources)
 {
   // Arrange
   NodeParams params;
@@ -1372,7 +1375,7 @@ TEST_F(GnssPoserCharacterization, TestOrientationSources)
 
 // The averaging method and buff_epoch reach the logic: the pose is published once three fixes are
 // buffered, in the map frame.
-TEST_F(GnssPoserCharacterization, TestPositionBufferMethods)
+TEST_F(GnssPoserNodeIntegration, TestPositionBufferMethods)
 {
   // Arrange
   NodeParams params;
@@ -1395,7 +1398,7 @@ TEST_F(GnssPoserCharacterization, TestPositionBufferMethods)
 
 // The median method and buff_epoch reach the logic: the pose is published once five fixes are
 // buffered.
-TEST_F(GnssPoserCharacterization, TestMedianPosition)
+TEST_F(GnssPoserNodeIntegration, TestMedianPosition)
 {
   // Arrange
   NodeParams params;
@@ -1420,7 +1423,7 @@ TEST_F(GnssPoserCharacterization, TestMedianPosition)
 }
 
 // The covariance the logic derives reaches gnss_pose_cov: the fix diagonal for DIAGONAL_KNOWN.
-TEST_F(GnssPoserCharacterization, TestCovarianceProcessing_DiagonalKnown)
+TEST_F(GnssPoserNodeIntegration, TestCovarianceProcessing_DiagonalKnown)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
@@ -1441,7 +1444,7 @@ TEST_F(GnssPoserCharacterization, TestCovarianceProcessing_DiagonalKnown)
 }
 
 // ... and the default value 10.0 for UNKNOWN.
-TEST_F(GnssPoserCharacterization, TestCovarianceProcessing_Unknown)
+TEST_F(GnssPoserNodeIntegration, TestCovarianceProcessing_Unknown)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
