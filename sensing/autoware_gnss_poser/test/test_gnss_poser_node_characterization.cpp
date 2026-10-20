@@ -63,9 +63,11 @@
 #include <exception>
 #include <functional>
 #include <memory>
+#include <ostream>
 #include <stdexcept>
 #include <string>
 #include <thread>
+#include <tuple>
 #include <utility>
 #include <vector>
 
@@ -745,6 +747,24 @@ protected:
     pump(delivery_budget);
   }
 
+  // True once every topic of the node is visible with its message type.
+  bool all_topics_discovered()
+  {
+    const auto topics = peer_->get_topic_names_and_types();
+    const auto has = [&](const std::string & name, const std::string & type) {
+      const auto it = topics.find(name);
+      return it != topics.end() &&
+             std::find(it->second.begin(), it->second.end(), type) != it->second.end();
+    };
+    return has("/fix", "sensor_msgs/msg/NavSatFix") &&
+           has("/autoware_orientation", "autoware_sensing_msgs/msg/GnssInsOrientationStamped") &&
+           has("/map/map_projector_info", "autoware_map_msgs/msg/MapProjectorInfo") &&
+           has("/gnss_pose", "geometry_msgs/msg/PoseStamped") &&
+           has("/gnss_pose_cov", "geometry_msgs/msg/PoseWithCovarianceStamped") &&
+           has("/gnss_fixed", "autoware_internal_debug_msgs/msg/BoolStamped") &&
+           has("/tf", "tf2_msgs/msg/TFMessage");
+  }
+
   // build_node() followed by the MGRS projector info.
   void build_node_with_mgrs_projector(const NodeParams & params)
   {
@@ -856,6 +876,55 @@ protected:
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
 };
 
+// The endpoint gnss_poser owns among `infos`; throws when there is none.
+rclcpp::TopicEndpointInfo gnss_poser_endpoint(const std::vector<rclcpp::TopicEndpointInfo> & infos)
+{
+  for (const auto & info : infos) {
+    if (info.node_name() == "gnss_poser") {
+      return info;
+    }
+  }
+  throw std::runtime_error("no endpoint owned by gnss_poser");
+}
+
+// A parameter name for an int value: "Minus1" for -1, "3" for 3.
+std::string int_param_name(int value)
+{
+  return (value < 0 ? "Minus" : "") + std::to_string(std::abs(value));
+}
+
+class GnssPoserMissingParameter : public GnssPoserCharacterization,
+                                  public ::testing::WithParamInterface<std::string>
+{
+};
+
+// A parameter and an override of the wrong type for it.
+struct WrongTypedParameter
+{
+  std::string name;
+  rclcpp::ParameterValue value;
+};
+
+std::ostream & operator<<(std::ostream & os, const WrongTypedParameter & parameter)
+{
+  return os << parameter.name << " = " << rclcpp::to_string(parameter.value);
+}
+
+class GnssPoserWrongParameterType : public GnssPoserCharacterization,
+                                    public ::testing::WithParamInterface<WrongTypedParameter>
+{
+};
+
+class GnssPoserUnknownPubMethod : public GnssPoserCharacterization,
+                                  public ::testing::WithParamInterface<int>
+{
+};
+
+class GnssPoserBuffEpochBelowOne : public GnssPoserCharacterization,
+                                   public ::testing::WithParamInterface<std::tuple<int, int>>
+{
+};
+
 }  // namespace
 
 // =======================================================================================
@@ -895,69 +964,84 @@ TEST_F(GnssPoserCharacterization, Construct_WithAllParameters_DeclaresThemAndIsN
 // a default. The values README.md lists as defaults live in config/gnss_poser.param.yaml, which the
 // next case pins. Only "fails to start" is pinned; which exception rclcpp throws is not part of the
 // contract.
-TEST_F(GnssPoserCharacterization, Construct_MissingAnyRequiredParameter_FailsToStart)
+TEST_P(GnssPoserMissingParameter, Construct_MissingAnyRequiredParameter_FailsToStart)
 {
-  const NodeParams params;
-  for (const auto & missing : NodeParams::names()) {
-    EXPECT_THROW(
-      std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options(missing)),
-      std::exception)
-      << "missing parameter: " << missing;
-  }
+  // Arrange
+  const rclcpp::NodeOptions options = NodeParams{}.to_options(GetParam());
+
+  // Act & Assert
+  EXPECT_THROW(std::make_shared<autoware::gnss_poser::GnssPoserNode>(options), std::exception);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+  EveryParameter, GnssPoserMissingParameter, ::testing::ValuesIn(NodeParams::names()),
+  [](const ::testing::TestParamInfo<std::string> & info) { return info.param; });
 
 // The node declares each parameter with a type: an override of the wrong type (an integer for the
 // strings, a string for the boolean and for the integers) makes the node fail to start. As above,
 // only "fails to start" is pinned, not the exception rclcpp throws.
-TEST_F(GnssPoserCharacterization, Construct_WrongParameterType_FailsToStart)
+TEST_P(GnssPoserWrongParameterType, Construct_WrongParameterType_FailsToStart)
 {
-  const std::vector<std::pair<std::string, rclcpp::ParameterValue>> wrong_typed = {
-    {"base_frame", rclcpp::ParameterValue(123)},
-    {"gnss_base_frame", rclcpp::ParameterValue(123)},
-    {"map_frame", rclcpp::ParameterValue(123)},
-    {"use_gnss_ins_orientation", rclcpp::ParameterValue("not_a_bool")},
-    {"gnss_pose_pub_method", rclcpp::ParameterValue("not_an_int")},
-    {"buff_epoch", rclcpp::ParameterValue("not_an_int")},
-  };
-  for (const auto & [name, value] : wrong_typed) {
-    rclcpp::NodeOptions options = NodeParams{}.to_options(name);
-    options.append_parameter_override(name, value);
-    EXPECT_THROW(std::make_shared<autoware::gnss_poser::GnssPoserNode>(options), std::exception)
-      << "parameter: " << name;
-  }
+  // Arrange
+  rclcpp::NodeOptions options = NodeParams{}.to_options(GetParam().name);
+  options.append_parameter_override(GetParam().name, GetParam().value);
+
+  // Act & Assert
+  EXPECT_THROW(std::make_shared<autoware::gnss_poser::GnssPoserNode>(options), std::exception);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+  EveryParameter, GnssPoserWrongParameterType,
+  ::testing::Values(
+    WrongTypedParameter{"base_frame", rclcpp::ParameterValue(123)},
+    WrongTypedParameter{"gnss_base_frame", rclcpp::ParameterValue(123)},
+    WrongTypedParameter{"map_frame", rclcpp::ParameterValue(123)},
+    WrongTypedParameter{"use_gnss_ins_orientation", rclcpp::ParameterValue("not_a_bool")},
+    WrongTypedParameter{"gnss_pose_pub_method", rclcpp::ParameterValue("not_an_int")},
+    WrongTypedParameter{"buff_epoch", rclcpp::ParameterValue("not_an_int")}),
+  [](const ::testing::TestParamInfo<WrongTypedParameter> & info) { return info.param.name; });
 
 // `gnss_pose_pub_method` accepts exactly 0 (instant), 1 (average) and 2 (median). Any other value
 // makes the node fail to start instead of being silently treated as one of them (before this
 // validation, every non-zero value buffered and every value other than 1 selected the median).
-TEST_F(GnssPoserCharacterization, Construct_UnknownPubMethod_FailsToStart)
+TEST_P(GnssPoserUnknownPubMethod, Construct_UnknownPubMethod_FailsToStart)
 {
-  for (const int method : {-1, 3, 42}) {
-    NodeParams params;
-    params.gnss_pose_pub_method = method;
-    params.buff_epoch = 3;
-    EXPECT_THROW(
-      std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options()), std::exception)
-      << "gnss_pose_pub_method=" << method;
-  }
+  // Arrange
+  NodeParams params;
+  params.gnss_pose_pub_method = GetParam();
+  params.buff_epoch = 3;
+
+  // Act & Assert
+  EXPECT_THROW(
+    std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options()), std::exception);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+  OutOfRange, GnssPoserUnknownPubMethod, ::testing::Values(-1, 3, 42),
+  [](const ::testing::TestParamInfo<int> & info) { return int_param_name(info.param); });
 
 // `buff_epoch` must be at least 1 whatever the method: 0 and negative values make the node fail to
 // start. Before this validation a zero-capacity buffer counted as "full", so the average published
 // NaN coordinates and the median threw inside the callback.
-TEST_F(GnssPoserCharacterization, Construct_BuffEpochBelowOne_FailsToStart)
+TEST_P(GnssPoserBuffEpochBelowOne, Construct_BuffEpochBelowOne_FailsToStart)
 {
-  for (const int method : {0, 1, 2}) {
-    for (const int buff_epoch : {0, -1}) {
-      NodeParams params;
-      params.gnss_pose_pub_method = method;
-      params.buff_epoch = buff_epoch;
-      EXPECT_THROW(
-        std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options()), std::exception)
-        << "gnss_pose_pub_method=" << method << " buff_epoch=" << buff_epoch;
-    }
-  }
+  // Arrange
+  NodeParams params;
+  params.gnss_pose_pub_method = std::get<0>(GetParam());
+  params.buff_epoch = std::get<1>(GetParam());
+
+  // Act & Assert
+  EXPECT_THROW(
+    std::make_shared<autoware::gnss_poser::GnssPoserNode>(params.to_options()), std::exception);
 }
+
+INSTANTIATE_TEST_SUITE_P(
+  EveryMethod, GnssPoserBuffEpochBelowOne,
+  ::testing::Combine(::testing::Values(0, 1, 2), ::testing::Values(0, -1)),
+  [](const ::testing::TestParamInfo<std::tuple<int, int>> & info) {
+    return "Method" + int_param_name(std::get<0>(info.param)) + "_BuffEpoch" +
+           int_param_name(std::get<1>(info.param));
+  });
 
 // The node has no built-in defaults: the values README.md and the schema document as defaults live
 // in config/gnss_poser.param.yaml, which the launch file loads. That file must keep constructing
@@ -991,43 +1075,20 @@ TEST_F(GnssPoserCharacterization, Interface_TopicsAndQos)
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
 
-  const auto topics_ready = [this] {
-    const auto topics = peer_->get_topic_names_and_types();
-    const auto has = [&](const std::string & name, const std::string & type) {
-      const auto it = topics.find(name);
-      return it != topics.end() &&
-             std::find(it->second.begin(), it->second.end(), type) != it->second.end();
-    };
-    return has("/fix", "sensor_msgs/msg/NavSatFix") &&
-           has("/autoware_orientation", "autoware_sensing_msgs/msg/GnssInsOrientationStamped") &&
-           has("/map/map_projector_info", "autoware_map_msgs/msg/MapProjectorInfo") &&
-           has("/gnss_pose", "geometry_msgs/msg/PoseStamped") &&
-           has("/gnss_pose_cov", "geometry_msgs/msg/PoseWithCovarianceStamped") &&
-           has("/gnss_fixed", "autoware_internal_debug_msgs/msg/BoolStamped") &&
-           has("/tf", "tf2_msgs/msg/TFMessage");
-  };
-  ASSERT_TRUE(pump_until(topics_ready, 10s));
-
-  const auto node_endpoint = [](const std::vector<rclcpp::TopicEndpointInfo> & infos) {
-    for (const auto & info : infos) {
-      if (info.node_name() == "gnss_poser") {
-        return info;
-      }
-    }
-    throw std::runtime_error("no endpoint owned by gnss_poser");
-  };
+  ASSERT_TRUE(pump_until([this] { return all_topics_discovered(); }, 10s));
 
   // Act
   // Subscriptions
-  const auto fix_sub = node_endpoint(peer_->get_subscriptions_info_by_topic("/fix"));
+  const auto fix_sub = gnss_poser_endpoint(peer_->get_subscriptions_info_by_topic("/fix"));
   const auto orientation_sub =
-    node_endpoint(peer_->get_subscriptions_info_by_topic("/autoware_orientation"));
+    gnss_poser_endpoint(peer_->get_subscriptions_info_by_topic("/autoware_orientation"));
   const auto projector_sub =
-    node_endpoint(peer_->get_subscriptions_info_by_topic("/map/map_projector_info"));
+    gnss_poser_endpoint(peer_->get_subscriptions_info_by_topic("/map/map_projector_info"));
   // Publishers
-  const auto pose_pub = node_endpoint(peer_->get_publishers_info_by_topic("/gnss_pose"));
-  const auto pose_cov_pub = node_endpoint(peer_->get_publishers_info_by_topic("/gnss_pose_cov"));
-  const auto fixed_pub = node_endpoint(peer_->get_publishers_info_by_topic("/gnss_fixed"));
+  const auto pose_pub = gnss_poser_endpoint(peer_->get_publishers_info_by_topic("/gnss_pose"));
+  const auto pose_cov_pub =
+    gnss_poser_endpoint(peer_->get_publishers_info_by_topic("/gnss_pose_cov"));
+  const auto fixed_pub = gnss_poser_endpoint(peer_->get_publishers_info_by_topic("/gnss_fixed"));
 
   // Assert
   using rclcpp::DurabilityPolicy;
