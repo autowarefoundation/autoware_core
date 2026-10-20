@@ -89,7 +89,9 @@ EuclideanClusterObjectDetector::cluster_standard(
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> pcl_euclidean_cluster;
   pcl_euclidean_cluster.setClusterTolerance(param_.tolerance);
   pcl_euclidean_cluster.setMinClusterSize(1);
-  pcl_euclidean_cluster.setMaxClusterSize(param_.max_cluster_size);
+  // Do not bound the clusters here. PCL would drop an oversized cluster without a count.
+  // The check below applies `max_cluster_size` and counts the skipped clusters.
+  pcl_euclidean_cluster.setMaxClusterSize(static_cast<int>(pointcloud_ptr->size()));
   pcl_euclidean_cluster.setSearchMethod(tree);
   pcl_euclidean_cluster.setInputCloud(pointcloud_ptr);
   pcl_euclidean_cluster.extract(cluster_indices);
@@ -185,7 +187,10 @@ VoxelGridBasedEuclideanClusterDetector::cluster_voxel_grid(
   pcl::EuclideanClusterExtraction<pcl::PointXYZ> ec;
   ec.setClusterTolerance(param_.tolerance);
   ec.setMinClusterSize(1);
-  ec.setMaxClusterSize(param_.max_cluster_size);
+  // `max_cluster_size` counts points, not voxels, so do not bound the voxel clusters here.
+  // A voxel cluster dropped here would vanish without a count. Step 7 applies the limit to the
+  // raw points and counts the skipped clusters.
+  ec.setMaxClusterSize(static_cast<int>(flattened_centroids->points.size()));
   ec.setSearchMethod(tree);
   ec.setInputCloud(flattened_centroids);
   ec.extract(cluster_indices);
