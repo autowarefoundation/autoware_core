@@ -34,7 +34,6 @@
 
 #include <algorithm>
 #include <cmath>
-#include <limits>
 #include <memory>
 #include <utility>
 #include <vector>
@@ -195,19 +194,10 @@ EKFUpdateResult EKFLocalizer::update_step(const rclcpp::Time & t_curr)
   }
 
   // 1. Init per-tick diagnostics
+  // Gate results are kept from the last measurement update when the queue is empty, so a tick
+  // without new input does not report a gate failure (no_update_count covers missing input).
   pose_diag_info_.queue_size = pose_queue_.size();
-  pose_diag_info_.is_passed_delay_gate = false;
-  pose_diag_info_.delay_time = std::numeric_limits<double>::quiet_NaN();
-  pose_diag_info_.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
-  pose_diag_info_.is_passed_mahalanobis_gate = false;
-  pose_diag_info_.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
-
   twist_diag_info_.queue_size = twist_queue_.size();
-  twist_diag_info_.is_passed_delay_gate = false;
-  twist_diag_info_.delay_time = std::numeric_limits<double>::quiet_NaN();
-  twist_diag_info_.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
-  twist_diag_info_.is_passed_mahalanobis_gate = false;
-  twist_diag_info_.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
 
   // 2. Queue cap checks
   while (pose_queue_.exceeded()) {
