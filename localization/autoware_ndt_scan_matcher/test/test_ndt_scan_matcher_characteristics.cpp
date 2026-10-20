@@ -1774,31 +1774,79 @@ TEST(NdtScanMatcherCharacteristics, ReliableIgnoresTransformProbabilityThreshold
 // refactor moves them all the same.
 // ---------------------------------------------------------------------------------------------
 
-/// With `no_ground_points.enable`, three more topics carry the scan scored without ground points.
-TEST(NdtScanMatcherCharacteristics, NoGroundScoringPublishesFilteredCloudAndItsTwoScores)
+/// `no_ground_points.z_margin_for_ground_removal` for the two no-ground tests.
+constexpr double no_ground_z_margin = 0.8;
+
+/// A ready harness on the converged hot path, with no-ground scoring turned on.
+std::unique_ptr<NdtHarness> make_no_ground_harness()
 {
-  // Arrange
-  constexpr double z_margin = 0.8;
-  auto harness = make_ready_harness(converged_hot_path_overrides(
+  return make_ready_harness(converged_hot_path_overrides(
     {rclcpp::Parameter("score_estimation.no_ground_points.enable", true),
      rclcpp::Parameter(
-       "score_estimation.no_ground_points.z_margin_for_ground_removal", z_margin)}));
+       "score_estimation.no_ground_points.z_margin_for_ground_removal", no_ground_z_margin)}));
+}
 
-  // The three topics this option adds.
+/// With `no_ground_points.enable`, the aligned scan is also published without its ground points.
+TEST(NdtScanMatcherCharacteristics, NoGroundScoringPublishesScanWithoutPointsBelowMargin)
+{
+  // Arrange
+  auto harness = make_no_ground_harness();
+
   auto no_ground_points =
     harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned_no_ground");
+  // The full-scan counterpart the filtered cloud is checked against.
+  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
+
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, points_aligned, no_ground_points));
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  // Act
+  const auto outcome = harness->drive_one_scan(default_drive());
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  ASSERT_EQ(outcome->diag.level(), level_ok)
+    << "scan did not converge: " << outcome->diag.message();
+
+  ASSERT_TRUE(harness->wait_until(
+    [&] { return points_aligned->count() >= 1 && no_ground_points->count() >= 1; }, 5s))
+    << "not every aligned cloud arrived";
+
+  // One scan, one filtered cloud.
+  EXPECT_EQ(no_ground_points->count(), 1U) << "scan drive attempt was " << outcome->attempt;
+
+  // The filtered cloud is the scan minus everything at or below the margin. The expected width is
+  // counted from the scan the harness builds, not from what the node published.
+  const auto aligned = points_aligned->first();
+  const auto filtered = no_ground_points->first();
+  ASSERT_TRUE(aligned.has_value() && filtered.has_value());
+
+  const auto scan = make_corner_cloud(scan_spacing);
+  const auto off_the_floor = std::count_if(
+    scan.points.begin(), scan.points.end(),
+    [&](const auto & p) { return p.z > no_ground_z_margin; });
+
+  EXPECT_EQ(filtered->width, static_cast<uint32_t>(off_the_floor));
+  EXPECT_LT(filtered->width, aligned->width);
+  EXPECT_EQ(filtered->header.frame_id, map_frame);
+  EXPECT_EQ(filtered->header.stamp, outcome->stamp);
+}
+
+/// With `no_ground_points.enable`, TP and NVTL are also published for the scan without ground.
+TEST(NdtScanMatcherCharacteristics, NoGroundScoringPublishesScoresThatDifferFromFullScan)
+{
+  // Arrange
+  auto harness = make_no_ground_harness();
+
   auto no_ground_tp = harness->capture<Float32Stamped>("/no_ground_transform_probability");
   auto no_ground_nvtl =
     harness->capture<Float32Stamped>("/no_ground_nearest_voxel_transformation_likelihood");
-
-  // The full-scan counterparts the three are checked against.
-  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
+  // The full-scan counterparts the two are checked against.
   auto transform_probability = harness->capture<Float32Stamped>("/transform_probability");
   auto nvtl = harness->capture<Float32Stamped>("/nearest_voxel_transformation_likelihood");
 
   ASSERT_TRUE(wait_for_capture_discovery(
-    *harness, points_aligned, no_ground_points, no_ground_tp, no_ground_nvtl, transform_probability,
-    nvtl));
+    *harness, no_ground_tp, no_ground_nvtl, transform_probability, nvtl));
   ASSERT_TRUE(harness->ensure_map_loaded());
 
   // Act
@@ -1811,32 +1859,15 @@ TEST(NdtScanMatcherCharacteristics, NoGroundScoringPublishesFilteredCloudAndItsT
 
   ASSERT_TRUE(harness->wait_until(
     [&] {
-      return points_aligned->count() >= 1 && no_ground_points->count() >= 1 &&
-             no_ground_tp->count() >= 1 && no_ground_nvtl->count() >= 1 &&
+      return no_ground_tp->count() >= 1 && no_ground_nvtl->count() >= 1 &&
              transform_probability->count() >= 1 && nvtl->count() >= 1;
     },
     5s))
-    << "not every no-ground publication arrived";
+    << "not every score arrived";
 
-  // One scan, one message on each of the three.
-  EXPECT_EQ(no_ground_points->count(), 1U) << "scan drive attempt was " << outcome->attempt;
-  EXPECT_EQ(no_ground_tp->count(), 1U);
+  // One scan, one message on each of the two.
+  EXPECT_EQ(no_ground_tp->count(), 1U) << "scan drive attempt was " << outcome->attempt;
   EXPECT_EQ(no_ground_nvtl->count(), 1U);
-
-  // The filtered cloud is the scan minus everything at or below the margin. The expected width is
-  // counted from the scan the harness builds, not from what the node published.
-  const auto aligned = points_aligned->first();
-  const auto filtered = no_ground_points->first();
-  ASSERT_TRUE(aligned.has_value() && filtered.has_value());
-
-  const auto scan = make_corner_cloud(scan_spacing);
-  const auto off_the_floor = std::count_if(
-    scan.points.begin(), scan.points.end(), [&](const auto & p) { return p.z > z_margin; });
-
-  EXPECT_EQ(filtered->width, static_cast<uint32_t>(off_the_floor));
-  EXPECT_LT(filtered->width, aligned->width);
-  EXPECT_EQ(filtered->header.frame_id, map_frame);
-  EXPECT_EQ(filtered->header.stamp, outcome->stamp);
 
   // The two scores carry the scan's stamp, and differ from the full-scan ones. Identical values
   // would mean the filter ran but its output never reached the scorer.
