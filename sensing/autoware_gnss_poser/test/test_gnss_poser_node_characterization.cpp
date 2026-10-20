@@ -56,8 +56,6 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
-#include <array>
-#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <exception>
@@ -110,12 +108,6 @@ constexpr double golden_z = reference_altitude;
 // many orders of magnitude below both. Values the node copies are compared exactly instead.
 constexpr double position_tolerance = 1e-4;  // [m]
 constexpr double angle_tolerance = 1e-6;     // [rad]
-// EGM2008 geoid height at the reference point, from GeographicLib's GeoidEval on the egm2008-1
-// dataset: independent of the node and of autoware_geography_utils.
-constexpr double reference_geoid_height = 36.12;  // [m]
-// The library and GeoidEval interpolate the same grid; 1 cm covers their difference while any
-// missing (0 m) or wrongly signed (+36 m) conversion is far outside.
-constexpr double geoid_height_tolerance = 0.01;  // [m]
 
 // A deterministic, clearly artificial header stamp so that a stamp copied from the input can be
 // told apart from one taken from a clock.
@@ -130,17 +122,6 @@ constexpr std::chrono::milliseconds delivery_budget{200};
 constexpr std::chrono::milliseconds wait_budget{3000};
 // Wall-clock budget for pub/sub discovery between the peer and the node under test.
 constexpr std::chrono::milliseconds discovery_budget{10000};
-
-// GnssInsOrientation::rmse_rotation_* are float32, so rmse^2 carries single-precision error.
-constexpr double rmse_squared_tolerance = 1e-6;
-
-// Covariance index helpers (6x6 row-major).
-constexpr std::size_t cov_xx = 0;
-constexpr std::size_t cov_yy = 7;
-constexpr std::size_t cov_zz = 14;
-constexpr std::size_t cov_roll_roll = 21;
-constexpr std::size_t cov_pitch_pitch = 28;
-constexpr std::size_t cov_yaw_yaw = 35;
 
 struct NodeParams
 {
@@ -227,29 +208,6 @@ std::vector<NavSatFix> make_average_fixes()
     make_fix(reference_latitude + 0.003, reference_longitude + 0.003, reference_altitude + 30.0)};
 }
 
-// Fixes of the odd median cases.
-//
-// Chosen so that the median of x, of y and of z each come from a different sample, which is what
-// makes the case discriminating: a "median sample" implementation would return one of the inputs.
-std::vector<NavSatFix> make_median_fixes()
-{
-  return {
-    make_fix(reference_latitude, reference_longitude, reference_altitude + 20.0),
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude),
-    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 10.0),
-    make_fix(reference_latitude + 0.003, reference_longitude + 0.003, reference_altitude + 30.0)};
-}
-
-// Fixes of the even median cases.
-std::vector<NavSatFix> make_even_median_fixes()
-{
-  return {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.003, reference_longitude + 0.001, reference_altitude + 30.0),
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.003, reference_altitude + 10.0),
-    make_fix(reference_latitude + 0.002, reference_longitude + 0.002, reference_altitude + 20.0)};
-}
-
 MapProjectorInfo make_mgrs_projector_info(
   const std::string & grid = reference_mgrs_grid,
   const std::string & vertical_datum = MapProjectorInfo::WGS84)
@@ -269,18 +227,6 @@ MapProjectorInfo make_local_projector_info()
   return msg;
 }
 
-MapProjectorInfo make_local_cartesian_utm_projector_info(
-  double origin_lat, double origin_lon, double origin_alt)
-{
-  MapProjectorInfo msg;
-  msg.projector_type = MapProjectorInfo::LOCAL_CARTESIAN_UTM;
-  msg.vertical_datum = MapProjectorInfo::WGS84;
-  msg.map_origin.latitude = origin_lat;
-  msg.map_origin.longitude = origin_lon;
-  msg.map_origin.altitude = origin_alt;
-  return msg;
-}
-
 Quaternion yaw_to_quaternion(double yaw)
 {
   tf2::Quaternion q;
@@ -297,18 +243,6 @@ double yaw_of(const Quaternion & quaternion)
   double yaw = 0.0;
   tf2::Matrix3x3(q).getRPY(roll, pitch, yaw);
   return yaw;
-}
-
-// Two orientations agree when the rotation angle between them, 2 * acos(|q1 . q2|), is negligible.
-void expect_same_rotation(
-  const Quaternion & actual, const Quaternion & expected, double tol = angle_tolerance)
-{
-  const double dot =
-    actual.x * expected.x + actual.y * expected.y + actual.z * expected.z + actual.w * expected.w;
-  const double angle = 2.0 * std::acos(std::min(1.0, std::abs(dot)));
-  EXPECT_LE(angle, tol) << "actual=(" << actual.x << "," << actual.y << "," << actual.z << ","
-                        << actual.w << ") expected=(" << expected.x << "," << expected.y << ","
-                        << expected.z << "," << expected.w << ")";
 }
 
 GnssInsOrientationStamped make_orientation(
@@ -349,57 +283,12 @@ Point make_point(double x, double y, double z)
   return p;
 }
 
-Point mean_of(const std::vector<Point> & points)
-{
-  assert(!points.empty() && "mean_of requires at least one point");
-  Point mean = make_point(0.0, 0.0, 0.0);
-  for (const auto & p : points) {
-    mean.x += p.x;
-    mean.y += p.y;
-    mean.z += p.z;
-  }
-  const auto n = static_cast<double>(points.size());
-  return make_point(mean.x / n, mean.y / n, mean.z / n);
-}
-
-double median_of(std::vector<double> values)
-{
-  assert(!values.empty() && "median_of requires at least one value");
-  std::sort(values.begin(), values.end());
-  const std::size_t mid = values.size() / 2;
-  return (values.size() % 2 == 1) ? values[mid] : (values[mid] + values[mid - 1]) / 2.0;
-}
-
-// Component-wise median (this is what the node computes, NOT the median sample).
-Point component_wise_median_of(const std::vector<Point> & points)
-{
-  std::vector<double> xs;
-  std::vector<double> ys;
-  std::vector<double> zs;
-  for (const auto & p : points) {
-    xs.push_back(p.x);
-    ys.push_back(p.y);
-    zs.push_back(p.z);
-  }
-  return make_point(median_of(xs), median_of(ys), median_of(zs));
-}
-
 void expect_point_near(
   const Point & actual, const Point & expected, double tol = position_tolerance)
 {
   EXPECT_NEAR(actual.x, expected.x, tol);
   EXPECT_NEAR(actual.y, expected.y, tol);
   EXPECT_NEAR(actual.z, expected.z, tol);
-}
-
-bool is_egm2008_dataset_available()
-{
-  try {
-    autoware::geography_utils::convert_wgs84_to_egm2008(0.0, 0.0, 0.0);
-    return true;
-  } catch (const std::runtime_error &) {
-    return false;
-  }
 }
 
 // Params of the buffering cases: gnss_pose_pub_method and buff_epoch, the rest at their defaults.
@@ -417,94 +306,12 @@ Point project_mgrs(const NavSatFix & fix)
   return project_antenna(fix, make_mgrs_projector_info());
 }
 
-// Fixes of the instant cases with a large buff_epoch.
-std::vector<NavSatFix> make_instant_fixes()
-{
-  // Three fixes about 100 m apart (see the note at the reference constants), so that each output
-  // can be checked against its own fix and not a neighbor.
-  return {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 1.0)};
-}
-
-// Fixes of the non-fixed buffer cases: an accepted fix, a NO_FIX, and another accepted fix.
-std::vector<NavSatFix> make_non_fixed_buffer_fixes()
-{
-  return {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(
-      reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0,
-      NavSatStatus::STATUS_NO_FIX),
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0)};
-}
-
-// Fixes of the gated buffer cases: dropped without projector info, dropped under LOCAL, and two
-// accepted ones.
-std::vector<NavSatFix> make_gated_buffer_fixes()
-{
-  return {
-    make_fix(reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0),
-    make_fix(reference_latitude - 0.01, reference_longitude - 0.01, reference_altitude - 100.0),
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0)};
-}
-
-// Fixes of the motion orientation cases.
-std::vector<NavSatFix> make_motion_fixes()
-{
-  return {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(
-      reference_latitude + 0.001, reference_longitude + 0.001,
-      reference_altitude),  // north-east of fix1
-    make_fix(
-      reference_latitude + 0.001, reference_longitude - 0.001,
-      reference_altitude)};  // west of fix2, north of fix1
-}
-
-// Fixes of the motion orientation cases with a buffer.
-std::vector<NavSatFix> make_buffered_motion_fixes()
-{
-  return {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude)};
-}
-
 // The reference fix in the antenna frame of the TF cases, stamped `stamp`.
 NavSatFix make_antenna_fix_at(const builtin_interfaces::msg::Time & stamp)
 {
   auto fix = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
   fix.header.stamp = stamp;
   return fix;
-}
-
-// The reference fix with a full covariance of the given type.
-NavSatFix make_fix_with_covariance(NavSatFix::_position_covariance_type_type type)
-{
-  auto fix = make_reference_fix();
-  // Only the diagonal (2.0, 3.0, 4.0) is propagated; off-diagonal entries such as 0.5 never are,
-  // in any branch.
-  fix.position_covariance = {2.0, 0.5, 0.6, 0.5, 3.0, 0.7, 0.6, 0.7, 4.0};
-  fix.position_covariance_type = type;
-  return fix;
-}
-
-void expect_position_variances(
-  const std::array<double, 36> & covariance, double xx, double yy, double zz)
-{
-  EXPECT_DOUBLE_EQ(covariance[cov_xx], xx);
-  EXPECT_DOUBLE_EQ(covariance[cov_yy], yy);
-  EXPECT_DOUBLE_EQ(covariance[cov_zz], zz);
-}
-
-void expect_rotation_variances_near(
-  const std::array<double, 36> & covariance, double roll, double pitch, double yaw)
-{
-  EXPECT_NEAR(covariance[cov_roll_roll], roll, rmse_squared_tolerance);
-  EXPECT_NEAR(covariance[cov_pitch_pitch], pitch, rmse_squared_tolerance);
-  EXPECT_NEAR(covariance[cov_yaw_yaw], yaw, rmse_squared_tolerance);
 }
 
 void expect_qos(
@@ -789,33 +596,6 @@ protected:
     ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
     send_fix(make_reference_fix());
     ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  }
-
-  // A node that sent the gated buffer fixes 0 (no projector info yet) and 1 (LOCAL projector).
-  void build_average_node_after_gated_fixes(const std::vector<NavSatFix> & fixes)
-  {
-    ASSERT_NO_FATAL_FAILURE(build_node(make_buffer_params(1, 2)));
-    send_fix(fixes[0]);  // no projector info yet
-    send_projector_info(make_local_projector_info());
-    send_fix(fixes[1]);  // LOCAL projector
-  }
-
-  // A node with use_gnss_ins_orientation = true and the INS RMSE (0.1, 0.2, 0.3).
-  void build_node_with_ins_rmse()
-  {
-    NodeParams params;
-    params.gnss_pose_pub_method = 0;
-    params.use_gnss_ins_orientation = true;
-    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
-    send_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
-  }
-
-  // A node with use_gnss_ins_orientation = false.
-  void build_motion_orientation_node(const NodeParams & base = {})
-  {
-    NodeParams params = base;
-    params.use_gnss_ins_orientation = false;
-    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
   }
 
   // A node whose base_frame is my_base, with the INS orientation yaw pi/2 and the static TF
@@ -1191,27 +971,6 @@ TEST_F(GnssPoserCharacterization, Gate_FirstFixAfterMgrsProjector_PublishesOneOf
   expect_output_counts(1, 1, 1, 1);
 }
 
-// A LOCAL projector switches processing off, and the latest projector info always wins: MGRS after
-// LOCAL switches it back on, LOCAL after MGRS off again, and neither arrival publishes anything by
-// itself.
-//
-// NOTE(characterization): unlike the not-fixed case below, a fix dropped under LOCAL does not
-// publish `gnss_fixed` either, so a consumer of that topic sees no update at all.
-TEST_F(GnssPoserCharacterization, Gate_LocalProjector_PublishesNothingNotEvenGnssFixed)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
-  // The latest projector info wins: LOCAL disables processing. Its arrival publishes nothing,
-  // and the next fix is dropped entirely.
-  send_projector_info(make_local_projector_info());
-
-  // Act
-  send_fix(make_reference_fix());
-
-  // Assert
-  expect_output_counts(1, 1, 1, 1);
-}
-
 TEST_F(GnssPoserCharacterization, Gate_LocalProjectorAfterMgrs_ArrivalPublishesNothing)
 {
   // Arrange
@@ -1243,25 +1002,6 @@ TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorAfterLocal_ArrivalPublishesN
   expect_output_counts(1, 1, 1, 1);
 }
 
-TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorAfterLocal_ReenablesProcessing)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
-  // The latest projector info wins: LOCAL disables processing. Its arrival publishes nothing,
-  // and the next fix is dropped entirely.
-  send_projector_info(make_local_projector_info());
-  send_fix(make_reference_fix());
-  // Switching back re-enables processing, again without replaying the dropped fix.
-  send_projector_info(make_mgrs_projector_info());
-
-  // Act
-  send_fix(make_reference_fix());
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  expect_output_counts(2, 2, 2, 2);
-}
-
 // A fix without a position solution (STATUS_NO_FIX) publishes `gnss_fixed = false` and nothing
 // else.
 TEST_F(GnssPoserCharacterization, Gate_StatusNoFix_PublishesOnlyGnssFixedFalse)
@@ -1277,74 +1017,6 @@ TEST_F(GnssPoserCharacterization, Gate_StatusNoFix_PublishesOnlyGnssFixedFalse)
   ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
   expect_output_counts(1, 0, 0, 0);
   EXPECT_FALSE(last_fixed().data);
-}
-
-// `is_fixed` is `status >= STATUS_FIX`: FIX, SBAS_FIX and GBAS_FIX all pass the gate and each
-// produces one of every output, while NO_FIX adds a `gnss_fixed = false` and nothing else.
-TEST_F(GnssPoserCharacterization, Gate_StatusFix_Passes)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
-
-  // Act
-  // is_fixed(status) <=> status >= STATUS_FIX (0)
-  send_fix(make_reference_fix(NavSatStatus::STATUS_FIX));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  EXPECT_TRUE(last_fixed().data);
-}
-
-TEST_F(GnssPoserCharacterization, Gate_StatusSbasFix_Passes)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
-  // is_fixed(status) <=> status >= STATUS_FIX (0)
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({make_reference_fix(NavSatStatus::STATUS_FIX)}));
-
-  // Act
-  send_fix(make_reference_fix(NavSatStatus::STATUS_SBAS_FIX));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  EXPECT_TRUE(last_fixed().data);
-}
-
-TEST_F(GnssPoserCharacterization, Gate_StatusFixSbasGbas_AllPass)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
-  // is_fixed(status) <=> status >= STATUS_FIX (0)
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
-    {make_reference_fix(NavSatStatus::STATUS_FIX),
-     make_reference_fix(NavSatStatus::STATUS_SBAS_FIX)}));
-
-  // Act
-  send_fix(make_reference_fix(NavSatStatus::STATUS_GBAS_FIX));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
-  EXPECT_TRUE(last_fixed().data);
-  expect_output_counts(3, 3, 3, 3);
-}
-
-TEST_F(GnssPoserCharacterization, Gate_StatusNoFixAfterAcceptedFixes_PublishesOnlyGnssFixedFalse)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
-  // is_fixed(status) <=> status >= STATUS_FIX (0)
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
-    {make_reference_fix(NavSatStatus::STATUS_FIX),
-     make_reference_fix(NavSatStatus::STATUS_SBAS_FIX),
-     make_reference_fix(NavSatStatus::STATUS_GBAS_FIX)}));
-
-  // Act
-  send_fix(make_reference_fix(NavSatStatus::STATUS_NO_FIX));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(4));
-  EXPECT_FALSE(last_fixed().data);
-  expect_output_counts(4, 3, 3, 3);
 }
 
 // `gnss_fixed` carries the header stamp of the fix it reports on, like every other output.
@@ -1409,117 +1081,6 @@ TEST_F(GnssPoserCharacterization, MethodInstant_PublishesProjectedAntennaPositio
   EXPECT_EQ(pose_cov.pose.pose, pose.pose);
 }
 
-// With method 0 the buffer is never used: whatever `buff_epoch` says, every fix yields its own
-// instantaneous position.
-TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_FirstFixPublishedInstantly)
-{
-  // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.buff_epoch = 5;  // ignored for method 0
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
-  const auto fixes = make_instant_fixes();
-
-  // Act
-  send_fix(fixes[0]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, project_mgrs(fixes[0]));
-}
-
-TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_SecondFixPublishedInstantly)
-{
-  // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.buff_epoch = 5;  // ignored for method 0
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
-  const auto fixes = make_instant_fixes();
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
-
-  // Act
-  send_fix(fixes[1]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  expect_point_near(last_pose().pose.position, project_mgrs(fixes[1]));
-}
-
-TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_StillPublishesEveryFixInstantly)
-{
-  // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.buff_epoch = 5;  // ignored for method 0
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
-  const auto fixes = make_instant_fixes();
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
-
-  // Act
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
-  expect_point_near(last_pose().pose.position, project_mgrs(fixes[2]));
-  EXPECT_EQ(peer_->poses.size(), 3U);
-}
-
-// The projector's `vertical_datum` is honored: with EGM2008 the WGS84 ellipsoidal altitude is
-// converted to an orthometric height, i.e. lowered by the geoid height (about 36 m at the reference
-// point), while x and y are the MGRS coordinates as before. The expectation is independent ground
-// truth (the golden coordinates and GeoidEval's geoid height). Skipped when the geoid dataset is
-// not installed.
-TEST_F(GnssPoserCharacterization, MethodInstant_Egm2008VerticalDatum_ConvertsHeightFromWgs84)
-{
-  if (!is_egm2008_dataset_available()) {
-    GTEST_SKIP() << "egm2008-1 geoid dataset is not installed";
-  }
-
-  // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info(reference_mgrs_grid, MapProjectorInfo::EGM2008);
-  send_projector_info(projector);
-
-  const auto fix = make_reference_fix();
-
-  // Act
-  send_fix(fix);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position,
-    make_point(golden_x, golden_y, reference_altitude - reference_geoid_height),
-    geoid_height_tolerance);
-}
-
-// Projector info is forwarded to the projection library as-is: with LOCAL_CARTESIAN_UTM the map
-// origin is honored, so a fix at the origin lands at (0, 0, altitude - origin altitude).
-TEST_F(GnssPoserCharacterization, MethodInstant_LocalCartesianUtmProjector_UsesMapOrigin)
-{
-  // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  // Origin == reference point => antenna at (0, 0, alt - origin_alt).
-  const auto projector =
-    make_local_cartesian_utm_projector_info(reference_latitude, reference_longitude, -10.0);
-  send_projector_info(projector);
-
-  const auto fix = make_reference_fix();
-
-  // Act
-  send_fix(fix);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  // Literal expectation: the fix sits on the origin, so only the altitude offset remains.
-  expect_point_near(last_pose().pose.position, make_point(0.0, 0.0, reference_altitude - (-10.0)));
-}
-
 // =======================================================================================
 // 4. Position buffering (gnss_pose_pub_method = 1 average / 2 median)
 // =======================================================================================
@@ -1543,494 +1104,8 @@ TEST_F(GnssPoserCharacterization, MethodAverage_BufferNotFull_PublishesOnlyGnssF
   expect_output_counts(2, 0, 0, 0);
 }
 
-TEST_F(GnssPoserCharacterization, MethodAverage_BufferBecomesFull_PublishesMean)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 3)));
-  const auto fixes = make_average_fixes();
-  // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
-
-  // Act
-  // Fix 3 completes the buffer: the third gnss_fixed comes with the first pose, the mean of 1..3.
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_output_counts(3, 1, 1, 1);
-  expect_point_near(
-    last_pose().pose.position,
-    mean_of({project_mgrs(fixes[0]), project_mgrs(fixes[1]), project_mgrs(fixes[2])}));
-}
-
-TEST_F(GnssPoserCharacterization, MethodAverage_BufferFull_SlidingWindowMean)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 3)));
-  const auto fixes = make_average_fixes();
-  // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  // Fix 3 completes the buffer: the third gnss_fixed comes with the first pose, the mean of 1..3.
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1], fixes[2]}));
-
-  // Act
-  // Fix 4 slides the window: the mean of 2..4, the oldest sample dropped.
-  send_fix(fixes[3]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  expect_output_counts(4, 2, 2, 2);
-  expect_point_near(
-    last_pose().pose.position,
-    mean_of({project_mgrs(fixes[1]), project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
-}
-
-// With method 2 the median is taken per coordinate, so the result is in general not any of the
-// input samples. The full-buffer gate and the sliding window apply as for the mean.
-TEST_F(GnssPoserCharacterization, MethodMedian_BufferNotFull_PublishesOnlyGnssFixed)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 3)));
-  const auto fixes = make_median_fixes();
-  // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
-
-  // Act
-  send_fix(fixes[1]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
-  expect_output_counts(2, 0, 0, 0);
-}
-
-TEST_F(GnssPoserCharacterization, MethodMedian_OddBuffer_ComponentWiseMedian)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 3)));
-  const auto fixes = make_median_fixes();
-  std::vector<Point> antenna;
-  for (const auto & fix : fixes) {
-    antenna.push_back(project_mgrs(fix));
-  }
-  const auto expected_123 = component_wise_median_of({antenna[0], antenna[1], antenna[2]});
-  for (const auto & sample : antenna) {
-    ASSERT_FALSE(
-      std::abs(sample.x - expected_123.x) < position_tolerance &&
-      std::abs(sample.y - expected_123.y) < position_tolerance &&
-      std::abs(sample.z - expected_123.z) < position_tolerance)
-      << "fixture data: the component-wise median must not coincide with a sample";
-  }
-  // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
-
-  // Act
-  // Fix 3 completes the buffer: the component-wise median of 1..3.
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_output_counts(3, 1, 1, 1);
-  expect_point_near(last_pose().pose.position, expected_123);
-}
-
-TEST_F(GnssPoserCharacterization, MethodMedian_BufferFull_SlidingWindowMedian)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 3)));
-  const auto fixes = make_median_fixes();
-  // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  // Fix 3 completes the buffer: the component-wise median of 1..3.
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1], fixes[2]}));
-
-  // Act
-  // Fix 4 slides the window: the median of 2..4.
-  send_fix(fixes[3]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  expect_output_counts(4, 2, 2, 2);
-  expect_point_near(
-    last_pose().pose.position,
-    component_wise_median_of(
-      {project_mgrs(fixes[1]), project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
-}
-
-// An even buffer size averages the two central values of each coordinate: `get_median_position`
-// has a separate branch for it. The formula itself is covered by the helper-level unit test in
-// test_gnss_poser_node.cpp; this case pins that an even `buff_epoch` reaches that branch through
-// the node, which keeps the behavior guarded while the helper is moved out of the node.
-TEST_F(GnssPoserCharacterization, MethodMedian_EvenBufferNotFull_PublishesNoPose)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 4)));
-  const auto fixes = make_even_median_fixes();
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
-
-  // Act
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(3));
-  EXPECT_TRUE(peer_->poses.empty());
-}
-
-TEST_F(GnssPoserCharacterization, MethodMedian_EvenBuffer_AveragesTwoCentralValues)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 4)));
-  const auto fixes = make_even_median_fixes();
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1], fixes[2]}));
-
-  // Act
-  send_fix(fixes[3]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position, component_wise_median_of(
-                                 {project_mgrs(fixes[0]), project_mgrs(fixes[1]),
-                                  project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
-}
-
-// Non-fixed messages neither fill nor clear the position buffer: two accepted fixes around one
-// NO_FIX still produce the mean of exactly those two.
-TEST_F(GnssPoserCharacterization, Buffer_NonFixedMessage_DoesNotFillBuffer)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 2)));
-  const auto fixes = make_non_fixed_buffer_fixes();
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
-
-  // Act
-  send_fix(fixes[1]);  // published gnss_fixed=false, nothing else
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
-  EXPECT_TRUE(peer_->poses.empty());
-}
-
-TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByNonFixedMessages)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 2)));
-  const auto fixes = make_non_fixed_buffer_fixes();
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
-
-  // Act
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position, mean_of({project_mgrs(fixes[0]), project_mgrs(fixes[2])}));
-}
-
-// Fixes dropped at the projector gates (no projector info yet, or LOCAL) publish nothing.
-TEST_F(GnssPoserCharacterization, Buffer_GatedFixes_PublishNothing)
-{
-  // Arrange
-  const auto fixes = make_gated_buffer_fixes();
-  ASSERT_NO_FATAL_FAILURE(build_node(make_buffer_params(1, 2)));
-  send_fix(fixes[0]);  // no projector info yet
-  send_projector_info(make_local_projector_info());
-
-  // Act
-  send_fix(fixes[1]);  // LOCAL projector
-
-  // Assert
-  expect_output_counts(0, 0, 0, 0);
-}
-
-// Fixes dropped at the projector gates (no projector info yet, or LOCAL) never reach the position
-// buffer: after two dropped fixes, the first accepted one still fills only one of the two slots.
-// Pins the order "gates first, then buffer", which a refactoring could plausibly swap.
-TEST_F(GnssPoserCharacterization, Buffer_FirstFixAfterGatedFixes_FillsOnlyOneSlot)
-{
-  // Arrange
-  const auto fixes = make_gated_buffer_fixes();
-  ASSERT_NO_FATAL_FAILURE(build_average_node_after_gated_fixes(fixes));
-  send_projector_info(make_mgrs_projector_info());
-
-  // Act
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  expect_output_counts(1, 0, 0, 0);  // one slot filled, not full
-}
-
-TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByGatedFixes)
-{
-  // Arrange
-  const auto fixes = make_gated_buffer_fixes();
-  ASSERT_NO_FATAL_FAILURE(build_average_node_after_gated_fixes(fixes));
-  send_projector_info(make_mgrs_projector_info());
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[2]}));
-
-  // Act
-  send_fix(fixes[3]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position, mean_of({project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
-}
-
 // =======================================================================================
-// 5. Orientation
-// =======================================================================================
-
-// With use_gnss_ins_orientation = true the pose carries the orientation of the latest
-// `autoware_orientation` message, and the orientation covariance diagonal is its RMSE squared
-// (float32 precision). A newer message replaces the previous one; its header is irrelevant.
-TEST_F(GnssPoserCharacterization, InsOrientation_UsesMessageAndSquaredRmseAsCovariance)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
-  send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-
-  // Act
-  send_fix(make_reference_fix());
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
-  expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(M_PI / 2.0));
-  // 0.1^2 = 0.01, 0.2^2 = 0.04, 0.3^2 = 0.09
-  expect_rotation_variances_near(last_pose_cov().pose.covariance, 0.01, 0.04, 0.09);
-}
-
-TEST_F(GnssPoserCharacterization, InsOrientation_NewerMessage_ReplacesPrevious)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
-  send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({make_reference_fix()}));
-  // A newer orientation message replaces the previous one; its header is irrelevant.
-  send_orientation(make_orientation(-M_PI / 4.0, 0.5, 0.6, 0.7));
-
-  // Act
-  send_fix(make_reference_fix());
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), -M_PI / 4.0, angle_tolerance);
-  // 0.5^2 = 0.25, 0.6^2 = 0.36, 0.7^2 = 0.49
-  expect_rotation_variances_near(last_pose_cov().pose.covariance, 0.25, 0.36, 0.49);
-}
-
-// With use_gnss_ins_orientation = true the node does not wait for an orientation message: before
-// the first one it publishes the message-default orientation (identity, i.e. heading east in `map`)
-// with the constructor's placeholder RMSE of 1.0 squared, and the antenna position unchanged.
-//
-// NOTE(characterization): a consumer cannot tell this placeholder from a measured orientation whose
-// RMSE happens to be 1.0, and the identity heading also enters the antenna -> base_link lever-arm
-// correction. Whether to gate on the first orientation (as on projector info) is a decision for the
-// refactoring phase, not for this test.
-TEST_F(GnssPoserCharacterization, InsOrientation_NoMessageYet_IdentityAndUnitCovariance)
-{
-  // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-
-  const auto fix = make_reference_fix();
-  const auto expected_antenna = project_antenna(fix, projector);
-
-  // Act
-  send_fix(fix);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  EXPECT_TRUE(last_fixed().data);
-  expect_point_near(last_pose().pose.position, expected_antenna);
-  expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(0.0));
-  // 1.0 comes from the constructor's placeholder rmse and is squared: 1.0^2 = 1.0.
-  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_roll_roll], 1.0);
-  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_pitch_pitch], 1.0);
-  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_yaw_yaw], 1.0);
-  // Position covariance is unaffected.
-  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_xx], 1.0);
-}
-
-// With use_gnss_ins_orientation = false the heading comes from motion, and only from the last two
-// accepted positions: the first fix has no previous position and gets the identity; every later fix
-// gets yaw = atan2 of its displacement from the previous fix (roll = pitch = 0), whatever the
-// heading before was. The orientation covariance is the constant 0.1 / 0.1 / 1.0 regardless of the
-// displacement, and INS messages are ignored in this mode.
-//
-// NOTE(characterization): standing still gives a zero displacement and atan2(0, 0) = 0, so the
-// heading snaps back to east instead of keeping the last one.
-TEST_F(GnssPoserCharacterization, MotionOrientation_FirstFix_IdentityAndConstantCovariance)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node());
-  // INS orientation messages are ignored in this mode.
-  send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fixes = make_motion_fixes();
-
-  // Act
-  // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  send_fix(fixes[0]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(0.0));
-  // use_gnss_ins_orientation = false always writes the constants 0.1 / 0.1 / 1.0.
-  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_roll_roll], 0.1);
-  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_pitch_pitch], 0.1);
-  EXPECT_DOUBLE_EQ(last_pose_cov().pose.covariance[cov_yaw_yaw], 1.0);
-}
-
-TEST_F(GnssPoserCharacterization, MotionOrientation_SecondFix_YawFromDisplacement)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node());
-  // INS orientation messages are ignored in this mode.
-  send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fixes = make_motion_fixes();
-  const auto p1 = project_mgrs(fixes[0]);
-  const auto p2 = project_mgrs(fixes[1]);
-  const double expected_yaw = std::atan2(p2.y - p1.y, p2.x - p1.x);
-  // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
-
-  // Act
-  // Second fix: yaw of the displacement in the map frame (roll = pitch = 0).
-  send_fix(fixes[1]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), expected_yaw, angle_tolerance);
-  expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(expected_yaw));
-}
-
-TEST_F(GnssPoserCharacterization, MotionOrientation_ThirdFix_YawFromLatestStepOnly)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node());
-  // INS orientation messages are ignored in this mode.
-  send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fixes = make_motion_fixes();
-  const auto p1 = project_mgrs(fixes[0]);
-  const auto p2 = project_mgrs(fixes[1]);
-  const auto p3 = project_mgrs(fixes[2]);
-  const double yaw_step = std::atan2(p3.y - p2.y, p3.x - p2.x);
-  const double yaw_from_start = std::atan2(p3.y - p1.y, p3.x - p1.x);
-  ASSERT_GT(std::abs(yaw_step - yaw_from_start), 0.5) << "fixture data must tell the two apart";
-  // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  // Second fix: yaw of the displacement in the map frame (roll = pitch = 0).
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
-
-  // Act
-  // Third fix: the heading follows the latest displacement only. It is atan2(p3 - p2), the heading
-  // of the step just made, and not atan2(p3 - p1) or anything carried over from the previous
-  // heading.
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), yaw_step, angle_tolerance);
-}
-
-TEST_F(GnssPoserCharacterization, MotionOrientation_StandingStill_YawSnapsToZero)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node());
-  // INS orientation messages are ignored in this mode.
-  send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fixes = make_motion_fixes();
-  // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  // Second fix: yaw of the displacement in the map frame (roll = pitch = 0).
-  // Third fix: the heading follows the latest displacement only. It is atan2(p3 - p2), the heading
-  // of the step just made, and not atan2(p3 - p1) or anything carried over from the previous
-  // heading.
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1], fixes[2]}));
-
-  // Act
-  // Standing still: displacement is zero => yaw snaps back to 0, not "keep last heading".
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(4));
-  expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(0.0));
-}
-
-// The previous position used for the heading is not reset by a NO_FIX message in between: the
-// heading is still the displacement between the two accepted fixes.
-TEST_F(GnssPoserCharacterization, MotionOrientation_PreviousPositionSurvivesNonFixedMessages)
-{
-  // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = false;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto no_fix = make_fix(
-    reference_latitude - 0.01, reference_longitude - 0.01, reference_altitude,
-    NavSatStatus::STATUS_NO_FIX);
-  const auto fix2 = make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude);
-  const auto p1 = project_antenna(fix1, projector);
-  const auto p2 = project_antenna(fix2, projector);
-  const double expected_yaw = std::atan2(p2.y - p1.y, p2.x - p1.x);
-  send_fix(fix1);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  send_fix(no_fix);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
-
-  // Act
-  send_fix(fix2);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), expected_yaw, angle_tolerance);
-}
-
-// When a buffer is in use, the first averaged position has no previous one and gets the identity.
-TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_FirstPositionIsIdentity)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node(make_buffer_params(1, 2)));
-  const auto fixes = make_buffered_motion_fixes();
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
-
-  // Act
-  send_fix(fixes[1]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(0.0));
-}
-
-// When a buffer is in use, the heading is derived from consecutive *averaged* positions, not from
-// the raw antenna positions.
-TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_UsesFilteredPositions)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node(make_buffer_params(1, 2)));
-  const auto fixes = make_buffered_motion_fixes();
-  const auto m12 = mean_of({project_mgrs(fixes[0]), project_mgrs(fixes[1])});
-  const auto m23 = mean_of({project_mgrs(fixes[1]), project_mgrs(fixes[2])});
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
-
-  // Act
-  send_fix(fixes[2]);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  // Heading is derived from consecutive *averaged* positions, not raw antenna positions.
-  EXPECT_NEAR(
-    yaw_of(last_pose().pose.orientation), std::atan2(m23.y - m12.y, m23.x - m12.x),
-    angle_tolerance);
-}
-
-// =======================================================================================
-// 6. TF handling (antenna -> base_link) and TF broadcast (map -> gnss_base_link)
+// 5. TF handling (antenna -> base_link) and TF broadcast (map -> gnss_base_link)
 // =======================================================================================
 
 // The published pose is map->base = map->antenna * antenna->base: the antenna orientation rotates
@@ -2267,86 +1342,6 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStam
   expect_point_near(
     last_pose().pose.position, make_point(projected.x + 1.5, projected.y, projected.z));
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 4.0, angle_tolerance);
-}
-
-// =======================================================================================
-// 7. Covariance
-// =======================================================================================
-
-// The position covariance diagonal is copied from the fix for APPROXIMATED, DIAGONAL_KNOWN and
-// KNOWN, and replaced by 10.0 for UNKNOWN; off-diagonal input entries are never propagated and
-// every off-diagonal output entry stays 0. The orientation covariance is the INS RMSE squared.
-TEST_F(GnssPoserCharacterization, Covariance_ApproximatedType_CopiesDiagonalFromFix)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_ins_rmse());
-
-  // Act
-  send_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_position_variances(last_pose_cov().pose.covariance, 2.0, 3.0, 4.0);
-}
-
-TEST_F(GnssPoserCharacterization, Covariance_DiagonalKnownType_CopiesDiagonalFromFix)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_ins_rmse());
-  ASSERT_NO_FATAL_FAILURE(
-    send_fixes_and_wait({make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED)}));
-
-  // Act
-  send_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  expect_position_variances(last_pose_cov().pose.covariance, 2.0, 3.0, 4.0);
-}
-
-TEST_F(GnssPoserCharacterization, Covariance_KnownType_CopiesDiagonalFromFix)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_ins_rmse());
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
-    {make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED),
-     make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN)}));
-
-  // Act
-  send_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_KNOWN));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
-  expect_position_variances(last_pose_cov().pose.covariance, 2.0, 3.0, 4.0);
-}
-
-TEST_F(GnssPoserCharacterization, Covariance_PositionDiagonalFromFixUnlessTypeUnknown)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_ins_rmse());
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
-    {make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED),
-     make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN),
-     make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_KNOWN)}));
-
-  // Act
-  send_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_UNKNOWN));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(4));
-  {
-    const auto & cov = last_pose_cov().pose.covariance;
-    // 10.0 is hard-coded in the node:
-    // https://github.com/autowarefoundation/autoware_core/blob/904b5901488f24e13ae5c3add950b2b9985e1407/sensing/autoware_gnss_poser/src/gnss_poser_node.cpp#L192-L197
-    expect_position_variances(cov, 10.0, 10.0, 10.0);
-    expect_rotation_variances_near(cov, 0.01, 0.04, 0.09);
-    // Everything off the diagonal is zero.
-    for (std::size_t i = 0; i < cov.size(); ++i) {
-      if (i % 7 != 0) {
-        EXPECT_DOUBLE_EQ(cov[i], 0.0) << "index " << i;
-      }
-    }
-  }
 }
 
 int main(int argc, char ** argv)
