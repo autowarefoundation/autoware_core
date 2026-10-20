@@ -1344,6 +1344,126 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStam
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 4.0, angle_tolerance);
 }
 
+// =======================================================================================
+// 6. Cases kept from the node test that came with the package
+// =======================================================================================
+
+// The orientation source selected by use_gnss_ins_orientation = false reaches the logic: moving
+// north yields a yaw of about pi/2.
+TEST_F(GnssPoserCharacterization, TestOrientationSources)
+{
+  // Arrange
+  NodeParams params;
+  params.use_gnss_ins_orientation = false;
+  params.buff_epoch = 1;
+  params.gnss_pose_pub_method = 0;
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({make_fix(35.681236, 139.767125, 41.0)}));
+
+  // Act
+  // Publish second position point (moving north)
+  send_fix(make_fix(35.682236, 139.767125, 41.0));
+
+  // Assert
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
+  // Moving north should result in yaw angle of approximately 90 degrees (PI/2)
+  EXPECT_NEAR(std::abs(yaw_of(last_pose().pose.orientation)), M_PI / 2.0, 0.1);
+}
+
+// The averaging method and buff_epoch reach the logic: the pose is published once three fixes are
+// buffered, in the map frame.
+TEST_F(GnssPoserCharacterization, TestPositionBufferMethods)
+{
+  // Arrange
+  NodeParams params;
+  params.use_gnss_ins_orientation = true;
+  params.buff_epoch = 3;
+  params.gnss_pose_pub_method = 1;  // Use averaging method
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+  send_orientation(make_orientation(0.0, 0.01, 0.01, 0.01));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
+    {make_fix(35.681236, 139.767125, 41.0), make_fix(35.681336, 139.767225, 41.1)}));
+
+  // Act
+  send_fix(make_fix(35.681436, 139.767325, 41.2));
+
+  // Assert
+  // Wait for position message (should be published after buffer is filled)
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  EXPECT_EQ(last_pose().header.frame_id, "map");
+}
+
+// The median method and buff_epoch reach the logic: the pose is published once five fixes are
+// buffered.
+TEST_F(GnssPoserCharacterization, TestMedianPosition)
+{
+  // Arrange
+  NodeParams params;
+  params.use_gnss_ins_orientation = true;
+  params.buff_epoch = 5;            // Use 5 points
+  params.gnss_pose_pub_method = 2;  // Use median method
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+  send_orientation(make_orientation(0.0, 0.01, 0.01, 0.01));
+  // Use deliberately placed outlier points to test if median calculation works
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
+    {make_fix(35.681236, 139.767125, 41.0), make_fix(35.681237, 139.767127, 41.1),
+     make_fix(35.681240, 139.767130, 41.5), make_fix(35.681230, 139.767120, 40.8)}));
+
+  // Act
+  send_fix(make_fix(35.681235, 139.767123, 41.2));
+
+  // Assert
+  // Wait for position message (should be published after buffer is filled)
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  EXPECT_NE(last_pose().pose.position.x, 0.0);
+  EXPECT_NE(last_pose().pose.position.y, 0.0);
+}
+
+// The covariance the logic derives reaches gnss_pose_cov: the fix diagonal for DIAGONAL_KNOWN.
+TEST_F(GnssPoserCharacterization, TestCovarianceProcessing_DiagonalKnown)
+{
+  // Arrange
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
+  send_orientation(make_orientation(0.0, 0.01, 0.01, 0.01));
+  auto nav_sat_fix = make_fix(35.681236, 139.767125, 41.0);
+  nav_sat_fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
+  nav_sat_fix.position_covariance = {2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 4.0};
+
+  // Act
+  send_fix(nav_sat_fix);
+
+  // Assert
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  // Verify covariance values are correctly passed
+  EXPECT_NEAR(last_pose_cov().pose.covariance[0], 2.0, 1e-6);
+  EXPECT_NEAR(last_pose_cov().pose.covariance[7], 3.0, 1e-6);
+  EXPECT_NEAR(last_pose_cov().pose.covariance[14], 4.0, 1e-6);
+}
+
+// ... and the default value 10.0 for UNKNOWN.
+TEST_F(GnssPoserCharacterization, TestCovarianceProcessing_Unknown)
+{
+  // Arrange
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
+  send_orientation(make_orientation(0.0, 0.01, 0.01, 0.01));
+  auto nav_sat_fix = make_fix(35.681236, 139.767125, 41.0);
+  nav_sat_fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
+  nav_sat_fix.position_covariance = {2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 4.0};
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({nav_sat_fix}));
+  // Test UNKNOWN type (should use default value 10.0)
+  nav_sat_fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_UNKNOWN;
+
+  // Act
+  send_fix(nav_sat_fix);
+
+  // Assert
+  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
+  // Verify default covariance values are used
+  EXPECT_NEAR(last_pose_cov().pose.covariance[0], 10.0, 1e-6);
+  EXPECT_NEAR(last_pose_cov().pose.covariance[7], 10.0, 1e-6);
+  EXPECT_NEAR(last_pose_cov().pose.covariance[14], 10.0, 1e-6);
+}
+
 int main(int argc, char ** argv)
 {
   testing::InitGoogleTest(&argc, argv);

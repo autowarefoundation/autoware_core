@@ -37,12 +37,6 @@ if(BUILD_TESTING)
 
   # ROS-based tests can be executed only when agnocast is disabled.
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
-    ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node
-      test/test_gnss_poser_node.cpp
-    )
-    target_link_libraries(test_${PROJECT_NAME}_node ${PROJECT_NAME}_ros)
-    target_include_directories(test_${PROJECT_NAME}_node PRIVATE src)
-
     # Characterization tests: pin the externally observable behavior of GnssPoserNode
     # (see test/test_gnss_poser_node_characterization.cpp for the rationale).
     ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node_characterization
