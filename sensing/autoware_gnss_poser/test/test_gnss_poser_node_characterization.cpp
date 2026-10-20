@@ -56,6 +56,7 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <array>
 #include <cassert>
 #include <chrono>
 #include <cmath>
@@ -399,6 +400,119 @@ bool is_egm2008_dataset_available()
   }
 }
 
+// Params of the buffering cases: gnss_pose_pub_method and buff_epoch, the rest at their defaults.
+NodeParams make_buffer_params(int gnss_pose_pub_method, int buff_epoch)
+{
+  NodeParams params;
+  params.gnss_pose_pub_method = gnss_pose_pub_method;
+  params.buff_epoch = buff_epoch;
+  return params;
+}
+
+// Antenna position of a fix under the MGRS projector info of make_mgrs_projector_info().
+Point project_mgrs(const NavSatFix & fix)
+{
+  return project_antenna(fix, make_mgrs_projector_info());
+}
+
+// Fixes of the instant cases with a large buff_epoch.
+std::vector<NavSatFix> make_instant_fixes()
+{
+  // Three fixes about 100 m apart (see the note at the reference constants), so that each output
+  // can be checked against its own fix and not a neighbor.
+  return {
+    make_fix(reference_latitude, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 1.0)};
+}
+
+// Fixes of the non-fixed buffer cases: an accepted fix, a NO_FIX, and another accepted fix.
+std::vector<NavSatFix> make_non_fixed_buffer_fixes()
+{
+  return {
+    make_fix(reference_latitude, reference_longitude, reference_altitude),
+    make_fix(
+      reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0,
+      NavSatStatus::STATUS_NO_FIX),
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0)};
+}
+
+// Fixes of the gated buffer cases: dropped without projector info, dropped under LOCAL, and two
+// accepted ones.
+std::vector<NavSatFix> make_gated_buffer_fixes()
+{
+  return {
+    make_fix(reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0),
+    make_fix(reference_latitude - 0.01, reference_longitude - 0.01, reference_altitude - 100.0),
+    make_fix(reference_latitude, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0)};
+}
+
+// Fixes of the motion orientation cases.
+std::vector<NavSatFix> make_motion_fixes()
+{
+  return {
+    make_fix(reference_latitude, reference_longitude, reference_altitude),
+    make_fix(
+      reference_latitude + 0.001, reference_longitude + 0.001,
+      reference_altitude),  // north-east of fix1
+    make_fix(
+      reference_latitude + 0.001, reference_longitude - 0.001,
+      reference_altitude)};  // west of fix2, north of fix1
+}
+
+// Fixes of the motion orientation cases with a buffer.
+std::vector<NavSatFix> make_buffered_motion_fixes()
+{
+  return {
+    make_fix(reference_latitude, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
+    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude)};
+}
+
+// The reference fix in the antenna frame of the TF cases, stamped `stamp`.
+NavSatFix make_antenna_fix_at(const builtin_interfaces::msg::Time & stamp)
+{
+  auto fix = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
+  fix.header.stamp = stamp;
+  return fix;
+}
+
+// The reference fix with a full covariance of the given type.
+NavSatFix make_fix_with_covariance(NavSatFix::_position_covariance_type_type type)
+{
+  auto fix = make_reference_fix();
+  // Only the diagonal (2.0, 3.0, 4.0) is propagated; off-diagonal entries such as 0.5 never are,
+  // in any branch.
+  fix.position_covariance = {2.0, 0.5, 0.6, 0.5, 3.0, 0.7, 0.6, 0.7, 4.0};
+  fix.position_covariance_type = type;
+  return fix;
+}
+
+void expect_position_variances(
+  const std::array<double, 36> & covariance, double xx, double yy, double zz)
+{
+  EXPECT_DOUBLE_EQ(covariance[cov_xx], xx);
+  EXPECT_DOUBLE_EQ(covariance[cov_yy], yy);
+  EXPECT_DOUBLE_EQ(covariance[cov_zz], zz);
+}
+
+void expect_rotation_variances_near(
+  const std::array<double, 36> & covariance, double roll, double pitch, double yaw)
+{
+  EXPECT_NEAR(covariance[cov_roll_roll], roll, rmse_squared_tolerance);
+  EXPECT_NEAR(covariance[cov_pitch_pitch], pitch, rmse_squared_tolerance);
+  EXPECT_NEAR(covariance[cov_yaw_yaw], yaw, rmse_squared_tolerance);
+}
+
+void expect_qos(
+  const rclcpp::TopicEndpointInfo & endpoint, rclcpp::ReliabilityPolicy reliability,
+  rclcpp::DurabilityPolicy durability)
+{
+  EXPECT_EQ(endpoint.qos_profile().reliability(), reliability) << endpoint.topic_type();
+  EXPECT_EQ(endpoint.qos_profile().durability(), durability) << endpoint.topic_type();
+}
+
 // ---------------------------------------------------------------------------------------
 // Test double: a plain rclcpp node that plays the role of every peer of gnss_poser
 // (map_projection_loader, GNSS driver, INS driver, robot_state_publisher, and the consumers).
@@ -631,6 +745,107 @@ protected:
     pump(delivery_budget);
   }
 
+  // build_node() followed by the MGRS projector info.
+  void build_node_with_mgrs_projector(const NodeParams & params)
+  {
+    ASSERT_NO_FATAL_FAILURE(build_node(params));
+    send_projector_info(make_mgrs_projector_info());
+  }
+
+  // Sends each fix and waits until the node has processed it (its gnss_fixed has arrived), so the
+  // next step starts with all of them processed.
+  void send_fixes_and_wait(const std::vector<NavSatFix> & fixes)
+  {
+    for (const auto & fix : fixes) {
+      const std::size_t processed = peer_->fixed_flags.size();
+      send_fix(fix);
+      ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(processed + 1));
+    }
+  }
+
+  // A node under MGRS that has published its first pose.
+  void build_node_and_publish_first_pose()
+  {
+    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
+    send_fix(make_reference_fix());
+    ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  }
+
+  // A node that sent the gated buffer fixes 0 (no projector info yet) and 1 (LOCAL projector).
+  void build_average_node_after_gated_fixes(const std::vector<NavSatFix> & fixes)
+  {
+    ASSERT_NO_FATAL_FAILURE(build_node(make_buffer_params(1, 2)));
+    send_fix(fixes[0]);  // no projector info yet
+    send_projector_info(make_local_projector_info());
+    send_fix(fixes[1]);  // LOCAL projector
+  }
+
+  // A node with use_gnss_ins_orientation = true and the INS RMSE (0.1, 0.2, 0.3).
+  void build_node_with_ins_rmse()
+  {
+    NodeParams params;
+    params.gnss_pose_pub_method = 0;
+    params.use_gnss_ins_orientation = true;
+    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+    send_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
+  }
+
+  // A node with use_gnss_ins_orientation = false.
+  void build_motion_orientation_node(const NodeParams & base = {})
+  {
+    NodeParams params = base;
+    params.use_gnss_ins_orientation = false;
+    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+  }
+
+  // A node whose base_frame is my_base, with the INS orientation yaw pi/2 and the static TF
+  // my_antenna -> my_base: translation (1, 2, 0.5), no rotation.
+  void build_node_with_static_antenna_tf()
+  {
+    NodeParams params;
+    params.gnss_pose_pub_method = 0;
+    params.use_gnss_ins_orientation = true;
+    params.base_frame = "my_base";
+    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+    send_orientation(make_orientation(M_PI / 2.0));
+    ASSERT_NO_FATAL_FAILURE(broadcast_static_tf(
+      "my_antenna", "my_base", make_point(1.0, 2.0, 0.5), yaw_to_quaternion(0.0)));
+  }
+
+  // A node whose base_frame is my_base, with the INS orientation yaw 0 and the TF
+  // my_antenna -> my_base, translation (1, 0, 0), published on /tf at 1000 s only.
+  void build_node_with_timed_antenna_tf()
+  {
+    NodeParams params;
+    params.gnss_pose_pub_method = 0;
+    params.use_gnss_ins_orientation = true;
+    params.base_frame = "my_base";
+    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+    send_orientation(make_orientation(0.0));
+    ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
+      "my_antenna", "my_base", make_point(1.0, 0.0, 0.0), yaw_to_quaternion(0.0),
+      make_stamp(1000, 0)));
+  }
+
+  // A node whose base_frame is my_base, with the INS orientation yaw 0 and a TF
+  // my_antenna -> my_base on /tf that changes between 1000 s and 1002 s.
+  void build_node_with_changing_antenna_tf()
+  {
+    NodeParams params;
+    params.gnss_pose_pub_method = 0;
+    params.use_gnss_ins_orientation = true;
+    params.base_frame = "my_base";
+    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+    send_orientation(make_orientation(0.0));
+    // The relation moves 1 m along x and turns by 90 degrees between t0 and t1.
+    ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
+      "my_antenna", "my_base", make_point(1.0, 0.0, 0.0), yaw_to_quaternion(0.0),
+      make_stamp(1000, 0)));
+    ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
+      "my_antenna", "my_base", make_point(2.0, 0.0, 0.0), yaw_to_quaternion(M_PI / 2.0),
+      make_stamp(1002, 0)));
+  }
+
   const PoseStamped & last_pose() const { return peer_->poses.back(); }
   const PoseWithCovarianceStamped & last_pose_cov() const { return peer_->pose_cov_msgs.back(); }
   const BoolStamped & last_fixed() const { return peer_->fixed_flags.back(); }
@@ -815,18 +1030,14 @@ TEST_F(GnssPoserCharacterization, Interface_TopicsAndQos)
   const auto fixed_pub = node_endpoint(peer_->get_publishers_info_by_topic("/gnss_fixed"));
 
   // Assert
-  EXPECT_EQ(fix_sub.qos_profile().reliability(), rclcpp::ReliabilityPolicy::Reliable);
-  EXPECT_EQ(fix_sub.qos_profile().durability(), rclcpp::DurabilityPolicy::Volatile);
-  EXPECT_EQ(orientation_sub.qos_profile().reliability(), rclcpp::ReliabilityPolicy::Reliable);
-  EXPECT_EQ(orientation_sub.qos_profile().durability(), rclcpp::DurabilityPolicy::Volatile);
-  EXPECT_EQ(projector_sub.qos_profile().reliability(), rclcpp::ReliabilityPolicy::Reliable);
-  EXPECT_EQ(projector_sub.qos_profile().durability(), rclcpp::DurabilityPolicy::TransientLocal);
-  EXPECT_EQ(pose_pub.qos_profile().reliability(), rclcpp::ReliabilityPolicy::Reliable);
-  EXPECT_EQ(pose_pub.qos_profile().durability(), rclcpp::DurabilityPolicy::Volatile);
-  EXPECT_EQ(pose_cov_pub.qos_profile().reliability(), rclcpp::ReliabilityPolicy::Reliable);
-  EXPECT_EQ(pose_cov_pub.qos_profile().durability(), rclcpp::DurabilityPolicy::Volatile);
-  EXPECT_EQ(fixed_pub.qos_profile().reliability(), rclcpp::ReliabilityPolicy::Reliable);
-  EXPECT_EQ(fixed_pub.qos_profile().durability(), rclcpp::DurabilityPolicy::Volatile);
+  using rclcpp::DurabilityPolicy;
+  using rclcpp::ReliabilityPolicy;
+  expect_qos(fix_sub, ReliabilityPolicy::Reliable, DurabilityPolicy::Volatile);
+  expect_qos(orientation_sub, ReliabilityPolicy::Reliable, DurabilityPolicy::Volatile);
+  expect_qos(projector_sub, ReliabilityPolicy::Reliable, DurabilityPolicy::TransientLocal);
+  expect_qos(pose_pub, ReliabilityPolicy::Reliable, DurabilityPolicy::Volatile);
+  expect_qos(pose_cov_pub, ReliabilityPolicy::Reliable, DurabilityPolicy::Volatile);
+  expect_qos(fixed_pub, ReliabilityPolicy::Reliable, DurabilityPolicy::Volatile);
 }
 
 // =======================================================================================
@@ -928,10 +1139,7 @@ TEST_F(GnssPoserCharacterization, Gate_FirstFixAfterMgrsProjector_PublishesOneOf
 TEST_F(GnssPoserCharacterization, Gate_LocalProjector_PublishesNothingNotEvenGnssFixed)
 {
   // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  send_projector_info(make_mgrs_projector_info());
-  send_fix(make_reference_fix());
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
   // The latest projector info wins: LOCAL disables processing. Its arrival publishes nothing,
   // and the next fix is dropped entirely.
   send_projector_info(make_local_projector_info());
@@ -946,10 +1154,7 @@ TEST_F(GnssPoserCharacterization, Gate_LocalProjector_PublishesNothingNotEvenGns
 TEST_F(GnssPoserCharacterization, Gate_LocalProjectorAfterMgrs_ArrivalPublishesNothing)
 {
   // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  send_projector_info(make_mgrs_projector_info());
-  send_fix(make_reference_fix());
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
 
   // Act
   // The latest projector info wins: LOCAL disables processing. Its arrival publishes nothing,
@@ -963,10 +1168,7 @@ TEST_F(GnssPoserCharacterization, Gate_LocalProjectorAfterMgrs_ArrivalPublishesN
 TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorAfterLocal_ArrivalPublishesNothing)
 {
   // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  send_projector_info(make_mgrs_projector_info());
-  send_fix(make_reference_fix());
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
   // The latest projector info wins: LOCAL disables processing. Its arrival publishes nothing,
   // and the next fix is dropped entirely.
   send_projector_info(make_local_projector_info());
@@ -983,10 +1185,7 @@ TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorAfterLocal_ArrivalPublishesN
 TEST_F(GnssPoserCharacterization, Gate_MgrsProjectorAfterLocal_ReenablesProcessing)
 {
   // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  send_projector_info(make_mgrs_projector_info());
-  send_fix(make_reference_fix());
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
   // The latest projector info wins: LOCAL disables processing. Its arrival publishes nothing,
   // and the next fix is dropped entirely.
   send_projector_info(make_local_projector_info());
@@ -1024,8 +1223,7 @@ TEST_F(GnssPoserCharacterization, Gate_StatusNoFix_PublishesOnlyGnssFixedFalse)
 TEST_F(GnssPoserCharacterization, Gate_StatusFix_Passes)
 {
   // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  send_projector_info(make_mgrs_projector_info());
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
 
   // Act
   // is_fixed(status) <=> status >= STATUS_FIX (0)
@@ -1039,11 +1237,9 @@ TEST_F(GnssPoserCharacterization, Gate_StatusFix_Passes)
 TEST_F(GnssPoserCharacterization, Gate_StatusSbasFix_Passes)
 {
   // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  send_projector_info(make_mgrs_projector_info());
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
   // is_fixed(status) <=> status >= STATUS_FIX (0)
-  send_fix(make_reference_fix(NavSatStatus::STATUS_FIX));
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({make_reference_fix(NavSatStatus::STATUS_FIX)}));
 
   // Act
   send_fix(make_reference_fix(NavSatStatus::STATUS_SBAS_FIX));
@@ -1056,13 +1252,11 @@ TEST_F(GnssPoserCharacterization, Gate_StatusSbasFix_Passes)
 TEST_F(GnssPoserCharacterization, Gate_StatusFixSbasGbas_AllPass)
 {
   // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  send_projector_info(make_mgrs_projector_info());
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
   // is_fixed(status) <=> status >= STATUS_FIX (0)
-  send_fix(make_reference_fix(NavSatStatus::STATUS_FIX));
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  send_fix(make_reference_fix(NavSatStatus::STATUS_SBAS_FIX));
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
+    {make_reference_fix(NavSatStatus::STATUS_FIX),
+     make_reference_fix(NavSatStatus::STATUS_SBAS_FIX)}));
 
   // Act
   send_fix(make_reference_fix(NavSatStatus::STATUS_GBAS_FIX));
@@ -1076,15 +1270,12 @@ TEST_F(GnssPoserCharacterization, Gate_StatusFixSbasGbas_AllPass)
 TEST_F(GnssPoserCharacterization, Gate_StatusNoFixAfterAcceptedFixes_PublishesOnlyGnssFixedFalse)
 {
   // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  send_projector_info(make_mgrs_projector_info());
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
   // is_fixed(status) <=> status >= STATUS_FIX (0)
-  send_fix(make_reference_fix(NavSatStatus::STATUS_FIX));
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  send_fix(make_reference_fix(NavSatStatus::STATUS_SBAS_FIX));
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  send_fix(make_reference_fix(NavSatStatus::STATUS_GBAS_FIX));
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
+    {make_reference_fix(NavSatStatus::STATUS_FIX),
+     make_reference_fix(NavSatStatus::STATUS_SBAS_FIX),
+     make_reference_fix(NavSatStatus::STATUS_GBAS_FIX)}));
 
   // Act
   send_fix(make_reference_fix(NavSatStatus::STATUS_NO_FIX));
@@ -1165,24 +1356,15 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_FirstFixPublished
   NodeParams params;
   params.gnss_pose_pub_method = 0;
   params.buff_epoch = 5;  // ignored for method 0
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-
-  // Three fixes about 100 m apart (see the note at the reference constants), so that each output
-  // can be checked against its own fix and not a neighbor.
-  const std::vector<NavSatFix> fixes = {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 1.0)};
-  const auto expected_antenna = project_antenna(fixes[0], projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+  const auto fixes = make_instant_fixes();
 
   // Act
   send_fix(fixes[0]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, expected_antenna);
+  expect_point_near(last_pose().pose.position, project_mgrs(fixes[0]));
 }
 
 TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_SecondFixPublishedInstantly)
@@ -1191,26 +1373,16 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_SecondFixPublishe
   NodeParams params;
   params.gnss_pose_pub_method = 0;
   params.buff_epoch = 5;  // ignored for method 0
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-
-  // Three fixes about 100 m apart (see the note at the reference constants), so that each output
-  // can be checked against its own fix and not a neighbor.
-  const std::vector<NavSatFix> fixes = {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 1.0)};
-  const auto expected_antenna = project_antenna(fixes[1], projector);
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+  const auto fixes = make_instant_fixes();
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
 
   // Act
   send_fix(fixes[1]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  expect_point_near(last_pose().pose.position, expected_antenna);
+  expect_point_near(last_pose().pose.position, project_mgrs(fixes[1]));
 }
 
 TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_StillPublishesEveryFixInstantly)
@@ -1219,28 +1391,16 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LargeBuffEpoch_StillPublishesEve
   NodeParams params;
   params.gnss_pose_pub_method = 0;
   params.buff_epoch = 5;  // ignored for method 0
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-
-  // Three fixes about 100 m apart (see the note at the reference constants), so that each output
-  // can be checked against its own fix and not a neighbor.
-  const std::vector<NavSatFix> fixes = {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.002, reference_longitude + 0.001, reference_altitude + 1.0)};
-  const auto expected_antenna = project_antenna(fixes[2], projector);
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  send_fix(fixes[1]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
+  const auto fixes = make_instant_fixes();
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
 
   // Act
   send_fix(fixes[2]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
-  expect_point_near(last_pose().pose.position, expected_antenna);
+  expect_point_near(last_pose().pose.position, project_mgrs(fixes[2]));
   EXPECT_EQ(peer_->poses.size(), 3U);
 }
 
@@ -1309,16 +1469,10 @@ TEST_F(GnssPoserCharacterization, MethodInstant_LocalCartesianUtmProjector_UsesM
 TEST_F(GnssPoserCharacterization, MethodAverage_BufferNotFull_PublishesOnlyGnssFixed)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 3;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 3)));
   const auto fixes = make_average_fixes();
   // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
 
   // Act
   send_fix(fixes[1]);
@@ -1331,21 +1485,10 @@ TEST_F(GnssPoserCharacterization, MethodAverage_BufferNotFull_PublishesOnlyGnssF
 TEST_F(GnssPoserCharacterization, MethodAverage_BufferBecomesFull_PublishesMean)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 3;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 3)));
   const auto fixes = make_average_fixes();
-  const auto expected_mean = mean_of(
-    {project_antenna(fixes[0], projector), project_antenna(fixes[1], projector),
-     project_antenna(fixes[2], projector)});
   // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  send_fix(fixes[1]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
 
   // Act
   // Fix 3 completes the buffer: the third gnss_fixed comes with the first pose, the mean of 1..3.
@@ -1354,30 +1497,19 @@ TEST_F(GnssPoserCharacterization, MethodAverage_BufferBecomesFull_PublishesMean)
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   expect_output_counts(3, 1, 1, 1);
-  expect_point_near(last_pose().pose.position, expected_mean);
+  expect_point_near(
+    last_pose().pose.position,
+    mean_of({project_mgrs(fixes[0]), project_mgrs(fixes[1]), project_mgrs(fixes[2])}));
 }
 
 TEST_F(GnssPoserCharacterization, MethodAverage_BufferFull_SlidingWindowMean)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 3;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 3)));
   const auto fixes = make_average_fixes();
-  const auto expected_mean = mean_of(
-    {project_antenna(fixes[1], projector), project_antenna(fixes[2], projector),
-     project_antenna(fixes[3], projector)});
   // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  send_fix(fixes[1]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
   // Fix 3 completes the buffer: the third gnss_fixed comes with the first pose, the mean of 1..3.
-  send_fix(fixes[2]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1], fixes[2]}));
 
   // Act
   // Fix 4 slides the window: the mean of 2..4, the oldest sample dropped.
@@ -1386,7 +1518,9 @@ TEST_F(GnssPoserCharacterization, MethodAverage_BufferFull_SlidingWindowMean)
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
   expect_output_counts(4, 2, 2, 2);
-  expect_point_near(last_pose().pose.position, expected_mean);
+  expect_point_near(
+    last_pose().pose.position,
+    mean_of({project_mgrs(fixes[1]), project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
 }
 
 // With method 2 the median is taken per coordinate, so the result is in general not any of the
@@ -1394,16 +1528,10 @@ TEST_F(GnssPoserCharacterization, MethodAverage_BufferFull_SlidingWindowMean)
 TEST_F(GnssPoserCharacterization, MethodMedian_BufferNotFull_PublishesOnlyGnssFixed)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 2;
-  params.buff_epoch = 3;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 3)));
   const auto fixes = make_median_fixes();
   // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
 
   // Act
   send_fix(fixes[1]);
@@ -1416,16 +1544,11 @@ TEST_F(GnssPoserCharacterization, MethodMedian_BufferNotFull_PublishesOnlyGnssFi
 TEST_F(GnssPoserCharacterization, MethodMedian_OddBuffer_ComponentWiseMedian)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 2;
-  params.buff_epoch = 3;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 3)));
   const auto fixes = make_median_fixes();
   std::vector<Point> antenna;
   for (const auto & fix : fixes) {
-    antenna.push_back(project_antenna(fix, projector));
+    antenna.push_back(project_mgrs(fix));
   }
   const auto expected_123 = component_wise_median_of({antenna[0], antenna[1], antenna[2]});
   for (const auto & sample : antenna) {
@@ -1436,10 +1559,7 @@ TEST_F(GnssPoserCharacterization, MethodMedian_OddBuffer_ComponentWiseMedian)
       << "fixture data: the component-wise median must not coincide with a sample";
   }
   // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  send_fix(fixes[1]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
 
   // Act
   // Fix 3 completes the buffer: the component-wise median of 1..3.
@@ -1454,24 +1574,11 @@ TEST_F(GnssPoserCharacterization, MethodMedian_OddBuffer_ComponentWiseMedian)
 TEST_F(GnssPoserCharacterization, MethodMedian_BufferFull_SlidingWindowMedian)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 2;
-  params.buff_epoch = 3;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 3)));
   const auto fixes = make_median_fixes();
-  const auto expected_234 = component_wise_median_of(
-    {project_antenna(fixes[1], projector), project_antenna(fixes[2], projector),
-     project_antenna(fixes[3], projector)});
   // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  send_fix(fixes[1]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
   // Fix 3 completes the buffer: the component-wise median of 1..3.
-  send_fix(fixes[2]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1], fixes[2]}));
 
   // Act
   // Fix 4 slides the window: the median of 2..4.
@@ -1480,7 +1587,10 @@ TEST_F(GnssPoserCharacterization, MethodMedian_BufferFull_SlidingWindowMedian)
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
   expect_output_counts(4, 2, 2, 2);
-  expect_point_near(last_pose().pose.position, expected_234);
+  expect_point_near(
+    last_pose().pose.position,
+    component_wise_median_of(
+      {project_mgrs(fixes[1]), project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
 }
 
 // An even buffer size averages the two central values of each coordinate: `get_median_position`
@@ -1490,17 +1600,9 @@ TEST_F(GnssPoserCharacterization, MethodMedian_BufferFull_SlidingWindowMedian)
 TEST_F(GnssPoserCharacterization, MethodMedian_EvenBufferNotFull_PublishesNoPose)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 2;
-  params.buff_epoch = 4;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 4)));
   const auto fixes = make_even_median_fixes();
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  send_fix(fixes[1]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
 
   // Act
   send_fix(fixes[2]);
@@ -1513,28 +1615,19 @@ TEST_F(GnssPoserCharacterization, MethodMedian_EvenBufferNotFull_PublishesNoPose
 TEST_F(GnssPoserCharacterization, MethodMedian_EvenBuffer_AveragesTwoCentralValues)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 2;
-  params.buff_epoch = 4;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(2, 4)));
   const auto fixes = make_even_median_fixes();
-  std::vector<Point> antenna;
-  for (const auto & fix : fixes) {
-    antenna.push_back(project_antenna(fix, projector));
-  }
-  for (std::size_t i = 0; i < 3; ++i) {
-    send_fix(fixes[i]);
-    ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(i + 1));
-  }
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1], fixes[2]}));
 
   // Act
   send_fix(fixes[3]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, component_wise_median_of(antenna));
+  expect_point_near(
+    last_pose().pose.position, component_wise_median_of(
+                                 {project_mgrs(fixes[0]), project_mgrs(fixes[1]),
+                                  project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
 }
 
 // Non-fixed messages neither fill nor clear the position buffer: two accepted fixes around one
@@ -1542,23 +1635,12 @@ TEST_F(GnssPoserCharacterization, MethodMedian_EvenBuffer_AveragesTwoCentralValu
 TEST_F(GnssPoserCharacterization, Buffer_NonFixedMessage_DoesNotFillBuffer)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 2;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto no_fix = make_fix(
-    reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0,
-    NavSatStatus::STATUS_NO_FIX);
-  const auto fix2 =
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0);
-  send_fix(fix1);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 2)));
+  const auto fixes = make_non_fixed_buffer_fixes();
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
 
   // Act
-  send_fix(no_fix);  // published gnss_fixed=false, nothing else
+  send_fix(fixes[1]);  // published gnss_fixed=false, nothing else
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
@@ -1568,31 +1650,17 @@ TEST_F(GnssPoserCharacterization, Buffer_NonFixedMessage_DoesNotFillBuffer)
 TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByNonFixedMessages)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 2;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto no_fix = make_fix(
-    reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0,
-    NavSatStatus::STATUS_NO_FIX);
-  const auto fix2 =
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0);
-  const auto expected_mean =
-    mean_of({project_antenna(fix1, projector), project_antenna(fix2, projector)});
-  send_fix(fix1);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  send_fix(no_fix);  // published gnss_fixed=false, nothing else
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(2));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(make_buffer_params(1, 2)));
+  const auto fixes = make_non_fixed_buffer_fixes();
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
 
   // Act
-  send_fix(fix2);
+  send_fix(fixes[2]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, expected_mean);
+  expect_point_near(
+    last_pose().pose.position, mean_of({project_mgrs(fixes[0]), project_mgrs(fixes[2])}));
 }
 
 // Fixes dropped at the projector gates (no projector info yet, or LOCAL) never reach the position
@@ -1601,23 +1669,13 @@ TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByNonFixedMessages)
 TEST_F(GnssPoserCharacterization, Buffer_GatedFixes_PublishNothing)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 2;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  const auto dropped_no_info =
-    make_fix(reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0);
-  const auto dropped_local =
-    make_fix(reference_latitude - 0.01, reference_longitude - 0.01, reference_altitude - 100.0);
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto fix2 =
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0);
-  send_fix(dropped_no_info);  // no projector info yet
+  const auto fixes = make_gated_buffer_fixes();
+  ASSERT_NO_FATAL_FAILURE(build_node(make_buffer_params(1, 2)));
+  send_fix(fixes[0]);  // no projector info yet
   send_projector_info(make_local_projector_info());
 
   // Act
-  send_fix(dropped_local);  // LOCAL projector
+  send_fix(fixes[1]);  // LOCAL projector
 
   // Assert
   expect_output_counts(0, 0, 0, 0);
@@ -1626,25 +1684,12 @@ TEST_F(GnssPoserCharacterization, Buffer_GatedFixes_PublishNothing)
 TEST_F(GnssPoserCharacterization, Buffer_FirstFixAfterGatedFixes_FillsOnlyOneSlot)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 2;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  const auto dropped_no_info =
-    make_fix(reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0);
-  const auto dropped_local =
-    make_fix(reference_latitude - 0.01, reference_longitude - 0.01, reference_altitude - 100.0);
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto fix2 =
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0);
-  send_fix(dropped_no_info);  // no projector info yet
-  send_projector_info(make_local_projector_info());
-  send_fix(dropped_local);  // LOCAL projector
-  send_projector_info(projector);
+  const auto fixes = make_gated_buffer_fixes();
+  ASSERT_NO_FATAL_FAILURE(build_average_node_after_gated_fixes(fixes));
+  send_projector_info(make_mgrs_projector_info());
 
   // Act
-  send_fix(fix1);
+  send_fix(fixes[2]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
@@ -1654,33 +1699,18 @@ TEST_F(GnssPoserCharacterization, Buffer_FirstFixAfterGatedFixes_FillsOnlyOneSlo
 TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByGatedFixes)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 2;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  const auto dropped_no_info =
-    make_fix(reference_latitude + 0.01, reference_longitude + 0.01, reference_altitude + 100.0);
-  const auto dropped_local =
-    make_fix(reference_latitude - 0.01, reference_longitude - 0.01, reference_altitude - 100.0);
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto fix2 =
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.001, reference_altitude + 10.0);
-  const auto expected_mean =
-    mean_of({project_antenna(fix1, projector), project_antenna(fix2, projector)});
-  send_fix(dropped_no_info);  // no projector info yet
-  send_projector_info(make_local_projector_info());
-  send_fix(dropped_local);  // LOCAL projector
-  send_projector_info(projector);
-  send_fix(fix1);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  const auto fixes = make_gated_buffer_fixes();
+  ASSERT_NO_FATAL_FAILURE(build_average_node_after_gated_fixes(fixes));
+  send_projector_info(make_mgrs_projector_info());
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[2]}));
 
   // Act
-  send_fix(fix2);
+  send_fix(fixes[3]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, expected_mean);
+  expect_point_near(
+    last_pose().pose.position, mean_of({project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
 }
 
 // =======================================================================================
@@ -1693,11 +1723,7 @@ TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByGatedFixes)
 TEST_F(GnssPoserCharacterization, InsOrientation_UsesMessageAndSquaredRmseAsCovariance)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  send_projector_info(make_mgrs_projector_info());
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
   send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
 
   // Act
@@ -1708,22 +1734,15 @@ TEST_F(GnssPoserCharacterization, InsOrientation_UsesMessageAndSquaredRmseAsCova
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
   expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(M_PI / 2.0));
   // 0.1^2 = 0.01, 0.2^2 = 0.04, 0.3^2 = 0.09
-  EXPECT_NEAR(last_pose_cov().pose.covariance[cov_roll_roll], 0.01, rmse_squared_tolerance);
-  EXPECT_NEAR(last_pose_cov().pose.covariance[cov_pitch_pitch], 0.04, rmse_squared_tolerance);
-  EXPECT_NEAR(last_pose_cov().pose.covariance[cov_yaw_yaw], 0.09, rmse_squared_tolerance);
+  expect_rotation_variances_near(last_pose_cov().pose.covariance, 0.01, 0.04, 0.09);
 }
 
 TEST_F(GnssPoserCharacterization, InsOrientation_NewerMessage_ReplacesPrevious)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  send_projector_info(make_mgrs_projector_info());
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
   send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  send_fix(make_reference_fix());
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({make_reference_fix()}));
   // A newer orientation message replaces the previous one; its header is irrelevant.
   send_orientation(make_orientation(-M_PI / 4.0, 0.5, 0.6, 0.7));
 
@@ -1734,9 +1753,7 @@ TEST_F(GnssPoserCharacterization, InsOrientation_NewerMessage_ReplacesPrevious)
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), -M_PI / 4.0, angle_tolerance);
   // 0.5^2 = 0.25, 0.6^2 = 0.36, 0.7^2 = 0.49
-  EXPECT_NEAR(last_pose_cov().pose.covariance[cov_roll_roll], 0.25, rmse_squared_tolerance);
-  EXPECT_NEAR(last_pose_cov().pose.covariance[cov_pitch_pitch], 0.36, rmse_squared_tolerance);
-  EXPECT_NEAR(last_pose_cov().pose.covariance[cov_yaw_yaw], 0.49, rmse_squared_tolerance);
+  expect_rotation_variances_near(last_pose_cov().pose.covariance, 0.25, 0.36, 0.49);
 }
 
 // With use_gnss_ins_orientation = true the node does not wait for an orientation message: before
@@ -1787,25 +1804,14 @@ TEST_F(GnssPoserCharacterization, InsOrientation_NoMessageYet_IdentityAndUnitCov
 TEST_F(GnssPoserCharacterization, MotionOrientation_FirstFix_IdentityAndConstantCovariance)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = false;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node());
   // INS orientation messages are ignored in this mode.
   send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto fix2 = make_fix(
-    reference_latitude + 0.001, reference_longitude + 0.001,
-    reference_altitude);  // north-east of fix1
-  const auto fix3 = make_fix(
-    reference_latitude + 0.001, reference_longitude - 0.001,
-    reference_altitude);  // west of fix2, north of fix1
+  const auto fixes = make_motion_fixes();
 
   // Act
   // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  send_fix(fix1);
+  send_fix(fixes[0]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
@@ -1819,31 +1825,19 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_FirstFix_IdentityAndConstant
 TEST_F(GnssPoserCharacterization, MotionOrientation_SecondFix_YawFromDisplacement)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = false;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node());
   // INS orientation messages are ignored in this mode.
   send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto fix2 = make_fix(
-    reference_latitude + 0.001, reference_longitude + 0.001,
-    reference_altitude);  // north-east of fix1
-  const auto fix3 = make_fix(
-    reference_latitude + 0.001, reference_longitude - 0.001,
-    reference_altitude);  // west of fix2, north of fix1
-  const auto p1 = project_antenna(fix1, projector);
-  const auto p2 = project_antenna(fix2, projector);
+  const auto fixes = make_motion_fixes();
+  const auto p1 = project_mgrs(fixes[0]);
+  const auto p2 = project_mgrs(fixes[1]);
   const double expected_yaw = std::atan2(p2.y - p1.y, p2.x - p1.x);
   // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  send_fix(fix1);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
 
   // Act
   // Second fix: yaw of the displacement in the map frame (roll = pitch = 0).
-  send_fix(fix2);
+  send_fix(fixes[1]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
@@ -1854,39 +1848,25 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_SecondFix_YawFromDisplacemen
 TEST_F(GnssPoserCharacterization, MotionOrientation_ThirdFix_YawFromLatestStepOnly)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = false;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node());
   // INS orientation messages are ignored in this mode.
   send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto fix2 = make_fix(
-    reference_latitude + 0.001, reference_longitude + 0.001,
-    reference_altitude);  // north-east of fix1
-  const auto fix3 = make_fix(
-    reference_latitude + 0.001, reference_longitude - 0.001,
-    reference_altitude);  // west of fix2, north of fix1
-  const auto p1 = project_antenna(fix1, projector);
-  const auto p2 = project_antenna(fix2, projector);
-  const auto p3 = project_antenna(fix3, projector);
+  const auto fixes = make_motion_fixes();
+  const auto p1 = project_mgrs(fixes[0]);
+  const auto p2 = project_mgrs(fixes[1]);
+  const auto p3 = project_mgrs(fixes[2]);
   const double yaw_step = std::atan2(p3.y - p2.y, p3.x - p2.x);
   const double yaw_from_start = std::atan2(p3.y - p1.y, p3.x - p1.x);
   ASSERT_GT(std::abs(yaw_step - yaw_from_start), 0.5) << "fixture data must tell the two apart";
   // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  send_fix(fix1);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   // Second fix: yaw of the displacement in the map frame (roll = pitch = 0).
-  send_fix(fix2);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
 
   // Act
   // Third fix: the heading follows the latest displacement only. It is atan2(p3 - p2), the heading
   // of the step just made, and not atan2(p3 - p1) or anything carried over from the previous
   // heading.
-  send_fix(fix3);
+  send_fix(fixes[2]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
@@ -1896,36 +1876,20 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_ThirdFix_YawFromLatestStepOn
 TEST_F(GnssPoserCharacterization, MotionOrientation_StandingStill_YawSnapsToZero)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = false;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
+  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node());
   // INS orientation messages are ignored in this mode.
   send_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fix1 = make_fix(reference_latitude, reference_longitude, reference_altitude);
-  const auto fix2 = make_fix(
-    reference_latitude + 0.001, reference_longitude + 0.001,
-    reference_altitude);  // north-east of fix1
-  const auto fix3 = make_fix(
-    reference_latitude + 0.001, reference_longitude - 0.001,
-    reference_altitude);  // west of fix2, north of fix1
+  const auto fixes = make_motion_fixes();
   // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  send_fix(fix1);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   // Second fix: yaw of the displacement in the map frame (roll = pitch = 0).
-  send_fix(fix2);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
   // Third fix: the heading follows the latest displacement only. It is atan2(p3 - p2), the heading
   // of the step just made, and not atan2(p3 - p1) or anything carried over from the previous
   // heading.
-  send_fix(fix3);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1], fixes[2]}));
 
   // Act
   // Standing still: displacement is zero => yaw snaps back to 0, not "keep last heading".
-  send_fix(fix3);
+  send_fix(fixes[2]);
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(4));
@@ -1970,19 +1934,9 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_PreviousPositionSurvivesNonF
 TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_FirstPositionIsIdentity)
 {
   // Arrange
-  NodeParams params;
-  params.use_gnss_ins_orientation = false;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 2;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  const std::vector<NavSatFix> fixes = {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude)};
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
+  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node(make_buffer_params(1, 2)));
+  const auto fixes = make_buffered_motion_fixes();
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0]}));
 
   // Act
   send_fix(fixes[1]);
@@ -1995,27 +1949,11 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_FirstPositionIsId
 TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_UsesFilteredPositions)
 {
   // Arrange
-  NodeParams params;
-  params.use_gnss_ins_orientation = false;
-  params.gnss_pose_pub_method = 1;
-  params.buff_epoch = 2;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  const std::vector<NavSatFix> fixes = {
-    make_fix(reference_latitude, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude, reference_altitude),
-    make_fix(reference_latitude + 0.001, reference_longitude + 0.002, reference_altitude)};
-  std::vector<Point> antenna;
-  for (const auto & fix : fixes) {
-    antenna.push_back(project_antenna(fix, projector));
-  }
-  const auto m12 = mean_of({antenna[0], antenna[1]});
-  const auto m23 = mean_of({antenna[1], antenna[2]});
-  send_fix(fixes[0]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_gnss_fixed(1));
-  send_fix(fixes[1]);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(build_motion_orientation_node(make_buffer_params(1, 2)));
+  const auto fixes = make_buffered_motion_fixes();
+  const auto m12 = mean_of({project_mgrs(fixes[0]), project_mgrs(fixes[1])});
+  const auto m23 = mean_of({project_mgrs(fixes[1]), project_mgrs(fixes[2])});
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({fixes[0], fixes[1]}));
 
   // Act
   send_fix(fixes[2]);
@@ -2100,18 +2038,8 @@ TEST_F(GnssPoserCharacterization, Tf_StaticAntennaToBaseTransform_IsComposedAndB
 TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_UnknownFrameFallsBackToIdentity)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(M_PI / 2.0));
-  ASSERT_NO_FATAL_FAILURE(broadcast_static_tf(
-    "my_antenna", "my_base", make_point(1.0, 2.0, 0.5), yaw_to_quaternion(0.0)));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_static_antenna_tf());
   const auto fix_unknown = make_reference_fix(NavSatStatus::STATUS_FIX, "some_other_antenna");
-  const auto expected_antenna = project_antenna(fix_unknown, projector);
 
   // Act
   // Frame from the header is what gets looked up; a frame without TF yields the antenna pose.
@@ -2119,25 +2047,15 @@ TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_UnknownFrame
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, expected_antenna);
+  expect_point_near(last_pose().pose.position, project_mgrs(fix_unknown));
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
 }
 
 TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_BaseFrameUsesIdentity)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(M_PI / 2.0));
-  ASSERT_NO_FATAL_FAILURE(broadcast_static_tf(
-    "my_antenna", "my_base", make_point(1.0, 2.0, 0.5), yaw_to_quaternion(0.0)));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_static_antenna_tf());
   const auto fix_base = make_reference_fix(NavSatStatus::STATUS_FIX, "my_base");
-  const auto expected_antenna = project_antenna(fix_base, projector);
 
   // Act
   // Same frame as base_frame: no lookup, identity.
@@ -2145,24 +2063,15 @@ TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_BaseFrameUse
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, expected_antenna);
+  expect_point_near(last_pose().pose.position, project_mgrs(fix_base));
 }
 
 TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_KnownFrameAppliesTransform)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(M_PI / 2.0));
-  ASSERT_NO_FATAL_FAILURE(broadcast_static_tf(
-    "my_antenna", "my_base", make_point(1.0, 2.0, 0.5), yaw_to_quaternion(0.0)));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_static_antenna_tf());
   const auto fix_known = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
-  const auto antenna = project_antenna(fix_known, projector);
+  const auto antenna = project_mgrs(fix_known);
 
   // Act
   // Known frame: the TF is applied (positive control).
@@ -2187,24 +2096,12 @@ TEST_F(GnssPoserCharacterization, Tf_AntennaFrameComesFromFixHeader_KnownFrameAp
 TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_FixAtTransformStampAppliesIt)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(0.0));
-  const auto t0 = make_stamp(1000, 0);
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(1.0, 0.0, 0.0), yaw_to_quaternion(0.0), t0));
-  const auto projected = project_antenna(make_reference_fix(), projector);
-  auto fix_at_t0 = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
-  fix_at_t0.header.stamp = t0;
+  ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
+  const auto projected = project_mgrs(make_reference_fix());
 
   // Act
   // Fix stamped exactly at t0: transform found and applied.
-  send_fix(fix_at_t0);
+  send_fix(make_antenna_fix_at(make_stamp(1000, 0)));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
@@ -2215,56 +2112,28 @@ TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_FixAtTransformStam
 TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_LaterFixFallsBackToIdentity)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(0.0));
-  const auto t0 = make_stamp(1000, 0);
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(1.0, 0.0, 0.0), yaw_to_quaternion(0.0), t0));
-  const auto projected = project_antenna(make_reference_fix(), projector);
-  auto fix_at_t0 = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
-  fix_at_t0.header.stamp = t0;
-  auto fix_later = fix_at_t0;
-  fix_later.header.stamp = make_stamp(1001, 0);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
+  const auto projected = project_mgrs(make_reference_fix());
 
   // Act
   // Fix stamped 1 s later: lookup needs extrapolation, fails, and falls back to identity.
-  send_fix(fix_later);
+  send_fix(make_antenna_fix_at(make_stamp(1001, 0)));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
   expect_point_near(last_pose().pose.position, projected);
-  EXPECT_EQ(last_pose().header.stamp, fix_later.header.stamp);
+  EXPECT_EQ(last_pose().header.stamp, make_stamp(1001, 0));
 }
 
 TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_ZeroStampAppliesLatest)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(0.0));
-  const auto t0 = make_stamp(1000, 0);
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(1.0, 0.0, 0.0), yaw_to_quaternion(0.0), t0));
-  const auto projected = project_antenna(make_reference_fix(), projector);
-  auto fix_at_t0 = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
-  fix_at_t0.header.stamp = t0;
-  auto fix_zero = fix_at_t0;
-  fix_zero.header.stamp = make_stamp(0, 0);
+  ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
+  const auto projected = project_mgrs(make_reference_fix());
 
   // Act
   // Fix with a zero stamp: tf2 treats time 0 as "latest", so the transform is applied again.
-  send_fix(fix_zero);
+  send_fix(make_antenna_fix_at(make_stamp(0, 0)));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
@@ -2281,28 +2150,12 @@ TEST_F(GnssPoserCharacterization, Tf_LookupIsAtFixHeaderStamp_ZeroStampAppliesLa
 TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_FirstStampUsesFirstRelation)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(0.0));
-  // The relation moves 1 m along x and turns by 90 degrees between t0 and t1.
-  const auto t0 = make_stamp(1000, 0);
-  const auto t1 = make_stamp(1002, 0);
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(1.0, 0.0, 0.0), yaw_to_quaternion(0.0), t0));
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(2.0, 0.0, 0.0), yaw_to_quaternion(M_PI / 2.0), t1));
-  const auto projected = project_antenna(make_reference_fix(), projector);
-  auto fix = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
+  ASSERT_NO_FATAL_FAILURE(build_node_with_changing_antenna_tf());
+  const auto projected = project_mgrs(make_reference_fix());
 
   // Act
   // At t0 the pose uses the first relation.
-  fix.header.stamp = t0;
-  send_fix(fix);
+  send_fix(make_antenna_fix_at(make_stamp(1000, 0)));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
@@ -2314,28 +2167,12 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_FirstStampUsesFirstRelatio
 TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_SecondStampUsesSecondRelation)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(0.0));
-  // The relation moves 1 m along x and turns by 90 degrees between t0 and t1.
-  const auto t0 = make_stamp(1000, 0);
-  const auto t1 = make_stamp(1002, 0);
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(1.0, 0.0, 0.0), yaw_to_quaternion(0.0), t0));
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(2.0, 0.0, 0.0), yaw_to_quaternion(M_PI / 2.0), t1));
-  const auto projected = project_antenna(make_reference_fix(), projector);
-  auto fix = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
+  ASSERT_NO_FATAL_FAILURE(build_node_with_changing_antenna_tf());
+  const auto projected = project_mgrs(make_reference_fix());
 
   // Act
   // At t1 it uses the second.
-  fix.header.stamp = t1;
-  send_fix(fix);
+  send_fix(make_antenna_fix_at(make_stamp(1002, 0)));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
@@ -2347,29 +2184,13 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_SecondStampUsesSecondRelat
 TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStamp)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  params.base_frame = "my_base";
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  const auto projector = make_mgrs_projector_info();
-  send_projector_info(projector);
-  send_orientation(make_orientation(0.0));
-  // The relation moves 1 m along x and turns by 90 degrees between t0 and t1.
-  const auto t0 = make_stamp(1000, 0);
-  const auto t1 = make_stamp(1002, 0);
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(1.0, 0.0, 0.0), yaw_to_quaternion(0.0), t0));
-  ASSERT_NO_FATAL_FAILURE(broadcast_timed_tf(
-    "my_antenna", "my_base", make_point(2.0, 0.0, 0.0), yaw_to_quaternion(M_PI / 2.0), t1));
-  const auto projected = project_antenna(make_reference_fix(), projector);
-  auto fix = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
+  ASSERT_NO_FATAL_FAILURE(build_node_with_changing_antenna_tf());
+  const auto projected = project_mgrs(make_reference_fix());
 
   // Act
   // Halfway between, tf2 interpolates: translation 1.5 m, yaw 45 degrees. Going back in time is
   // fine, the buffer keeps both transforms.
-  fix.header.stamp = make_stamp(1001, 0);
-  send_fix(fix);
+  send_fix(make_antenna_fix_at(make_stamp(1001, 0)));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
@@ -2388,120 +2209,58 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStam
 TEST_F(GnssPoserCharacterization, Covariance_ApproximatedType_CopiesDiagonalFromFix)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  send_projector_info(make_mgrs_projector_info());
-  send_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
-
-  auto fix = make_reference_fix();
-  // Only the diagonal (2.0, 3.0, 4.0) is propagated; off-diagonal entries such as 0.5 never are,
-  // in any branch.
-  fix.position_covariance = {2.0, 0.5, 0.6, 0.5, 3.0, 0.7, 0.6, 0.7, 4.0};
+  ASSERT_NO_FATAL_FAILURE(build_node_with_ins_rmse());
 
   // Act
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
-  send_fix(fix);
+  send_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  const auto & cov = last_pose_cov().pose.covariance;
-  EXPECT_DOUBLE_EQ(cov[cov_xx], 2.0);
-  EXPECT_DOUBLE_EQ(cov[cov_yy], 3.0);
-  EXPECT_DOUBLE_EQ(cov[cov_zz], 4.0);
+  expect_position_variances(last_pose_cov().pose.covariance, 2.0, 3.0, 4.0);
 }
 
 TEST_F(GnssPoserCharacterization, Covariance_DiagonalKnownType_CopiesDiagonalFromFix)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  send_projector_info(make_mgrs_projector_info());
-  send_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
-
-  auto fix = make_reference_fix();
-  // Only the diagonal (2.0, 3.0, 4.0) is propagated; off-diagonal entries such as 0.5 never are,
-  // in any branch.
-  fix.position_covariance = {2.0, 0.5, 0.6, 0.5, 3.0, 0.7, 0.6, 0.7, 4.0};
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
-  send_fix(fix);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_ins_rmse());
+  ASSERT_NO_FATAL_FAILURE(
+    send_fixes_and_wait({make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED)}));
 
   // Act
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
-  send_fix(fix);
+  send_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  const auto & cov = last_pose_cov().pose.covariance;
-  EXPECT_DOUBLE_EQ(cov[cov_xx], 2.0);
-  EXPECT_DOUBLE_EQ(cov[cov_yy], 3.0);
-  EXPECT_DOUBLE_EQ(cov[cov_zz], 4.0);
+  expect_position_variances(last_pose_cov().pose.covariance, 2.0, 3.0, 4.0);
 }
 
 TEST_F(GnssPoserCharacterization, Covariance_KnownType_CopiesDiagonalFromFix)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  send_projector_info(make_mgrs_projector_info());
-  send_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
-
-  auto fix = make_reference_fix();
-  // Only the diagonal (2.0, 3.0, 4.0) is propagated; off-diagonal entries such as 0.5 never are,
-  // in any branch.
-  fix.position_covariance = {2.0, 0.5, 0.6, 0.5, 3.0, 0.7, 0.6, 0.7, 4.0};
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
-  send_fix(fix);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
-  send_fix(fix);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_ins_rmse());
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
+    {make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED),
+     make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN)}));
 
   // Act
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_KNOWN;
-  send_fix(fix);
+  send_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_KNOWN));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
-  const auto & cov = last_pose_cov().pose.covariance;
-  EXPECT_DOUBLE_EQ(cov[cov_xx], 2.0);
-  EXPECT_DOUBLE_EQ(cov[cov_yy], 3.0);
-  EXPECT_DOUBLE_EQ(cov[cov_zz], 4.0);
+  expect_position_variances(last_pose_cov().pose.covariance, 2.0, 3.0, 4.0);
 }
 
 TEST_F(GnssPoserCharacterization, Covariance_PositionDiagonalFromFixUnlessTypeUnknown)
 {
   // Arrange
-  NodeParams params;
-  params.gnss_pose_pub_method = 0;
-  params.use_gnss_ins_orientation = true;
-  ASSERT_NO_FATAL_FAILURE(build_node(params));
-  send_projector_info(make_mgrs_projector_info());
-  send_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
-
-  auto fix = make_reference_fix();
-  // Only the diagonal (2.0, 3.0, 4.0) is propagated; off-diagonal entries such as 0.5 never are,
-  // in any branch.
-  fix.position_covariance = {2.0, 0.5, 0.6, 0.5, 3.0, 0.7, 0.6, 0.7, 4.0};
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_APPROXIMATED;
-  send_fix(fix);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
-  send_fix(fix);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_KNOWN;
-  send_fix(fix);
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(3));
+  ASSERT_NO_FATAL_FAILURE(build_node_with_ins_rmse());
+  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
+    {make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED),
+     make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN),
+     make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_KNOWN)}));
 
   // Act
-  fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_UNKNOWN;
-  send_fix(fix);
+  send_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_UNKNOWN));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(4));
@@ -2509,12 +2268,8 @@ TEST_F(GnssPoserCharacterization, Covariance_PositionDiagonalFromFixUnlessTypeUn
     const auto & cov = last_pose_cov().pose.covariance;
     // 10.0 is hard-coded in the node:
     // https://github.com/autowarefoundation/autoware_core/blob/904b5901488f24e13ae5c3add950b2b9985e1407/sensing/autoware_gnss_poser/src/gnss_poser_node.cpp#L192-L197
-    EXPECT_DOUBLE_EQ(cov[cov_xx], 10.0);
-    EXPECT_DOUBLE_EQ(cov[cov_yy], 10.0);
-    EXPECT_DOUBLE_EQ(cov[cov_zz], 10.0);
-    EXPECT_NEAR(cov[cov_roll_roll], 0.01, rmse_squared_tolerance);
-    EXPECT_NEAR(cov[cov_pitch_pitch], 0.04, rmse_squared_tolerance);
-    EXPECT_NEAR(cov[cov_yaw_yaw], 0.09, rmse_squared_tolerance);
+    expect_position_variances(cov, 10.0, 10.0, 10.0);
+    expect_rotation_variances_near(cov, 0.01, 0.04, 0.09);
     // Everything off the diagonal is zero.
     for (std::size_t i = 0; i < cov.size(); ++i) {
       if (i % 7 != 0) {
