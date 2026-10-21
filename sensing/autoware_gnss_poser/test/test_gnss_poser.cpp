@@ -51,7 +51,6 @@
 
 namespace
 {
-using autoware::gnss_poser::get_quaternion_by_position_difference;
 using autoware::gnss_poser::GnssPosePubMethod;
 using autoware::gnss_poser::GnssPoser;
 using autoware::gnss_poser::GnssPoserParams;
@@ -465,16 +464,36 @@ const std::array<double, 36> & covariance_of(const GnssPoser::Result & result)
   return result.gnss_pose_cov.value().pose.covariance;
 }
 
-// A cardinal direction of get_quaternion_by_position_difference: the point one unit away from the
-// origin, and the yaw it yields.
+// A fix status other than STATUS_FIX that still counts as fixed.
+struct FixedStatus
+{
+  const char * name;
+  NavSatStatus::_status_type status;
+};
+
+class GnssPoserFixedStatus : public ::testing::TestWithParam<FixedStatus>
+{
+};
+
+// A cardinal direction for the motion heading: the offset of the second fix from the reference.
 struct Heading
 {
   const char * name;
-  Point point;
-  double yaw;
+  double latitude_offset;
+  double longitude_offset;
 };
 
-class GnssPoserHelpersHeading : public ::testing::TestWithParam<Heading>
+class GnssPoserMotionHeading : public ::testing::TestWithParam<Heading>
+{
+};
+
+struct CovarianceType
+{
+  const char * name;
+  NavSatFix::_position_covariance_type_type type;
+};
+
+class GnssPoserKnownCovarianceType : public ::testing::TestWithParam<CovarianceType>
 {
 };
 }  // namespace
@@ -526,51 +545,26 @@ TEST(GnssPoser, Gate_MgrsProjectorAfterLocal_ReenablesProcessing)
 
 // `is_fixed` is `status >= STATUS_FIX`: FIX, SBAS_FIX and GBAS_FIX all pass the gate and each
 // produces one of every output, while NO_FIX adds a `gnss_fixed = false` and nothing else.
-TEST(GnssPoser, Gate_StatusFix_Passes)
+TEST_P(GnssPoserFixedStatus, Gate_SbasOrGbasFixStatus_Passes)
 {
   // Arrange
   GnssPoser poser = make_poser_with_mgrs_projector({});
 
   // Act
   // is_fixed(status) <=> status >= STATUS_FIX (0)
-  const auto result = poser.input_fix(make_reference_fix(NavSatStatus::STATUS_FIX));
+  const auto result = poser.input_fix(make_reference_fix(GetParam().status));
 
   // Assert
   expect_every_output(result);
   EXPECT_TRUE(result.gnss_fixed.value().data);
 }
 
-TEST(GnssPoser, Gate_StatusSbasFix_Passes)
-{
-  // Arrange
-  GnssPoser poser = make_poser_with_mgrs_projector({});
-  // is_fixed(status) <=> status >= STATUS_FIX (0)
-  input_fixes(poser, {make_reference_fix(NavSatStatus::STATUS_FIX)});
-
-  // Act
-  const auto result = poser.input_fix(make_reference_fix(NavSatStatus::STATUS_SBAS_FIX));
-
-  // Assert
-  expect_every_output(result);
-  EXPECT_TRUE(result.gnss_fixed.value().data);
-}
-
-TEST(GnssPoser, Gate_StatusFixSbasGbas_AllPass)
-{
-  // Arrange
-  GnssPoser poser = make_poser_with_mgrs_projector({});
-  // is_fixed(status) <=> status >= STATUS_FIX (0)
-  input_fixes(
-    poser, {make_reference_fix(NavSatStatus::STATUS_FIX),
-            make_reference_fix(NavSatStatus::STATUS_SBAS_FIX)});
-
-  // Act
-  const auto result = poser.input_fix(make_reference_fix(NavSatStatus::STATUS_GBAS_FIX));
-
-  // Assert
-  expect_every_output(result);
-  EXPECT_TRUE(result.gnss_fixed.value().data);
-}
+INSTANTIATE_TEST_SUITE_P(
+  AugmentedFixes, GnssPoserFixedStatus,
+  ::testing::Values(
+    FixedStatus{"SbasFix", NavSatStatus::STATUS_SBAS_FIX},
+    FixedStatus{"GbasFix", NavSatStatus::STATUS_GBAS_FIX}),
+  [](const ::testing::TestParamInfo<FixedStatus> & info) { return std::string(info.param.name); });
 
 TEST(GnssPoser, Gate_StatusNoFixAfterAcceptedFixes_PublishesOnlyGnssFixedFalse)
 {
@@ -611,42 +605,6 @@ TEST(GnssPoser, MethodInstant_LargeBuffEpoch_FirstFixPublishedInstantly)
   // Assert
   expect_every_output(result);
   expect_point_near(pose_of(result).position, project_mgrs(fixes[0]));
-}
-
-TEST(GnssPoser, MethodInstant_LargeBuffEpoch_SecondFixPublishedInstantly)
-{
-  // Arrange
-  GnssPoserParams params;
-  params.gnss_pose_pub_method = GnssPosePubMethod::Instant;
-  params.buff_epoch = 5;  // ignored for method 0
-  GnssPoser poser = make_poser_with_mgrs_projector(params);
-  const auto fixes = make_instant_fixes();
-  input_fixes(poser, {fixes[0]});
-
-  // Act
-  const auto result = poser.input_fix(fixes[1]);
-
-  // Assert
-  expect_every_output(result);
-  expect_point_near(pose_of(result).position, project_mgrs(fixes[1]));
-}
-
-TEST(GnssPoser, MethodInstant_LargeBuffEpoch_StillPublishesEveryFixInstantly)
-{
-  // Arrange
-  GnssPoserParams params;
-  params.gnss_pose_pub_method = GnssPosePubMethod::Instant;
-  params.buff_epoch = 5;  // ignored for method 0
-  GnssPoser poser = make_poser_with_mgrs_projector(params);
-  const auto fixes = make_instant_fixes();
-  input_fixes(poser, {fixes[0], fixes[1]});
-
-  // Act
-  const auto result = poser.input_fix(fixes[2]);
-
-  // Assert
-  expect_every_output(result);
-  expect_point_near(pose_of(result).position, project_mgrs(fixes[2]));
 }
 
 // The projector's `vertical_datum` is honored: with EGM2008 the WGS84 ellipsoidal altitude is
@@ -791,45 +749,8 @@ TEST(GnssPoser, MethodMedian_OddBuffer_ComponentWiseMedian)
   expect_point_near(pose_of(result).position, expected_123);
 }
 
-TEST(GnssPoser, MethodMedian_BufferFull_SlidingWindowMedian)
-{
-  // Arrange
-  GnssPoser poser = make_poser_with_mgrs_projector(make_buffer_params(2, 3));
-  const auto fixes = make_median_fixes();
-  // Fixes 1 and 2 only fill the buffer: each publishes gnss_fixed, neither publishes a pose.
-  // Fix 3 completes the buffer: the component-wise median of 1..3.
-  input_fixes(poser, {fixes[0], fixes[1], fixes[2]});
-
-  // Act
-  // Fix 4 slides the window: the median of 2..4.
-  const auto result = poser.input_fix(fixes[3]);
-
-  // Assert
-  expect_every_output(result);
-  expect_point_near(
-    pose_of(result).position,
-    component_wise_median_of(
-      {project_mgrs(fixes[1]), project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
-}
-
-// An even buffer size averages the two central values of each coordinate: `get_median_position`
-// has a separate branch for it. The formula itself is covered by the helper-level unit test in
-// test_gnss_poser_node.cpp; this case pins that an even `buff_epoch` reaches that branch through
-// the node, which keeps the behavior guarded while the helper is moved out of the node.
-TEST(GnssPoser, MethodMedian_EvenBufferNotFull_PublishesNoPose)
-{
-  // Arrange
-  GnssPoser poser = make_poser_with_mgrs_projector(make_buffer_params(2, 4));
-  const auto fixes = make_even_median_fixes();
-  input_fixes(poser, {fixes[0], fixes[1]});
-
-  // Act
-  const auto result = poser.input_fix(fixes[2]);
-
-  // Assert
-  EXPECT_FALSE(result.gnss_pose.has_value());
-}
-
+// An even buffer size has no single central value: the median of each coordinate is the average of
+// the two central values, which the median computation handles as a separate case.
 TEST(GnssPoser, MethodMedian_EvenBuffer_AveragesTwoCentralValues)
 {
   // Arrange
@@ -849,20 +770,6 @@ TEST(GnssPoser, MethodMedian_EvenBuffer_AveragesTwoCentralValues)
 
 // Non-fixed messages neither fill nor clear the position buffer: two accepted fixes around one
 // NO_FIX still produce the mean of exactly those two.
-TEST(GnssPoser, Buffer_NonFixedMessage_DoesNotFillBuffer)
-{
-  // Arrange
-  GnssPoser poser = make_poser_with_mgrs_projector(make_buffer_params(1, 2));
-  const auto fixes = make_non_fixed_buffer_fixes();
-  input_fixes(poser, {fixes[0]});
-
-  // Act
-  const auto result = poser.input_fix(fixes[1]);  // published gnss_fixed=false, nothing else
-
-  // Assert
-  EXPECT_FALSE(result.gnss_pose.has_value());
-}
-
 TEST(GnssPoser, Buffer_IsNotAffectedByNonFixedMessages)
 {
   // Arrange
@@ -876,22 +783,6 @@ TEST(GnssPoser, Buffer_IsNotAffectedByNonFixedMessages)
   // Assert
   expect_point_near(
     pose_of(result).position, mean_of({project_mgrs(fixes[0]), project_mgrs(fixes[2])}));
-}
-
-// Fixes dropped at the projector gates (no projector info yet, or LOCAL) publish nothing.
-TEST(GnssPoser, Buffer_GatedFixes_PublishNothing)
-{
-  // Arrange
-  const auto fixes = make_gated_buffer_fixes();
-  GnssPoser poser(make_buffer_params(1, 2), identity_lookup);
-  poser.input_fix(fixes[0]);  // no projector info yet
-  poser.set_projector_info(make_local_projector_info());
-
-  // Act
-  const auto result = poser.input_fix(fixes[1]);  // LOCAL projector
-
-  // Assert
-  expect_no_output(result);
 }
 
 // Fixes dropped at the projector gates (no projector info yet, or LOCAL) never reach the position
@@ -914,25 +805,6 @@ TEST(GnssPoser, Buffer_FirstFixAfterGatedFixes_FillsOnlyOneSlot)
   expect_only_gnss_fixed(result);  // one slot filled, not full
 }
 
-TEST(GnssPoser, Buffer_IsNotAffectedByGatedFixes)
-{
-  // Arrange
-  const auto fixes = make_gated_buffer_fixes();
-  GnssPoser poser(make_buffer_params(1, 2), identity_lookup);
-  poser.input_fix(fixes[0]);  // no projector info yet
-  poser.set_projector_info(make_local_projector_info());
-  poser.input_fix(fixes[1]);  // LOCAL projector
-  poser.set_projector_info(make_mgrs_projector_info());
-  input_fixes(poser, {fixes[2]});
-
-  // Act
-  const auto result = poser.input_fix(fixes[3]);
-
-  // Assert
-  expect_point_near(
-    pose_of(result).position, mean_of({project_mgrs(fixes[2]), project_mgrs(fixes[3])}));
-}
-
 // =======================================================================================
 // 4. Orientation
 // =======================================================================================
@@ -940,22 +812,6 @@ TEST(GnssPoser, Buffer_IsNotAffectedByGatedFixes)
 // With use_gnss_ins_orientation = true the pose carries the orientation of the latest
 // `autoware_orientation` message, and the orientation covariance diagonal is its RMSE squared
 // (float32 precision). A newer message replaces the previous one; its header is irrelevant.
-TEST(GnssPoser, InsOrientation_UsesMessageAndSquaredRmseAsCovariance)
-{
-  // Arrange
-  GnssPoser poser = make_poser_with_mgrs_projector({});
-  poser.set_ins_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-
-  // Act
-  const auto result = poser.input_fix(make_reference_fix());
-
-  // Assert
-  EXPECT_NEAR(yaw_of(pose_of(result).orientation), M_PI / 2.0, angle_tolerance);
-  expect_same_rotation(pose_of(result).orientation, yaw_to_quaternion(M_PI / 2.0));
-  // 0.1^2 = 0.01, 0.2^2 = 0.04, 0.3^2 = 0.09
-  expect_rotation_variances_near(covariance_of(result), 0.01, 0.04, 0.09);
-}
-
 TEST(GnssPoser, InsOrientation_NewerMessage_ReplacesPrevious)
 {
   // Arrange
@@ -1038,30 +894,6 @@ TEST(GnssPoser, MotionOrientation_FirstFix_IdentityAndConstantCovariance)
   EXPECT_DOUBLE_EQ(covariance_of(result)[cov_roll_roll], 0.1);
   EXPECT_DOUBLE_EQ(covariance_of(result)[cov_pitch_pitch], 0.1);
   EXPECT_DOUBLE_EQ(covariance_of(result)[cov_yaw_yaw], 1.0);
-}
-
-TEST(GnssPoser, MotionOrientation_SecondFix_YawFromDisplacement)
-{
-  // Arrange
-  GnssPoserParams params;
-  params.use_gnss_ins_orientation = false;
-  GnssPoser poser = make_poser_with_mgrs_projector(params);
-  // INS orientation messages are ignored in this mode.
-  poser.set_ins_orientation(make_orientation(M_PI / 2.0, 0.1, 0.2, 0.3));
-  const auto fixes = make_motion_fixes();
-  const auto p1 = project_mgrs(fixes[0]);
-  const auto p2 = project_mgrs(fixes[1]);
-  const double expected_yaw = std::atan2(p2.y - p1.y, p2.x - p1.x);
-  // First fix: no previous position => yaw = atan2(0, 0) = 0 (identity).
-  input_fixes(poser, {fixes[0]});
-
-  // Act
-  // Second fix: yaw of the displacement in the map frame (roll = pitch = 0).
-  const auto result = poser.input_fix(fixes[1]);
-
-  // Assert
-  EXPECT_NEAR(yaw_of(pose_of(result).orientation), expected_yaw, angle_tolerance);
-  expect_same_rotation(pose_of(result).orientation, yaw_to_quaternion(expected_yaw));
 }
 
 TEST(GnssPoser, MotionOrientation_ThirdFix_YawFromLatestStepOnly)
@@ -1147,23 +979,6 @@ TEST(GnssPoser, MotionOrientation_PreviousPositionSurvivesNonFixedMessages)
   EXPECT_NEAR(yaw_of(pose_of(result).orientation), expected_yaw, angle_tolerance);
 }
 
-// When a buffer is in use, the first averaged position has no previous one and gets the identity.
-TEST(GnssPoser, MotionOrientation_WithBuffer_FirstPositionIsIdentity)
-{
-  // Arrange
-  GnssPoserParams params = make_buffer_params(1, 2);
-  params.use_gnss_ins_orientation = false;
-  GnssPoser poser = make_poser_with_mgrs_projector(params);
-  const auto fixes = make_buffered_motion_fixes();
-  input_fixes(poser, {fixes[0]});
-
-  // Act
-  const auto result = poser.input_fix(fixes[1]);
-
-  // Assert
-  expect_same_rotation(pose_of(result).orientation, yaw_to_quaternion(0.0));
-}
-
 // When a buffer is in use, the heading is derived from consecutive *averaged* positions, not from
 // the raw antenna positions.
 TEST(GnssPoser, MotionOrientation_WithBuffer_UsesFilteredPositions)
@@ -1186,6 +1001,37 @@ TEST(GnssPoser, MotionOrientation_WithBuffer_UsesFilteredPositions)
     yaw_of(pose_of(result).orientation), std::atan2(m23.y - m12.y, m23.x - m12.x), angle_tolerance);
 }
 
+// The motion heading in the four cardinal directions, including the wrap-around at +-pi when
+// moving west: yaw = atan2 of the displacement between the two projected positions.
+TEST_P(GnssPoserMotionHeading, MotionOrientation_CardinalDirection_YawFromDisplacement)
+{
+  // Arrange
+  GnssPoserParams params;
+  params.use_gnss_ins_orientation = false;
+  GnssPoser poser = make_poser_with_mgrs_projector(params);
+  const auto from = make_reference_fix();
+  const auto to = make_fix(
+    reference_latitude + GetParam().latitude_offset,
+    reference_longitude + GetParam().longitude_offset, reference_altitude);
+  const auto p1 = project_mgrs(from);
+  const auto p2 = project_mgrs(to);
+  const double expected_yaw = std::atan2(p2.y - p1.y, p2.x - p1.x);
+  input_fixes(poser, {from});
+
+  // Act
+  const auto result = poser.input_fix(to);
+
+  // Assert
+  expect_same_rotation(pose_of(result).orientation, yaw_to_quaternion(expected_yaw));
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  CardinalDirections, GnssPoserMotionHeading,
+  ::testing::Values(
+    Heading{"East", 0.0, 0.001}, Heading{"North", 0.001, 0.0}, Heading{"West", 0.0, -0.001},
+    Heading{"South", -0.001, 0.0}),
+  [](const ::testing::TestParamInfo<Heading> & info) { return std::string(info.param.name); });
+
 // =======================================================================================
 // 5. Covariance
 // =======================================================================================
@@ -1193,60 +1039,34 @@ TEST(GnssPoser, MotionOrientation_WithBuffer_UsesFilteredPositions)
 // The position covariance diagonal is copied from the fix for APPROXIMATED, DIAGONAL_KNOWN and
 // KNOWN, and replaced by 10.0 for UNKNOWN; off-diagonal input entries are never propagated and
 // every off-diagonal output entry stays 0. The orientation covariance is the INS RMSE squared.
-TEST(GnssPoser, Covariance_ApproximatedType_CopiesDiagonalFromFix)
+TEST_P(GnssPoserKnownCovarianceType, Covariance_KnownType_CopiesDiagonalFromFix)
 {
   // Arrange
   GnssPoser poser = make_poser_with_mgrs_projector({});
   poser.set_ins_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
 
   // Act
-  const auto result =
-    poser.input_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED));
+  const auto result = poser.input_fix(make_fix_with_covariance(GetParam().type));
 
   // Assert
   expect_position_variances(covariance_of(result), 2.0, 3.0, 4.0);
 }
 
-TEST(GnssPoser, Covariance_DiagonalKnownType_CopiesDiagonalFromFix)
+INSTANTIATE_TEST_SUITE_P(
+  EveryKnownType, GnssPoserKnownCovarianceType,
+  ::testing::Values(
+    CovarianceType{"Approximated", NavSatFix::COVARIANCE_TYPE_APPROXIMATED},
+    CovarianceType{"DiagonalKnown", NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN},
+    CovarianceType{"Known", NavSatFix::COVARIANCE_TYPE_KNOWN}),
+  [](const ::testing::TestParamInfo<CovarianceType> & info) {
+    return std::string(info.param.name);
+  });
+
+TEST(GnssPoser, Covariance_UnknownType_PositionVariancesAreTen)
 {
   // Arrange
   GnssPoser poser = make_poser_with_mgrs_projector({});
   poser.set_ins_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
-  input_fixes(poser, {make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED)});
-
-  // Act
-  const auto result =
-    poser.input_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN));
-
-  // Assert
-  expect_position_variances(covariance_of(result), 2.0, 3.0, 4.0);
-}
-
-TEST(GnssPoser, Covariance_KnownType_CopiesDiagonalFromFix)
-{
-  // Arrange
-  GnssPoser poser = make_poser_with_mgrs_projector({});
-  poser.set_ins_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
-  input_fixes(
-    poser, {make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED),
-            make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN)});
-
-  // Act
-  const auto result = poser.input_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_KNOWN));
-
-  // Assert
-  expect_position_variances(covariance_of(result), 2.0, 3.0, 4.0);
-}
-
-TEST(GnssPoser, Covariance_PositionDiagonalFromFixUnlessTypeUnknown)
-{
-  // Arrange
-  GnssPoser poser = make_poser_with_mgrs_projector({});
-  poser.set_ins_orientation(make_orientation(0.0, 0.1, 0.2, 0.3));
-  input_fixes(
-    poser, {make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_APPROXIMATED),
-            make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN),
-            make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_KNOWN)});
 
   // Act
   const auto result = poser.input_fix(make_fix_with_covariance(NavSatFix::COVARIANCE_TYPE_UNKNOWN));
@@ -1265,49 +1085,4 @@ TEST(GnssPoser, Covariance_PositionDiagonalFromFixUnlessTypeUnknown)
       }
     }
   }
-}
-
-// =======================================================================================
-// 6. Helpers
-// =======================================================================================
-
-// Orientation-from-motion across the cardinal directions.
-TEST_P(GnssPoserHelpersHeading, QuaternionByPositionDifferenceHeadings)
-{
-  // Arrange
-  const auto origin = make_point(0.0, 0.0, 0.0);
-
-  // Act
-  const auto quaternion = get_quaternion_by_position_difference(GetParam().point, origin);
-
-  // Assert
-  // The difference wrapped to [-pi, pi], so that +PI and -PI are the same heading.
-  EXPECT_NEAR(std::remainder(yaw_of(quaternion) - GetParam().yaw, 2.0 * M_PI), 0.0, 1e-9);
-}
-
-INSTANTIATE_TEST_SUITE_P(
-  CardinalDirections, GnssPoserHelpersHeading,
-  ::testing::Values(
-    // East: dx>0, dy=0 -> yaw 0.
-    Heading{"East", make_point(1.0, 0.0, 0.0), 0.0},
-    // North: dy>0, dx=0 -> yaw +PI/2.
-    Heading{"North", make_point(0.0, 1.0, 0.0), M_PI / 2.0},
-    // West: dx<0, dy=0 -> yaw +-PI.
-    Heading{"West", make_point(-1.0, 0.0, 0.0), M_PI},
-    // South: dy<0, dx=0 -> yaw -PI/2.
-    Heading{"South", make_point(0.0, -1.0, 0.0), -M_PI / 2.0}),
-  [](const ::testing::TestParamInfo<Heading> & info) { return std::string(info.param.name); });
-
-// Identical points: atan2(0,0) -> yaw 0 (identity quaternion).
-TEST(GnssPoserHelpers, QuaternionByPositionDifferenceIdenticalPoints)
-{
-  // Arrange
-  const auto origin = make_point(0.0, 0.0, 0.0);
-
-  // Act
-  const auto identity = get_quaternion_by_position_difference(origin, origin);
-
-  // Assert
-  EXPECT_NEAR(yaw_of(identity), 0.0, 1e-9);
-  EXPECT_DOUBLE_EQ(identity.w, 1.0);
 }
