@@ -1724,9 +1724,7 @@ TEST_F(GnssPoserCharacterization, Buffer_IsNotAffectedByNonFixedMessages)
     last_pose().pose.position, mean_of({project_mgrs(fixes[0]), project_mgrs(fixes[2])}));
 }
 
-// Fixes dropped at the projector gates (no projector info yet, or LOCAL) never reach the position
-// buffer: after two dropped fixes, the first accepted one still fills only one of the two slots.
-// Pins the order "gates first, then buffer", which a refactoring could plausibly swap.
+// Fixes dropped at the projector gates (no projector info yet, or LOCAL) publish nothing.
 TEST_F(GnssPoserCharacterization, Buffer_GatedFixes_PublishNothing)
 {
   // Arrange
@@ -1742,6 +1740,9 @@ TEST_F(GnssPoserCharacterization, Buffer_GatedFixes_PublishNothing)
   expect_output_counts(0, 0, 0, 0);
 }
 
+// Fixes dropped at the projector gates (no projector info yet, or LOCAL) never reach the position
+// buffer: after two dropped fixes, the first accepted one still fills only one of the two slots.
+// Pins the order "gates first, then buffer", which a refactoring could plausibly swap.
 TEST_F(GnssPoserCharacterization, Buffer_FirstFixAfterGatedFixes_FillsOnlyOneSlot)
 {
   // Arrange
@@ -1990,8 +1991,7 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_PreviousPositionSurvivesNonF
   EXPECT_NEAR(yaw_of(last_pose().pose.orientation), expected_yaw, angle_tolerance);
 }
 
-// When a buffer is in use, the heading is derived from consecutive *averaged* positions, not from
-// the raw antenna positions.
+// When a buffer is in use, the first averaged position has no previous one and gets the identity.
 TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_FirstPositionIsIdentity)
 {
   // Arrange
@@ -2007,6 +2007,8 @@ TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_FirstPositionIsId
   expect_same_rotation(last_pose().pose.orientation, yaw_to_quaternion(0.0));
 }
 
+// When a buffer is in use, the heading is derived from consecutive *averaged* positions, not from
+// the raw antenna positions.
 TEST_F(GnssPoserCharacterization, MotionOrientation_WithBuffer_UsesFilteredPositions)
 {
   // Arrange
@@ -2216,6 +2218,8 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_FirstStampUsesFirstRelatio
 
   // Act
   // At t0 the pose uses the first relation.
+  // First stamp: make_stamp(1000, 0), second stamp: make_stamp(1002, 0).
+  // See `build_node_with_changing_antenna_tf` for details.
   send_fix(make_antenna_fix_at(make_stamp(1000, 0)));
 
   // Assert
@@ -2233,6 +2237,8 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelation_SecondStampUsesSecondRelat
 
   // Act
   // At t1 it uses the second.
+  // First stamp: make_stamp(1000, 0), second stamp: make_stamp(1002, 0).
+  // See `build_node_with_changing_antenna_tf` for details.
   send_fix(make_antenna_fix_at(make_stamp(1002, 0)));
 
   // Assert
@@ -2251,6 +2257,9 @@ TEST_F(GnssPoserCharacterization, Tf_ChangingRelationIsInterpolatedAtEachFixStam
   // Act
   // Halfway between, tf2 interpolates: translation 1.5 m, yaw 45 degrees. Going back in time is
   // fine, the buffer keeps both transforms.
+  // First stamp: make_stamp(1000, 0), second stamp: make_stamp(1002, 0).
+  // Here `make_stamp(1001, 0)` is halfway between the first and second stamps.
+  // See `build_node_with_changing_antenna_tf` for details.
   send_fix(make_antenna_fix_at(make_stamp(1001, 0)));
 
   // Assert
