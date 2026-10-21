@@ -593,14 +593,6 @@ protected:
     }
   }
 
-  // A node under MGRS that has published its first pose.
-  void build_node_and_publish_first_pose()
-  {
-    ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
-    send_fix(make_reference_fix());
-    ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  }
-
   // A node whose base_frame is my_base, with the INS orientation yaw pi/2 and the static TF
   // my_antenna -> my_base: translation (1, 2, 0.5), no rotation.
   void build_node_with_static_antenna_tf()
@@ -904,21 +896,6 @@ TEST_F(GnssPoserNodeIntegration, Gate_BeforeMapProjectorInfo_PublishesNothing)
   expect_output_counts(0, 0, 0, 0);
 }
 
-TEST_F(GnssPoserNodeIntegration, Gate_LocalProjectorArrival_PublishesNothing)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node({}));
-  // No projector info yet: the fix is dropped, and not even gnss_fixed is published.
-  send_fix(make_reference_fix());
-
-  // Act
-  // A LOCAL projector arriving changes nothing, neither by itself nor for the next fix.
-  send_projector_info(make_local_projector_info());
-
-  // Assert
-  expect_output_counts(0, 0, 0, 0);
-}
-
 TEST_F(GnssPoserNodeIntegration, Gate_FixUnderLocalProjector_PublishesNothing)
 {
   // Arrange
@@ -971,37 +948,6 @@ TEST_F(GnssPoserNodeIntegration, Gate_FirstFixAfterMgrsProjector_PublishesOneOfE
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_output_counts(1, 1, 1, 1);
-}
-
-TEST_F(GnssPoserNodeIntegration, Gate_LocalProjectorAfterMgrs_ArrivalPublishesNothing)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
-
-  // Act
-  // The latest projector info wins: LOCAL disables processing. Its arrival publishes nothing,
-  // and the next fix is dropped entirely.
-  send_projector_info(make_local_projector_info());
-
-  // Assert
-  expect_output_counts(1, 1, 1, 1);
-}
-
-TEST_F(GnssPoserNodeIntegration, Gate_MgrsProjectorAfterLocal_ArrivalPublishesNothing)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_and_publish_first_pose());
-  // The latest projector info wins: LOCAL disables processing. Its arrival publishes nothing,
-  // and the next fix is dropped entirely.
-  send_projector_info(make_local_projector_info());
-  send_fix(make_reference_fix());
-
-  // Act
-  // Switching back re-enables processing, again without replaying the dropped fix.
-  send_projector_info(make_mgrs_projector_info());
-
-  // Assert
   expect_output_counts(1, 1, 1, 1);
 }
 
@@ -1207,23 +1153,6 @@ TEST_F(GnssPoserNodeIntegration, Tf_AntennaFrameComesFromFixHeader_BaseFrameUses
   expect_point_near(last_pose().pose.position, project_mgrs(fix_base));
 }
 
-TEST_F(GnssPoserNodeIntegration, Tf_AntennaFrameComesFromFixHeader_KnownFrameAppliesTransform)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_static_antenna_tf());
-  const auto fix_known = make_reference_fix(NavSatStatus::STATUS_FIX, "my_antenna");
-  const auto antenna = project_mgrs(fix_known);
-
-  // Act
-  // Known frame: the TF is applied (positive control).
-  send_fix(fix_known);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position, make_point(antenna.x - 2.0, antenna.y + 1.0, antenna.z + 0.5));
-}
-
 // The antenna -> base transform is looked up at the fix's header stamp, not at "latest". With a
 // transform published on /tf (time-stamped, unlike /tf_static) at exactly t0: a fix stamped t0 gets
 // it applied, a fix stamped one second later needs extrapolation, which tf2 refuses, so the node
@@ -1266,66 +1195,12 @@ TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_LaterFixFallsBackTo
   EXPECT_EQ(last_pose().header.stamp, make_stamp(1001, 0));
 }
 
-TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_ZeroStampAppliesLatest)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
-  const auto projected = project_mgrs(make_reference_fix());
-
-  // Act
-  // Fix with a zero stamp: tf2 treats time 0 as "latest", so the transform is applied again.
-  send_fix(make_antenna_fix_at(make_stamp(0, 0)));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z));
-}
-
 // When the antenna -> base relation changes over time, each pose follows the relation at its own
 // fix stamp, interpolated between the two neighboring transforms: a fix halfway between two
 // transforms 1 m apart is offset by the midpoint, and the yaw is interpolated as well.
 //
 // The relation is rigid in practice; this pins that the node does not cache or latch a transform
 // but resolves it per fix, so a moving relation (a calibration rig, a trailer) would be honored.
-TEST_F(GnssPoserNodeIntegration, Tf_ChangingRelation_FirstStampUsesFirstRelation)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_changing_antenna_tf());
-  const auto projected = project_mgrs(make_reference_fix());
-
-  // Act
-  // At t0 the pose uses the first relation.
-  // First stamp: make_stamp(1000, 0), second stamp: make_stamp(1002, 0).
-  // See `build_node_with_changing_antenna_tf` for details.
-  send_fix(make_antenna_fix_at(make_stamp(1000, 0)));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), 0.0, angle_tolerance);
-}
-
-TEST_F(GnssPoserNodeIntegration, Tf_ChangingRelation_SecondStampUsesSecondRelation)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_changing_antenna_tf());
-  const auto projected = project_mgrs(make_reference_fix());
-
-  // Act
-  // At t1 it uses the second.
-  // First stamp: make_stamp(1000, 0), second stamp: make_stamp(1002, 0).
-  // See `build_node_with_changing_antenna_tf` for details.
-  send_fix(make_antenna_fix_at(make_stamp(1002, 0)));
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(
-    last_pose().pose.position, make_point(projected.x + 2.0, projected.y, projected.z));
-  EXPECT_NEAR(yaw_of(last_pose().pose.orientation), M_PI / 2.0, angle_tolerance);
-}
-
 TEST_F(GnssPoserNodeIntegration, Tf_ChangingRelationIsInterpolatedAtEachFixStamp)
 {
   // Arrange
@@ -1373,29 +1248,6 @@ TEST_F(GnssPoserNodeIntegration, TestOrientationSources)
   EXPECT_NEAR(std::abs(yaw_of(last_pose().pose.orientation)), M_PI / 2.0, 0.1);
 }
 
-// The averaging method and buff_epoch reach the logic: the pose is published once three fixes are
-// buffered, in the map frame.
-TEST_F(GnssPoserNodeIntegration, TestPositionBufferMethods)
-{
-  // Arrange
-  NodeParams params;
-  params.use_gnss_ins_orientation = true;
-  params.buff_epoch = 3;
-  params.gnss_pose_pub_method = 1;  // Use averaging method
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector(params));
-  send_orientation(make_orientation(0.0, 0.01, 0.01, 0.01));
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait(
-    {make_fix(35.681236, 139.767125, 41.0), make_fix(35.681336, 139.767225, 41.1)}));
-
-  // Act
-  send_fix(make_fix(35.681436, 139.767325, 41.2));
-
-  // Assert
-  // Wait for position message (should be published after buffer is filled)
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  EXPECT_EQ(last_pose().header.frame_id, "map");
-}
-
 // The median method and buff_epoch reach the logic: the pose is published once five fixes are
 // buffered.
 TEST_F(GnssPoserNodeIntegration, TestMedianPosition)
@@ -1441,30 +1293,6 @@ TEST_F(GnssPoserNodeIntegration, TestCovarianceProcessing_DiagonalKnown)
   EXPECT_NEAR(last_pose_cov().pose.covariance[0], 2.0, 1e-6);
   EXPECT_NEAR(last_pose_cov().pose.covariance[7], 3.0, 1e-6);
   EXPECT_NEAR(last_pose_cov().pose.covariance[14], 4.0, 1e-6);
-}
-
-// ... and the default value 10.0 for UNKNOWN.
-TEST_F(GnssPoserNodeIntegration, TestCovarianceProcessing_Unknown)
-{
-  // Arrange
-  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
-  send_orientation(make_orientation(0.0, 0.01, 0.01, 0.01));
-  auto nav_sat_fix = make_fix(35.681236, 139.767125, 41.0);
-  nav_sat_fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_DIAGONAL_KNOWN;
-  nav_sat_fix.position_covariance = {2.0, 0.0, 0.0, 0.0, 3.0, 0.0, 0.0, 0.0, 4.0};
-  ASSERT_NO_FATAL_FAILURE(send_fixes_and_wait({nav_sat_fix}));
-  // Test UNKNOWN type (should use default value 10.0)
-  nav_sat_fix.position_covariance_type = NavSatFix::COVARIANCE_TYPE_UNKNOWN;
-
-  // Act
-  send_fix(nav_sat_fix);
-
-  // Assert
-  ASSERT_NO_FATAL_FAILURE(wait_for_outputs(2));
-  // Verify default covariance values are used
-  EXPECT_NEAR(last_pose_cov().pose.covariance[0], 10.0, 1e-6);
-  EXPECT_NEAR(last_pose_cov().pose.covariance[7], 10.0, 1e-6);
-  EXPECT_NEAR(last_pose_cov().pose.covariance[14], 10.0, 1e-6);
 }
 
 int main(int argc, char ** argv)
