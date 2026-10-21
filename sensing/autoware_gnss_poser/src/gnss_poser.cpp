@@ -20,6 +20,9 @@
 #include <tf2/LinearMath/Transform.hpp>
 
 #include <geographic_msgs/msg/geo_point.hpp>
+#include <geometry_msgs/msg/pose.hpp>
+#include <geometry_msgs/msg/pose_with_covariance.hpp>
+#include <geometry_msgs/msg/quaternion.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <sensor_msgs/msg/nav_sat_status.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
@@ -120,10 +123,6 @@ std::array<double, 36> make_pose_covariance(
   covariance[diagonal_stride * 5] = rotation_variances[2];
   return covariance;
 }
-}  // namespace
-
-// Defined here rather than in the anonymous namespace above, because the unit tests that came
-// with the package call them directly and so the header still declares them.
 
 geometry_msgs::msg::Point get_median_position(
   const boost::circular_buffer<geometry_msgs::msg::Point> & position_buffer)
@@ -183,6 +182,7 @@ geometry_msgs::msg::Quaternion get_quaternion_by_position_difference(
   quaternion.setRPY(0, 0, yaw);
   return tf2::toMsg(quaternion);
 }
+}  // namespace
 
 GnssPoser::GnssPoser(
   const GnssPoserParams & params, TransformLookup lookup_antenna_to_base_link,

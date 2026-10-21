@@ -33,6 +33,7 @@
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation.hpp>
 #include <geographic_msgs/msg/geo_point.hpp>
 #include <geometry_msgs/msg/point.hpp>
+#include <geometry_msgs/msg/pose.hpp>
 #include <geometry_msgs/msg/quaternion.hpp>
 #include <geometry_msgs/msg/transform.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
