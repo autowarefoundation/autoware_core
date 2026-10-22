@@ -2073,8 +2073,9 @@ TEST(NdtScanMatcherCharacteristics, TypicalScanUnderShippedConfigConvergesAndRep
   expect_published_once(*harness, ndt_pose, *outcome);
 }
 
-/// Six scans while driving out to +25 m keep publishing across an empty map update.
-TEST(NdtScanMatcherCharacteristics, SteadyStateOperationKeepsPublishingThroughEmptyMapUpdate)
+/// Six scans while driving out to +25 m keep publishing across a map update that finds nothing
+/// new: the vehicle moves past `update_distance`, but every cell it needs is already loaded.
+TEST(NdtScanMatcherCharacteristics, SteadyStateOperationKeepsPublishingWhenMapUpdateFindsNothingNew)
 {
   // Arrange
   constexpr int scan_count = 6;
