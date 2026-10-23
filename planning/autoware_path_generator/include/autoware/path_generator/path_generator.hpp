@@ -93,7 +93,6 @@ private:
   std::optional<experimental::lanelet2_utils::RouteManager> route_manager_{std::nullopt};
 };
 
-
 }  // namespace autoware::path_generator
 
 #endif  // AUTOWARE__PATH_GENERATOR__PATH_GENERATOR_HPP_
