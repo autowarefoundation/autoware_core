@@ -49,6 +49,7 @@
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -2092,9 +2093,9 @@ TEST(NdtScanMatcherCharacteristics, TypicalScanUnderShippedConfigConvergesAndRep
 TEST(NdtScanMatcherCharacteristics, SteadyStateOperationKeepsPublishingWhenMapUpdateFindsNothingNew)
 {
   // Arrange
-  constexpr int scan_count = 6;
-  // +25 m is past the 20 m update distance and inside the 50 m where `out_of_map_range` warns.
-  constexpr double step_m = 5.0;
+  // The last step reaches +25 m: past the 20 m update distance, and inside the 50 m where
+  // `out_of_map_range` would start warning.
+  const std::vector<double> travelled_distances_m{0.0, 5.0, 10.0, 15.0, 20.0, 25.0};
   constexpr double shipped_initial_to_result_limit_m = 3.0;
   constexpr double shipped_update_distance_m = 20.0;
 
@@ -2103,21 +2104,23 @@ TEST(NdtScanMatcherCharacteristics, SteadyStateOperationKeepsPublishingWhenMapUp
   auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
   ASSERT_TRUE(harness->ensure_map_loaded());
 
-  // Act and Assert
-  for (int i = 0; i < scan_count; ++i) {
-    const double travelled = step_m * static_cast<double>(i);
-    SCOPED_TRACE(
-      "scan " + std::to_string(i) + " at x = " + std::to_string(map_center_x + travelled));
-
+  // Act
+  // The map corner stays where it is, so each scan is shifted back by what the vehicle travelled.
+  std::vector<std::optional<ScanOutcome>> outcomes;
+  for (const double travelled : travelled_distances_m) {
     auto drive = default_drive();
     drive.initial_pose->x = map_center_x + travelled;
     drive.make_cloud = [travelled](const builtin_interfaces::msg::Time & stamp) {
       return make_scan_at(stamp, -travelled, 0.0);
     };
+    outcomes.push_back(harness->drive_one_scan(drive));
+  }
 
-    const auto outcome = harness->drive_one_scan(drive);
-    ASSERT_TRUE(outcome.has_value());
-    const auto & diag = outcome->diag;
+  // Assert
+  for (size_t i = 0; i < outcomes.size(); ++i) {
+    SCOPED_TRACE("scan at +" + std::to_string(travelled_distances_m[i]) + " m");
+    ASSERT_TRUE(outcomes[i].has_value());
+    const auto & diag = outcomes[i]->diag;
 
     EXPECT_EQ(diag.value("is_set_map_points"), "True");
     EXPECT_EQ(diag.value("skipping_publish_num"), "0") << "message was: " << diag.message();
@@ -2126,8 +2129,8 @@ TEST(NdtScanMatcherCharacteristics, SteadyStateOperationKeepsPublishingWhenMapUp
   }
 
   ASSERT_TRUE(
-    harness->wait_until([&] { return ndt_pose->count() >= static_cast<size_t>(scan_count); }, 10s))
-    << ndt_pose->count() << " of " << scan_count << " scans produced an ndt_pose";
+    harness->wait_until([&] { return ndt_pose->count() >= travelled_distances_m.size(); }, 10s))
+    << ndt_pose->count() << " of " << travelled_distances_m.size() << " scans produced an ndt_pose";
 
   // The drive crossed `update_distance`, so the timer asked again. With the one cell already
   // cached the answer is that nothing is new, and the node has to keep the map it has.
