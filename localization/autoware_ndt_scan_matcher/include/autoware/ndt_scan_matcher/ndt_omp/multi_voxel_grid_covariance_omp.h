@@ -52,7 +52,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTI_VOXEL_GRID_COVARIANCE_OMP_H_
 
-// cspell:ignore Magnusson, Okorn, evecs, evals, covar, eigvalue, futs
+// cspell:ignore Magnusson, Okorn, evecs, evals, covar, eigvalue, futs, Nanoflann
 
 #include <Eigen/Cholesky>
 #include <Eigen/Dense>
@@ -61,10 +61,11 @@
 // clang-format off
 #include <pcl/pcl_macros.h>
 // clang-format on
+#include "kdtree_nanoflann.hpp"
+
 #include <boost/shared_ptr.hpp>
 
 #include <pcl/filters/voxel_grid.h>
-#include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_types.h>
 
 #include <future>
@@ -257,26 +258,23 @@ public:
   /** \brief Search for all the nearest occupied voxels of the query point in a given radius.
    * \note Only voxels containing a sufficient number of points are used.
    * \param[in] point the given query point
-   * \param[in] radius the radius of the sphere bounding all of p_q's neighbors
    * \param[out] k_leaves the resultant leaves of the neighboring points
    * \param[in] max_nn
    * \return number of neighbors found
    */
   int radiusSearch(
-    const PointT & point, double radius, std::vector<LeafConstPtr> & k_leaves,
-    unsigned int max_nn = 0) const;
+    const PointT & point, std::vector<LeafConstPtr> & k_leaves, unsigned int max_nn = 0) const;
 
   /** \brief Search for all the nearest occupied voxels of the query point in a given radius.
    * \note Only voxels containing a sufficient number of points are used.
    * \param[in] cloud the given query point
    * \param[in] index a valid index in cloud representing a valid (i.e., finite) query point
-   * \param[in] radius the radius of the sphere bounding all of p_q's neighbors
    * \param[out] k_leaves the resultant leaves of the neighboring points
    * \param[in] max_nn
    * \return number of neighbors found
    */
   int radiusSearch(
-    const PointCloud & cloud, int index, double radius, std::vector<LeafConstPtr> & k_leaves,
+    const PointCloud & cloud, int index, std::vector<LeafConstPtr> & k_leaves,
     unsigned int max_nn = 0) const;
 
   // Return a pointer to avoid multiple deep copies
@@ -297,6 +295,10 @@ public:
     thread_futs_.resize(thread_num_);
     processing_inputs_.resize(thread_num_);
   }
+
+  void setSearchRadius(double radius) { kdtree_.setSearchRadius(radius); }
+
+  double getSearchRadius() const { return kdtree_.getSearchRadius(); }
 
   ~MultiVoxelGridCovariance()
   {
@@ -386,7 +388,7 @@ protected:
   // Grids of leaves are held in a vector for faster access speed
   std::vector<GridNodePtr> grid_list_;
   // A kdtree built from the leaves of grids
-  pcl::KdTreeFLANN<PointT> kdtree_;
+  KdTreeNanoflann<PointT> kdtree_;
   // To access leaf by the search results by kdtree
   std::vector<LeafConstPtr> leaf_ptrs_;
 };
