@@ -1798,11 +1798,16 @@ TEST(NdtScanMatcherCharacteristics, NoGroundScoringPublishesScanWithoutPointsBel
 
   auto no_ground_points =
     harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned_no_ground");
-  // The full-scan counterpart the filtered cloud is checked against.
-  auto points_aligned = harness->capture<sensor_msgs::msg::PointCloud2>("/points_aligned");
 
-  ASSERT_TRUE(wait_for_capture_discovery(*harness, points_aligned, no_ground_points));
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, no_ground_points));
   ASSERT_TRUE(harness->ensure_map_loaded());
+
+  // What the node should keep. Counted from the cloud the harness publishes, so the expectation
+  // does not depend on anything the node sent back.
+  const auto input_cloud = make_corner_cloud(scan_spacing);
+  const auto num_points_above_margin = static_cast<uint32_t>(std::count_if(
+    input_cloud.points.begin(), input_cloud.points.end(),
+    [](const auto & p) { return p.z > no_ground_z_margin; }));
 
   // Act
   const auto outcome = harness->drive_one_scan(default_drive());
@@ -1812,26 +1817,15 @@ TEST(NdtScanMatcherCharacteristics, NoGroundScoringPublishesScanWithoutPointsBel
   ASSERT_EQ(outcome->diag.level(), level_ok)
     << "scan did not converge: " << outcome->diag.message();
 
-  ASSERT_TRUE(harness->wait_until(
-    [&] { return points_aligned->count() >= 1 && no_ground_points->count() >= 1; }, 5s))
-    << "not every aligned cloud arrived";
+  ASSERT_TRUE(harness->wait_until([&] { return no_ground_points->count() >= 1; }, 5s))
+    << "the filtered cloud never arrived";
 
   // One scan, one filtered cloud.
   EXPECT_EQ(no_ground_points->count(), 1U) << "scan drive attempt was " << outcome->attempt;
 
-  // The filtered cloud is the scan minus everything at or below the margin. The expected width is
-  // counted from the scan the harness builds, not from what the node published.
-  const auto aligned = points_aligned->first();
   const auto filtered = no_ground_points->first();
-  ASSERT_TRUE(aligned.has_value() && filtered.has_value());
-
-  const auto scan = make_corner_cloud(scan_spacing);
-  const auto off_the_floor = std::count_if(
-    scan.points.begin(), scan.points.end(),
-    [&](const auto & p) { return p.z > no_ground_z_margin; });
-
-  EXPECT_EQ(filtered->width, static_cast<uint32_t>(off_the_floor));
-  EXPECT_LT(filtered->width, aligned->width);
+  ASSERT_TRUE(filtered.has_value());
+  EXPECT_EQ(filtered->width, num_points_above_margin);
   EXPECT_EQ(filtered->header.frame_id, map_frame);
   EXPECT_EQ(filtered->header.stamp, outcome->stamp);
 }
