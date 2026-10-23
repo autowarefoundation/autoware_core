@@ -49,6 +49,8 @@ using ::path_generator::Params;
 class PathGenerator : public rclcpp::Node
 {
 public:
+  // Deprecated: kept for backward compatibility with downstream tools
+  // (e.g. autoware_static_centerline_generator)
   struct RouteManagerData
   {
     LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
@@ -64,11 +66,6 @@ public:
     const geometry_msgs::msg::Pose & current_pose, const Params & params);
 
 private:
-  struct InputData
-  {
-    Odometry::ConstSharedPtr odometry_ptr{nullptr};
-  };
-
   // subscriber
   autoware_utils_rclcpp::InterProcessPollingSubscriber<
     LaneletRoute, autoware_utils_rclcpp::polling_policy::Newest>
@@ -90,7 +87,9 @@ private:
   std::shared_ptr<::path_generator::ParamListener> param_listener_;
 
   autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
-  RouteManagerData route_manager_data_;
+
+  LaneletMapBin::ConstSharedPtr map_ptr_{nullptr};
+  LaneletRoute::ConstSharedPtr route_ptr_{nullptr};
 
   PathGeneratorCore path_generator_;
 
@@ -98,8 +97,7 @@ private:
   autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
 
   void run();
-  InputData take_data();
-  bool is_data_ready(const InputData & input_data);
+  std::optional<PathGeneratorInput> take_data();
   void publishStopWatchTime();
 };
 

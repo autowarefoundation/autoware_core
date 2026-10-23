@@ -60,18 +60,12 @@ void PathGenerator::run()
 
   stop_watch_.tic();
 
-  const auto input_data = take_data();
-  if (!is_data_ready(input_data)) {
+  const auto input = take_data();
+  if (!input) {
     return;
   }
 
-  PathGeneratorInput input;
-  input.map_ptr = route_manager_data_.lanelet_map_bin_ptr;
-  input.route_ptr = route_manager_data_.route_ptr;
-  input.odometry = *input_data.odometry_ptr;
-  input.params = param_listener_->get_params();
-
-  const auto result = path_generator_.generate(input);
+  const auto result = path_generator_.generate(*input);
   if (!result) {
     RCLCPP_ERROR_THROTTLE(get_logger(), *get_clock(), 5000, "%s", result.error().c_str());
     return;
@@ -84,13 +78,20 @@ void PathGenerator::run()
   publishStopWatchTime();
 }
 
-PathGenerator::InputData PathGenerator::take_data()
+std::optional<PathGeneratorInput> PathGenerator::take_data()
 {
-  InputData input_data;
+  const auto notify_waiting = [this](const std::string & name) {
+    RCLCPP_INFO_SKIPFIRST_THROTTLE(
+      get_logger(), *get_clock(), 5000, "waiting for %s", name.c_str());
+  };
 
   // Map
   if (const auto msg = vector_map_subscriber_.take_data()) {
-    route_manager_data_.lanelet_map_bin_ptr = msg;
+    map_ptr_ = msg;
+  }
+  if (!map_ptr_) {
+    notify_waiting("map");
+    return std::nullopt;
   }
 
   // Route
@@ -98,41 +99,28 @@ PathGenerator::InputData PathGenerator::take_data()
     if (msg->segments.empty()) {
       RCLCPP_ERROR(get_logger(), "input route is empty, ignoring...");
     } else {
-      route_manager_data_.route_ptr = msg;
+      route_ptr_ = msg;
     }
+  }
+  if (!route_ptr_) {
+    notify_waiting("route");
+    return std::nullopt;
   }
 
   // Odometry
-  if (const auto msg = odometry_subscriber_.take_data()) {
-    input_data.odometry_ptr = msg;
-  }
-
-  return input_data;
-}
-
-bool PathGenerator::is_data_ready(const InputData & input_data)
-{
-  const auto notify_waiting = [this](const std::string & name) {
-    RCLCPP_INFO_SKIPFIRST_THROTTLE(
-      get_logger(), *get_clock(), 5000, "waiting for %s", name.c_str());
-  };
-
-  if (!route_manager_data_.lanelet_map_bin_ptr) {
-    notify_waiting("map");
-    return false;
-  }
-
-  if (!route_manager_data_.route_ptr) {
-    notify_waiting("route");
-    return false;
-  }
-
-  if (!input_data.odometry_ptr) {
+  const auto odometry_ptr = odometry_subscriber_.take_data();
+  if (!odometry_ptr) {
     notify_waiting("odometry");
-    return false;
+    return std::nullopt;
   }
 
-  return true;
+  PathGeneratorInput input;
+  input.map_ptr = map_ptr_;
+  input.route_ptr = route_ptr_;
+  input.odometry = *odometry_ptr;
+  input.params = param_listener_->get_params();
+
+  return input;
 }
 
 void PathGenerator::initialize_route_manager(
@@ -148,20 +136,21 @@ void PathGenerator::initialize_route_manager(
     return;
   }
 
-  route_manager_data_ = route_manager_data;
+  map_ptr_ = route_manager_data.lanelet_map_bin_ptr;
+  route_ptr_ = route_manager_data.route_ptr;
 }
 
 std::optional<PathWithLaneId> PathGenerator::generate_path(
   const geometry_msgs::msg::Pose & current_pose, const Params & params)
 {
-  if (!route_manager_data_.lanelet_map_bin_ptr || !route_manager_data_.route_ptr) {
+  if (!map_ptr_ || !route_ptr_) {
     RCLCPP_ERROR(get_logger(), "Map or route is not set");
     return std::nullopt;
   }
 
   PathGeneratorInput input;
-  input.map_ptr = route_manager_data_.lanelet_map_bin_ptr;
-  input.route_ptr = route_manager_data_.route_ptr;
+  input.map_ptr = map_ptr_;
+  input.route_ptr = route_ptr_;
   input.odometry.header.frame_id = "map";
   input.odometry.header.stamp = now();
   input.odometry.pose.pose = current_pose;
