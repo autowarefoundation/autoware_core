@@ -59,7 +59,7 @@ struct InitialPoseSpec
   /// @brief Offset of the *newer* pose from the older one, along x.
   ///
   /// Must stay within `validation.initial_pose_distance_tolerance_m` or interpolation is rejected,
-  /// which is what `InitialPoseDistanceToleranceReachesTheInterpolationBuffer` drives past.
+  /// which is what `InitialPoseDistanceToleranceReachesInterpolationBuffer` drives past.
   double delta_x{0.0};
 };
 
@@ -117,7 +117,9 @@ public:
 
   /// @param overrides Appended *after* the shipped yaml. `NodeOptions::parameter_overrides()`
   /// is applied in vector order into a map, so the last write wins and these take effect.
-  explicit NdtHarness(std::vector<rclcpp::Parameter> overrides = {})
+  /// @param with_map_loader False leaves `pcd_loader_service` unserved, for the loader-absent
+  /// case; everything else is unchanged.
+  explicit NdtHarness(std::vector<rclcpp::Parameter> overrides = {}, bool with_map_loader = true)
   : overrides_(std::move(overrides))
   {
     node_ = std::make_shared<autoware::ndt_scan_matcher::NDTScanMatcher>(build_node_options());
@@ -146,11 +148,13 @@ public:
     node_thread_ = std::thread([this] { node_executor_->spin(); });
     wait_until_spinning(*node_executor_);
 
-    map_loader_ = std::make_shared<StubMapLoader>();
-    loader_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
-    loader_executor_->add_node(map_loader_);
-    loader_thread_ = std::thread([this] { loader_executor_->spin(); });
-    wait_until_spinning(*loader_executor_);
+    if (with_map_loader) {
+      map_loader_ = std::make_shared<StubMapLoader>();
+      loader_executor_ = std::make_unique<rclcpp::executors::SingleThreadedExecutor>();
+      loader_executor_->add_node(map_loader_);
+      loader_thread_ = std::thread([this] { loader_executor_->spin(); });
+      wait_until_spinning(*loader_executor_);
+    }
   }
 
   ~NdtHarness()
@@ -158,6 +162,7 @@ public:
     // The node stops before the loader: its map-update timer can be inside `update_ndt` waiting on
     // `pcd_loader_service`, and `cancel()` only returns once that callback finishes, so the wait
     // needs the loader still running to complete.
+    wait_for_timer_tick_to_finish();
     if (node_executor_) {
       node_executor_->cancel();
     }
@@ -187,6 +192,12 @@ public:
   // ---------------------------------------------------------------- accessors
 
   [[nodiscard]] DiagnosticsCapture & diag() const { return *diagnostics_; }
+
+  /// @brief The stub answering `pcd_loader_service`, or nullptr when built without one.
+  ///
+  /// It is a spy: `calls()` is this binary's only view of what the node asked the loader for, as
+  /// opposed to what it did with the answer.
+  [[nodiscard]] StubMapLoader * map_loader() const { return map_loader_.get(); }
 
   /// @brief Starts recording a topic.
   ///
@@ -321,12 +332,10 @@ public:
     return set_activation(true, timeout);
   }
 
-  /// @brief Call `trigger_node_srv` with `false`, so the node rejects what it would otherwise
-  /// process.
+  /// @brief Call `trigger_node_srv` with `false`, so the node rejects what it would process.
   ///
-  /// Needed by the cases that drive a scan while deactivated, and by
-  /// `reset_skip_counter_via_deactivation`: the skip counter is a function-local `static` shared by
-  /// every node in the binary, so a case that raised it has to put it back.
+  /// Needed by `reset_skip_counter_via_deactivation`: the skip counter is a function-local `static`
+  /// shared by every node in the binary, so a case that raised it has to put it back.
   std::optional<bool> deactivate(const std::chrono::nanoseconds timeout = 10s)
   {
     return set_activation(false, timeout);
@@ -335,7 +344,7 @@ public:
   /// @brief The shared body of `activate` and `deactivate`.
   ///
   /// On timeout the pending request is removed: it would otherwise stay queued on the client, and a
-  /// late reply could be matched against the next call. This harness now calls the service more
+  /// late reply could be matched against the next call. The harness now calls this service more
   /// than once per node, so that is reachable.
   std::optional<bool> set_activation(const bool enable, const std::chrono::nanoseconds timeout)
   {
@@ -473,6 +482,34 @@ private:
     while (rclcpp::ok() && !executor.is_spinning()) {
       std::this_thread::sleep_for(1ms);
     }
+  }
+
+  /// @brief Block until the map-update timer is between ticks, so teardown cannot cancel mid-call.
+  ///
+  /// A tick that queries the loader blocks in `get_differential_point_cloud_map` until the response
+  /// arrives, and the only thing that can deliver that response is the node's own executor. So
+  /// `cancel()` landing inside such a tick is unrecoverable: the loop there exits on
+  /// `rclcpp::ok()`, which this suite never clears, the timer thread waits forever, and the
+  /// `join()` below never returns. ctest kills the whole binary at its timeout with no output at
+  /// all -- that is how it shows up.
+  ///
+  /// `callback_timer` ends with `diagnostics_map_update_->publish(...)` on every path, so a fresh
+  /// `map_update_status` record means the tick is over and the next one is a whole period (1 s)
+  /// away. Bounded, because a harness whose node never ticks still has to tear down; losing the
+  /// wait costs nothing that was not already lost.
+  void wait_for_timer_tick_to_finish()
+  {
+    if (!observer_executor_ || !diagnostics_ || !node_executor_) {
+      return;
+    }
+    // A harness whose loader was never called cannot have a call in flight, and skipping the wait
+    // keeps the gate cases -- which tear down about 20 ms after building, long before the first
+    // tick -- as fast as they were.
+    if (!map_loader_ || map_loader_->call_count() == 0U) {
+      return;
+    }
+    const size_t ticks_before = diagnostics_->count(map_update_status);
+    wait_until([&] { return diagnostics_->count(map_update_status) > ticks_before; }, 3s);
   }
 
   /// @brief Process observer-side work that is currently ready.

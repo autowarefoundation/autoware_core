@@ -1,4 +1,4 @@
-// Copyright 2022 The Autoware Contributors
+// Copyright 2024 The Autoware Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,36 +12,30 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef GNSS_MODULE_HPP_
-#define GNSS_MODULE_HPP_
+#ifndef UTILS__POSE_ERROR_CHECK_MODULE_HPP_
+#define UTILS__POSE_ERROR_CHECK_MODULE_HPP_
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
-#include <autoware/map_height_fitter/map_height_fitter.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/pose.hpp>
 
 namespace autoware::pose_initializer
 {
-class GnssModule
+class PoseErrorCheckModule
 {
-private:
-  using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
-
 public:
-  explicit GnssModule(autoware::agnocast_wrapper::Node * node);
-  PoseWithCovarianceStamped get_pose();
+  explicit PoseErrorCheckModule(autoware::agnocast_wrapper::Node * node);
+  double get_pose_error_threshold() const { return pose_error_threshold_; }
+  bool check_pose_error(
+    const geometry_msgs::msg::Pose & reference_pose, const geometry_msgs::msg::Pose & result_pose,
+    double & error_2d);
 
 private:
-  void on_pose(PoseWithCovarianceStamped::ConstSharedPtr msg);
-
-  autoware::map_height_fitter::MapHeightFitter fitter_;
-  rclcpp::Clock::SharedPtr clock_;
-  AUTOWARE_SUBSCRIPTION_PTR(PoseWithCovarianceStamped) sub_gnss_pose_;
-  PoseWithCovarianceStamped::ConstSharedPtr pose_;
-  double timeout_;
+  autoware::agnocast_wrapper::Node * node_;
+  double pose_error_threshold_;
 };
 }  // namespace autoware::pose_initializer
 
-#endif  // GNSS_MODULE_HPP_
+#endif  // UTILS__POSE_ERROR_CHECK_MODULE_HPP_

@@ -1,6 +1,6 @@
 {
   "name": "Autoware Core Development",
-  "image": "ghcr.io/autowarefoundation/autoware:core-jazzy",
+  "image": "ghcr.io/autowarefoundation/autoware:core-devel-jazzy",
   "runArgs": ["--net=host", "--privileged", "--name", "autoware-core-devcontainer"],
   "workspaceFolder": "/home/aw/autoware/",
   "remoteUser": "aw",
@@ -8,11 +8,28 @@
     "SSH_AUTH_SOCK": "/ssh-agent"
   },
 
+  "initializeCommand": "bash ${localWorkspaceFolder}/.devcontainer/scripts/prepare-host-dirs.sh",
+
   "mounts": [
     {
       "type": "bind",
       "source": "${localWorkspaceFolder}",
       "target": "/home/aw/autoware/src/core/"
+    },
+    {
+      "type": "bind",
+      "source": "${localWorkspaceFolder}/.devcontainer/build",
+      "target": "/home/aw/autoware/build"
+    },
+    {
+      "type": "bind",
+      "source": "${localWorkspaceFolder}/.devcontainer/install",
+      "target": "/home/aw/autoware/install"
+    },
+    {
+      "type": "bind",
+      "source": "${localWorkspaceFolder}/.devcontainer/log",
+      "target": "/home/aw/autoware/log"
     },
     {
       "type": "volume",
@@ -40,7 +57,12 @@
     "ghcr.io/devcontainers/features/common-utils:2": {},
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers-extra/features/pre-commit:2": {}
+    "ghcr.io/devcontainers-extra/features/pre-commit:2": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+    "ghcr.io/devcontainers-extra/features/npm-packages:latest": {
+      "packages": "@openai/codex,@google/gemini-cli"
+    },
+    "ghcr.io/fjktkm/devcontainer-features/agent-persistence:1": {}
   },
 
   "containerEnv": {

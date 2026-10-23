@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LOCALIZATION_UTIL_HPP_
-#define LOCALIZATION_UTIL_HPP_
+#ifndef UTILS__LOCALIZATION_UTIL_HPP_
+#define UTILS__LOCALIZATION_UTIL_HPP_
 
 #include <autoware_utils_geometry/geometry.hpp>
 #include <rclcpp/time.hpp>
@@ -47,4 +47,4 @@ inline bool check_pose_error(
 }
 }  // namespace autoware::pose_initializer
 
-#endif  // LOCALIZATION_UTIL_HPP_
+#endif  // UTILS__LOCALIZATION_UTIL_HPP_
