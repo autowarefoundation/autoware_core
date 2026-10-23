@@ -8,7 +8,7 @@ package:
   provider: autoware
 
 launch:
-  plugin: autoware::path_generator::PathGeneratorNode
+  plugin: autoware::path_generator::PathGenerator
   executable: path_generator_node
 
 # interfaces
