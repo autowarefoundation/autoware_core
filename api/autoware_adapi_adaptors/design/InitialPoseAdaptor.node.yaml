@@ -1,0 +1,97 @@
+autoware_system_design_format: 0.3.0
+# node information
+name: InitialPoseAdaptor.node
+package:
+  name: autoware_adapi_adaptors
+  provider: autoware
+launch:
+  plugin: autoware::adapi_adaptors::InitialPoseAdaptor
+  executable: initial_pose_adaptor_node
+  node_output: screen
+# interfaces
+subscribers:
+  - name: initialpose
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    remap_target: ~/initialpose
+  - name: pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    remap_target: ~/pointcloud_map
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    remap_target: ~/vector_map
+publishers: []
+clients:
+  - name: initialize
+    message_type: autoware_adapi_v1_msgs/srv/InitializeLocalization
+    global: /api/localization/initialize
+  - name: partial_map_load
+    message_type: autoware_map_msgs/srv/GetPartialPointCloudMap
+    remap_target: ~/partial_map_load
+# parameters
+param_files:
+  - name: initial_pose_param
+    default: $(find-pkg-share autoware_adapi_adaptors)/config/initial_pose.param.yaml
+param_values:
+  - name: initial_pose_particle_covariance
+    type: array
+    default:
+      [
+        4.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        4.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.01,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        1.0,
+      ]
+  - name: map_height_fitter.target
+    type: string
+    default: pointcloud_map
+  - name: map_height_fitter.map_loader_name
+    type: string
+    default: /map/pointcloud_map_loader
+# processes
+processes:
+  - name: load_pointcloud_map
+    trigger_conditions:
+      - once: pointcloud_map
+    outcomes:
+      - terminal:
+  - name: load_vector_map
+    trigger_conditions:
+      - once: vector_map
+    outcomes:
+      - terminal:
+  - name: adapt_initial_pose
+    trigger_conditions:
+      - on_input: initialpose
+    outcomes: []
