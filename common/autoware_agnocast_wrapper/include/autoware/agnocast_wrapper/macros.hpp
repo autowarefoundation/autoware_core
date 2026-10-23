@@ -51,6 +51,8 @@
   typename autoware::agnocast_wrapper::Publisher<MessageT>::SharedPtr
 #define AUTOWARE_GENERIC_SUBSCRIPTION_PTR autoware::agnocast_wrapper::GenericSubscription::SharedPtr
 #define AUTOWARE_GENERIC_PUBLISHER_PTR autoware::agnocast_wrapper::GenericPublisher::SharedPtr
+#define AUTOWARE_GENERIC_SERVICE_PTR autoware::agnocast_wrapper::GenericService::SharedPtr
+#define AUTOWARE_GENERIC_CLIENT_PTR autoware::agnocast_wrapper::GenericClient::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) \
   typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) \
@@ -98,6 +100,40 @@
   node, topic, topic_type, qos, callback, options)         \
   autoware::agnocast_wrapper::create_generic_subscription( \
     node, topic, topic_type, qos, callback, options)
+
+// Method 1 (macro + free function) entry points for the generic (type-erased) service and
+// client: mirrors AUTOWARE_CREATE_SERVICE2/3/4 and AUTOWARE_CREATE_CLIENT1/2/3 below, but with a
+// runtime service_type string instead of a compile-time service_type template argument.
+#define AUTOWARE_CREATE_GENERIC_SERVICE2(service_name, service_type, callback) \
+  autoware::agnocast_wrapper::create_generic_service(this, service_name, service_type, callback)
+#define AUTOWARE_CREATE_GENERIC_SERVICE3(service_name, service_type, callback, qos) \
+  autoware::agnocast_wrapper::create_generic_service(                               \
+    this, service_name, service_type, callback, qos)
+#define AUTOWARE_CREATE_GENERIC_SERVICE4(service_name, service_type, callback, qos, group) \
+  autoware::agnocast_wrapper::create_generic_service(                                      \
+    this, service_name, service_type, callback, qos, group)
+#define AUTOWARE_CREATE_GENERIC_SERVICE2_ON_NODE(node, service_name, service_type, callback) \
+  autoware::agnocast_wrapper::create_generic_service(node, service_name, service_type, callback)
+#define AUTOWARE_CREATE_GENERIC_SERVICE3_ON_NODE(node, service_name, service_type, callback, qos) \
+  autoware::agnocast_wrapper::create_generic_service(                                             \
+    node, service_name, service_type, callback, qos)
+#define AUTOWARE_CREATE_GENERIC_SERVICE4_ON_NODE(         \
+  node, service_name, service_type, callback, qos, group) \
+  autoware::agnocast_wrapper::create_generic_service(     \
+    node, service_name, service_type, callback, qos, group)
+
+#define AUTOWARE_CREATE_GENERIC_CLIENT1(service_name, service_type) \
+  autoware::agnocast_wrapper::create_generic_client(this, service_name, service_type)
+#define AUTOWARE_CREATE_GENERIC_CLIENT2(service_name, service_type, qos) \
+  autoware::agnocast_wrapper::create_generic_client(this, service_name, service_type, qos)
+#define AUTOWARE_CREATE_GENERIC_CLIENT3(service_name, service_type, qos, group) \
+  autoware::agnocast_wrapper::create_generic_client(this, service_name, service_type, qos, group)
+#define AUTOWARE_CREATE_GENERIC_CLIENT1_ON_NODE(node, service_name, service_type) \
+  autoware::agnocast_wrapper::create_generic_client(node, service_name, service_type)
+#define AUTOWARE_CREATE_GENERIC_CLIENT2_ON_NODE(node, service_name, service_type, qos) \
+  autoware::agnocast_wrapper::create_generic_client(node, service_name, service_type, qos)
+#define AUTOWARE_CREATE_GENERIC_CLIENT3_ON_NODE(node, service_name, service_type, qos, group) \
+  autoware::agnocast_wrapper::create_generic_client(node, service_name, service_type, qos, group)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
@@ -148,6 +184,8 @@
 #define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
 #define AUTOWARE_GENERIC_SUBSCRIPTION_PTR rclcpp::GenericSubscription::SharedPtr
 #define AUTOWARE_GENERIC_PUBLISHER_PTR rclcpp::GenericPublisher::SharedPtr
+#define AUTOWARE_GENERIC_SERVICE_PTR autoware::agnocast_wrapper::GenericService::SharedPtr
+#define AUTOWARE_GENERIC_CLIENT_PTR autoware::agnocast_wrapper::GenericClient::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) \
   typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) \
@@ -200,6 +238,40 @@
   node, topic, topic_type, qos, callback, options)         \
   autoware::agnocast_wrapper::create_generic_subscription( \
     node, topic, topic_type, qos, callback, options)
+
+// Method 1 (macro + free function) entry points for the generic (type-erased) service and
+// client: mirrors AUTOWARE_CREATE_SERVICE2/3/4 and AUTOWARE_CREATE_CLIENT1/2/3 below, but with a
+// runtime service_type string instead of a compile-time service_type template argument.
+#define AUTOWARE_CREATE_GENERIC_SERVICE2(service_name, service_type, callback) \
+  autoware::agnocast_wrapper::create_generic_service(this, service_name, service_type, callback)
+#define AUTOWARE_CREATE_GENERIC_SERVICE3(service_name, service_type, callback, qos) \
+  autoware::agnocast_wrapper::create_generic_service(                               \
+    this, service_name, service_type, callback, qos)
+#define AUTOWARE_CREATE_GENERIC_SERVICE4(service_name, service_type, callback, qos, group) \
+  autoware::agnocast_wrapper::create_generic_service(                                      \
+    this, service_name, service_type, callback, qos, group)
+#define AUTOWARE_CREATE_GENERIC_SERVICE2_ON_NODE(node, service_name, service_type, callback) \
+  autoware::agnocast_wrapper::create_generic_service(node, service_name, service_type, callback)
+#define AUTOWARE_CREATE_GENERIC_SERVICE3_ON_NODE(node, service_name, service_type, callback, qos) \
+  autoware::agnocast_wrapper::create_generic_service(                                             \
+    node, service_name, service_type, callback, qos)
+#define AUTOWARE_CREATE_GENERIC_SERVICE4_ON_NODE(         \
+  node, service_name, service_type, callback, qos, group) \
+  autoware::agnocast_wrapper::create_generic_service(     \
+    node, service_name, service_type, callback, qos, group)
+
+#define AUTOWARE_CREATE_GENERIC_CLIENT1(service_name, service_type) \
+  autoware::agnocast_wrapper::create_generic_client(this, service_name, service_type)
+#define AUTOWARE_CREATE_GENERIC_CLIENT2(service_name, service_type, qos) \
+  autoware::agnocast_wrapper::create_generic_client(this, service_name, service_type, qos)
+#define AUTOWARE_CREATE_GENERIC_CLIENT3(service_name, service_type, qos, group) \
+  autoware::agnocast_wrapper::create_generic_client(this, service_name, service_type, qos, group)
+#define AUTOWARE_CREATE_GENERIC_CLIENT1_ON_NODE(node, service_name, service_type) \
+  autoware::agnocast_wrapper::create_generic_client(node, service_name, service_type)
+#define AUTOWARE_CREATE_GENERIC_CLIENT2_ON_NODE(node, service_name, service_type, qos) \
+  autoware::agnocast_wrapper::create_generic_client(node, service_name, service_type, qos)
+#define AUTOWARE_CREATE_GENERIC_CLIENT3_ON_NODE(node, service_name, service_type, qos, group) \
+  autoware::agnocast_wrapper::create_generic_client(node, service_name, service_type, qos, group)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
