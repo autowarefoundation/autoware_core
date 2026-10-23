@@ -231,14 +231,4 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   return finalized_path_with_lane_id;
 }
 
-void PathGeneratorCore::set_config(const PathGeneratorConfig & config)
-{
-  config_ = config;
-}
-
-const PathGeneratorConfig & PathGeneratorCore::get_config() const
-{
-  return config_;
-}
-
 }  // namespace autoware::path_generator

@@ -75,9 +75,6 @@ public:
 
   tl::expected<PathGeneratorResult, std::string> generate(const PathGeneratorInput & input);
 
-  void set_config(const PathGeneratorConfig & config);
-  const PathGeneratorConfig & get_config() const;
-
 private:
   tl::expected<PathWithLaneId, std::string> generate_path(
     const geometry_msgs::msg::Pose & current_pose, const LaneletRoute & route,
