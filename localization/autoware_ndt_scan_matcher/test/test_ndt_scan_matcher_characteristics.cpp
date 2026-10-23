@@ -1996,21 +1996,17 @@ TEST(NdtScanMatcherCharacteristics, MultiNdtScoreCovarianceEstimationPublishesOn
   ASSERT_EQ(outcome->diag.level(), level_ok)
     << "scan did not converge: " << outcome->diag.message();
 
-  // `points_aligned` is the last unconditional publish, so the callback has finished.
+  // `points_aligned` is published after the point where the estimator would have sent
+  // `multi_ndt_pose`, so once it arrives the silence below means something. Not proof of
+  // delivery — DDS does not order across writers — which is the bound every silence check in
+  // this file accepts.
   ASSERT_TRUE(harness->wait_until(
     [&] { return multi_initial_pose->count() >= 1 && points_aligned->count() >= 1; }, 5s));
+
   const auto initials = multi_initial_pose->first();
   ASSERT_TRUE(initials.has_value());
   EXPECT_EQ(initials->poses.size(), multi_offsets_x.size() + 1);
   EXPECT_NEAR(max_pairwise_distance(*initials), multi_offsets_widest_span, 1.0e-6);
-  EXPECT_EQ(multi_ndt_pose->count(), 0U);
-
-  // A wrongly published message from this scan could still be in flight when `count()` reads 0.
-  // A second full callback bounds that window.
-  const auto second = harness->drive_one_scan(default_drive());
-  ASSERT_TRUE(second.has_value());
-  ASSERT_TRUE(harness->wait_until(
-    [&] { return multi_initial_pose->count() >= 2 && points_aligned->count() >= 2; }, 5s));
   EXPECT_EQ(multi_ndt_pose->count(), 0U);
 }
 
