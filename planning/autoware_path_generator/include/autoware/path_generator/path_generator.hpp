@@ -93,10 +93,6 @@ private:
   std::optional<experimental::lanelet2_utils::RouteManager> route_manager_{std::nullopt};
 };
 
-namespace core
-{
-using PathGenerator = PathGeneratorCore;
-}
 
 }  // namespace autoware::path_generator
 
