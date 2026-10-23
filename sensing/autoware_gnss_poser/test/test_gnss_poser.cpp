@@ -502,6 +502,34 @@ class GnssPoserKnownCovarianceType : public ::testing::TestWithParam<CovarianceT
 // 1. Gating
 // =======================================================================================
 
+// Until a usable projector has been received, a fix produces nothing at all, not even `gnss_fixed`.
+TEST(GnssPoser, Gate_BeforeMapProjectorInfo_PublishesNothing)
+{
+  // Arrange
+  GnssPoser poser({}, identity_lookup);
+
+  // Act
+  // No projector info yet: the fix is dropped, and not even gnss_fixed is published.
+  const auto result = poser.input_fix(make_reference_fix());
+
+  // Assert
+  expect_no_output(result);
+}
+
+// `gnss_fixed` carries the header stamp of the fix it reports on, like every other output.
+TEST(GnssPoser, GnssFixed_StampIsFixHeaderStamp)
+{
+  // Arrange
+  GnssPoser poser = make_poser_with_mgrs_projector({});
+  const auto fix = make_reference_fix(NavSatStatus::STATUS_NO_FIX);
+
+  // Act
+  const auto result = poser.input_fix(fix);
+
+  // Assert
+  EXPECT_EQ(result.gnss_fixed.value().stamp, fix.header.stamp);
+}
+
 // A LOCAL projector switches processing off, and the latest projector info always wins: MGRS after
 // LOCAL switches it back on, LOCAL after MGRS off again, and neither arrival publishes anything by
 // itself.
@@ -587,6 +615,48 @@ TEST(GnssPoser, Gate_StatusNoFixAfterAcceptedFixes_PublishesOnlyGnssFixedFalse)
 // =======================================================================================
 // 2. Position pipeline with gnss_pose_pub_method = 0 (instantaneous)
 // =======================================================================================
+
+// With gnss_pose_pub_method = 0, `gnss_pose` is the MGRS projection of the fix as-is: header stamp
+// copied from the fix, `frame_id` = map_frame, `z` = altitude (WGS84 -> WGS84 is the identity), and
+// `gnss_pose_cov` carries the same header and pose. The coordinates are pinned twice: as golden
+// values recorded from the current implementation, and as the output of the same library call the
+// node makes.
+//
+// The lookup provides the identity here, so the antenna position is published unchanged; the
+// composition with a transform is pinned by the transform cases. Orientation is left to the
+// orientation cases.
+TEST(GnssPoser, MethodInstant_PublishesProjectedAntennaPosition)
+{
+  // Arrange
+  GnssPoserParams params;
+  params.gnss_pose_pub_method = GnssPosePubMethod::Instant;
+  params.map_frame = "my_map";  // non-default, so that frame_id is shown to come from the parameter
+  GnssPoser poser(params, identity_lookup);
+  const auto projector = make_mgrs_projector_info();
+  poser.set_projector_info(projector);
+
+  const auto fix = make_reference_fix();
+  const auto expected_antenna = project_antenna(fix, projector);
+
+  // Act
+  const auto result = poser.input_fix(fix);
+
+  // Assert
+  const auto & pose = result.gnss_pose.value();
+  EXPECT_EQ(pose.header.frame_id, "my_map");
+  EXPECT_EQ(pose.header.stamp, fix.header.stamp);
+  // Golden values recorded from the current implementation: a change in the library shows here.
+  expect_point_near(pose.pose.position, make_point(golden_x, golden_y, reference_altitude));
+  // The same library call the node composes: a change in how the node calls it shows here.
+  expect_point_near(pose.pose.position, expected_antenna);
+  // z is the altitude passed through (MGRS ignores it, WGS84 -> WGS84 is the identity).
+  EXPECT_NEAR(pose.pose.position.z, reference_altitude, position_tolerance);
+
+  // gnss_pose_cov carries a copy of the same header and pose, hence exact equality.
+  const auto & pose_cov = result.gnss_pose_cov.value();
+  EXPECT_EQ(pose_cov.header, pose.header);
+  EXPECT_EQ(pose_cov.pose.pose, pose.pose);
+}
 
 // With method 0 the buffer is never used: whatever `buff_epoch` says, every fix yields its own
 // instantaneous position.
