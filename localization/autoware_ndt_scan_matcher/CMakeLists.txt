@@ -116,6 +116,11 @@ if(BUILD_TESTING)
   )
   target_link_libraries(test_ndt_scan_matcher_helper ${PROJECT_NAME})
 
+  # Pins radiusSearchDirect() against the kd-tree radiusSearch() it replaces.
+  ament_auto_add_gtest(test_voxel_neighbour_search
+    test/test_voxel_neighbour_search.cpp
+  )
+  target_link_libraries(test_voxel_neighbour_search multigrid_ndt_omp ${PCL_LIBRARIES})
   # Unit tests for the map update module driven by an injected fake pcd loader (no ROS service).
   ament_auto_add_gtest(test_map_update_module
     test/test_map_update_module.cpp
