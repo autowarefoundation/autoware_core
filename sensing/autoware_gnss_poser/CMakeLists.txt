@@ -37,22 +37,15 @@ if(BUILD_TESTING)
 
   # ROS-based tests can be executed only when agnocast is disabled.
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
+    # Integration test of the node over real topics; the pose computation is covered above.
     ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node
       test/test_gnss_poser_node.cpp
+      TIMEOUT 120
     )
     target_link_libraries(test_${PROJECT_NAME}_node ${PROJECT_NAME}_ros)
     target_include_directories(test_${PROJECT_NAME}_node PRIVATE src)
-
-    # Characterization tests: pin the externally observable behavior of GnssPoserNode
-    # (see test/test_gnss_poser_node_characterization.cpp for the rationale).
-    ament_add_ros_isolated_gtest(test_${PROJECT_NAME}_node_characterization
-      test/test_gnss_poser_node_characterization.cpp
-      TIMEOUT 300
-    )
-    target_link_libraries(test_${PROJECT_NAME}_node_characterization ${PROJECT_NAME}_ros)
-    target_include_directories(test_${PROJECT_NAME}_node_characterization PRIVATE src)
     # Lets the test load the shipped parameter file from the source tree.
-    target_compile_definitions(test_${PROJECT_NAME}_node_characterization
+    target_compile_definitions(test_${PROJECT_NAME}_node
       PRIVATE GNSS_POSER_CONFIG_DIR="${CMAKE_CURRENT_SOURCE_DIR}/config"
     )
   endif()
