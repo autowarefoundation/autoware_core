@@ -1,0 +1,108 @@
+// Copyright 2024 TIER IV, Inc.
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef AUTOWARE__PATH_GENERATOR__PATH_GENERATOR_NODE_HPP_
+#define AUTOWARE__PATH_GENERATOR__PATH_GENERATOR_NODE_HPP_
+
+#include "autoware/path_generator/path_generator.hpp"
+
+#include <autoware/vehicle_info_utils/vehicle_info_utils.hpp>
+#include <autoware_utils_debug/time_keeper.hpp>
+#include <autoware_utils_rclcpp/polling_subscriber.hpp>
+#include <autoware_utils_system/stop_watch.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <autoware_internal_debug_msgs/msg/float64_stamped.hpp>
+#include <autoware_internal_planning_msgs/msg/path_with_lane_id.hpp>
+#include <autoware_map_msgs/msg/lanelet_map_bin.hpp>
+#include <autoware_planning_msgs/msg/lanelet_route.hpp>
+#include <autoware_vehicle_msgs/msg/hazard_lights_command.hpp>
+#include <autoware_vehicle_msgs/msg/turn_indicators_command.hpp>
+#include <nav_msgs/msg/odometry.hpp>
+
+#include <memory>
+#include <optional>
+#include <string>
+
+namespace autoware::path_generator
+{
+using autoware_internal_debug_msgs::msg::Float64Stamped;
+using autoware_internal_planning_msgs::msg::PathWithLaneId;
+using autoware_map_msgs::msg::LaneletMapBin;
+using autoware_planning_msgs::msg::LaneletRoute;
+using autoware_vehicle_msgs::msg::HazardLightsCommand;
+using autoware_vehicle_msgs::msg::TurnIndicatorsCommand;
+using nav_msgs::msg::Odometry;
+using ::path_generator::Params;
+
+class PathGenerator : public rclcpp::Node
+{
+public:
+  // Deprecated: kept for backward compatibility with downstream tools
+  // (e.g. autoware_static_centerline_generator)
+  struct RouteManagerData
+  {
+    LaneletMapBin::ConstSharedPtr lanelet_map_bin_ptr{nullptr};
+    LaneletRoute::ConstSharedPtr route_ptr{nullptr};
+  };
+
+  explicit PathGenerator(const rclcpp::NodeOptions & node_options);
+
+  void initialize_route_manager(
+    const RouteManagerData & route_manager_data, const geometry_msgs::msg::Pose & initial_pose);
+
+  std::optional<PathWithLaneId> generate_path(
+    const geometry_msgs::msg::Pose & current_pose, const Params & params);
+
+private:
+  // subscriber
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    LaneletRoute, autoware_utils_rclcpp::polling_policy::Newest>
+    route_subscriber_{this, "~/input/route", rclcpp::QoS{1}.transient_local()};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<
+    LaneletMapBin, autoware_utils_rclcpp::polling_policy::Newest>
+    vector_map_subscriber_{this, "~/input/vector_map", rclcpp::QoS{1}.transient_local()};
+  autoware_utils_rclcpp::InterProcessPollingSubscriber<Odometry> odometry_subscriber_{
+    this, "~/input/odometry"};
+
+  // publisher
+  rclcpp::Publisher<PathWithLaneId>::SharedPtr path_publisher_;
+  rclcpp::Publisher<TurnIndicatorsCommand>::SharedPtr turn_signal_publisher_;
+  rclcpp::Publisher<HazardLightsCommand>::SharedPtr hazard_signal_publisher_;
+  rclcpp::Publisher<Float64Stamped>::SharedPtr debug_calculation_time_;
+
+  rclcpp::TimerBase::SharedPtr timer_;
+
+  std::shared_ptr<::path_generator::ParamListener> param_listener_;
+
+  autoware::vehicle_info_utils::VehicleInfo vehicle_info_;
+
+  LaneletMapBin::ConstSharedPtr map_ptr_{nullptr};
+  LaneletRoute::ConstSharedPtr route_ptr_{nullptr};
+
+  PathGeneratorCore path_generator_;
+
+  mutable std::shared_ptr<autoware_utils_debug::TimeKeeper> time_keeper_{nullptr};
+  autoware_utils_system::StopWatch<std::chrono::milliseconds> stop_watch_;
+
+  void run();
+  std::optional<PathGeneratorInput> take_data();
+  void publishStopWatchTime();
+};
+
+using PathGeneratorNode = PathGenerator;
+
+}  // namespace autoware::path_generator
+
+#endif  // AUTOWARE__PATH_GENERATOR__PATH_GENERATOR_NODE_HPP_
