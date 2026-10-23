@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <!-- Essential parameters -->
+  <arg name="map_path" description="lanelet2 map directory path"/>
+
+  <!-- Global parameters -->
+  <arg name="use_sim_time" default="false" description="use_sim_time"/>
+  <arg name="vehicle_model" description="vehicle model name"/>
+  <arg name="sensor_model" description="sensor model name"/>
+
+  <!-- Autoware -->
+  <group>
+    <include file="$(find-pkg-share autoware_core)/launch/autoware_core.launch.xml">
+      <arg name="map_path" value="$(var map_path)"/>
+      <arg name="use_sim_time" value="$(var use_sim_time)"/>
+      <arg name="vehicle_model" value="$(var vehicle_model)"/>
+      <arg name="sensor_model" value="$(var sensor_model)"/>
+      <arg name="launch_map" value="true"/>
+      <arg name="launch_sensing" value="false"/>
+      <arg name="launch_localization" value="false"/>
+      <arg name="launch_perception" value="false"/>
+      <arg name="launch_planning" value="true"/>
+      <arg name="launch_control" value="true"/>
+      <arg name="launch_vehicle" value="true"/>
+      <arg name="launch_api" value="true"/>
+    </include>
+  </group>
+
+  <!-- Dummy sensing/perception. -->
+  <executable cmd="ros2 topic pub -r 10 /perception/object_recognition/objects autoware_perception_msgs/msg/PredictedObjects"/>
+  <executable cmd="ros2 topic pub -r 10 /perception/obstacle_segmentation/pointcloud sensor_msgs/msg/PointCloud2"/>
+
+  <!-- Dummy localization  -->
+  <group>
+    <push-ros-namespace namespace="localization"/>
+    <push-ros-namespace namespace="util"/>
+    <include file="$(find-pkg-share autoware_pose_initializer)/launch/pose_initializer.launch.xml">
+      <arg name="ekf_enabled" value="false"/>
+      <arg name="gnss_enabled" value="false"/>
+      <arg name="yabloc_enabled" value="false"/>
+      <arg name="ndt_enabled" value="false"/>
+      <arg name="stop_check_enabled" value="false"/>
+    </include>
+  </group>
+
+  <!-- Simple planning simulator -->
+  <include file="$(find-pkg-share autoware_simple_planning_simulator)/launch/simple_planning_simulator.launch.py">
+    <arg name="motion_publish_mode" value="full_motion"/>
+    <arg name="initial_engage_state" value="true"/>
+    <arg name="vehicle_info_param_file" value="$(find-pkg-share $(var vehicle_model)_description)/config/vehicle_info.param.yaml"/>
+    <arg name="simulator_model_param_file" value="$(find-pkg-share $(var vehicle_model)_description)/config/simulator_model.param.yaml"/>
+    <arg name="raw_vehicle_cmd_converter_param_path" value="$(find-pkg-share autoware_core)/config/vehicle/raw_vehicle_cmd_converter.param.yaml"/>
+  </include>
+</launch>
