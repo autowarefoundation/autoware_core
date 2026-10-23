@@ -195,18 +195,19 @@ EKFUpdateResult EKFLocalizer::update_step(const rclcpp::Time & t_curr)
   }
 
   // 1. Init per-tick diagnostics
+  // A tick without new measurements passes the gates: missing input is reported by no_update_count.
   pose_diag_info_.queue_size = pose_queue_.size();
-  pose_diag_info_.is_passed_delay_gate = false;
+  pose_diag_info_.is_passed_delay_gate = true;
   pose_diag_info_.delay_time = std::numeric_limits<double>::quiet_NaN();
   pose_diag_info_.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
-  pose_diag_info_.is_passed_mahalanobis_gate = false;
+  pose_diag_info_.is_passed_mahalanobis_gate = true;
   pose_diag_info_.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
 
   twist_diag_info_.queue_size = twist_queue_.size();
-  twist_diag_info_.is_passed_delay_gate = false;
+  twist_diag_info_.is_passed_delay_gate = true;
   twist_diag_info_.delay_time = std::numeric_limits<double>::quiet_NaN();
   twist_diag_info_.delay_time_threshold = std::numeric_limits<double>::quiet_NaN();
-  twist_diag_info_.is_passed_mahalanobis_gate = false;
+  twist_diag_info_.is_passed_mahalanobis_gate = true;
   twist_diag_info_.mahalanobis_distance = std::numeric_limits<double>::quiet_NaN();
 
   // 2. Queue cap checks
@@ -274,9 +275,6 @@ EKFUpdateResult EKFLocalizer::update_step(const rclcpp::Time & t_curr)
     }
     stop_watch_.tic();
 
-    pose_diag_info_.is_passed_delay_gate = true;
-    pose_diag_info_.is_passed_mahalanobis_gate = true;
-
     const size_t n = pose_queue_.size();
     for (size_t i = 0; i < n; ++i) {
       const auto pose = pose_queue_.pop_increment_age();
@@ -304,9 +302,6 @@ EKFUpdateResult EKFLocalizer::update_step(const rclcpp::Time & t_curr)
         "------------------------- start Twist -------------------------");
     }
     stop_watch_.tic();
-
-    twist_diag_info_.is_passed_delay_gate = true;
-    twist_diag_info_.is_passed_mahalanobis_gate = true;
 
     const size_t n = twist_queue_.size();
     for (size_t i = 0; i < n; ++i) {
