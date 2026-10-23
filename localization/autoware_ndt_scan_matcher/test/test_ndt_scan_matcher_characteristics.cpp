@@ -1900,20 +1900,30 @@ double max_pairwise_distance(const geometry_msgs::msg::PoseArray & array)
   return result;
 }
 
-/// MULTI_NDT publishes one aligned result and one initial pose per offset in the model.
-TEST(NdtScanMatcherCharacteristics, MultiNdtCovarianceEstimationPublishesOneResultPerOffset)
+/// A ready harness on the converged hot path, with one of the multi-NDT estimators selected.
+///
+/// `covariance_estimation_type` picks it: 2 is MULTI_NDT, 3 is MULTI_NDT_SCORE. The offset model
+/// is pinned here even though it already matches the shipped yaml, so a retune of the default
+/// cannot move the pose count or the spread the cases below assert.
+std::unique_ptr<NdtHarness> make_multi_ndt_harness(const int covariance_estimation_type)
 {
-  // Arrange
-  auto harness = make_ready_harness(converged_hot_path_overrides(
-    {rclcpp::Parameter("covariance.covariance_estimation.covariance_estimation_type", 2),
+  return make_ready_harness(converged_hot_path_overrides(
+    {rclcpp::Parameter(
+       "covariance.covariance_estimation.covariance_estimation_type", covariance_estimation_type),
      rclcpp::Parameter(
        "covariance.covariance_estimation.initial_pose_offset_model_x", multi_offsets_x),
      rclcpp::Parameter(
        "covariance.covariance_estimation.initial_pose_offset_model_y", multi_offsets_y)}));
+}
 
-  auto multi_ndt_pose = harness->capture<geometry_msgs::msg::PoseArray>("/multi_ndt_pose");
+/// The initial-pose half of MULTI_NDT: one pose per offset, spread by the model.
+TEST(NdtScanMatcherCharacteristics, MultiNdtCovarianceEstimationPublishesOneInitialPosePerOffset)
+{
+  // Arrange
+  auto harness = make_multi_ndt_harness(2);
+
   auto multi_initial_pose = harness->capture<geometry_msgs::msg::PoseArray>("/multi_initial_pose");
-  ASSERT_TRUE(wait_for_capture_discovery(*harness, multi_ndt_pose, multi_initial_pose));
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, multi_initial_pose));
   ASSERT_TRUE(harness->ensure_map_loaded());
 
   // Act
@@ -1924,19 +1934,44 @@ TEST(NdtScanMatcherCharacteristics, MultiNdtCovarianceEstimationPublishesOneResu
   ASSERT_EQ(outcome->diag.level(), level_ok)
     << "scan did not converge: " << outcome->diag.message();
 
-  ASSERT_TRUE(harness->wait_until(
-    [&] { return multi_ndt_pose->count() >= 1 && multi_initial_pose->count() >= 1; }, 5s));
-  EXPECT_EQ(multi_ndt_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
-  EXPECT_EQ(multi_initial_pose->count(), 1U);
-  const auto results = multi_ndt_pose->first();
+  ASSERT_TRUE(harness->wait_until([&] { return multi_initial_pose->count() >= 1; }, 5s));
+  EXPECT_EQ(multi_initial_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
+
   const auto initials = multi_initial_pose->first();
-  ASSERT_TRUE(results.has_value() && initials.has_value());
-  EXPECT_EQ(results->poses.size(), multi_offsets_x.size() + 1);
+  ASSERT_TRUE(initials.has_value());
+  // One per offset, plus the pose the model is applied to.
   EXPECT_EQ(initials->poses.size(), multi_offsets_x.size() + 1);
-  EXPECT_EQ(results->header.frame_id, map_frame);
-  // Which array is which: the initial poses sit the offsets apart, while the aligned results
-  // collapse toward a single pose.
+  // Still the offsets apart: these are inputs, so nothing has moved them together yet.
   EXPECT_NEAR(max_pairwise_distance(*initials), multi_offsets_widest_span, 1.0e-6);
+}
+
+/// The aligned half of MULTI_NDT: one result per offset, collapsed toward a single pose.
+TEST(NdtScanMatcherCharacteristics, MultiNdtCovarianceEstimationPublishesOneAlignedResultPerOffset)
+{
+  // Arrange
+  auto harness = make_multi_ndt_harness(2);
+
+  auto multi_ndt_pose = harness->capture<geometry_msgs::msg::PoseArray>("/multi_ndt_pose");
+  ASSERT_TRUE(wait_for_capture_discovery(*harness, multi_ndt_pose));
+  ASSERT_TRUE(harness->ensure_map_loaded());
+
+  // Act
+  const auto outcome = harness->drive_one_scan(default_drive());
+
+  // Assert
+  ASSERT_TRUE(outcome.has_value());
+  ASSERT_EQ(outcome->diag.level(), level_ok)
+    << "scan did not converge: " << outcome->diag.message();
+
+  ASSERT_TRUE(harness->wait_until([&] { return multi_ndt_pose->count() >= 1; }, 5s));
+  EXPECT_EQ(multi_ndt_pose->count(), 1U) << "scan drive attempt was " << outcome->attempt;
+
+  const auto results = multi_ndt_pose->first();
+  ASSERT_TRUE(results.has_value());
+  EXPECT_EQ(results->poses.size(), multi_offsets_x.size() + 1);
+  EXPECT_EQ(results->header.frame_id, map_frame);
+  // Each offset was aligned, so the spread the model introduced has collapsed. 1.0 m is well
+  // under the model's own span and well over what converged results scatter by.
   EXPECT_LT(max_pairwise_distance(*results), 1.0);
 }
 
@@ -1944,12 +1979,7 @@ TEST(NdtScanMatcherCharacteristics, MultiNdtCovarianceEstimationPublishesOneResu
 TEST(NdtScanMatcherCharacteristics, MultiNdtScoreCovarianceEstimationPublishesOnlyInitialPoses)
 {
   // Arrange
-  auto harness = make_ready_harness(converged_hot_path_overrides(
-    {rclcpp::Parameter("covariance.covariance_estimation.covariance_estimation_type", 3),
-     rclcpp::Parameter(
-       "covariance.covariance_estimation.initial_pose_offset_model_x", multi_offsets_x),
-     rclcpp::Parameter(
-       "covariance.covariance_estimation.initial_pose_offset_model_y", multi_offsets_y)}));
+  auto harness = make_multi_ndt_harness(3);
 
   auto multi_ndt_pose = harness->capture<geometry_msgs::msg::PoseArray>("/multi_ndt_pose");
   auto multi_initial_pose = harness->capture<geometry_msgs::msg::PoseArray>("/multi_initial_pose");
