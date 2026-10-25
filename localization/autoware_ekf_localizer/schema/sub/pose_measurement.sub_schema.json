@@ -27,7 +27,7 @@
         },
         "pose_gate_dist": {
           "type": "number",
-          "description": "Limit of Mahalanobis distance used for outliers detection",
+          "description": "Limit of the squared Mahalanobis distance of the innovation used for outliers detection (chi-square quantile). Diagnostics report the unsquared distance.",
           "default": 49.5
         }
       },
