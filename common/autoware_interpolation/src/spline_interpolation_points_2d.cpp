@@ -16,6 +16,7 @@
 
 #include <autoware_utils_geometry/geometry.hpp>
 
+#include <algorithm>
 #include <limits>
 #include <utility>
 #include <vector>
@@ -86,11 +87,12 @@ std::vector<double> splineYawFromPoints(const std::vector<T> & points)
   yaw_vec.reserve(points.size());
   size_t interpolated_idx = 0;
   for (size_t i = 0; i < points.size(); ++i) {
+    // points duplicated after the last interpolated point use the last one
+    const auto idx = std::min(interpolated_idx, interpolated_points.size() - 1);
     const auto distance =
-      autoware_utils_geometry::calc_distance2d(points[i], interpolated_points[interpolated_idx]);
-    const auto same_point = interpolated_idx < interpolated_points.size() && distance < 1e-9;
-    yaw_vec.push_back(interpolator.getSplineInterpolatedYaw(interpolated_idx, distance));
-    if (same_point) {
+      autoware_utils_geometry::calc_distance2d(points[i], interpolated_points[idx]);
+    yaw_vec.push_back(interpolator.getSplineInterpolatedYaw(idx, distance));
+    if (interpolated_idx < interpolated_points.size() && distance < 1e-9) {
       interpolated_idx++;
     }
   }
