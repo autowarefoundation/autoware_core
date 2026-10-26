@@ -91,8 +91,9 @@ std::vector<double> splineYawFromPoints(const std::vector<T> & points)
     const auto idx = std::min(interpolated_idx, interpolated_points.size() - 1);
     const auto distance =
       autoware_utils_geometry::calc_distance2d(points[i], interpolated_points[idx]);
+    const auto same_point = interpolated_idx < interpolated_points.size() && distance < 1e-9;
     yaw_vec.push_back(interpolator.getSplineInterpolatedYaw(idx, distance));
-    if (interpolated_idx < interpolated_points.size() && distance < 1e-9) {
+    if (same_point) {
       interpolated_idx++;
     }
   }
