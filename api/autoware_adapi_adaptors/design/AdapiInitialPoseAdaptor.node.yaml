@@ -1,0 +1,67 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: AdapiInitialPoseAdaptor.node
+
+description: Relays a rough pose from RViz to the localization initialize API, fitting its height to the map and applying the particle covariance.
+
+package:
+  name: autoware_adapi_adaptors
+  provider: autoware
+
+launch:
+  plugin: autoware::adapi_adaptors::InitialPoseAdaptor
+  executable: initial_pose_adaptor_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: initialpose
+    message_type: geometry_msgs/msg/PoseWithCovarianceStamped
+    description: Rough initial pose from RViz.
+    remap_target: ~/initialpose
+    global: /initialpose
+  - name: pointcloud_map
+    message_type: sensor_msgs/msg/PointCloud2
+    description: Pointcloud map for the map height fitter.
+    remap_target: ~/pointcloud_map
+  - name: vector_map
+    message_type: autoware_map_msgs/msg/LaneletMapBin
+    description: Vector map for the map height fitter.
+    remap_target: ~/vector_map
+
+publishers: []
+
+clients:
+  - name: initialize
+    message_type: autoware_adapi_v1_msgs/srv/InitializeLocalization
+    description: Localization initialize API.
+    remap_target: /api/localization/initialize
+  - name: partial_map_load
+    message_type: autoware_map_msgs/srv/GetPartialPointCloudMap
+    description: Loads the pointcloud map around the requested pose for the map height fitter.
+    remap_target: ~/partial_map_load
+
+# parameters
+param_files:
+  - name: param_file
+    default: config/initial_pose.param.yaml
+    description: Particle covariance applied to the initial pose.
+
+param_values:
+  - name: map_height_fitter.map_loader_name
+    type: string
+    default: /map/pointcloud_map_loader
+    description: Name of the map loader node whose enable_partial_load parameter selects the map loading method.
+  - name: map_height_fitter.target
+    type: string
+    default: pointcloud_map
+    description: Map used to fit the height, pointcloud_map or vector_map.
+
+# processes
+processes:
+  - name: initialize
+    description: Fits the received pose height to the map, applies the particle covariance and sends the initialize request.
+    trigger_conditions:
+      - on_input: initialpose
+    outcomes: []

@@ -81,6 +81,26 @@ TEST(GyroOdometerDiagnostics, DetermineDiagnosticsErrorOnTimeout)
   EXPECT_EQ(result.entries[0].level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
 }
 
+// determine_diagnostics: inputs that describe different frames raise ERROR.
+TEST(GyroOdometerDiagnostics, DetermineDiagnosticsErrorOnInconsistentFrameId)
+{
+  DiagnosticsState state;
+  state.vehicle_twist_arrived = true;
+  state.imu_arrived = true;
+  state.is_succeed_transform_imu = true;
+  state.is_frame_id_consistent = false;  // the two inputs disagree
+  state.latest_vehicle_twist_dt = 0.0;
+  state.latest_imu_dt = 0.0;
+  state.message_timeout_sec = 1.0;
+  state.output_frame = "base_link";
+
+  const DiagnosticsResult result = determine_diagnostics(state);
+
+  EXPECT_EQ(result.level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+  ASSERT_EQ(result.entries.size(), 1u);
+  EXPECT_EQ(result.entries[0].level, diagnostic_msgs::msg::DiagnosticStatus::ERROR);
+}
+
 // determine_diagnostics: TF failure raises ERROR.
 TEST(GyroOdometerDiagnostics, DetermineDiagnosticsErrorOnTransformFailure)
 {

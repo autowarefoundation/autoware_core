@@ -5,6 +5,38 @@ Changelog for package autoware_planning_factor_interface
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* chore: update package maintainer (`#1384 <https://github.com/autowarefoundation/autoware_core/issues/1384>`_)
+  chore: update package author metadata
+* fix(planning): declare the dependencies these packages use (`#1372 <https://github.com/autowarefoundation/autoware_core/issues/1372>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+  A clean-context review of the pull request found five more direct uses with no manifest entry. Add one entry for each:
+  - autoware_path_generator: tf2 (tf2::getYaw in src/utils.cpp)
+  - autoware_motion_velocity_planner_common: tf2 (tf2::getYaw in src/planner_data.cpp and src/polygon_utils.cpp)
+  - autoware_motion_velocity_obstacle_stop_module: autoware_planning_factor_interface (constructed in src/obstacle_stop_module.cpp)
+  - autoware_behavior_velocity_stop_line_module: autoware_planning_factor_interface (used in src/experimental/scene.cpp)
+  - autoware_velocity_smoother: rclcpp_components (register_node_macro.hpp in src/node.cpp)
+* feat(PlanningFactorInterface): introduce node independent PlanningFactorInterfaceBase class (`#1250 <https://github.com/autowarefoundation/autoware_core/issues/1250>`_)
+  * templatize PlanningFactorInterface
+  * test(autoware_planning_factor_interface): cover agnocast wrapper node in typed test
+  Convert the publisher/subscriber test to a TYPED_TEST over rclcpp::Node and
+  autoware::agnocast_wrapper::Node so PlanningFactorInterfaceT is exercised for
+  both node instantiations, not only the rclcpp one.
+  * delete tests for rclcpp::Node
+  * specify node type
+  ---------
+* Contributors: Koichi Imai, Mete Fatih Cırıt, Satoshi OTA, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

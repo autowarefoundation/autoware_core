@@ -1,0 +1,65 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: AdapiLocalization.node
+
+description: Provides the AD API localization interface. Relays the initialization state and forwards initialization requests to the localization component.
+
+package:
+  name: autoware_default_adapi
+  provider: autoware
+
+launch:
+  plugin: autoware::default_adapi::LocalizationNode
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: initialization_state
+    message_type: autoware_adapi_v1_msgs/msg/LocalizationInitializationState
+    description: Initialization state from the localization component.
+    remap_target: /localization/initialization_state
+
+publishers:
+  - name: initialization_state
+    message_type: autoware_adapi_v1_msgs/msg/LocalizationInitializationState
+    description: Localization initialization state of the API.
+    remap_target: /api/localization/initialization_state
+
+servers:
+  - name: initialize
+    message_type: autoware_adapi_v1_msgs/srv/InitializeLocalization
+    description: Initialization request from the API.
+    remap_target: /api/localization/initialize
+
+clients:
+  - name: initialize
+    message_type: autoware_localization_msgs/srv/InitializeLocalization
+    description: Initialization service of the localization component.
+    remap_target: /localization/initialize
+
+# parameters
+param_files: []
+
+param_values:
+  - name: diagnostic_updater.period
+    type: double
+    default: 1.0
+    description: Diagnostic updater publish period [s].
+  - name: diagnostic_updater.use_fqn
+    type: bool
+    default: true
+    description: Uses the fully-qualified node name for diagnostic hardware ID.
+
+# processes
+processes:
+  - name: relay_state
+    description: Relays the initialization state to the API.
+    trigger_conditions:
+      - on_input: initialization_state
+    outcomes:
+      - to_output: initialization_state
+  - name: initialize
+    description: Handles an initialization request; forwards it to the localization component service.
+    trigger_conditions: []
+    outcomes: []

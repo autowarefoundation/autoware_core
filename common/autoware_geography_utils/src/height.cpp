@@ -86,7 +86,7 @@ double convert_height(
     conversion_map{
       {{"WGS84", "EGM2008"}, convert_wgs84_to_egm2008},
       {{"EGM2008", "WGS84"}, convert_egm2008_to_wgs84},
-    };
+  };
 
   const auto key = std::make_pair(source_vertical_datum, target_vertical_datum);
   if (const auto it = conversion_map.find(key); it != conversion_map.end()) {

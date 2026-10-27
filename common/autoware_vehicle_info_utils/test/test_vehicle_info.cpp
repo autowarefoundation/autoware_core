@@ -15,8 +15,9 @@
 // Unit tests for the pure (no-ROS) helpers in vehicle_info.cpp.
 // These exercise createVehicleInfo's clamping/validation branches,
 // calcMaxMinDimension's two branches, extendVehicleInfo, the full 5-margin
-// createFootprint overload (including center_at_base_link), and the NaN guard
-// in calcCurvatureFromSteerAngle. They construct VehicleInfo directly via the
+// createFootprint overload (including center_at_base_link), the NaN guard
+// in calcCurvatureFromSteerAngle, and the sign/range/inverse properties of
+// calcSteerAngleFromCurvature. They construct VehicleInfo directly via the
 // free functions / factory and never touch rclcpp.
 
 #include <autoware/vehicle_info_utils/vehicle_info.hpp>
@@ -304,4 +305,51 @@ TEST(VehicleInfoPure, calc_curvature_from_steer_angle_valid)
   // Independently hand-computed: curvature = tan(steer) / wheel_base = tan(0.3) / 2.74.
   // tan(0.3) = 0.30933624960962325 (stdlib), / 2.74 = 0.11289644146336614.
   EXPECT_NEAR(info.calcCurvatureFromSteerAngle(0.3), 0.11289644146336614, 1e-12);
+}
+
+// calcSteerAngleFromCurvature: zero curvature returns zero steer angle.
+TEST(VehicleInfoPure, calc_steer_angle_from_curvature_zero)
+{
+  const auto info = makeNominalVehicleInfo();
+  EXPECT_DOUBLE_EQ(info.calcSteerAngleFromCurvature(0.0), 0.0);
+}
+
+// calcSteerAngleFromCurvature: positive curvature (left turn) returns atan(wheel_base * curvature).
+TEST(VehicleInfoPure, calc_steer_angle_from_curvature_positive)
+{
+  const auto info = makeNominalVehicleInfo();
+  // Independently hand-computed: atan(2.74 * 0.1) = atan(0.274) = 0.26743628138366415 (stdlib).
+  EXPECT_NEAR(info.calcSteerAngleFromCurvature(0.1), 0.26743628138366415, 1e-12);
+}
+
+// calcSteerAngleFromCurvature: negative curvature (right turn) returns a negative steer angle.
+// Regression: the previous atan2(wheel_base, 1 / curvature) implementation returned
+// pi - 0.2674... = 2.874... for this input.
+TEST(VehicleInfoPure, calc_steer_angle_from_curvature_negative)
+{
+  const auto info = makeNominalVehicleInfo();
+  EXPECT_NEAR(info.calcSteerAngleFromCurvature(-0.1), -0.26743628138366415, 1e-12);
+}
+
+// calcSteerAngleFromCurvature: odd function, bounded in (-pi/2, pi/2), and continuous around 0.
+TEST(VehicleInfoPure, calc_steer_angle_from_curvature_symmetry_and_range)
+{
+  const auto info = makeNominalVehicleInfo();
+  for (const double curvature : {1e-9, 1e-7, 1e-3, 0.1, 1.0, 10.0, 1e6}) {
+    const double steer_left = info.calcSteerAngleFromCurvature(curvature);
+    const double steer_right = info.calcSteerAngleFromCurvature(-curvature);
+    EXPECT_GT(steer_left, 0.0) << "curvature: " << curvature;
+    EXPECT_LT(steer_left, M_PI_2) << "curvature: " << curvature;
+    EXPECT_DOUBLE_EQ(steer_right, -steer_left) << "curvature: " << curvature;
+  }
+}
+
+// calcSteerAngleFromCurvature is the inverse of calcCurvatureFromSteerAngle in (-pi/2, pi/2).
+TEST(VehicleInfoPure, calc_steer_angle_from_curvature_round_trip)
+{
+  const auto info = makeNominalVehicleInfo();
+  for (const double steer : {-1.2, -0.5, -0.01, 0.0, 0.01, 0.5, 1.2}) {
+    const double curvature = info.calcCurvatureFromSteerAngle(steer);
+    EXPECT_NEAR(info.calcSteerAngleFromCurvature(curvature), steer, 1e-12) << "steer: " << steer;
+  }
 }

@@ -18,7 +18,7 @@ package_name = "autoware_interface_spec_lint"
 
 setup(
     name=package_name,
-    version="1.9.0",
+    version="1.10.0",
     packages=[package_name],
     data_files=[
         ("share/ament_index/resource_index/packages", ["resource/" + package_name]),

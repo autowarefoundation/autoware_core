@@ -2,6 +2,26 @@
 Changelog for package autoware_downsample_filters
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(sensing): declare the dependencies these packages use (`#1373 <https://github.com/autowarefoundation/autoware_core/issues/1373>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+* refactor(`downsample_filters`): fix dangerous voxel field access and dangerous index access (`#1222 <https://github.com/autowarefoundation/autoware_core/issues/1222>`_)
+* refactor(`downsample_filters`): simplify core logic (`#1219 <https://github.com/autowarefoundation/autoware_core/issues/1219>`_)
+  * bug: remove unused `transform_info`
+  * cosmetic: improve comments for readability
+  ---------
+* Contributors: Junya Sasaki, Mete Fatih Cırıt, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

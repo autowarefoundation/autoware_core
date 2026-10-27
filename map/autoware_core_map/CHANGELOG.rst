@@ -5,6 +5,32 @@ Changelog for package autoware_core_map
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(`map`): wrong default path, needed for feature provided by the PR `#889 <https://github.com/autowarefoundation/autoware_core/issues/889>`_ (`#1238 <https://github.com/autowarefoundation/autoware_core/issues/1238>`_)
+* feat(autoware_map_loader): add support of GetSelectedLanelet2Map service (`#889 <https://github.com/autowarefoundation/autoware_core/issues/889>`_)
+  * fix build failure for jazzy
+  * feat(autoware_map_loader): add support of GetSelectedLanelet2Map service
+  * style(pre-commit): autofix
+  * apply fix for pre-commit
+  * fix cppcheck error
+  * fix build
+  * update parameters
+  * set default to false
+  * modify lanelet2_map_loader behavior to match with pcd_map_loader
+  * fix launch files
+  * update test scripts
+  * rename parameter name
+  * add args to autoware_core_map.launch.xml
+  * update copyright year
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Ryohsuke Mitsudome <ryoshuke.mitsudome@tier4.jp>
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+* Contributors: Junya Sasaki, Ryohsuke Mitsudome, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 

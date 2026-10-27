@@ -332,4 +332,28 @@ TEST_F(EKFLocalizerIntegrationHarness, TimeoutCascade)
     << "Node failed to ERROR at 100 missed updates.";
 }
 
+// TEST 3. Confirms node processes pose and twist measurement updates.
+TEST_F(EKFLocalizerIntegrationHarness, PoseAndTwistMeasurementUpdates)
+{
+  trigger_node();
+
+  geometry_msgs::msg::PoseWithCovarianceStamped init_pose = make_pose(0.0, 0.0);
+  pub_initial_pose_->publish(init_pose);
+  spin_once_tick_once();
+  ASSERT_NE(latest_odom_, nullptr);
+
+  // Send twist update (vehicle moving forward at 5.0 m/s)
+  step_time(0.02);
+  pub_twist_->publish(make_twist(5.0, 0.0));
+  spin_once_tick_once();
+
+  // Send pose update
+  step_time(0.02);
+  pub_pose_->publish(make_pose(0.1, 0.0));
+  spin_once_tick_once();
+
+  ASSERT_NE(latest_odom_, nullptr);
+  EXPECT_GT(latest_odom_->twist.twist.linear.x, 0.0);
+}
+
 }  // namespace autoware::ekf_localizer

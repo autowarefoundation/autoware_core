@@ -8,6 +8,30 @@ Changelog for package autoware_object_recognition_utils
   use autoware_utils\_*
 * Contributors: Yutaka Kondo
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(common): declare the dependencies these packages use (`#1367 <https://github.com/autowarefoundation/autoware_core/issues/1367>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers. Boost.Serialization is declared separately from
+  libboost-dev because it needs its own library at link time.
+* feat(point_types, object_recognition_utils): segmentation pointcloud (`#1288 <https://github.com/autowarefoundation/autoware_core/issues/1288>`_)
+  * feat: add definition of point type for segmentation points
+  * feat: add helper function for segmented pointcloud label
+  * feat: replace default entropy value by Nan
+  * feat: add PointCloudClassification::INVALID
+  * refactor: move PointCloudClassification to autoware_point_types
+  * docs: update README
+  ---------
+* Contributors: Kotaro Uetake, Mete Fatih Cırıt, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

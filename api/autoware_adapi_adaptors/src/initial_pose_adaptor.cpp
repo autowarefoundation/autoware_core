@@ -25,13 +25,14 @@ namespace autoware::adapi_adaptors
 template <class ServiceT>
 using Future = typename rclcpp::Client<ServiceT>::SharedFuture;
 
-std::array<double, 36> get_covariance_parameter(rclcpp::Node * node, const std::string & name)
+std::array<double, 36> get_covariance_parameter(
+  autoware::agnocast_wrapper::Node * node, const std::string & name)
 {
   return vector_to_array<double, 36>(node->declare_parameter<std::vector<double>>(name));
 }
 
 InitialPoseAdaptor::InitialPoseAdaptor(const rclcpp::NodeOptions & options)
-: Node("autoware_initial_pose_adaptor", options), fitter_(this)
+: autoware::agnocast_wrapper::Node("autoware_initial_pose_adaptor", options), fitter_(this)
 {
   rviz_particle_covariance_ = get_covariance_parameter(this, "initial_pose_particle_covariance");
   sub_initial_pose_ = create_subscription<PoseWithCovarianceStamped>(

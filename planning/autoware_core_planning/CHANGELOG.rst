@@ -5,6 +5,12 @@ Changelog for package autoware_core_planning
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor(autoware_mission_planner): create endpoints through NodeAdaptor (`#1327 <https://github.com/autowarefoundation/autoware_core/issues/1327>`_)
+* Contributors: Yutaka Kondo, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 

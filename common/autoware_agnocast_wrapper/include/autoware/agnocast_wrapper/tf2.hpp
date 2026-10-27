@@ -100,15 +100,10 @@ public:
                                                 buffer, *node.get_agnocast_node(), spin_thread, qos,
                                                 static_qos, options, static_options))
         : [&] {
-            rclcpp::SubscriptionOptions ros2_options;
-            ros2_options.callback_group = options.callback_group;
-            ros2_options.qos_overriding_options = options.qos_overriding_options;
-            ros2_options.ignore_local_publications = options.ignore_local_publications;
-            rclcpp::SubscriptionOptions ros2_static_options;
-            ros2_static_options.callback_group = static_options.callback_group;
-            ros2_static_options.qos_overriding_options = static_options.qos_overriding_options;
-            ros2_static_options.ignore_local_publications =
-              static_options.ignore_local_publications;
+            const rclcpp::SubscriptionOptions ros2_options =
+              to_rclcpp_subscription_options(options);
+            const rclcpp::SubscriptionOptions ros2_static_options =
+              to_rclcpp_subscription_options(static_options);
             return decltype(impl_)(
               std::in_place_type<RclcppImpl>,
               std::make_unique<tf2_ros::TransformListener>(

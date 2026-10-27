@@ -40,6 +40,7 @@
 
 #include <gtest/gtest.h>
 
+#include <chrono>
 #include <ctime>
 #include <memory>
 #include <string>
@@ -114,6 +115,12 @@ public:
   void resetReceivedTopicNum() { received_topic_num_ = 0; }
 
   size_t getReceivedTopicNum() const { return received_topic_num_; }
+
+  // Spin both nodes until `min_count` messages arrive or `timeout` expires, then return the count.
+  // A running callback can exceed `timeout`.
+  size_t spinUntilReceived(
+    rclcpp::Node::SharedPtr target_node, size_t min_count = 1,
+    std::chrono::nanoseconds timeout = std::chrono::seconds(30));
 
   rclcpp::Node::SharedPtr getTestNode() const { return test_node_; }
 

@@ -21,7 +21,9 @@ namespace autoware::stop_filter
 
 StopFilterNode::StopFilterNode(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("stop_filter", node_options),
-  stop_filter_(declare_parameter<double>("vx_threshold"), declare_parameter<double>("wz_threshold"))
+  stop_filter_(
+    StopFilterConfig{
+      declare_parameter<double>("vx_threshold"), declare_parameter<double>("wz_threshold")})
 {
   sub_odom_ = create_subscription<nav_msgs::msg::Odometry>(
     "input/odom", 1, std::bind(&StopFilterNode::callback_odometry, this, std::placeholders::_1));
@@ -34,12 +36,14 @@ StopFilterNode::StopFilterNode(const rclcpp::NodeOptions & node_options)
 void StopFilterNode::callback_odometry(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(nav_msgs::msg::Odometry) & msg)
 {
+  auto result = stop_filter_.filter(*msg);
+
   auto stop_flag_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_stop_flag_);
-  *stop_flag_msg = stop_filter_.create_stop_flag_msg(*msg);
+  *stop_flag_msg = std::move(result.stop_flag);
   pub_stop_flag_->publish(std::move(stop_flag_msg));
 
   auto filtered_msg = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(pub_odom_);
-  *filtered_msg = stop_filter_.create_filtered_msg(*msg);
+  *filtered_msg = std::move(result.filtered_odometry);
   pub_odom_->publish(std::move(filtered_msg));
 }
 }  // namespace autoware::stop_filter

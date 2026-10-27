@@ -5,6 +5,16 @@ Changelog for package autoware_planning_test_manager
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(planning_test_manager): handle slow path output (`#1435 <https://github.com/autowarefoundation/autoware_core/issues/1435>`_)
+* feat: add spinUntilReceived to wait for subscription on ROS build farm (`#1176 <https://github.com/autowarefoundation/autoware_core/issues/1176>`_)
+  feat(planning_test_manager): add spinUntilReceived for ROS build farm
+* chore(planning_test_manager): move planning test manager under planning/ directory (`#1383 <https://github.com/autowarefoundation/autoware_core/issues/1383>`_)
+  Co-authored-by: Tran Huu Nhat Huy <29034232+TranHuuNhatHuy@users.noreply.github.com>
+* Contributors: Mete Fatih Cırıt, Ryohsuke Mitsudome, Taeseung Sohn, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

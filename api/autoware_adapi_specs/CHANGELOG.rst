@@ -2,6 +2,15 @@
 Changelog for package autoware_adapi_specs
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(autoware_adapi_specs): declare the dependencies it includes (`#1357 <https://github.com/autowarefoundation/autoware_core/issues/1357>`_)
+  The package includes headers from packages it never declares. It builds today
+  only because another declared dependency re-exports them, so a change in an
+  unrelated repository can break it without anything here changing.
+* Contributors: Mete Fatih Cırıt, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 

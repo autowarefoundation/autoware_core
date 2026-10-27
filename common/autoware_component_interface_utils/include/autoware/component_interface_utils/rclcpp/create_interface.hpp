@@ -26,10 +26,21 @@
 #include <rosidl_runtime_cpp/traits.hpp>
 
 #include <memory>
+#include <string>
+#include <type_traits>
 #include <utility>
 
 namespace autoware::component_interface_utils
 {
+
+template <class SpecT, class NodeT, class = void>
+constexpr bool has_callbackless_create_subscription = false;
+template <class SpecT, class NodeT>
+constexpr bool has_callbackless_create_subscription<
+  SpecT, NodeT,
+  std::void_t<
+    decltype(std::declval<NodeT &>().template create_subscription<typename SpecT::Message>(
+      SpecT::name, get_qos<SpecT>()))>> = true;
 
 /// Create a client wrapper for logging. This is a private implementation.
 template <class SpecT, class NodeT>
@@ -74,12 +85,15 @@ template <class SpecT, class NodeT, class CallbackT>
 typename Subscription<SpecT, NodeT>::SharedPtr create_subscription_impl(
   std::shared_ptr<NodeInterface<NodeT>> interface, CallbackT && callback)
 {
-  typename rclcpp::Subscription<typename SpecT::Message>::SharedPtr subscription;
+  typename Subscription<SpecT, NodeT>::WrapSharedPtr subscription;
   if constexpr (!std::is_null_pointer_v<CallbackT>) {
     // This function is a wrapper for the following.
     // https://github.com/ros2/rclcpp/blob/48068130edbb43cdd61076dc1851672ff1a80408/rclcpp/include/rclcpp/node.hpp#L207-L238
     subscription = interface->node->template create_subscription<typename SpecT::Message>(
       SpecT::name, get_qos<SpecT>(), std::forward<CallbackT>(callback));
+  } else if constexpr (has_callbackless_create_subscription<SpecT, NodeT>) {
+    subscription = interface->node->template create_subscription<typename SpecT::Message>(
+      SpecT::name, get_qos<SpecT>());
   } else {
     // If the callback is nullptr, create a subscription for polling.
     // https://github.com/autowarefoundation/autoware.universe/tree/main/common/autoware_universe_utils/include/autoware/universe_utils/ros/polling_subscriber.hpp

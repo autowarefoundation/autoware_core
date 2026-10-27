@@ -2,6 +2,145 @@
 Changelog for package autoware_ndt_scan_matcher
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(`ndt_scan_matcher`): add tests for scan path, based on the @takam5f2's branch (`#1446 <https://github.com/autowarefoundation/autoware_core/issues/1446>`_)
+  * add: tests for scan path, based on the following @takam5f2's branch
+  * https://github.com/takam5f2/autoware_core/blob/5268228fadf9d74804178f8d698172a11364314b/localization/autoware_ndt_scan_matcher/test/test_ndt_scan_matcher_characteristics.cpp
+  * fix: wordy comments
+  * cosmetic bug: fix wrong comment
+  * bug: fix wrong dependency
+  * fix: simplify comments
+  * fix: error log and comment, applying the following review comment
+  * https://github.com/autowarefoundation/autoware_core/pull/1446#discussion_r4043894171
+  * style(pre-commit): autofix
+  ---------
+  Co-authored-by: Tran Huu Nhat Huy <29034232+TranHuuNhatHuy@users.noreply.github.com>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* feat(ndt_scan_matcher): apply `agnocast_wrapper::Node` to `ndt_scan_matcher` (`#1215 <https://github.com/autowarefoundation/autoware_core/issues/1215>`_)
+  * apply agnocast_wrapper::Node
+  * style(pre-commit): autofix
+  * fix tests and source
+  * style(pre-commit): autofix
+  * use wrapper tf2 and ok()
+  * delete unnecessary comments and avoid ALLOCATE
+  * fix
+  * fix(ndt_scan_matcher): add missing <utility> include for std::move
+  * fix(ndt_scan_matcher): remove includes made redundant by the agnocast wrapper
+  * fix(ndt_scan_matcher): take the client response directly
+  * fix(ndt_scan_matcher): drop the duplicate <utility> include
+  * test(ndt_scan_matcher): add the node to the executor through its base interface
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: kobayu858 <yutaro.kobayashi.2@tier4.jp>
+* test(autoware_ndt_scan_matcher): add characterization harness and sensor-gate tests (`#1348 <https://github.com/autowarefoundation/autoware_core/issues/1348>`_)
+  Add a harness that drives NDTScanMatcher deterministically (diagnostics correlation, TF
+  readiness, a differential stub map loader) and twelve cases that pin the sensor-points gates
+  and the initial-pose subscriber ahead of extracting the hot path into a ROS-free core. Node-level
+  tests move to ament_add_ros_isolated_gtest with their test dependencies declared. No production
+  code changes.
+  Co-authored-by: Junya Sasaki <j2sasaki1990@gmail.com>
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* refactor(`ndt_scan_matcher`): make map update module ROS-node free (`#1322 <https://github.com/autowarefoundation/autoware_core/issues/1322>`_)
+  * refactor: make map update module ROS-node free
+  * Move the pcd loader client, debug publisher, and `loaded_map\_` to the node;
+  inject the service call (PcdLoaderFunction) and diagnostics (DiagnosticsHandlingFunction).
+  * style(pre-commit): autofix
+  * fix: by `pre-commit`
+  * style(pre-commit): autofix
+  * cosmetic: fix noisy-long comments
+  * refactor: avoid doing hard diag task via callback
+  * Apply the following review comment
+  - https://github.com/autowarefoundation/autoware_core/pull/1322#pullrequestreview-4852039689
+  * refactor: simplify `loaded_pcd_map` publish logic
+  * Apply the following review comment:
+  - https://github.com/autowarefoundation/autoware_core/pull/1322#pullrequestreview-4852039689
+  * style(pre-commit): autofix
+  * sorry: forgot applying `pre-commit`
+  * style(pre-commit): autofix
+  * bug: fix infinitely growing map, this is caused by my stupid mis-refactoring
+  * refactor: move minor diagnostics handling into ROS-node
+  * style(pre-commit): autofix
+  * refactor(`autoware_ndt_scan_matcher`): simplify map update state handling
+  * Extract distance_from_last_update() to remove the duplicated distance calculation
+  * Drop the BuilderState struct and its need_rebuild flag by deriving the rebuild decision from out_of_map_range(position).
+  * A failed rebuild no longer advances `last_update_position\_`, so it retries next tick.
+  Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+  * refactor(`autoware_ndt_scan_matcher`): set debug map header.stamp inside MapUpdateModule via PointStamped
+  * The stamp is now the pose timestamp rather than publish time.
+  Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+  * style(pre-commit): autofix
+  * add: tests for map update module
+  * style(pre-commit): autofix
+  * Revert "refactor(`autoware_ndt_scan_matcher`): set debug map header.stamp inside MapUpdateModule via PointStamped"
+  This reverts commit c569a83f043f3c5480c2039da80e4143b853c709.
+  * fix: a bug that causes heavy memory allocation
+  * Apply the following PR comment:
+  - https://github.com/autowarefoundation/autoware_core/pull/1322#discussion_r3819841133
+  * fix: centralize publish logic for `result.loaded_pcd_map`
+  * Apply the following PR review comment:
+  - https://github.com/autowarefoundation/autoware_core/pull/1322#discussion_r3819937749
+  * fix: tests following the corresponding revert below
+  * https://github.com/autowarefoundation/autoware_core/pull/1322/commits/cb8019c576d30a38f56e0a3ab2666950e98d243f
+  * revert: update logic for `last_update_position\_`
+  * This is partial revert that of the following commit:
+  - https://github.com/autowarefoundation/autoware_core/pull/1322/changes/14b86d5d6b98b47fd7dfb968415d72af2149c120#diff-33a0fc135682003000b9c2e2a43fa1635159795559d8d468c66d0a54011804e4L156
+  * fix: simplify `publish_loaded_map_if_present`
+  * Apply the following review comment:
+  - https://github.com/autowarefoundation/autoware_core/pull/1322#discussion_r3892361767
+  * bug: fix unexpected unassigned buffer in merged pcd
+  * Apply the following review comment:
+  - https://github.com/autowarefoundation/autoware_core/pull/1322#discussion_r3892274846
+  * Revert "refactor(`autoware_ndt_scan_matcher`): simplify map update state handling"
+  This reverts commit 14b86d5d6b98b47fd7dfb968415d72af2149c120.
+  * fix: do not use optional for `stamp` in publish logic
+  Co-authored-by: Motz <83898149+Motsu-san@users.noreply.github.com>
+  * fix: do not use optional for `stamp` in publish logic, following the previous commit
+  Co-authored-by: Motz <83898149+Motsu-san@users.noreply.github.com>
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+  Co-authored-by: Tran Huu Nhat Huy <29034232+TranHuuNhatHuy@users.noreply.github.com>
+  Co-authored-by: Claude Opus 4.8 <noreply@anthropic.com>
+  Co-authored-by: Motz <83898149+Motsu-san@users.noreply.github.com>
+* feat(localization): add node designs for the pose/twist estimation nodes (`#1409 <https://github.com/autowarefoundation/autoware_core/issues/1409>`_)
+  * feat(localization): add node designs for the pose/twist estimation nodes
+  Declare NdtScanMatcher, EkfLocalizer, GyroOdometer, StopFilter and
+  Twist2Accel node designs, with remap_target set to each node's hardcoded
+  topic and service names, and extend PoseInitializer with the map, GNSS,
+  stop-check inputs and the align/trigger/partial-map-load clients that
+  pose_initializer.launch.xml remaps. These let a system designer module
+  compose the localization stack directly from nodes.
+  * feat(localization): describe node designs and bump to format 0.4.0
+  ---------
+* fix(localization): declare the dependencies these packages use (`#1369 <https://github.com/autowarefoundation/autoware_core/issues/1369>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+* fix(autoware_ndt_scan_matcher): use tf2 C++ header (`#1273 <https://github.com/autowarefoundation/autoware_core/issues/1273>`_)
+* fix(ndt): correct sign of pitch^2 term in NDT angle Hessian (h_ang d1) (`#1217 <https://github.com/autowarefoundation/autoware_core/issues/1217>`_)
+  fix(autoware_ndt_scan_matcher): correct sign of pitch^2 term in NDT angle Hessian (h_ang d1)
+  computeAngleDerivatives() builds the precomputed angular Hessian table
+  h_ang\_. Row 6 ("d1"), which forms the x-component of d^2T/dpitch^2, used
+  +sy where the exact second derivative is -sy.
+  Derivation (R = Rx(roll)*Ry(pitch)*Rz(yaw), point x):
+  (R x)_x      =  cy*cz*x0 - cy*sz*x1 + sy*x2
+  d/dpitch     = -sy*cz*x0 + sy*sz*x1 + cy*x2
+  d2/dpitch^2  = -cy*cz*x0 + cy*sz*x1 - sy*x2    => d1 = (-cy*cz, cy*sz, -sy)
+  So the third coefficient must be -sy, not +sy. The gradient (j_ang) is
+  already exact, and every other h_ang block was re-derived and confirmed
+  correct (roll^2, roll*pitch, roll*yaw, pitch^2 y/z, pitch*yaw, yaw^2); this
+  is the sole error. The fix makes the analytic Hessian match the true second
+  derivative, affecting only the Newton search direction (the optimum, where
+  gradient = 0, is unchanged).
+* Contributors: Junya Sasaki, Koichi Imai, Mete Fatih Cırıt, Taekjin LEE, Takayuki AKAMINE, Tobias Fischer, github-actions, ytakano
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

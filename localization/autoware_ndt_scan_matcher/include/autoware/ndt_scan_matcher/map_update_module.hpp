@@ -54,7 +54,7 @@ public:
 
   // Injected by the ROS node: given a differential map request, returns the response,
   // or nullptr if the map could not be fetched (e.g. the service is unavailable).
-  using PcdLoaderFunction = std::function<GetDifferentialPointCloudMap::Response::SharedPtr(
+  using PcdLoaderFunction = std::function<GetDifferentialPointCloudMap::Response::ConstSharedPtr(
     const GetDifferentialPointCloudMap::Request::SharedPtr &)>;
 
   // Severity of a diagnostics update. Mirrors diagnostic_msgs::msg::DiagnosticStatus levels so

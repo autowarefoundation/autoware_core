@@ -1,0 +1,89 @@
+// Copyright 2022 The Autoware Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#ifndef POSE_INITIALIZER_NODE_HPP_
+#define POSE_INITIALIZER_NODE_HPP_
+
+#include "pose_initializer.hpp"
+
+#include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/component_interface_specs/localization.hpp>
+#include <autoware/component_interface_utils/rclcpp.hpp>
+#include <autoware_utils_diagnostics/diagnostics_interface.hpp>
+#include <autoware_utils_logging/logger_level_configure.hpp>
+#include <rclcpp/rclcpp.hpp>
+
+#include <autoware_adapi_v1_msgs/msg/localization_initialization_state.hpp>
+#include <autoware_internal_localization_msgs/srv/initialize_localization.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+
+#include <memory>
+#include <string>
+
+namespace autoware::pose_initializer
+{
+class PoseErrorCheckModule;
+class StopCheckModule;
+class LocalizationModule;
+class GnssModule;
+class LocalizationTriggerModule;
+
+class PoseInitializerNode : public autoware::agnocast_wrapper::Node
+{
+public:
+  explicit PoseInitializerNode(const rclcpp::NodeOptions & options);
+
+private:
+  using Initialize = autoware::component_interface_specs::localization::Initialize;
+  using State = autoware::component_interface_specs::localization::InitializationState;
+  using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
+
+  using NodeT = autoware::agnocast_wrapper::Node;
+  autoware::component_interface_utils::NodeAdaptor<NodeT> adaptor_{this};
+  rclcpp::CallbackGroup::SharedPtr group_srv_;
+  AUTOWARE_TIMER_PTR user_defined_initial_pose_timer_;
+  AUTOWARE_PUBLISHER_PTR(PoseWithCovarianceStamped) pub_reset_;
+  autoware::component_interface_utils::Publisher<State, NodeT>::SharedPtr pub_state_;
+  autoware::component_interface_utils::Service<Initialize, NodeT>::SharedPtr srv_initialize_;
+  State::Message state_;
+  std::array<double, 36> output_pose_covariance_{};
+  std::array<double, 36> gnss_particle_covariance_{};
+
+  std::unique_ptr<GnssModule> gnss_;
+  std::unique_ptr<LocalizationModule> ndt_;
+  std::unique_ptr<LocalizationModule> yabloc_;
+  std::unique_ptr<StopCheckModule> stop_check_;
+  std::unique_ptr<PoseErrorCheckModule> pose_error_check_;
+  std::unique_ptr<LocalizationTriggerModule> ekf_localization_trigger_;
+  std::unique_ptr<LocalizationTriggerModule> ndt_localization_trigger_;
+  std::unique_ptr<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>
+    logger_configure_;
+  std::unique_ptr<
+    autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>
+    diagnostics_pose_reliable_;
+  double stop_check_duration_;
+
+  void change_node_trigger(bool flag);
+  void set_user_defined_initial_pose(const geometry_msgs::msg::Pose initial_pose);
+  void change_state(State::Message::_state_type state);
+  void on_initialize(
+    const Initialize::Service::Request::SharedPtr req,
+    const Initialize::Service::Response::SharedPtr res);
+  PoseWithCovarianceStamped get_gnss_pose();
+};
+}  // namespace autoware::pose_initializer
+
+#endif  // POSE_INITIALIZER_NODE_HPP_

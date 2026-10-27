@@ -16,6 +16,7 @@
 
 // Client<ServiceT> abstraction.
 
+#include "autoware/agnocast_wrapper/introspection.hpp"
 #include "autoware/agnocast_wrapper/macros.hpp"
 
 #include <rclcpp/rclcpp.hpp>
@@ -26,6 +27,7 @@
 #include <functional>
 #include <future>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <utility>
 
@@ -45,8 +47,34 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
+  static void throw_if_null(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    if (!request) {
+      throw std::invalid_argument("async_send_request() was given a null request");
+    }
+  }
+
+  /// Hands back a request this client can send. A hook rather than
+  /// allocate_output_service_request() plus a copy in the caller, because only the Agnocast
+  /// backend has to copy the payload, to get it into shared memory; the DDS backend shares the
+  /// caller's pointer, so a node built with ENABLE_AGNOCAST=1 but running on DDS pays what
+  /// rclcpp::Client pays.
+  virtual AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+    to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) = 0;
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
+
+  // For generic code that has to take this type off the client rather than spell it.
+  using SharedResponse = AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT);
 
   using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
   using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
@@ -69,6 +97,31 @@ public:
 
   virtual bool service_is_ready() const = 0;
 
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ClientBase::configure_introspection(). The Agnocast backend publishes the same
+  /// events through its own event publisher.
+  /// @throws std::invalid_argument for a null clock or a KeepAll QoS; see
+  /// detail::check_introspection_args().
+  /// @throws std::runtime_error on the Agnocast backend, when the event typesupport cannot be
+  /// loaded. The rclcpp backend links it in and cannot fail this way.
+  /// @throws rclcpp::exceptions::RCLError on the rclcpp backend, when rcl rejects the call.
+  /// @note The Agnocast backend terminates the process, rather than throwing, when the kernel
+  /// module refuses the event publisher.
+  /// @note Not thread-safe: rcl documents its own side as such, and the backend is chosen at run
+  /// time, so call this before the node spins or from the spinning thread.
+  /// @note The Agnocast backend ignores the reliability, deadline and lifespan policies the RMW
+  /// applies on the rclcpp path, and logs a failed event where rclcpp lets the rcl error fail the
+  /// service call itself.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    detail::check_introspection_args(get_service_name(), clock, qos_service_event_pub);
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
+
   template <typename RepT, typename RatioT>
   bool wait_for_service(
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::nanoseconds(-1)) const
@@ -81,6 +134,32 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
+
+  /// For callers that hold the request as a plain std::shared_ptr lvalue and cannot change its
+  /// type. The Agnocast backend copies the payload into a shared-memory request. A null request is
+  /// rejected before any backend allocates for it, where rclcpp::Client would dereference it.
+  ///
+  /// By const reference rather than by value so that async_send_request(std::move(req)) still
+  /// binds to the rvalue-reference overloads.
+  ///
+  /// The two builds do not accept the same forms here. At ENABLE_AGNOCAST=0
+  /// AUTOWARE_CLIENT_REQUEST_PTR(S) is std::shared_ptr<S::Request>, so an owned request passed as
+  /// an lvalue -- async_send_request(req), where req came from allocate_output_service_request() --
+  /// binds to this overload and compiles. At =1 that same call does not compile: the owned request
+  /// is a message_ptr, which matches neither overload. Always std::move an owned request.
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    throw_if_null(request);
+    return async_send_request(to_owned_request(request));
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    const std::shared_ptr<typename ServiceT::Request> & request,
+    std::function<void(SharedFuture)> callback)
+  {
+    throw_if_null(request);
+    return async_send_request(to_owned_request(request), std::move(callback));
+  }
 };
 
 template <typename ServiceT>
@@ -93,6 +172,23 @@ protected:
   {
     return client_->wait_for_service(timeout);
   }
+
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+  to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) override
+  {
+    AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) owned = allocate_output_service_request();
+    *owned = *request;
+    return owned;
+  }
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   template <typename NodeT>
@@ -111,6 +207,9 @@ public:
   const char * get_service_name() const override { return client_->get_service_name(); }
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
+
+  // The overrides below would otherwise hide the base's std::shared_ptr overloads.
+  using Client<ServiceT>::async_send_request;
 
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
@@ -131,8 +230,7 @@ public:
             try {
               typename agnocast::ipc_shared_ptr<const typename ServiceT::Response>
                 agnocast_response = agnocast_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+              promise_ptr->set_value(detail::to_std_shared_ptr(std::move(agnocast_response)));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
             }
@@ -161,8 +259,7 @@ public:
             try {
               typename agnocast::ipc_shared_ptr<const typename ServiceT::Response>
                 agnocast_response = agnocast_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(agnocast_response)});
+              promise_ptr->set_value(detail::to_std_shared_ptr(std::move(agnocast_response)));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;
@@ -187,6 +284,22 @@ protected:
     return client_->wait_for_service(timeout);
   }
 
+  AUTOWARE_CLIENT_REQUEST_PTR(ServiceT)
+  to_owned_request(const std::shared_ptr<typename ServiceT::Request> & request) override
+  {
+    return AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){
+      std::shared_ptr<typename ServiceT::Request>(request)};
+  }
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
+
 public:
   explicit ROS2Client(
     rclcpp::Node * node, const std::string & service_name, const rclcpp::QoS & qos,
@@ -208,6 +321,9 @@ public:
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
+  // The overrides below would otherwise hide the base's std::shared_ptr overloads.
+  using Client<ServiceT>::async_send_request;
+
   AUTOWARE_CLIENT_FUTURE_AND_REQUEST_ID(ServiceT)
   async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request) override
   {
@@ -223,8 +339,7 @@ public:
                             try {
                               std::shared_ptr<const typename ServiceT::Response> ros2_response =
                                 ros2_shared_future.get();
-                              promise_ptr->set_value(
-                                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+                              promise_ptr->set_value(std::move(ros2_response));
                             } catch (...) {
                               promise_ptr->set_exception(std::current_exception());
                             }
@@ -253,8 +368,7 @@ public:
             try {
               std::shared_ptr<const typename ServiceT::Response> ros2_response =
                 ros2_shared_future.get();
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){std::move(ros2_response)});
+              promise_ptr->set_value(std::move(ros2_response));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;
@@ -302,8 +416,26 @@ class Client
 protected:
   virtual bool wait_for_service_impl(std::chrono::nanoseconds timeout) const = 0;
 
+  static void throw_if_null(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    if (!request) {
+      throw std::invalid_argument("async_send_request() was given a null request");
+    }
+  }
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Backend hook for configure_introspection(), kept out of the public interface so that its
+  /// argument check cannot be bypassed.
+  virtual void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) = 0;
+#endif
+
 public:
   using SharedPtr = std::shared_ptr<Client<ServiceT>>;
+
+  // For generic code that has to take this type off the client rather than spell it.
+  using SharedResponse = AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT);
 
   using Future = std::future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
   using SharedFuture = std::shared_future<AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT)>;
@@ -326,6 +458,23 @@ public:
 
   virtual bool service_is_ready() const = 0;
 
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  /// Turn ROS 2 service introspection on or off, mirroring
+  /// rclcpp::ClientBase::configure_introspection().
+  /// @throws std::invalid_argument for a null clock or a KeepAll QoS; see
+  /// detail::check_introspection_args().
+  /// @throws rclcpp::exceptions::RCLError when rcl rejects the call.
+  /// @note Not thread-safe: rcl documents its own side as such, so call this before the node
+  /// spins or from the spinning thread.
+  void configure_introspection(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state)
+  {
+    detail::check_introspection_args(get_service_name(), clock, qos_service_event_pub);
+    configure_introspection_impl(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
+
   template <typename RepT, typename RatioT>
   bool wait_for_service(
     std::chrono::duration<RepT, RatioT> timeout = std::chrono::nanoseconds(-1)) const
@@ -338,6 +487,32 @@ public:
   virtual SharedFutureAndRequestId async_send_request(
     AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) && request,
     std::function<void(SharedFuture)> callback) = 0;
+
+  /// For callers that hold the request as a plain std::shared_ptr lvalue and cannot change its
+  /// type. A null request is rejected before any backend allocates for it, where rclcpp::Client
+  /// would dereference it.
+  ///
+  /// By const reference rather than by value so that async_send_request(std::move(req)) still
+  /// binds to the rvalue-reference overloads.
+  ///
+  /// The two builds do not accept the same forms here. At ENABLE_AGNOCAST=0
+  /// AUTOWARE_CLIENT_REQUEST_PTR(S) is std::shared_ptr<S::Request>, so an owned request passed as
+  /// an lvalue -- async_send_request(req), where req came from allocate_output_service_request() --
+  /// binds to this overload and compiles. At =1 that same call does not compile: the owned request
+  /// is a message_ptr, which matches neither overload. Always std::move an owned request.
+  FutureAndRequestId async_send_request(const std::shared_ptr<typename ServiceT::Request> & request)
+  {
+    throw_if_null(request);
+    return async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){request});
+  }
+
+  SharedFutureAndRequestId async_send_request(
+    const std::shared_ptr<typename ServiceT::Request> & request,
+    std::function<void(SharedFuture)> callback)
+  {
+    throw_if_null(request);
+    return async_send_request(AUTOWARE_CLIENT_REQUEST_PTR(ServiceT){request}, std::move(callback));
+  }
 };
 
 template <typename ServiceT>
@@ -350,6 +525,15 @@ protected:
   {
     return client_->wait_for_service(timeout);
   }
+
+#if RCLCPP_VERSION_GTE(21, 0, 0)
+  void configure_introspection_impl(
+    rclcpp::Clock::SharedPtr clock, const rclcpp::QoS & qos_service_event_pub,
+    rcl_service_introspection_state_t introspection_state) override
+  {
+    client_->configure_introspection(std::move(clock), qos_service_event_pub, introspection_state);
+  }
+#endif
 
 public:
   explicit ROS2Client(
@@ -372,6 +556,9 @@ public:
 
   bool service_is_ready() const override { return client_->service_is_ready(); }
 
+  // The overrides below would otherwise hide the base's std::shared_ptr overloads.
+  using Client<ServiceT>::async_send_request;
+
   // rclcpp::Client<ServiceT>::Future (std::future<std::shared_ptr<Response>>) and
   // AUTOWARE_CLIENT_FUTURE(ServiceT) (std::future<std::shared_ptr<const Response>>) are different
   // std::future instantiations with no covariant conversion between them, so the result can't be
@@ -388,8 +575,9 @@ public:
                           [promise_ptr = std::move(promise_ptr)](
                             typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
                             try {
-                              promise_ptr->set_value(
-                                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+                              std::shared_ptr<const typename ServiceT::Response> ros2_response =
+                                ros2_shared_future.get();
+                              promise_ptr->set_value(std::move(ros2_response));
                             } catch (...) {
                               promise_ptr->set_exception(std::current_exception());
                             }
@@ -415,8 +603,9 @@ public:
            shared_future](typename rclcpp::Client<ServiceT>::SharedFuture ros2_shared_future) {
             // If an exception is set in the underlying future, propagate it to our promise.
             try {
-              promise_ptr->set_value(
-                AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT){ros2_shared_future.get()});
+              std::shared_ptr<const typename ServiceT::Response> ros2_response =
+                ros2_shared_future.get();
+              promise_ptr->set_value(std::move(ros2_response));
             } catch (...) {
               promise_ptr->set_exception(std::current_exception());
               return;

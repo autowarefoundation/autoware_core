@@ -5,6 +5,34 @@ Changelog for package autoware_twist2accel
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(localization): add node designs for the pose/twist estimation nodes (`#1409 <https://github.com/autowarefoundation/autoware_core/issues/1409>`_)
+  * feat(localization): add node designs for the pose/twist estimation nodes
+  Declare NdtScanMatcher, EkfLocalizer, GyroOdometer, StopFilter and
+  Twist2Accel node designs, with remap_target set to each node's hardcoded
+  topic and service names, and extend PoseInitializer with the map, GNSS,
+  stop-check inputs and the align/trigger/partial-map-load clients that
+  pose_initializer.launch.xml remaps. These let a system designer module
+  compose the localization stack directly from nodes.
+  * feat(localization): describe node designs and bump to format 0.4.0
+  ---------
+* refactor(autoware_twist2accel): shrink characterization test (`#1256 <https://github.com/autowarefoundation/autoware_core/issues/1256>`_)
+  * refactor(autoware_twist2accel): simplify publishing procedure
+  * refactor(autoware_twist2accel): shrink characterization test to simple integration test
+  The estimation math (finite differencing, low-pass filtering, dt clamping,
+  covariance, header/pose handling) is already covered by
+  test_accel_estimator.cpp unit tests. Reduce the node-level test to just the
+  Node's own routing logic: which input topic drives output/accel publishing
+  for a given use_odom value.
+  ---------
+  Co-authored-by: Takahisa.Ishikawa <takahisa.ishikawa@tier4.jp>
+  Co-authored-by: Tran Huu Nhat Huy <29034232+TranHuuNhatHuy@users.noreply.github.com>
+* fix(localization): fix test to use `get_node_base_interface` for `agnocast_wrapper::Node` (`#1209 <https://github.com/autowarefoundation/autoware_core/issues/1209>`_)
+  fix test for agnocast_wrapper::Node
+* Contributors: Koichi Imai, Taekjin LEE, Takahisa Ishikawa, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

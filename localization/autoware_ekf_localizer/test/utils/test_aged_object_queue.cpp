@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
 #include <string>
 
 namespace autoware::ekf_localizer
@@ -103,6 +104,23 @@ TEST(AgedObjectQueue, Back)
   queue.push("b");
 
   EXPECT_EQ(queue.back(), std::string{"b"});
+}
+
+TEST(AgedObjectQueue, PopAndMaxQueueSize)
+{
+  AgedObjectQueue<std::string> queue(3, 5);
+  EXPECT_EQ(queue.max_queue_size(), 5U);
+  EXPECT_EQ(queue.max_age(), 3U);
+  EXPECT_FALSE(queue.exceeded());
+
+  queue.push("a");
+  queue.push("b");
+  EXPECT_EQ(queue.size(), 2U);
+
+  EXPECT_EQ(queue.pop(), "a");
+  EXPECT_EQ(queue.size(), 1U);
+  EXPECT_EQ(queue.pop(), "b");
+  EXPECT_TRUE(queue.empty());
 }
 
 }  // namespace autoware::ekf_localizer

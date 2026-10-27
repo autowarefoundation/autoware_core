@@ -5,6 +5,21 @@ Changelog for package autoware_vehicle_velocity_converter
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* refactor: migrate node design files from autoware_universe (`#1381 <https://github.com/autowarefoundation/autoware_core/issues/1381>`_)
+  Node design files for packages that moved to autoware_core, placed at
+  the in-package convention <package>/design/<Name>.node.yaml.
+  Co-authored-by: Claude Fable 5 <noreply@anthropic.com>
+* feat(vehicle_velocity_converter): apply `agnocast_wrapper::Node` to `autoware_vehicle_velocity_converter` (`#1220 <https://github.com/autowarefoundation/autoware_core/issues/1220>`_)
+  * apply agnocast_wrapper::Node
+  * fix launch
+  * fix tests
+  * fix to include utility
+  ---------
+* Contributors: Koichi Imai, Taekjin LEE, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

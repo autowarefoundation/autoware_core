@@ -5,6 +5,13 @@ Changelog for package autoware_testing
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* chore: update package maintainer (`#1384 <https://github.com/autowarefoundation/autoware_core/issues/1384>`_)
+  chore: update package author metadata
+* Contributors: Satoshi OTA, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 

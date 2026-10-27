@@ -22,11 +22,12 @@ ament_auto_add_library(${PROJECT_NAME}_component SHARED
   src/mission_planner/arrival_checker.cpp
   src/mission_planner/reroute_safety.cpp
   src/mission_planner/mission_planner.cpp
+  src/mission_planner/mission_planner_node.cpp
 )
 target_link_libraries(${PROJECT_NAME}_component ${PROJECT_NAME}_lanelet2_plugins)
 
 rclcpp_components_register_node(${PROJECT_NAME}_component
-  PLUGIN "autoware::mission_planner::MissionPlanner"
+  PLUGIN "autoware::mission_planner::MissionPlannerNode"
   EXECUTABLE mission_planner
 )
 
@@ -53,6 +54,13 @@ if(BUILD_TESTING)
   test/test_arrival_checker.cpp
   )
   target_link_libraries(test_${PROJECT_NAME}_arrival_checker
+    ${PROJECT_NAME}_component
+  )
+
+  ament_add_gtest(test_${PROJECT_NAME}_mission_planner
+  test/test_mission_planner.cpp
+  )
+  target_link_libraries(test_${PROJECT_NAME}_mission_planner
     ${PROJECT_NAME}_component
   )
 

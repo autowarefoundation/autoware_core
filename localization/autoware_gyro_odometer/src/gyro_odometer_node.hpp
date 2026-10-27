@@ -29,6 +29,7 @@
 #include <geometry_msgs/msg/twist_with_covariance_stamped.hpp>
 #include <sensor_msgs/msg/imu.hpp>
 
+#include <array>
 #include <memory>
 #include <optional>
 #include <string>
@@ -39,6 +40,12 @@ namespace autoware::gyro_odometer
 using TransformListener = autoware_utils_tf::TransformListenerT<
   autoware::agnocast_wrapper::Node, autoware::agnocast_wrapper::Buffer,
   autoware::agnocast_wrapper::TransformListener>;
+
+/// \brief Reduce an angular-velocity covariance (xyz layout) to an isotropic diagonal covariance.
+///
+/// The maximum of the three diagonal terms (X_X, Y_Y, Z_Z) is written to all three diagonal
+/// terms; every off-diagonal term is zeroed. Pure function: output depends only on the input.
+std::array<double, 9> transform_covariance(const std::array<double, 9> & cov);
 
 /// \brief Express \p imu_msg's angular velocity in \p output_frame.
 ///

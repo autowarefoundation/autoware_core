@@ -51,6 +51,12 @@ struct FakeSubscription
 {
 };
 
+/// A client handle that spells no SharedResponse/SharedFuture, unlike rclcpp::Client.
+template <class ServiceT>
+struct FakeClient
+{
+};
+
 struct FakeNode
 {
   template <class MessageT>
@@ -58,6 +64,13 @@ struct FakeNode
     const std::string &, const rclcpp::QoS &)
   {
     return std::make_shared<FakePublisher<MessageT>>();
+  }
+
+  template <class ServiceT, class QosT>
+  std::shared_ptr<FakeClient<ServiceT>> create_client(
+    const std::string &, QosT &&, rclcpp::CallbackGroup::SharedPtr)
+  {
+    return std::make_shared<FakeClient<ServiceT>>();
   }
 
   template <class MessageT, class CallbackT>
@@ -267,6 +280,22 @@ TEST(interface, wrappers_deduce_endpoint_types_from_node)
   static_assert(std::is_same_v<
                 typename utils::Subscription<OperationModeState, FakeNode>::WrapType,
                 FakeSubscription<Message>>);
+  static_assert(std::is_same_v<
+                typename utils::Client<ChangeOperationMode, FakeNode>::WrapType, FakeClient<Srv>>);
+
+  // A handle that spells no response/future types still yields a complete Client.
+  static_assert(
+    std::is_same_v<
+      typename utils::Client<ChangeOperationMode>::SharedResponse, std::shared_ptr<Srv::Response>>);
+  static_assert(std::is_same_v<
+                typename utils::Client<ChangeOperationMode>::SharedFuture,
+                std::shared_future<std::shared_ptr<Srv::Response>>>);
+  static_assert(std::is_same_v<
+                typename utils::Client<ChangeOperationMode, FakeNode>::SharedResponse,
+                std::shared_ptr<Srv::Response>>);
+  static_assert(std::is_same_v<
+                typename utils::Client<ChangeOperationMode, FakeNode>::SharedFuture,
+                std::shared_future<std::shared_ptr<Srv::Response>>>);
 
   // A derived node must not be deduced as the adaptor's node type, or the wrappers it creates
   // would stop matching the consumers' member declarations.

@@ -1,0 +1,72 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: AdapiRoutingAdaptor.node
+
+description: Converts goal and waypoint poses from RViz into routing API requests.
+
+package:
+  name: autoware_adapi_adaptors
+  provider: autoware
+
+launch:
+  plugin: autoware::adapi_adaptors::RoutingAdaptor
+  executable: routing_adaptor_node
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: fixed_goal
+    message_type: geometry_msgs/msg/PoseStamped
+    description: Goal pose used as is.
+    global: /planning/mission_planning/goal
+  - name: rough_goal
+    message_type: geometry_msgs/msg/PoseStamped
+    description: Goal pose with goal modification allowed.
+    global: /rviz/routing/rough_goal
+  - name: reroute
+    message_type: geometry_msgs/msg/PoseStamped
+    description: Goal pose for rerouting.
+    global: /rviz/routing/reroute
+  - name: waypoint
+    message_type: geometry_msgs/msg/PoseStamped
+    description: Waypoint pose appended to the route.
+    global: /planning/mission_planning/checkpoint
+  - name: state
+    message_type: autoware_adapi_v1_msgs/msg/RouteState
+    description: Route state of the API.
+    remap_target: /api/routing/state
+
+publishers: []
+
+clients:
+  - name: clear_route
+    message_type: autoware_adapi_v1_msgs/srv/ClearRoute
+    description: Routing API to clear the current route.
+    remap_target: /api/routing/clear_route
+  - name: set_route_points
+    message_type: autoware_adapi_v1_msgs/srv/SetRoutePoints
+    description: Routing API to set the route points.
+    remap_target: /api/routing/set_route_points
+  - name: change_route_points
+    message_type: autoware_adapi_v1_msgs/srv/SetRoutePoints
+    description: Routing API to change the route points for rerouting.
+    remap_target: /api/routing/change_route_points
+
+# parameters
+param_files: []
+
+param_values: []
+
+# processes
+processes:
+  - name: request_route
+    description: Builds a route request from the received goal and waypoints and issues the clear and set route calls until the route is applied.
+    trigger_conditions:
+      - periodic: 5.0 # Hz
+    outcomes: []
+  - name: reroute
+    description: Sends a route change request to the received reroute goal.
+    trigger_conditions:
+      - on_input: reroute
+    outcomes: []

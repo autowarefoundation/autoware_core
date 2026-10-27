@@ -9,6 +9,48 @@ Changelog for package autoware_map_projection_loader
 * feat(map_projection_loader): add scale_factor and remove altitude (`#340 <https://github.com/autowarefoundation/autoware_core/issues/340>`_)
 * Contributors: Takagi, Isamu, Yamato Ando
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* feat(map): add node designs for the map nodes (`#1413 <https://github.com/autowarefoundation/autoware_core/issues/1413>`_)
+  * feat(map): add node designs for the map nodes
+  Describe the interfaces, parameters and processes of the pointcloud and
+  lanelet2 map loaders, the map hash generator, the lanelet2 map
+  visualizer and the map projection loader as system design node files.
+  * fix(map): correct description formatting in Lanelet2MapLoader.node.yaml
+  * refactor(map): rename node designs to match the node class names
+  PointCloudMapLoader and Lanelet2MapVisualization follow the entity
+  naming convention derived from the C++ class names, as in `#1335 <https://github.com/autowarefoundation/autoware_core/issues/1335>`_.
+  * fix(map): declare the MapHashGenerator external API interfaces as remap targets
+  The map hash publisher and the lanelet XML server carry the fixed API
+  names as remap_target, so a system design connects them like any other
+  port and the launcher remaps the node-side names.
+  * fix(map): update description for map_projector_info to clarify its purpose
+  ---------
+* fix(map): declare the dependencies these packages use (`#1370 <https://github.com/autowarefoundation/autoware_core/issues/1370>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+* refactor(`autoware_map_projection_loader`): keep core logic free of logging (`#1310 <https://github.com/autowarefoundation/autoware_core/issues/1310>`_)
+  * refactor: keep core logic free of logging
+  * Emit the input paths from the node instead of std::cout
+  * Drop the deprecated lowercase "local" projector type (now rejected).
+  * fix: `README.md`
+  * fix: separate source file into that of core/ROS-node logic
+  ---------
+  Co-authored-by: Tran Huu Nhat Huy <29034232+TranHuuNhatHuy@users.noreply.github.com>
+* feat(map_projection_loader): apply `agnocast_wrapper::Node` to `map_projection_loader` (`#1202 <https://github.com/autowarefoundation/autoware_core/issues/1202>`_)
+  * apply agnocast_wrapper::Node
+  * delete unnecessary comments
+  ---------
+* Contributors: Junya Sasaki, Koichi Imai, Mete Fatih Cırıt, Taekjin LEE, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

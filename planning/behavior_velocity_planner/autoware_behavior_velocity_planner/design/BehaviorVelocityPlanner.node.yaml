@@ -35,6 +35,33 @@ subscribers:
 publishers:
   - name: path
     message_type: autoware_planning_msgs/msg/Path
+  - name: planning_factors/crosswalk
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/crosswalk
+  - name: planning_factors/walkway
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/walkway
+  - name: planning_factors/traffic_light
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/traffic_light
+  - name: planning_factors/intersection
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/intersection
+  - name: planning_factors/blind_spot
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/blind_spot
+  - name: planning_factors/detection_area
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/detection_area
+  - name: planning_factors/virtual_traffic_light
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/virtual_traffic_light
+  - name: planning_factors/no_stopping_area
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/no_stopping_area
+  - name: planning_factors/stop_line
+    message_type: autoware_internal_planning_msgs/msg/PlanningFactorArray
+    remap_target: /planning/planning_factors/stop_line
 
 # parameters
 param_files:

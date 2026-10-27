@@ -23,6 +23,8 @@
 #include <geometry_msgs/msg/vector3_stamped.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
+#include <algorithm>
+#include <array>
 #include <chrono>
 #include <cmath>
 #include <memory>
@@ -30,6 +32,20 @@
 
 namespace autoware::gyro_odometer
 {
+
+std::array<double, 9> transform_covariance(const std::array<double, 9> & cov)
+{
+  using COV_IDX = autoware_utils_geometry::xyz_covariance_index::XYZ_COV_IDX;
+
+  double max_cov = std::max({cov[COV_IDX::X_X], cov[COV_IDX::Y_Y], cov[COV_IDX::Z_Z]});
+
+  std::array<double, 9> cov_transformed = {};
+  cov_transformed.fill(0.);
+  cov_transformed[COV_IDX::X_X] = max_cov;
+  cov_transformed[COV_IDX::Y_Y] = max_cov;
+  cov_transformed[COV_IDX::Z_Z] = max_cov;
+  return cov_transformed;
+}
 
 std::optional<sensor_msgs::msg::Imu> transform_imu(
   const sensor_msgs::msg::Imu & imu_msg, TransformListener & transform_listener,
@@ -124,13 +140,11 @@ void GyroOdometerNode::callback_imu(
 
 void GyroOdometerNode::publish_data(const GyroOdometer::OutputData & output_data)
 {
-  const auto & [twist_raw, twist_with_covariance_raw, twist, twist_with_covariance] = output_data;
+  twist_raw_pub_->publish(output_data.twist_raw);
+  twist_with_covariance_raw_pub_->publish(output_data.twist_with_covariance_raw);
 
-  twist_raw_pub_->publish(twist_raw);
-  twist_with_covariance_raw_pub_->publish(twist_with_covariance_raw);
-
-  twist_pub_->publish(twist);
-  twist_with_covariance_pub_->publish(twist_with_covariance);
+  twist_pub_->publish(output_data.twist);
+  twist_with_covariance_pub_->publish(output_data.twist_with_covariance);
 }
 
 void GyroOdometerNode::publish_diagnostics()
@@ -155,11 +169,13 @@ void GyroOdometerNode::publish_diagnostics()
   diagnostics_->add_key_value("vehicle_twist_queue_size", status.vehicle_twist_queue_size);
   diagnostics_->add_key_value("imu_queue_size", status.imu_queue_size);
   diagnostics_->add_key_value("is_succeed_transform_imu", is_succeed_transform_imu_);
+  diagnostics_->add_key_value("is_frame_id_consistent", status.is_frame_id_consistent);
 
   DiagnosticsState state;
   state.vehicle_twist_arrived = status.vehicle_twist_arrived;
   state.imu_arrived = status.imu_arrived;
   state.is_succeed_transform_imu = is_succeed_transform_imu_;
+  state.is_frame_id_consistent = status.is_frame_id_consistent;
   state.latest_vehicle_twist_dt = status.latest_vehicle_twist_dt;
   state.latest_imu_dt = status.latest_imu_dt;
   state.message_timeout_sec = message_timeout_sec_;

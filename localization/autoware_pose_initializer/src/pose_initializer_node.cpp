@@ -1,0 +1,285 @@
+// Copyright 2022 The Autoware Contributors
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
+
+#include "pose_initializer_node.hpp"
+
+#include "pose_initializer.hpp"
+#include "utils/copy_vector_to_array.hpp"
+#include "utils/gnss_module.hpp"
+#include "utils/localization_module.hpp"
+#include "utils/localization_trigger_module.hpp"
+#include "utils/pose_error_check_module.hpp"
+#include "utils/stop_check_module.hpp"
+
+#include <autoware_adapi_v1_msgs/msg/response_status.hpp>
+#include <autoware_common_msgs/msg/response_status.hpp>
+
+#include <chrono>
+#include <memory>
+#include <sstream>
+#include <vector>
+
+namespace autoware::pose_initializer
+{
+PoseInitializerNode::PoseInitializerNode(const rclcpp::NodeOptions & options)
+: autoware::agnocast_wrapper::Node("pose_initializer", options),
+  group_srv_(create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive)),
+  pub_reset_(create_publisher<PoseWithCovarianceStamped>("pose_reset", 1))
+{
+  pub_state_ = adaptor_.create_publisher<State>();
+  srv_initialize_ =
+    adaptor_.create_service<Initialize>(this, &PoseInitializerNode::on_initialize, group_srv_);
+
+  output_pose_covariance_ = get_covariance_parameter(this, "output_pose_covariance");
+  gnss_particle_covariance_ = get_covariance_parameter(this, "gnss_particle_covariance");
+  diagnostics_pose_reliable_ = std::make_unique<
+    autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>>(
+    this, "pose_initializer_status");
+
+  if (declare_parameter<bool>("ekf_enabled")) {
+    ekf_localization_trigger_ =
+      std::make_unique<LocalizationTriggerModule>(this, "ekf_trigger_node", "EKF");
+  }
+  if (declare_parameter<bool>("gnss_enabled")) {
+    gnss_ = std::make_unique<GnssModule>(this);
+  }
+  if (declare_parameter<bool>("yabloc_enabled")) {
+    yabloc_ = std::make_unique<LocalizationModule>(this, "yabloc_align");
+  }
+  if (declare_parameter<bool>("ndt_enabled")) {
+    ndt_ = std::make_unique<LocalizationModule>(this, "ndt_align");
+    ndt_localization_trigger_ =
+      std::make_unique<LocalizationTriggerModule>(this, "ndt_trigger_node", "NDT");
+  }
+  if (declare_parameter<bool>("stop_check_enabled")) {
+    // Add 1.0 sec margin for twist buffer.
+    stop_check_duration_ = declare_parameter<double>("stop_check_duration");
+    stop_check_ = std::make_unique<StopCheckModule>(this, stop_check_duration_ + 1.0);
+  }
+  if (declare_parameter<bool>("pose_error_check_enabled")) {
+    pose_error_check_ = std::make_unique<PoseErrorCheckModule>(this);
+  }
+  logger_configure_ = std::make_unique<
+    autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
+
+  change_state(State::Message::UNINITIALIZED);
+
+  if (declare_parameter<bool>("user_defined_initial_pose.enable")) {
+    const auto initial_pose_array =
+      declare_parameter<std::vector<double>>("user_defined_initial_pose.pose");
+
+    geometry_msgs::msg::Pose initial_pose;
+    try {
+      initial_pose = PoseInitializer::validate_user_defined_initial_pose(initial_pose_array);
+    } catch (const std::invalid_argument & e) {
+      throw;  // Fail fast
+    }
+
+    change_state(State::Message::INITIALIZING);
+
+    // Blocks on the trigger service responses, so it can only run once the executor is spinning.
+    // group_srv_ keeps it off the callback group that has to deliver those responses.
+    // It also has to stay there so it cannot interleave with on_initialize().
+    user_defined_initial_pose_timer_ = autoware::agnocast_wrapper::create_timer(
+      this, get_clock(), rclcpp::Duration(std::chrono::milliseconds(1)),
+      [this, initial_pose]() {
+        user_defined_initial_pose_timer_->cancel();
+        set_user_defined_initial_pose(initial_pose);
+      },
+      group_srv_);
+  }
+}
+
+void PoseInitializerNode::change_state(State::Message::_state_type state)
+{
+  state_.stamp = now();
+  state_.state = state;
+  pub_state_->publish(state_);
+}
+
+void PoseInitializerNode::change_node_trigger(bool flag)
+{
+  try {
+    if (ekf_localization_trigger_) {
+      ekf_localization_trigger_->wait_for_service();
+      ekf_localization_trigger_->send_request(flag);
+    }
+    if (ndt_localization_trigger_) {
+      ndt_localization_trigger_->wait_for_service();
+      ndt_localization_trigger_->send_request(flag);
+    }
+  } catch (const autoware_adapi_v1_msgs::msg::ResponseStatus & error) {
+    throw;
+  }
+}
+
+void PoseInitializerNode::set_user_defined_initial_pose(const geometry_msgs::msg::Pose initial_pose)
+{
+  try {
+    change_state(State::Message::INITIALIZING);
+    change_node_trigger(false);
+
+    PoseWithCovarianceStamped pose;
+    pose.header.frame_id = "map";
+    pose.header.stamp = now();
+    pose.pose.pose = initial_pose;
+    pose.pose.covariance = output_pose_covariance_;
+    pub_reset_->publish(pose);
+
+    change_node_trigger(true);
+    change_state(State::Message::INITIALIZED);
+
+    RCLCPP_INFO(get_logger(), "Set user defined initial pose");
+  } catch (const autoware_adapi_v1_msgs::msg::ResponseStatus & error) {
+    change_state(State::Message::UNINITIALIZED);
+    RCLCPP_WARN(get_logger(), "Could not set user defined initial pose");
+  }
+}
+
+void PoseInitializerNode::on_initialize(
+  const Initialize::Service::Request::SharedPtr req,
+  const Initialize::Service::Response::SharedPtr res)
+{
+  try {
+    // NOTE: This function is not executed during initialization because mutually exclusive.
+    if (stop_check_ && !stop_check_->isVehicleStopped(stop_check_duration_)) {
+      autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
+      respose_status.success = false;
+      respose_status.code = Initialize::Service::Response::ERROR_UNSAFE;
+      respose_status.message = "The vehicle is not stopped.";
+      throw respose_status;
+    }
+
+    if (req->method == Initialize::Service::Request::AUTO) {
+      change_state(State::Message::INITIALIZING);
+      change_node_trigger(false);
+
+      auto pose =
+        req->pose_with_covariance.empty() ? get_gnss_pose() : req->pose_with_covariance.front();
+      bool reliable = true;
+      if (ndt_) {
+        std::tie(pose, reliable) = ndt_->align_pose(pose);
+      } else if (yabloc_) {
+        // If both the NDT and YabLoc initializer are enabled, prioritize NDT as it offers more
+        // accuracy pose.
+        std::tie(pose, reliable) = yabloc_->align_pose(pose);
+      }
+
+      std::optional<PoseWithCovarianceStamped> latest_gnss_pose;
+      std::optional<double> pose_error_threshold;
+
+      // To strictly preserve legacy behavior, we run PoseErrorCheckModule here so it logs using its
+      // own mechanism.
+      if (pose_error_check_ && gnss_) {
+        latest_gnss_pose = get_gnss_pose();
+        double dummy_gnss_error_2d;
+        // PoseErrorCheckModule logs internally if the error is large.
+        pose_error_check_->check_pose_error(
+          latest_gnss_pose.value().pose.pose, pose.pose.pose, dummy_gnss_error_2d);
+
+        // We still provide the threshold to the core module to construct the diagnostic status
+        // properly.
+        pose_error_threshold = pose_error_check_->get_pose_error_threshold();
+      }
+
+      const auto result = PoseInitializer::evaluate_auto_pose(
+        pose, reliable, latest_gnss_pose, output_pose_covariance_, pose_error_threshold);
+
+      diagnostics_pose_reliable_->clear();
+
+      if (result.diagnostics.has_value()) {
+        const auto & diag = result.diagnostics.value();
+
+        if (diag.gnss_error_2d.has_value() && diag.is_gnss_pose_error_small.has_value()) {
+          diagnostics_pose_reliable_->add_key_value(
+            "gnss_pose_error_2d", diag.gnss_error_2d.value());
+          diagnostics_pose_reliable_->add_key_value(
+            "is_gnss_pose_error_small", diag.is_gnss_pose_error_small.value());
+          if (!diag.is_gnss_pose_error_small.value()) {
+            std::stringstream message;
+            message << " Large error between Initial Pose and GNSS Pose.";
+            diagnostics_pose_reliable_->update_level_and_message(
+              diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
+          }
+        }
+
+        diagnostics_pose_reliable_->add_key_value("is_initial_pose_reliable", diag.is_reliable);
+        if (!diag.is_reliable) {
+          std::stringstream message;
+          message << "Initial Pose Estimation is Unstable.";
+          diagnostics_pose_reliable_->update_level_and_message(
+            diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+        }
+      }
+
+      diagnostics_pose_reliable_->publish(this->now());
+
+      if (result.reset_pose.has_value()) {
+        pub_reset_->publish(result.reset_pose.value());
+      }
+
+      change_node_trigger(true);
+      res->status.success = result.is_success;
+      change_state(State::Message::INITIALIZED);
+
+    } else if (req->method == Initialize::Service::Request::DIRECT) {
+      if (req->pose_with_covariance.empty()) {
+        std::stringstream message;
+        message << "No input pose_with_covariance. If you want to use DIRECT method, please input "
+                   "pose_with_covariance.";
+        RCLCPP_ERROR_STREAM(get_logger(), message.str());
+        autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
+        respose_status.success = false;
+        respose_status.code = autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR;
+        respose_status.message = message.str();
+        throw respose_status;
+      }
+
+      set_user_defined_initial_pose(req->pose_with_covariance.front().pose.pose);
+      res->status.success = true;
+    } else {
+      std::stringstream message;
+      message << "Unknown method type (=" << std::to_string(req->method) << ")";
+      RCLCPP_ERROR_STREAM(get_logger(), message.str());
+      autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
+      respose_status.success = false;
+      respose_status.code = autoware_common_msgs::msg::ResponseStatus::PARAMETER_ERROR;
+      respose_status.message = message.str();
+      throw respose_status;
+    }
+  } catch (const autoware_adapi_v1_msgs::msg::ResponseStatus & error) {
+    res->status.success = error.success;
+    res->status.code = error.code;
+    res->status.message = error.message;
+    change_state(State::Message::UNINITIALIZED);
+  }
+}
+
+geometry_msgs::msg::PoseWithCovarianceStamped PoseInitializerNode::get_gnss_pose()
+{
+  if (gnss_) {
+    PoseWithCovarianceStamped pose = gnss_->get_pose();
+    pose.pose.covariance = gnss_particle_covariance_;
+    return pose;
+  }
+  autoware_adapi_v1_msgs::msg::ResponseStatus respose_status;
+  respose_status.success = false;
+  respose_status.code = Initialize::Service::Response::ERROR_GNSS_SUPPORT;
+  respose_status.message = "GNSS is not supported.";
+  throw respose_status;
+}
+}  // namespace autoware::pose_initializer
+
+#include <rclcpp_components/register_node_macro.hpp>
+RCLCPP_COMPONENTS_REGISTER_NODE(autoware::pose_initializer::PoseInitializerNode)

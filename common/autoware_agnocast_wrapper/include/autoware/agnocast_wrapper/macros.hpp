@@ -42,13 +42,15 @@
 #define AUTOWARE_CLIENT_REQUEST_PTR(ServiceT) \
   autoware::agnocast_wrapper::message_ptr<    \
     typename ServiceT::Request, autoware::agnocast_wrapper::OwnershipType::Shared>
-#define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) \
-  autoware::agnocast_wrapper::message_ptr<     \
-    const typename ServiceT::Response, autoware::agnocast_wrapper::OwnershipType::Shared>
+// The client hands the response over as a plain std::shared_ptr in both builds: the agnocast
+// backend aliases the received handle, so nothing is copied.
+#define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Response>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) \
   typename autoware::agnocast_wrapper::Publisher<MessageT>::SharedPtr
+#define AUTOWARE_GENERIC_SUBSCRIPTION_PTR autoware::agnocast_wrapper::GenericSubscription::SharedPtr
+#define AUTOWARE_GENERIC_PUBLISHER_PTR autoware::agnocast_wrapper::GenericPublisher::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) \
   typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) \
@@ -76,6 +78,26 @@
   autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   autoware::agnocast_wrapper::create_publisher<message_type>(node, arg1, arg2, arg3)
+
+// Method 1 (macro + free function) entry points for the generic (type-erased) publisher and
+// subscription: mirrors AUTOWARE_CREATE_PUBLISHER2/3 and AUTOWARE_CREATE_SUBSCRIPTION above, but
+// with a runtime topic_type string instead of a compile-time message_type.
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER3(topic, topic_type, qos) \
+  autoware::agnocast_wrapper::create_generic_publisher(this, topic, topic_type, qos)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER4(topic, topic_type, qos, options) \
+  autoware::agnocast_wrapper::create_generic_publisher(this, topic, topic_type, qos, options)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER3_ON_NODE(node, topic, topic_type, qos) \
+  autoware::agnocast_wrapper::create_generic_publisher(node, topic, topic_type, qos)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER4_ON_NODE(node, topic, topic_type, qos, options) \
+  autoware::agnocast_wrapper::create_generic_publisher(node, topic, topic_type, qos, options)
+
+#define AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(topic, topic_type, qos, callback, options) \
+  autoware::agnocast_wrapper::create_generic_subscription(                              \
+    this, topic, topic_type, qos, callback, options)
+#define AUTOWARE_CREATE_GENERIC_SUBSCRIPTION_ON_NODE(      \
+  node, topic, topic_type, qos, callback, options)         \
+  autoware::agnocast_wrapper::create_generic_subscription( \
+    node, topic, topic_type, qos, callback, options)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)
@@ -124,6 +146,8 @@
 #define AUTOWARE_CLIENT_RESPONSE_PTR(ServiceT) std::shared_ptr<const typename ServiceT::Response>
 #define AUTOWARE_SUBSCRIPTION_PTR(MessageT) typename rclcpp::Subscription<MessageT>::SharedPtr
 #define AUTOWARE_PUBLISHER_PTR(MessageT) typename rclcpp::Publisher<MessageT>::SharedPtr
+#define AUTOWARE_GENERIC_SUBSCRIPTION_PTR rclcpp::GenericSubscription::SharedPtr
+#define AUTOWARE_GENERIC_PUBLISHER_PTR rclcpp::GenericPublisher::SharedPtr
 #define AUTOWARE_CLIENT_PTR(ServiceT) \
   typename autoware::agnocast_wrapper::Client<ServiceT>::SharedPtr
 #define AUTOWARE_SERVICE_PTR(ServiceT) \
@@ -151,6 +175,31 @@
   (node)->create_publisher<message_type>(arg1, arg2)
 #define AUTOWARE_CREATE_PUBLISHER3_ON_NODE(message_type, node, arg1, arg2, arg3) \
   (node)->create_publisher<message_type>(arg1, arg2, arg3)
+
+// Method 1 (macro + free function) entry points for the generic (type-erased) publisher and
+// subscription. Unlike AUTOWARE_CREATE_PUBLISHER2/3 above, these do NOT forward to `this`'s own
+// native create_generic_publisher()/create_generic_subscription() directly: rclcpp's generic
+// create_*() silently drops qos_overriding_options while the Agnocast-enabled build's rejects it,
+// so calling through the wrapper free function here — which checks first — keeps the two builds
+// behaving the same way instead of reopening that inconsistency at the macro's own call site (see
+// create_generic_publisher()/create_generic_subscription() in generic_publisher.hpp/
+// generic_subscription.hpp).
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER3(topic, topic_type, qos) \
+  autoware::agnocast_wrapper::create_generic_publisher(this, topic, topic_type, qos)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER4(topic, topic_type, qos, options) \
+  autoware::agnocast_wrapper::create_generic_publisher(this, topic, topic_type, qos, options)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER3_ON_NODE(node, topic, topic_type, qos) \
+  autoware::agnocast_wrapper::create_generic_publisher(node, topic, topic_type, qos)
+#define AUTOWARE_CREATE_GENERIC_PUBLISHER4_ON_NODE(node, topic, topic_type, qos, options) \
+  autoware::agnocast_wrapper::create_generic_publisher(node, topic, topic_type, qos, options)
+
+#define AUTOWARE_CREATE_GENERIC_SUBSCRIPTION(topic, topic_type, qos, callback, options) \
+  autoware::agnocast_wrapper::create_generic_subscription(                              \
+    this, topic, topic_type, qos, callback, options)
+#define AUTOWARE_CREATE_GENERIC_SUBSCRIPTION_ON_NODE(      \
+  node, topic, topic_type, qos, callback, options)         \
+  autoware::agnocast_wrapper::create_generic_subscription( \
+    node, topic, topic_type, qos, callback, options)
 
 #define AUTOWARE_CREATE_CLIENT1(service_type, service_name) \
   autoware::agnocast_wrapper::create_client<service_type>(this, service_name)

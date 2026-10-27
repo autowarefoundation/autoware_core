@@ -63,6 +63,121 @@ Changelog for package autoware_path_generator
 * feat(autoware_path_generator): use autoware_trajectory for cropping bounds (`#349 <https://github.com/autowarefoundation/autoware_core/issues/349>`_)
 * Contributors: Kazunori-Nakajima, Mamoru Sobue, Mitsuhiro Sakamoto, Yukinari Hisaki
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(design): align the autoware_core node designs with the packages they describe (`#1416 <https://github.com/autowarefoundation/autoware_core/issues/1416>`_)
+  * fix(autoware_velocity_smoother): correct the velocity limit message type in the node design
+  The node publishes current_velocity_limit_mps as
+  autoware_internal_planning_msgs/msg/VelocityLimit (node.hpp), while the
+  design declared the pre-migration tier4_planning_msgs type, failing the
+  connection check against downstream ports.
+  * fix(autoware_motion_velocity_planner): correct the velocity limit message types and drop absent publishers in the node design
+  * fix(autoware_path_generator): correct the path publisher message type in the node design
+  The node publishes autoware_internal_planning_msgs/msg/PathWithLaneId on
+  ~/output/path (node.hpp:84), not autoware_planning_msgs/msg/Path.
+  * fix(autoware_velocity_smoother): declare the kinematic state subscriber in the node design
+  The node polls /localization/kinematic_state for the ego odometry
+  (node.hpp:94-97); the design did not list the input at all.
+  * fix(autoware_motion_velocity_planner): name the module-side subscriber topics in the node design
+  The boundary departure prevention module subscribes on absolute topic
+  names, so the default ~/input/<name> remap targets addressed topics the
+  node never opens and the module connections resolved to nothing. Declare
+  the real names and add the steering status input the module also takes.
+  * fix(autoware_gnss_poser): declare the map projector info subscriber in the node design
+  The node blocks pose conversion until /map/map_projector_info arrives
+  (gnss_poser_node.cpp:43); the design did not list the input at all.
+  * fix(autoware_behavior_velocity_planner): add additional planning factors to publishers in the node design
+  ---------
+* feat(autoware_path_generator): implement characterization test (`#1403 <https://github.com/autowarefoundation/autoware_core/issues/1403>`_)
+  * implement integration test class
+  * implement test 1 of nominal standard route
+  * added test 2 of turn signal state machine test
+  * added test 3 for failsafe runtime test
+  * updated CMakeLists.txt
+  * removed old useless integration tests
+  * updated CKAmeLists
+  * fixed, build test complete and all good
+  * refactor that re-pub code snippet to be more ELEGANTO~
+  * further reafactor the map fetch snippet
+  * added test 4 of path cut scenario
+  * added TEST 5 for dense centerline scenario
+  * added TEST 6 of the missing dependency scenario
+  * minor fix on func type dec
+  * style(pre-commit): autofix
+  * added funcs to replace map bin and route with mocked versions
+  * temporal attempts to create a moc map moc route helper funcs
+  * style(pre-commit): autofix
+  * finally TEST 1 works fine now
+  * successfully applied create_mock_turn_map_bin() for TEST 2
+  * successfully implemented mock funcs into TEST 3
+  * successfully added map egn for X case, and applied it to TEST 4
+  * finally made TEST 5 works
+  * done rebasing
+  * finally adapted TEST 6, all good now
+  * successfully stripped away autoware_test_utils dependencies
+  * style(pre-commit): autofix
+  * make codes of map gen funcs SUPER-ELEGANTO!
+  * style(pre-commit): autofix
+  * precommit fix check
+  * bring back those old useless integration tests
+  * reduce git diff
+  * finally removed the 2 smokke tests
+  * added ASCII map vis comments for X map
+  * removed the create_mock_turn_map() func cuz its a lil bit redundant, and updating its edpendencies
+  * attempt to fix
+  * [sobue] replaced loop map bin with a P shaped self intersecting map
+  * added mock route for this single loop map
+  * fix comment section from // with /**/
+  * self intersection all good
+  * further attempting to fix
+  * added robust helper to wait for ros race
+  * style(pre-commit): autofix
+  * further reduce delay time
+  * fix the comments describing loop map a lil bit i guess
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* fix(planning_test_manager): handle slow path output (`#1435 <https://github.com/autowarefoundation/autoware_core/issues/1435>`_)
+* feat: add spinUntilReceived to wait for subscription on ROS build farm (`#1176 <https://github.com/autowarefoundation/autoware_core/issues/1176>`_)
+  feat(planning_test_manager): add spinUntilReceived for ROS build farm
+* docs(planning): point the autoware_launch config links at their current path (`#1406 <https://github.com/autowarefoundation/autoware_core/issues/1406>`_)
+  `pre-commit-optional` fails on every PR with three dead links, all pointing
+  into `autoware_launch/config/planning/`. That tree moved to the
+  `autoware_planning_config` package:
+  autoware_launch/config/planning/scenario_planning/common/
+  -> autoware_universe_launch/autoware_planning_config/config/scenario_planning/common/
+  `autoware_motion_velocity_planner/README.md` linked `nearest_search.param.yaml`
+  and `common.param.yaml`; `autoware_path_generator/README.md` linked the former.
+  All three now resolve.
+  `autoware_motion_velocity_obstacle_stop_module/README.md` names the planning
+  preset in prose rather than as a link, so the checker never flagged it, but the
+  path was stale for the same reason and 404s too. Its target moved to
+  `autoware_universe_launch/autoware_planning_config/config/preset/`.
+  No `autoware_launch/config/planning` path is left in the repository.
+  `pre-commit run --config .pre-commit-config-optional.yaml markdown-link-check`
+  passes on all three files.
+* fix(planning): declare the dependencies these packages use (`#1372 <https://github.com/autowarefoundation/autoware_core/issues/1372>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers.
+  A clean-context review of the pull request found five more direct uses with no manifest entry. Add one entry for each:
+  - autoware_path_generator: tf2 (tf2::getYaw in src/utils.cpp)
+  - autoware_motion_velocity_planner_common: tf2 (tf2::getYaw in src/planner_data.cpp and src/polygon_utils.cpp)
+  - autoware_motion_velocity_obstacle_stop_module: autoware_planning_factor_interface (constructed in src/obstacle_stop_module.cpp)
+  - autoware_behavior_velocity_stop_line_module: autoware_planning_factor_interface (used in src/experimental/scene.cpp)
+  - autoware_velocity_smoother: rclcpp_components (register_node_macro.hpp in src/node.cpp)
+* refactor: migrate node design files from autoware_universe (`#1381 <https://github.com/autowarefoundation/autoware_core/issues/1381>`_)
+  Node design files for packages that moved to autoware_core, placed at
+  the in-package convention <package>/design/<Name>.node.yaml.
+  Co-authored-by: Claude Fable 5 <noreply@anthropic.com>
+* Contributors: Mete Fatih Cırıt, Ryohsuke Mitsudome, Taekjin LEE, Takayuki AKAMINE, Tran Huu Nhat Huy, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

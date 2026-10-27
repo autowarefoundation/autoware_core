@@ -18,7 +18,7 @@ namespace autoware::default_adapi
 {
 
 InterfaceNode::InterfaceNode(const rclcpp::NodeOptions & options)
-: Node("interface", options),
+: autoware::agnocast_wrapper::Node("interface", options),
   srv_(adaptor_.create_service<Version>(
     [](
       const Version::Service::Request::SharedPtr, const Version::Service::Response::SharedPtr res) {

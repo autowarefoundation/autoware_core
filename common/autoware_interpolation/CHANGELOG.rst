@@ -14,6 +14,23 @@ Changelog for package autoware_interpolation
   Co-authored-by: Yutaka Kondo <yutaka.kondo@youtalk.jp>
 * Contributors: Arjun Jagdish Ram, Takagi, Isamu
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(common): declare the dependencies these packages use (`#1367 <https://github.com/autowarefoundation/autoware_core/issues/1367>`_)
+  Each of these packages uses a package it never declares. Either it includes a
+  header of that package, or it names a symbol of it while the header arrives
+  through another dependency. Both build today only because some declared
+  dependency re-exports the owner, so a change in an unrelated repository can
+  break them without anything here changing.
+  The tag follows where the dependency is used: a use in an installed header or
+  in code compiled into the library takes <depend>, one reached only from test/
+  takes <test_depend>. System libraries are named by the rosdep key this
+  workspace already prefers. Boost.Serialization is declared separately from
+  libboost-dev because it needs its own library at link time.
+* fix(autoware_interpolation): include string in utilities (`#1266 <https://github.com/autowarefoundation/autoware_core/issues/1266>`_)
+* Contributors: Mete Fatih Cırıt, Tobias Fischer, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

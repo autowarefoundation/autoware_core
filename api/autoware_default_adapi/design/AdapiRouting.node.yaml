@@ -1,0 +1,119 @@
+autoware_system_design_format: 0.4.0
+
+# node information
+name: AdapiRouting.node
+
+description: Provides the AD API routing interface. Relays the route and its state from the mission planner, forwards route requests to it, and changes the operation mode to stop on arrival.
+
+package:
+  name: autoware_default_adapi
+  provider: autoware
+
+launch:
+  plugin: autoware::default_adapi::RoutingNode
+  node_output: screen
+
+# interfaces
+subscribers:
+  - name: route_state
+    message_type: autoware_planning_msgs/msg/RouteState
+    description: Route state from the mission planner.
+    remap_target: /planning/route_state
+  - name: route
+    message_type: autoware_planning_msgs/msg/LaneletRoute
+    description: Route from the mission planner.
+    remap_target: /planning/route
+  - name: operation_mode_state
+    message_type: autoware_adapi_v1_msgs/msg/OperationModeState
+    description: Operation mode state for the arrival and route clear checks.
+    remap_target: /system/operation_mode/state
+  - name: kinematic_state
+    message_type: nav_msgs/msg/Odometry
+    description: Ego odometry for the stop check on route clear.
+    remap_target: /localization/kinematic_state
+
+publishers:
+  - name: state
+    message_type: autoware_adapi_v1_msgs/msg/RouteState
+    description: Route state of the API.
+    remap_target: /api/routing/state
+  - name: route
+    message_type: autoware_adapi_v1_msgs/msg/Route
+    description: Route of the API.
+    remap_target: /api/routing/route
+
+servers:
+  - name: clear_route
+    message_type: autoware_adapi_v1_msgs/srv/ClearRoute
+    description: Route clear request from the API.
+    remap_target: /api/routing/clear_route
+  - name: set_route
+    message_type: autoware_adapi_v1_msgs/srv/SetRoute
+    description: Route request with lanelet segments from the API.
+    remap_target: /api/routing/set_route
+  - name: set_route_points
+    message_type: autoware_adapi_v1_msgs/srv/SetRoutePoints
+    description: Route request with waypoints from the API.
+    remap_target: /api/routing/set_route_points
+  - name: change_route
+    message_type: autoware_adapi_v1_msgs/srv/SetRoute
+    description: Route change request with lanelet segments from the API.
+    remap_target: /api/routing/change_route
+  - name: change_route_points
+    message_type: autoware_adapi_v1_msgs/srv/SetRoutePoints
+    description: Route change request with waypoints from the API.
+    remap_target: /api/routing/change_route_points
+
+clients:
+  - name: clear_route
+    message_type: autoware_planning_msgs/srv/ClearRoute
+    description: Route clear service of the mission planner.
+    remap_target: /planning/clear_route
+  - name: set_waypoint_route
+    message_type: autoware_planning_msgs/srv/SetWaypointRoute
+    description: Waypoint route service of the mission planner.
+    remap_target: /planning/set_waypoint_route
+  - name: set_lanelet_route
+    message_type: autoware_planning_msgs/srv/SetLaneletRoute
+    description: Lanelet route service of the mission planner.
+    remap_target: /planning/set_lanelet_route
+  - name: change_operation_mode
+    message_type: autoware_system_msgs/srv/ChangeOperationMode
+    description: Changes the operation mode to stop on arrival.
+    remap_target: /system/operation_mode/change_operation_mode
+
+# parameters
+param_files: []
+
+param_values:
+  - name: stop_check_duration
+    type: double
+    default: 1.0
+    description: The duration used for the stop check on route clear [sec].
+  - name: diagnostic_updater.period
+    type: double
+    default: 1.0
+    description: Diagnostic updater publish period [s].
+  - name: diagnostic_updater.use_fqn
+    type: bool
+    default: true
+    description: Uses the fully-qualified node name for diagnostic hardware ID.
+
+# processes
+processes:
+  - name: relay_state
+    description: Relays the route state to the API and changes the operation mode to stop on arrival.
+    trigger_conditions:
+      - on_input: route_state
+    outcomes:
+      - to_output: state
+  - name: relay_route
+    description: Relays the route to the API.
+    trigger_conditions:
+      - on_input: route
+    outcomes:
+      - to_output: route
+  - name: route_request
+    description: Handles a route set, change or clear request; checks the route state and forwards it to the mission planner service.
+    trigger_conditions: []
+    outcomes: []

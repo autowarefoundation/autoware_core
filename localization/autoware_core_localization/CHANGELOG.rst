@@ -5,6 +5,34 @@ Changelog for package autoware_core_localization
 1.1.0 (2025-05-01)
 ------------------
 
+1.10.0 (2026-09-28)
+-------------------
+* Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base
+* fix(`localization`): remove duplicated config files, which wrongly remained due to my mistake (I'm sorry) (`#1237 <https://github.com/autowarefoundation/autoware_core/issues/1237>`_)
+  remove(`localization`): duplicated config files
+* fix(`localization`): remove duplicated config files (`#1054 <https://github.com/autowarefoundation/autoware_core/issues/1054>`_)
+  * chore(`localization`): remove duplicated config files
+  * chore(`localization`): remove duplicated config files
+  * bug(`pose_initializer`): restore the used default values (see below)
+  * We can trace that the change is derived from here:
+  - https://github.com/autowarefoundation/autoware_core/pull/1054/changes#diff-74292a33fd9e2f1bb16981050ebc0f61cff9abd1f50dde3be6424c3f989f854bL4-L5
+  * bug(`localization`): reuse pose_initializer launch (see below)
+  Until this commit, some parameters such as `ekf_enabled`, `gnss_enabled`, ... etc are not passed.
+  It seems we were using the hard-coded values in the previous `pose_initializer.param.yaml`.
+  So applied fixes to:
+  * Pass pose initializer flags via launch include
+  * Add defaults and bool params in pose initializer launch
+  * bug(`localization`): fix to pass `pose_initializer` variables (see below)
+  * Followed a way that of `autowarefoundation/autoware_launch`
+  - https://github.com/autowarefoundation/autoware_launch/blob/6b71b90f3a1fd07c08defe974c7caff917759108/tier4_universe_launch/tier4_localization_launch/launch/pose_twist_estimator/pose_twist_estimator.launch.xml#L26-L29
+  * This commit reverts the hard-coded values in the following commit
+  - https://github.com/autowarefoundation/autoware_core/pull/1054/changes/da904d6555e600ca93cc32653be3292843ddc527
+  * style(pre-commit): autofix
+  * bug: fix my stupid mistake when conflict resolve
+  ---------
+  Co-authored-by: pre-commit-ci[bot] <66853113+pre-commit-ci[bot]@users.noreply.github.com>
+* Contributors: Junya Sasaki, github-actions
+
 1.9.0 (2026-06-24)
 ------------------
 * Merge remote-tracking branch 'origin/main' into tmp/bot/bump_version_base

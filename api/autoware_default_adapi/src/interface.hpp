@@ -16,21 +16,23 @@
 #define INTERFACE_HPP_
 
 #include <autoware/adapi_specs/interface.hpp>
+#include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/component_interface_utils/rclcpp.hpp>
 #include <rclcpp/rclcpp.hpp>
 
 namespace autoware::default_adapi
 {
 
-class InterfaceNode : public rclcpp::Node
+class InterfaceNode : public autoware::agnocast_wrapper::Node
 {
 public:
   explicit InterfaceNode(const rclcpp::NodeOptions & options);
 
 private:
+  using NodeT = autoware::agnocast_wrapper::Node;
   using Version = autoware::adapi_specs::interface::Version;
-  autoware::component_interface_utils::NodeAdaptor<rclcpp::Node> adaptor_{this};
-  autoware::component_interface_utils::Service<Version>::SharedPtr srv_;
+  autoware::component_interface_utils::NodeAdaptor<NodeT> adaptor_{this};
+  autoware::component_interface_utils::Service<Version, NodeT>::SharedPtr srv_;
 };
 
 }  // namespace autoware::default_adapi
