@@ -16,6 +16,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cstddef>
 #include <vector>
 
@@ -27,6 +28,7 @@ using autoware::point_types::create_fields_point_xyziradrt;
 using autoware::point_types::create_fields_point_xyzirc;
 using autoware::point_types::create_fields_point_xyzircaedt;
 using autoware::point_types::create_fields_point_xyzirct;
+using autoware::point_types::is_data_convertible_to;
 using autoware::point_types::is_data_layout_compatible_with_point_xyzcpe;
 using autoware::point_types::is_data_layout_compatible_with_point_xyzi;
 using autoware::point_types::is_data_layout_compatible_with_point_xyziradrt;
@@ -393,4 +395,66 @@ TEST(LayoutCompatibleFieldCount, ExtraTrailingFieldsFollowTypeSpecificPolicy)
     fields.emplace_back();  // 7 != 6
     EXPECT_FALSE(is_data_layout_compatible_with_point_xyzcpe(fields));
   }
+}
+
+//
+// is_data_convertible_to: by-name presence with matching datatype and count, offsets ignored
+//
+
+TEST(ConvertibleTo, EveryLayoutConvertsToItself)
+{
+  EXPECT_TRUE(is_data_convertible_to(create_fields_point_xyzi(), create_fields_point_xyzi()));
+  EXPECT_TRUE(is_data_convertible_to(create_fields_point_xyzirc(), create_fields_point_xyzirc()));
+  EXPECT_TRUE(is_data_convertible_to(create_fields_point_xyzirct(), create_fields_point_xyzirct()));
+  EXPECT_TRUE(
+    is_data_convertible_to(create_fields_point_xyziradrt(), create_fields_point_xyziradrt()));
+  EXPECT_TRUE(
+    is_data_convertible_to(create_fields_point_xyzircaedt(), create_fields_point_xyzircaedt()));
+  EXPECT_TRUE(is_data_convertible_to(create_fields_point_xyzcpe(), create_fields_point_xyzcpe()));
+}
+
+TEST(ConvertibleTo, DroppingFieldsIsAllowedRegardlessOfOffsets)
+{
+  // xyzircaedt -> xyzirct drops azimuth/elevation/distance; time_stamp moves from offset 28 to 16
+  EXPECT_TRUE(
+    is_data_convertible_to(create_fields_point_xyzircaedt(), create_fields_point_xyzirct()));
+  EXPECT_TRUE(
+    is_data_convertible_to(create_fields_point_xyzircaedt(), create_fields_point_xyzirc()));
+  EXPECT_TRUE(is_data_convertible_to(create_fields_point_xyzirct(), create_fields_point_xyzirc()));
+}
+
+TEST(ConvertibleTo, FieldOrderDoesNotMatter)
+{
+  auto fields = create_fields_point_xyzirct();
+  std::reverse(fields.begin(), fields.end());
+  EXPECT_TRUE(is_data_convertible_to(fields, create_fields_point_xyzirct()));
+}
+
+TEST(ConvertibleTo, MissingFieldIsRejected)
+{
+  EXPECT_FALSE(is_data_convertible_to(create_fields_point_xyzirc(), create_fields_point_xyzirct()));
+  EXPECT_FALSE(is_data_convertible_to(create_fields_point_xyzi(), create_fields_point_xyzirc()));
+}
+
+TEST(ConvertibleTo, SameNameDifferentDatatypeIsRejected)
+{
+  auto fields = create_fields_point_xyzirc();
+  fields[static_cast<std::size_t>(autoware::point_types::PointXYZIRCIndex::Intensity)].datatype =
+    PointField::FLOAT32;
+  EXPECT_FALSE(is_data_convertible_to(fields, create_fields_point_xyzirc()));
+}
+
+TEST(ConvertibleTo, SameNameDifferentCountIsRejected)
+{
+  auto fields = create_fields_point_xyzirc();
+  fields[static_cast<std::size_t>(autoware::point_types::PointXYZIRCIndex::X)].count = 2;
+  EXPECT_FALSE(is_data_convertible_to(fields, create_fields_point_xyzirc()));
+}
+
+TEST(ConvertibleTo, PointCloud2OverloadForwardsToFields)
+{
+  PointCloud2 cloud;
+  cloud.fields = create_fields_point_xyzircaedt();
+  EXPECT_TRUE(is_data_convertible_to(cloud, create_fields_point_xyzirct()));
+  EXPECT_FALSE(is_data_convertible_to(cloud, create_fields_point_xyzcpe()));
 }
