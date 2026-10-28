@@ -20,7 +20,8 @@
 // The pose computation itself (GnssPoser) is unit-tested in test_gnss_poser.cpp without ROS. What
 // is checked here, over real topics, is what only the node does: declare the parameters, offer the
 // topics, hand the inputs and the parameters to the logic, publish the right topics for each
-// outcome with the right headers, and look up the antenna transform.
+// outcome with the right headers, look up the antenna transform, and report the state on
+// /diagnostics.
 //
 // The cases come from the characterization suite that pinned the node before its logic was
 // separated. Where the pinned behavior looks like a latent defect it is marked
@@ -47,6 +48,8 @@
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
+#include <diagnostic_msgs/msg/diagnostic_array.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <geographic_msgs/msg/geo_point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
@@ -76,6 +79,8 @@ namespace
 using autoware_internal_debug_msgs::msg::BoolStamped;
 using autoware_map_msgs::msg::MapProjectorInfo;
 using autoware_sensing_msgs::msg::GnssInsOrientationStamped;
+using diagnostic_msgs::msg::DiagnosticArray;
+using diagnostic_msgs::msg::DiagnosticStatus;
 using geometry_msgs::msg::Point;
 using geometry_msgs::msg::PoseStamped;
 using geometry_msgs::msg::PoseWithCovarianceStamped;
@@ -380,6 +385,14 @@ public:
     fixed_sub_ = create_subscription<BoolStamped>(
       "gnss_fixed", rclcpp::QoS{100},
       [this](const BoolStamped::ConstSharedPtr msg) { fixed_flags.push_back(*msg); });
+    diagnostics_sub_ = create_subscription<DiagnosticArray>(
+      "/diagnostics", rclcpp::QoS{100}, [this](const DiagnosticArray::ConstSharedPtr msg) {
+        for (const auto & status : msg->status) {
+          if (status.name == "gnss_poser: gnss_poser_status") {
+            diagnostics.push_back(status);
+          }
+        }
+      });
     tf_sub_ = create_subscription<TFMessage>(
       "/tf", rclcpp::QoS{100}, [this](const TFMessage::ConstSharedPtr msg) {
         for (const auto & t : msg->transforms) {
@@ -400,7 +413,7 @@ public:
            fix_pub_->get_subscription_count() >= 1 &&
            orientation_pub_->get_subscription_count() >= 1 &&
            pose_sub_->get_publisher_count() >= 1 && pose_cov_sub_->get_publisher_count() >= 1 &&
-           fixed_sub_->get_publisher_count() >= 1 &&
+           fixed_sub_->get_publisher_count() >= 1 && diagnostics_sub_->get_publisher_count() >= 1 &&
            // this peer's own dynamic broadcaster + gnss_poser's broadcaster
            tf_sub_->get_publisher_count() >= 2;
   }
@@ -412,6 +425,7 @@ public:
   rclcpp::Subscription<PoseWithCovarianceStamped>::SharedPtr pose_cov_sub_;
   rclcpp::Subscription<BoolStamped>::SharedPtr fixed_sub_;
   rclcpp::Subscription<TFMessage>::SharedPtr tf_sub_;
+  rclcpp::Subscription<DiagnosticArray>::SharedPtr diagnostics_sub_;
   std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_tf_broadcaster_;
   std::shared_ptr<tf2_ros::TransformBroadcaster> dynamic_tf_broadcaster_;
   // Observer buffer: used only to know that a TF we broadcast has propagated. It is filled by the
@@ -425,6 +439,7 @@ public:
   std::vector<PoseWithCovarianceStamped> pose_cov_msgs;
   std::vector<BoolStamped> fixed_flags;
   std::vector<TransformStamped> broadcast_tfs;
+  std::vector<DiagnosticStatus> diagnostics;
 };
 
 // Drives the node over its real topics from the test thread. There is no background spin on the
@@ -720,6 +735,25 @@ class GnssPoserUnknownPubMethod : public GnssPoserNodeIntegration,
 
 class GnssPoserBuffEpochBelowOne : public GnssPoserNodeIntegration,
                                    public ::testing::WithParamInterface<std::tuple<int, int>>
+{
+};
+
+// The frame of the fix a diagnostics case sends and the status it leads to.
+struct DiagnosticsCase
+{
+  const char * name;
+  const char * antenna_frame;
+  int level;
+  const char * message_part;
+};
+
+std::ostream & operator<<(std::ostream & os, const DiagnosticsCase & diagnostics_case)
+{
+  return os << diagnostics_case.name;
+}
+
+class GnssPoserDiagnostics : public GnssPoserNodeIntegration,
+                             public ::testing::WithParamInterface<DiagnosticsCase>
 {
 };
 
@@ -1099,6 +1133,45 @@ TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_LaterFixFallsBackTo
   expect_point_near(last_pose().pose.position, projected);
   EXPECT_EQ(last_pose().header.stamp, make_stamp(1001, 0));
 }
+
+// =======================================================================================
+// 5. Diagnostics
+// =======================================================================================
+
+// GnssPoser::diagnose() reaches /diagnostics as the status `gnss_poser: gnss_poser_status`: OK with
+// every input in place, ERROR when TF cannot provide the antenna transform. Which condition has
+// which level is unit-tested in test_gnss_poser.cpp. The fix of the TF case is stamped in a frame
+// without TF, the other in base_link itself, which needs none.
+TEST_P(GnssPoserDiagnostics, Diagnostics_AntennaFrame_ReportsTheLevel)
+{
+  // Arrange
+  const DiagnosticsCase & diagnostics_case = GetParam();
+  ASSERT_NO_FATAL_FAILURE(build_node_with_mgrs_projector({}));
+  send_orientation(make_orientation(0.0));
+  send_fix(make_reference_fix(NavSatStatus::STATUS_FIX, diagnostics_case.antenna_frame));
+  peer_->diagnostics.clear();
+
+  // Act
+  const bool received = pump_until([this] { return !peer_->diagnostics.empty(); });
+
+  // Assert
+  ASSERT_TRUE(received);
+  const DiagnosticStatus & status = peer_->diagnostics.back();
+  EXPECT_EQ(static_cast<int>(status.level), diagnostics_case.level) << status.message;
+  EXPECT_NE(status.message.find(diagnostics_case.message_part), std::string::npos)
+    << status.message;
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  OkAndError, GnssPoserDiagnostics,
+  ::testing::Values(
+    DiagnosticsCase{"BaseLink", "base_link", DiagnosticStatus::OK, "OK"},
+    DiagnosticsCase{
+      "UnknownFrame", "some_other_antenna", DiagnosticStatus::ERROR,
+      "No transform from the antenna frame some_other_antenna"}),
+  [](const ::testing::TestParamInfo<DiagnosticsCase> & info) {
+    return std::string(info.param.name);
+  });
 
 int main(int argc, char ** argv)
 {

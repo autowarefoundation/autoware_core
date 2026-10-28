@@ -52,8 +52,12 @@ GnssPoserNode::GnssPoserNode(const rclcpp::NodeOptions & node_options)
     declare_gnss_poser_params(),
     [this](const std::string & gnss_frame, const builtin_interfaces::msg::Time & stamp) {
       return get_static_transform(gnss_frame, base_frame_, stamp);
-    })
+    }),
+  diagnostics_(this)
 {
+  diagnostics_.setHardwareID("gnss_poser");
+  diagnostics_.add("gnss_poser_status", this, &GnssPoserNode::diagnose);
+
   // Subscribe to map_projector_info topic
   sub_map_projector_info_ = create_subscription<autoware_map_msgs::msg::MapProjectorInfo>(
     "/map/map_projector_info", rclcpp::QoS{1}.transient_local(),
@@ -178,6 +182,14 @@ std::optional<geometry_msgs::msg::Transform> GnssPoserNode::get_static_transform
       this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(),
       "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str());
     return std::nullopt;
+  }
+}
+
+void GnssPoserNode::diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat)
+{
+  stat.summary(diagnostic_msgs::msg::DiagnosticStatus::OK, "OK");
+  for (const auto & status : gnss_poser_.diagnose()) {
+    stat.mergeSummary(status);
   }
 }
 

@@ -19,12 +19,14 @@
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/transform.hpp>
 #include <geometry_msgs/msg/transform_stamped.hpp>
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
+#include <sensor_msgs/msg/nav_sat_status.hpp>
 
 #include <boost/circular_buffer.hpp>
 
@@ -33,6 +35,7 @@
 #include <optional>
 #include <string>
 #include <utility>
+#include <vector>
 
 // The rclcpp-free part of the GNSS poser: it turns GNSS fixes into base_link poses. Everything
 // here takes and returns message types but needs no node, clock, TF listener or publisher.
@@ -143,7 +146,23 @@ public:
   /// attach the covariance.
   Result input_fix(const sensor_msgs::msg::NavSatFix & fix);
 
+  /// \brief The problems with the inputs and the latest fix, one status (level and message) each;
+  /// empty when there is none. Missing inputs and a fix without a position solution are WARN; a
+  /// local projector and a missing antenna transform are ERROR.
+  std::vector<diagnostic_msgs::msg::DiagnosticStatus> diagnose() const;
+
 private:
+  // What diagnose() reports; nothing else reads it.
+  struct DiagnosticsState
+  {
+    bool received_ins_orientation = false;
+    // Status of the latest fix; empty until the first one.
+    std::optional<sensor_msgs::msg::NavSatStatus> latest_fix_status;
+    // Antenna frame of the latest fix that TF does not connect to the base frame; empty once a fix
+    // gets its transform.
+    std::optional<std::string> disconnected_frame;
+  };
+
   GnssPoserParams params_;
   TransformLookup lookup_antenna_to_base_link_;
   GnssPoserCovarianceDefaults covariance_defaults_;
@@ -154,6 +173,7 @@ private:
   geometry_msgs::msg::Point prev_position_;
   bool has_prev_position_ = false;
   autoware_sensing_msgs::msg::GnssInsOrientation ins_orientation_;
+  DiagnosticsState diagnostics_state_;
 };
 
 }  // namespace autoware::gnss_poser

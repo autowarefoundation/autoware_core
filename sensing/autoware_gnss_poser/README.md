@@ -29,6 +29,19 @@ If the transformation from `base_link` to the antenna cannot be obtained, it out
 | `~/output/gnss_pose_cov` | `geometry_msgs::msg::PoseWithCovarianceStamped`  | vehicle pose with covariance calculated from gnss sensing data |
 | `~/output/gnss_fixed`    | `autoware_internal_debug_msgs::msg::BoolStamped` | gnss fix status                                                |
 
+## Diagnostics
+
+The node publishes one status, `gnss_poser: gnss_poser_status`, on `/diagnostics` once a second (`diagnostic_updater.period`). Its level is the highest of the conditions below, and its message lists them.
+
+| Condition                                                                                | Level |
+| ---------------------------------------------------------------------------------------- | ----- |
+| no NavSatFix has been received yet                                                       | WARN  |
+| no `map_projector_info` has been received yet                                            | WARN  |
+| the latest NavSatFix has no position solution (not fixed)                                | WARN  |
+| `use_gnss_ins_orientation` is true and no `autoware_orientation` has been received yet   | WARN  |
+| `map_projector_info` is a local projector                                                | ERROR |
+| TF cannot provide the antenna transform (the antenna pose is published as the vehicle's) | ERROR |
+
 ## Parameters
 
 Parameters in below table

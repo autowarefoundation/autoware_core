@@ -31,6 +31,7 @@
 
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation.hpp>
+#include <diagnostic_msgs/msg/diagnostic_status.hpp>
 #include <geographic_msgs/msg/geo_point.hpp>
 #include <geometry_msgs/msg/point.hpp>
 #include <geometry_msgs/msg/pose.hpp>
@@ -57,6 +58,7 @@ using autoware::gnss_poser::GnssPoser;
 using autoware::gnss_poser::GnssPoserParams;
 using autoware_map_msgs::msg::MapProjectorInfo;
 using autoware_sensing_msgs::msg::GnssInsOrientation;
+using diagnostic_msgs::msg::DiagnosticStatus;
 using geometry_msgs::msg::Point;
 using geometry_msgs::msg::Quaternion;
 using geometry_msgs::msg::Transform;
@@ -495,6 +497,32 @@ struct CovarianceType
 };
 
 class GnssPoserKnownCovarianceType : public ::testing::TestWithParam<CovarianceType>
+{
+};
+
+// Inputs of a diagnose() case: the projector info and the INS orientation when set, then the
+// fixes in order. A fix in `unknown_antenna_frame` has no antenna transform. `level` is OK when
+// nothing is to be reported, otherwise the level of the one status expected.
+struct DiagnoseCase
+{
+  const char * name;
+  std::optional<MapProjectorInfo> projector_info;
+  bool ins_orientation;
+  std::vector<NavSatFix> fixes;
+  DiagnosticStatus::_level_type level;
+  const char * message_part;
+};
+
+constexpr const char * unknown_antenna_frame = "unknown_antenna";
+
+NavSatFix make_reference_fix_without_transform()
+{
+  NavSatFix fix = make_reference_fix();
+  fix.header.frame_id = unknown_antenna_frame;
+  return fix;
+}
+
+class GnssPoserDiagnose : public ::testing::TestWithParam<DiagnoseCase>
 {
 };
 }  // namespace
@@ -1157,3 +1185,108 @@ TEST(GnssPoser, Covariance_UnknownType_PositionVariancesAreTen)
     }
   }
 }
+
+// =======================================================================================
+// 6. Diagnostics
+// =======================================================================================
+
+// diagnose() reports each missing input and each problem of the latest fix as one status, and
+// nothing once every input is in place. A fix without a position solution or without an antenna
+// transform is reported until a later fix has them.
+TEST_P(GnssPoserDiagnose, Diagnose_InputsAndLatestFix_ReportsEachProblem)
+{
+  // Arrange
+  const DiagnoseCase & diagnose_case = GetParam();
+  GnssPoser poser({}, [](const std::string & antenna_frame, const builtin_interfaces::msg::Time &) {
+    return antenna_frame == unknown_antenna_frame ? std::nullopt
+                                                  : std::optional<Transform>(Transform{});
+  });
+  if (diagnose_case.projector_info) {
+    poser.set_projector_info(*diagnose_case.projector_info);
+  }
+  if (diagnose_case.ins_orientation) {
+    poser.set_ins_orientation(make_orientation(0.0));
+  }
+  input_fixes(poser, diagnose_case.fixes);
+
+  // Act
+  const std::vector<DiagnosticStatus> statuses = poser.diagnose();
+
+  // Assert
+  if (diagnose_case.level == DiagnosticStatus::OK) {
+    EXPECT_TRUE(statuses.empty());
+  } else {
+    ASSERT_EQ(statuses.size(), 1u);
+    EXPECT_EQ(statuses[0].level, diagnose_case.level);
+    EXPECT_NE(statuses[0].message.find(diagnose_case.message_part), std::string::npos)
+      << statuses[0].message;
+  }
+}
+
+INSTANTIATE_TEST_SUITE_P(
+  InputsAndLatestFix, GnssPoserDiagnose,
+  ::testing::Values(
+    DiagnoseCase{
+      "EveryInput",
+      make_mgrs_projector_info(),
+      true,
+      {make_reference_fix()},
+      DiagnosticStatus::OK,
+      ""},
+    DiagnoseCase{
+      "NoFix",
+      make_mgrs_projector_info(),
+      true,
+      {},
+      DiagnosticStatus::WARN,
+      "NavSatFix has not been received"},
+    DiagnoseCase{
+      "NoProjectorInfo",
+      std::nullopt,
+      true,
+      {make_reference_fix()},
+      DiagnosticStatus::WARN,
+      "map_projector_info has not been received"},
+    DiagnoseCase{
+      "LocalProjector",
+      make_local_projector_info(),
+      true,
+      {make_reference_fix()},
+      DiagnosticStatus::ERROR,
+      "local projector"},
+    DiagnoseCase{
+      "NoInsOrientation",
+      make_mgrs_projector_info(),
+      false,
+      {make_reference_fix()},
+      DiagnosticStatus::WARN,
+      "autoware_orientation has not been received"},
+    DiagnoseCase{
+      "NotFixed",
+      make_mgrs_projector_info(),
+      true,
+      {make_reference_fix(NavSatStatus::STATUS_NO_FIX)},
+      DiagnosticStatus::WARN,
+      "no position solution"},
+    DiagnoseCase{
+      "FixedAgain",
+      make_mgrs_projector_info(),
+      true,
+      {make_reference_fix(NavSatStatus::STATUS_NO_FIX), make_reference_fix()},
+      DiagnosticStatus::OK,
+      ""},
+    DiagnoseCase{
+      "NoAntennaTransform",
+      make_mgrs_projector_info(),
+      true,
+      {make_reference_fix_without_transform()},
+      DiagnosticStatus::ERROR,
+      "No transform from the antenna frame unknown_antenna"},
+    DiagnoseCase{
+      "AntennaTransformAgain",
+      make_mgrs_projector_info(),
+      true,
+      {make_reference_fix_without_transform(), make_reference_fix()},
+      DiagnosticStatus::OK,
+      ""}),
+  [](const ::testing::TestParamInfo<DiagnoseCase> & info) { return std::string(info.param.name); });

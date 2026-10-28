@@ -31,6 +31,7 @@
 #include <cassert>
 #include <cmath>
 #include <numeric>
+#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -223,10 +224,14 @@ void GnssPoser::set_ins_orientation(
   const autoware_sensing_msgs::msg::GnssInsOrientation & orientation)
 {
   ins_orientation_ = orientation;
+  diagnostics_state_.received_ins_orientation = true;
 }
 
 GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 {
+  // keep the fix status for the next diagnose()
+  diagnostics_state_.latest_fix_status = fix.status;
+
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
     return {Outcome::NoProjectorInfo, std::nullopt, std::nullopt, std::nullopt, std::nullopt};
@@ -283,9 +288,17 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   // get TF from gnss_antenna to base_link. If it cannot be obtained, the antenna pose is published
   // as the base_link pose, i.e. the identity transform is used (a default-constructed Transform has
   // zero translation and rotation w = 1).
+  const std::optional<geometry_msgs::msg::Transform> transform =
+    lookup_antenna_to_base_link_(fix.header.frame_id, fix.header.stamp);
   const geometry_msgs::msg::Transform antenna_to_base_link =
-    lookup_antenna_to_base_link_(fix.header.frame_id, fix.header.stamp)
-      .value_or(geometry_msgs::msg::Transform{});
+    transform.value_or(geometry_msgs::msg::Transform{});
+
+  // keep or clear lookup failure for the next diagnose()
+  if (!transform.has_value()) {
+    diagnostics_state_.disconnected_frame = fix.header.frame_id;
+  } else {
+    diagnostics_state_.disconnected_frame.reset();
+  }
 
   std::array<double, 3> rotation_variances{};
   if (params_.use_gnss_ins_orientation) {
@@ -314,6 +327,47 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   return {
     Outcome::Published, make_gnss_fixed(fix.header.stamp, true), pose, pose_cov,
     make_transform_stamped(pose, params_.gnss_base_frame)};
+}
+
+std::vector<diagnostic_msgs::msg::DiagnosticStatus> GnssPoser::diagnose() const
+{
+  using diagnostic_msgs::msg::DiagnosticStatus;
+
+  std::vector<DiagnosticStatus> statuses;
+  const auto add = [&statuses](
+                     const DiagnosticStatus::_level_type level, const std::string & message) {
+    DiagnosticStatus status;
+    status.level = level;
+    status.message = message;
+    statuses.push_back(status);
+  };
+
+  const auto & latest_fix_status = diagnostics_state_.latest_fix_status;
+  if (!latest_fix_status.has_value()) {
+    add(DiagnosticStatus::WARN, "NavSatFix has not been received yet.");
+  } else if (!is_fixed(latest_fix_status.value())) {
+    add(DiagnosticStatus::WARN, "The latest NavSatFix has no position solution.");
+  }
+  if (!received_map_projector_info_) {
+    add(DiagnosticStatus::WARN, "map_projector_info has not been received yet.");
+  } else if (projector_info_.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL) {
+    add(
+      DiagnosticStatus::ERROR,
+      "map_projector_info is local projector type. Unable to convert GNSS pose.");
+  }
+  if (params_.use_gnss_ins_orientation && !diagnostics_state_.received_ins_orientation) {
+    add(
+      DiagnosticStatus::WARN,
+      "autoware_orientation has not been received yet. The identity orientation is used.");
+  }
+  const auto & disconnected_frame = diagnostics_state_.disconnected_frame;
+  if (disconnected_frame.has_value()) {
+    add(
+      DiagnosticStatus::ERROR,
+      "No transform from the antenna frame " + disconnected_frame.value() +
+        " to the base frame. The antenna pose is published as the base pose.");
+  }
+  return statuses;
 }
 
 }  // namespace autoware::gnss_poser

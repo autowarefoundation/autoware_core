@@ -46,6 +46,10 @@ publishers:
     qos:
       reliability: reliable
       durability: volatile
+  - name: diagnostics
+    message_type: diagnostic_msgs/msg/DiagnosticArray
+    description: Input arrival, the latest fix and the antenna transform status.
+    global: /diagnostics
 
 # parameters
 param_files:
@@ -67,3 +71,8 @@ processes:
       - to_output: gnss_pose
       - to_output: gnss_pose_cov
       - to_output: gnss_fixed
+  - name: publish_diagnostics
+    trigger_conditions:
+      - periodic: 1.0 # Hz
+    outcomes:
+      - to_output: diagnostics

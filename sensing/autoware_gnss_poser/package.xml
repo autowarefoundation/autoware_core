@@ -23,6 +23,8 @@
   <depend>autoware_map_msgs</depend>
   <depend>autoware_sensing_msgs</depend>
   <depend>builtin_interfaces</depend>
+  <depend>diagnostic_msgs</depend>
+  <depend>diagnostic_updater</depend>
   <depend>geographic_msgs</depend>
   <depend>geographiclib</depend>
   <depend>geometry_msgs</depend>

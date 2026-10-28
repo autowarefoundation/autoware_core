@@ -16,6 +16,7 @@
 
 #include "gnss_poser.hpp"
 
+#include <autoware/agnocast_wrapper/diagnostic_updater.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -61,6 +62,8 @@ private:
     const builtin_interfaces::msg::Time & stamp);
   // Publish the messages the pose computation produced.
   void publish_data(const GnssPoser::Result & result);
+  // Report GnssPoser::diagnose() on /diagnostics (called by the updater once a second).
+  void diagnose(diagnostic_updater::DiagnosticStatusWrapper & stat);
 
   tf2::BufferCore tf2_buffer_;
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
@@ -78,6 +81,8 @@ private:
   const std::string base_frame_;
 
   GnssPoser gnss_poser_;
+
+  autoware::agnocast_wrapper::diagnostic_updater::Updater diagnostics_;
 };
 }  // namespace autoware::gnss_poser
 
