@@ -92,7 +92,7 @@ tl::expected<PathGeneratorResult, std::string> PathGeneratorCore::generate(
 
 tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   const geometry_msgs::msg::Pose & current_pose, const LaneletRoute & route, const Params & params,
-  const std::optional<builtin_interfaces::msg::Time> & stamp)
+  const builtin_interfaces::msg::Time & stamp)
 {
   if (!route_manager_) {
     return tl::make_unexpected("Route manager is not initialized");
@@ -168,7 +168,7 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
   const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & current_pose,
   const double s_ego, const double s_start, const double s_end, const bool connect_to_goal,
   const LaneletRoute & route, const Params & params,
-  const std::optional<builtin_interfaces::msg::Time> & stamp) const
+  const builtin_interfaces::msg::Time & stamp) const
 {
   if (lanelet_sequence.empty()) {
     return tl::make_unexpected("Lanelet sequence is empty");
@@ -218,9 +218,7 @@ tl::expected<PathWithLaneId, std::string> PathGeneratorCore::generate_path(
 
   // Set header which is needed to engage
   finalized_path_with_lane_id.header.frame_id = route.header.frame_id;
-  if (stamp.has_value()) {
-    finalized_path_with_lane_id.header.stamp = *stamp;
-  }
+  finalized_path_with_lane_id.header.stamp = stamp;
 
   const auto [left_bound, right_bound] = utils::get_path_bounds(
     lanelet_sequence, std::max(0., s_start - config_.max_longitudinal_offset_m),

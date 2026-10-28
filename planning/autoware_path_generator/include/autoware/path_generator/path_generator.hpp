@@ -78,14 +78,12 @@ public:
 private:
   tl::expected<PathWithLaneId, std::string> generate_path(
     const geometry_msgs::msg::Pose & current_pose, const LaneletRoute & route,
-    const Params & params,
-    const std::optional<builtin_interfaces::msg::Time> & stamp = std::nullopt);
+    const Params & params, const builtin_interfaces::msg::Time & stamp);
 
   tl::expected<PathWithLaneId, std::string> generate_path(
     const lanelet::ConstLanelets & lanelet_sequence, const geometry_msgs::msg::Pose & current_pose,
     double s_ego, double s_start, double s_end, bool connect_to_goal, const LaneletRoute & route,
-    const Params & params,
-    const std::optional<builtin_interfaces::msg::Time> & stamp = std::nullopt) const;
+    const Params & params, const builtin_interfaces::msg::Time & stamp) const;
 
   PathGeneratorConfig config_;
   LaneletMapBin::ConstSharedPtr prev_map_ptr_{nullptr};
