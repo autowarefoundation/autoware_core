@@ -153,6 +153,11 @@ inline bool has_strictly_increasing_bases(
 
 /**
  * @brief Remove consecutive duplicate points whose base differences are too small.
+ *
+ * The last base is retained even when it is too close to the previous ones, so that the cleaned
+ * bases span the same range as the input. A last base which steps backwards is not retained,
+ * since it cannot extend the range.
+ *
  * @param[in] bases Interpolation bases.
  * @param[in] values Interpolation values corresponding to bases.
  * @return Pair of cleaned bases and cleaned values.
@@ -171,10 +176,18 @@ inline std::pair<std::vector<double>, std::vector<T>> remove_duplicate_points(
   out_bases.push_back(bases.front());
   out_values.push_back(values.front());
   for (size_t i = 1; i < bases.size(); ++i) {
+    const double distance_to_last = bases.back() - bases[i];
+    if (0.0 <= distance_to_last && distance_to_last <= epsilon) {
+      break;
+    }
     if (bases[i] - out_bases.back() > epsilon) {
       out_bases.push_back(bases[i]);
       out_values.push_back(values[i]);
     }
+  }
+  if (out_bases.back() < bases.back()) {
+    out_bases.push_back(bases.back());
+    out_values.push_back(values.back());
   }
   return {std::move(out_bases), std::move(out_values)};
 }
