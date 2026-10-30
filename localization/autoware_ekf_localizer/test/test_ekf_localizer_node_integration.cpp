@@ -219,6 +219,17 @@ protected:
     return false;
   }
 
+  std::string find_diagnostic_value(const std::string & key)
+  {
+    if (!latest_diag_) return "";
+    for (const auto & status : latest_diag_->status) {
+      for (const auto & kv : status.values) {
+        if (kv.key == key) return kv.value;
+      }
+    }
+    return "";
+  }
+
   // Tick some, wait for diagnostics containing certain substring
   bool poll_for_diagnostic(const std::string & substr, int max_ticks)
   {
@@ -354,6 +365,24 @@ TEST_F(EKFLocalizerIntegrationHarness, PoseAndTwistMeasurementUpdates)
 
   ASSERT_NE(latest_odom_, nullptr);
   EXPECT_GT(latest_odom_->twist.twist.linear.x, 0.0);
+}
+
+TEST_F(EKFLocalizerIntegrationHarness, MahalanobisGateDiagnosticsReportSqrtThreshold)
+{
+  trigger_node();
+  pub_initial_pose_->publish(make_pose(0.0, 0.0));
+  spin_once_tick_once();
+
+  std::string pose_threshold;
+  std::string twist_threshold;
+  for (int i = 0; i < 20 && (pose_threshold.empty() || twist_threshold.empty()); ++i) {
+    step_time(0.02);
+    pose_threshold = find_diagnostic_value("pose_mahalanobis_distance_threshold");
+    twist_threshold = find_diagnostic_value("twist_mahalanobis_distance_threshold");
+  }
+
+  EXPECT_EQ(pose_threshold, std::to_string(std::sqrt(49.5)));
+  EXPECT_EQ(twist_threshold, std::to_string(std::sqrt(46.1)));
 }
 
 }  // namespace autoware::ekf_localizer
