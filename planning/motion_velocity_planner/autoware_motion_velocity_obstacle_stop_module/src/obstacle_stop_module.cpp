@@ -392,7 +392,7 @@ std::vector<StopObstacle> ObstacleStopModule::filter_stop_obstacle_for_predicted
   }
 
   // Check target obstacles' consistency
-  check_consistency(predicted_objects_stamp, objects, stop_obstacles);
+  check_consistency(predicted_objects_stamp, traj_points, objects, stop_obstacles);
 
   prev_stop_obstacles_ = stop_obstacles;
 
@@ -1268,7 +1268,7 @@ DetectionPolygon ObstacleStopModule::get_trajectory_polygon(
 }
 
 void ObstacleStopModule::check_consistency(
-  const rclcpp::Time & current_time,
+  const rclcpp::Time & current_time, const std::vector<TrajectoryPoint> & traj_points,
   const std::vector<std::shared_ptr<PlannerData::Object>> & objects,
   std::vector<StopObstacle> & stop_obstacles)
 {
@@ -1297,7 +1297,7 @@ void ObstacleStopModule::check_consistency(
       const auto & filtering_params = obstacle_filtering_params_.at(
         StopObstacleClassification{prev_closest_stop_obstacle.classification}.label);
       if (
-        (*object_itr)->predicted_object.kinematics.initial_twist_with_covariance.twist.linear.x <
+        (*object_itr)->get_lon_vel_relative_to_traj(traj_points) <
           stop_planning_param_.obstacle_velocity_threshold_enter_fixed_stop &&
         elapsed_time < filtering_params.stop_obstacle_hold_time_threshold) {
         stop_obstacles.push_back(prev_closest_stop_obstacle);
