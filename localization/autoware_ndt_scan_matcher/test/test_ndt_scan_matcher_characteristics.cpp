@@ -2066,10 +2066,12 @@ TEST(NdtScanMatcherCharacteristics, RegularizationSubscriberRecordsOneKeyAndEnab
 TEST(NdtScanMatcherCharacteristics, TypicalScanUnderShippedConfigConvergesAndReportsOk)
 {
   // Arrange
-  // The execution-time bound is wall-clock: on a loaded runner with a coverage build, one
-  // single-threaded align can exceed the shipped 100 ms and turn the diagnostic to WARN.
+  // Both bounds are wall-clock and turn the diagnostic to WARN on a loaded runner: one
+  // single-threaded scan callback in a coverage build can exceed the shipped 100 ms, and a retry
+  // of `drive_one_scan` publishes its scan seconds after the stamp.
   auto overrides = shipped_config_overrides();
   overrides.emplace_back("validation.critical_upper_bound_exe_time_ms", never_exceeded);
+  overrides.emplace_back("sensor_points.timeout_sec", never_exceeded);
   auto harness = make_ready_harness(overrides);
 
   auto ndt_pose = harness->capture<geometry_msgs::msg::PoseStamped>("/ndt_pose");
