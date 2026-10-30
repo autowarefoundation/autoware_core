@@ -26,6 +26,7 @@
 
 #include <gtest/gtest.h>
 
+#include <algorithm>
 #include <cmath>
 #include <limits>
 #include <memory>
@@ -348,6 +349,48 @@ TEST(TestEKFLocalizer, UpdateStepNormalExecution)
 
   // Expects math algorithms were triggered (ellipse should be > 0)
   EXPECT_GT(result.ellipse_long_radius, 0.0);
+}
+
+TEST(TestEKFLocalizer, UpdateStepPassesGatesWithoutNewInput)
+{
+  const auto params = make_params();
+  auto ekf_localizer = make_ekf_localizer(params);
+
+  const rclcpp::Time t0(100, 0, RCL_ROS_TIME);
+  ekf_localizer->initialize(make_pose(0.0, 0.0, 0.0, "map", t0), identity_transform());
+  ekf_localizer->activate(true);
+
+  const rclcpp::Time t1(100, 1e8, RCL_ROS_TIME);
+  using PoseWithCov = geometry_msgs::msg::PoseWithCovarianceStamped;
+  using TwistWithCov = geometry_msgs::msg::TwistWithCovarianceStamped;
+  ekf_localizer->push_pose(std::make_shared<PoseWithCov>(make_pose(0.0, 0.0, 0.0, "map", t1)));
+  ekf_localizer->push_twist(std::make_shared<TwistWithCov>(make_twist(0.0, 0.0, "base_link", t1)));
+  auto result = ekf_localizer->update_step(t1);
+  ASSERT_FALSE(std::isnan(result.pose_diag_info.delay_time));
+  ASSERT_FALSE(std::isnan(result.twist_diag_info.delay_time));
+
+  // Tick without new measurements until the smoothing steps drain the queues
+  // (input rate lower than EKF rate)
+  rclcpp::Time t_curr = t1;
+  const size_t n_ticks = std::max(params.pose_smoothing_steps, params.twist_smoothing_steps);
+  for (size_t i = 0; i < n_ticks; ++i) {
+    t_curr = t_curr + rclcpp::Duration::from_seconds(0.02);
+    result = ekf_localizer->update_step(t_curr);
+  }
+
+  // Expects gates passed and values not carried over from previous ticks
+  EXPECT_EQ(result.pose_diag_info.queue_size, 0u);
+  EXPECT_EQ(result.twist_diag_info.queue_size, 0u);
+  EXPECT_GT(result.pose_diag_info.no_update_count, 0u);
+  EXPECT_GT(result.twist_diag_info.no_update_count, 0u);
+  EXPECT_TRUE(result.pose_diag_info.is_passed_delay_gate);
+  EXPECT_TRUE(result.pose_diag_info.is_passed_mahalanobis_gate);
+  EXPECT_TRUE(result.twist_diag_info.is_passed_delay_gate);
+  EXPECT_TRUE(result.twist_diag_info.is_passed_mahalanobis_gate);
+  EXPECT_TRUE(std::isnan(result.pose_diag_info.delay_time));
+  EXPECT_TRUE(std::isnan(result.pose_diag_info.mahalanobis_distance));
+  EXPECT_TRUE(std::isnan(result.twist_diag_info.delay_time));
+  EXPECT_TRUE(std::isnan(result.twist_diag_info.mahalanobis_distance));
 }
 
 TEST(TestEKFLocalizer, UpdateStepAsyncWarningPropagation)
