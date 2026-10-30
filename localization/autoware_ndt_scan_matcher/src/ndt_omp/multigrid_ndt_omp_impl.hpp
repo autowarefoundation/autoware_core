@@ -427,7 +427,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeD
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearchDirect(x_trans_pt, params_.resolution, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
@@ -750,7 +750,7 @@ void MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeHes
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearchDirect(x_trans_pt, params_.resolution, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
@@ -1116,7 +1116,7 @@ MultiGridNormalDistributionsTransform<PointSource, PointTarget>::calculateTransf
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearchDirect(x_trans_pt, params_.resolution, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
@@ -1175,7 +1175,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearchDirect(x_trans_pt, params_.resolution, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
@@ -1234,7 +1234,7 @@ pcl::PointCloud<pcl::PointXYZI> MultiGridNormalDistributionsTransform<PointSourc
     std::vector<TargetGridLeafConstPtr> neighborhood;
 
     // Neighborhood search method other than kdtree is disabled in multigrid_ndt_omp
-    target_cells_.radiusSearch(x_trans_pt, params_.resolution, neighborhood);
+    target_cells_.radiusSearchDirect(x_trans_pt, params_.resolution, neighborhood);
 
     if (neighborhood.empty()) {
       continue;
