@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 project(autoware_euclidean_cluster_object_detector)
 
 find_package(autoware_cmake REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)
 autoware_package()
 
 find_package(PCL REQUIRED)
