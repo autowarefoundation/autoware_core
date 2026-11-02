@@ -195,9 +195,10 @@ geometry_msgs::msg::Quaternion get_quaternion_by_position_difference(
 
 GnssPoser::GnssPoser(
   const GnssPoserParams & params, TransformLookup lookup_antenna_to_base_link,
-  const GnssPoserCovarianceDefaults & covariance_defaults)
+  IssueRaisedCallback on_issue_raised, const GnssPoserCovarianceDefaults & covariance_defaults)
 : params_(params),
   lookup_antenna_to_base_link_(std::move(lookup_antenna_to_base_link)),
+  on_issue_raised_(std::move(on_issue_raised)),
   covariance_defaults_(covariance_defaults)
 {
   if (params.buff_epoch < 1) {
@@ -225,7 +226,16 @@ void GnssPoser::set_ins_orientation(
   ins_orientation_ = orientation;
 }
 
-GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
+GnssPoser::Result GnssPoser::input_fix(
+  const sensor_msgs::msg::NavSatFix & fix, const Clock::time_point now)
+{
+  const Result result = process_fix(fix, now);
+  update_issues(now);
+  return result;
+}
+
+GnssPoser::Result GnssPoser::process_fix(
+  const sensor_msgs::msg::NavSatFix & fix, const Clock::time_point now)
 {
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
@@ -283,9 +293,14 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   // get TF from gnss_antenna to base_link. If it cannot be obtained, the antenna pose is published
   // as the base_link pose, i.e. the identity transform is used (a default-constructed Transform has
   // zero translation and rotation w = 1).
+  const auto transform = lookup_antenna_to_base_link_(fix.header.frame_id, fix.header.stamp);
+  if (!transform.has_value()) {
+    record_lookup_failure(fix.header.frame_id, now);
+  } else {
+    clear_lookup_failure();
+  }
   const geometry_msgs::msg::Transform antenna_to_base_link =
-    lookup_antenna_to_base_link_(fix.header.frame_id, fix.header.stamp)
-      .value_or(geometry_msgs::msg::Transform{});
+    transform.value_or(geometry_msgs::msg::Transform{});
 
   std::array<double, 3> rotation_variances{};
   if (params_.use_gnss_ins_orientation) {
@@ -314,6 +329,32 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   return {
     Outcome::Published, make_gnss_fixed(fix.header.stamp, true), pose, pose_cov,
     make_transform_stamped(pose, params_.gnss_base_frame)};
+}
+
+void GnssPoser::record_lookup_failure(const std::string & frame, const Clock::time_point now)
+{
+  if (!transform_lookup_failure_.has_value() || transform_lookup_failure_.value().frame != frame) {
+    transform_lookup_failure_ = TransformLookupFailure{frame, now};
+  }
+}
+
+void GnssPoser::clear_lookup_failure()
+{
+  transform_lookup_failure_.reset();
+}
+
+void GnssPoser::update_issues(const Clock::time_point now)
+{
+  if (transform_lookup_failure_.has_value()) {
+    TransformLookupFailure & failure = transform_lookup_failure_.value();
+    // Expected right after startup, until the transform is published.
+    if (!failure.raised && now - failure.since > antenna_transform_grace_period) {
+      failure.raised = true;
+      if (on_issue_raised_) {
+        on_issue_raised_({Issue::Cause::TransformUnavailable, failure.frame});
+      }
+    }
+  }
 }
 
 }  // namespace autoware::gnss_poser
