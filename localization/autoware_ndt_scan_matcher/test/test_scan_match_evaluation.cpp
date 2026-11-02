@@ -125,11 +125,18 @@ int64_t int_value_of(const DiagnosticsReport & report, const std::string & key)
 // characterization suite pins exactly this sequence on /diagnostics.
 TEST(ScanMatchEvaluation, ConvergesWhenIterationsAndScoreAreOk)  // NOLINT
 {
+  // Arrange
+  constexpr int max_iterations = 30;
+  const auto ndt_result = make_ndt_result(5, 4.0f, 3.0f);
+  const auto poses = make_monotonic_poses(6);
+  const auto param = make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0);
   DiagnosticsReport report;
-  const auto evaluation = evaluate_scan_match_result(
-    make_ndt_result(5, 4.0f, 3.0f), 30, make_monotonic_poses(6),
-    make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0), report);
 
+  // Act
+  const auto evaluation =
+    evaluate_scan_match_result(ndt_result, max_iterations, poses, param, report);
+
+  // Assert
   ASSERT_TRUE(evaluation.has_value());
   EXPECT_TRUE(evaluation->is_converged);
   EXPECT_TRUE(evaluation->is_ok_score);
@@ -158,11 +165,18 @@ TEST(ScanMatchEvaluation, ConvergesWhenIterationsAndScoreAreOk)  // NOLINT
 // A score below its threshold vetoes convergence on its own, however well the solver behaved.
 TEST(ScanMatchEvaluation, DoesNotConvergeWhenScoreIsBelowThreshold)  // NOLINT
 {
+  // Arrange
+  constexpr int max_iterations = 30;
+  const auto ndt_result = make_ndt_result(5, 0.5f, 3.0f);
+  const auto poses = make_monotonic_poses(6);
+  const auto param = make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0);
   DiagnosticsReport report;
-  const auto evaluation = evaluate_scan_match_result(
-    make_ndt_result(5, 0.5f, 3.0f), 30, make_monotonic_poses(6),
-    make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0), report);
 
+  // Act
+  const auto evaluation =
+    evaluate_scan_match_result(ndt_result, max_iterations, poses, param, report);
+
+  // Assert
   ASSERT_TRUE(evaluation.has_value());
   EXPECT_FALSE(evaluation->is_converged);
   EXPECT_FALSE(evaluation->is_ok_score);
@@ -175,12 +189,19 @@ TEST(ScanMatchEvaluation, DoesNotConvergeWhenScoreIsBelowThreshold)  // NOLINT
 // is treated as "it was never going to settle", so the limit is excused.
 TEST(ScanMatchEvaluation, ConvergesAtIterationLimitWhenOscillating)  // NOLINT
 {
-  DiagnosticsReport report;
+  // Arrange
+  constexpr int max_iterations = 30;
+  const auto ndt_result = make_ndt_result(max_iterations, 4.0f, 3.0f);
   // 14 poses give 12 consecutive inversions, above the threshold of 10.
-  const auto evaluation = evaluate_scan_match_result(
-    make_ndt_result(30, 4.0f, 3.0f), 30, make_oscillating_poses(14),
-    make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0), report);
+  const auto poses = make_oscillating_poses(14);
+  const auto param = make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0);
+  DiagnosticsReport report;
 
+  // Act
+  const auto evaluation =
+    evaluate_scan_match_result(ndt_result, max_iterations, poses, param, report);
+
+  // Assert
   ASSERT_TRUE(evaluation.has_value());
   EXPECT_EQ(int_value_of(report, "local_optimal_solution_oscillation_num"), 12);
   EXPECT_TRUE(evaluation->is_converged);
@@ -198,11 +219,18 @@ TEST(ScanMatchEvaluation, ConvergesAtIterationLimitWhenOscillating)  // NOLINT
 // Without oscillation, the same iteration limit does block convergence.
 TEST(ScanMatchEvaluation, DoesNotConvergeAtIterationLimitWithoutOscillation)  // NOLINT
 {
+  // Arrange
+  constexpr int max_iterations = 30;
+  const auto ndt_result = make_ndt_result(max_iterations, 4.0f, 3.0f);
+  const auto poses = make_monotonic_poses(31);
+  const auto param = make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0);
   DiagnosticsReport report;
-  const auto evaluation = evaluate_scan_match_result(
-    make_ndt_result(30, 4.0f, 3.0f), 30, make_monotonic_poses(31),
-    make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0), report);
 
+  // Act
+  const auto evaluation =
+    evaluate_scan_match_result(ndt_result, max_iterations, poses, param, report);
+
+  // Assert
   ASSERT_TRUE(evaluation.has_value());
   EXPECT_EQ(int_value_of(report, "local_optimal_solution_oscillation_num"), 0);
   EXPECT_FALSE(evaluation->is_converged);
@@ -212,13 +240,21 @@ TEST(ScanMatchEvaluation, DoesNotConvergeAtIterationLimitWithoutOscillation)  //
 // `converged_param_type` selects which score is judged, and against which threshold.
 TEST(ScanMatchEvaluation, SelectsNearestVoxelLikelihoodWhenConfigured)  // NOLINT
 {
-  DiagnosticsReport report;
+  // Arrange
+  constexpr int max_iterations = 30;
   // The transform probability would fail its threshold; the likelihood passes its own. Only the
   // configured one may be consulted.
-  const auto evaluation = evaluate_scan_match_result(
-    make_ndt_result(5, 0.1f, 3.0f), 30, make_monotonic_poses(6),
-    make_param(ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD, 1.0, 2.0), report);
+  const auto ndt_result = make_ndt_result(5, 0.1f, 3.0f);
+  const auto poses = make_monotonic_poses(6);
+  const auto param =
+    make_param(ConvergedParamType::NEAREST_VOXEL_TRANSFORMATION_LIKELIHOOD, 1.0, 2.0);
+  DiagnosticsReport report;
 
+  // Act
+  const auto evaluation =
+    evaluate_scan_match_result(ndt_result, max_iterations, poses, param, report);
+
+  // Assert
   ASSERT_TRUE(evaluation.has_value());
   EXPECT_DOUBLE_EQ(evaluation->score, 3.0);
   EXPECT_DOUBLE_EQ(evaluation->score_threshold, 2.0);
@@ -230,11 +266,18 @@ TEST(ScanMatchEvaluation, SelectsNearestVoxelLikelihoodWhenConfigured)  // NOLIN
 // are still reported.
 TEST(ScanMatchEvaluation, ReturnsNulloptOnUnknownConvergedParamType)  // NOLINT
 {
+  // Arrange
+  constexpr int max_iterations = 30;
+  const auto ndt_result = make_ndt_result(5, 4.0f, 3.0f);
+  const auto poses = make_monotonic_poses(6);
+  const auto param = make_param(static_cast<ConvergedParamType>(99), 1.0, 1.0);
   DiagnosticsReport report;
-  const auto evaluation = evaluate_scan_match_result(
-    make_ndt_result(5, 4.0f, 3.0f), 30, make_monotonic_poses(6),
-    make_param(static_cast<ConvergedParamType>(99), 1.0, 1.0), report);
 
+  // Act
+  const auto evaluation =
+    evaluate_scan_match_result(ndt_result, max_iterations, poses, param, report);
+
+  // Assert
   EXPECT_FALSE(evaluation.has_value());
   EXPECT_EQ(report.level, DiagnosticLevel::ERROR);
   EXPECT_NE(report.message.find("Unknown converged param type."), std::string::npos);
@@ -248,15 +291,20 @@ TEST(ScanMatchEvaluation, ReturnsNulloptOnUnknownConvergedParamType)  // NOLINT
 // keys are simply omitted. Both arrays are checked independently, in order.
 TEST(ScanMatchEvaluation, WarnsButStillConvergesWhenScoreArraySizesMismatch)  // NOLINT
 {
+  // Arrange
+  constexpr int max_iterations = 30;
   auto ndt_result = make_ndt_result(5, 4.0f, 3.0f);
   ndt_result.transform_probability_array.pop_back();
   ndt_result.nearest_voxel_transformation_likelihood_array.pop_back();
-
+  const auto poses = make_monotonic_poses(6);
+  const auto param = make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0);
   DiagnosticsReport report;
-  const auto evaluation = evaluate_scan_match_result(
-    ndt_result, 30, make_monotonic_poses(6),
-    make_param(ConvergedParamType::TRANSFORM_PROBABILITY, 1.0, 1.0), report);
 
+  // Act
+  const auto evaluation =
+    evaluate_scan_match_result(ndt_result, max_iterations, poses, param, report);
+
+  // Assert
   ASSERT_TRUE(evaluation.has_value());
   EXPECT_TRUE(evaluation->is_converged);
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
