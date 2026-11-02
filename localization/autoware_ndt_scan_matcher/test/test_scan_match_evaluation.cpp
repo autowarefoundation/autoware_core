@@ -164,6 +164,8 @@ TEST(ScanMatchEvaluation, ConvergesWhenIterationsAndScoreAreOk)  // NOLINT
 TEST(ScanMatchEvaluation, DoesNotConvergeWhenScoreIsBelowThreshold)  // NOLINT
 {
   // Arrange
+  // Everything but the score is healthy: 5 of 30 iterations, and monotonic poses so no
+  // oscillation. The judged score is transform_probability, 0.5 against a threshold of 1.0.
   constexpr int max_iterations = 30;
   const auto ndt_result = make_ndt_result(5, 0.5f, 3.0f);
   const auto poses = make_monotonic_poses(6);
@@ -208,6 +210,8 @@ TEST(ScanMatchEvaluation, ConvergesAtIterationLimitWhenOscillating)  // NOLINT
 TEST(ScanMatchEvaluation, DoesNotConvergeAtIterationLimitWithoutOscillation)  // NOLINT
 {
   // Arrange
+  // The mirror of the case above: the score passes (4.0 against 1.0) and the solver reached the
+  // limit, but the poses are monotonic, so there is no oscillation to excuse it.
   constexpr int max_iterations = 30;
   const auto ndt_result = make_ndt_result(max_iterations, 4.0f, 3.0f);
   const auto poses = make_monotonic_poses(31);
