@@ -30,10 +30,6 @@ enum class DiagnosticLevel : int8_t { OK = 0, WARN = 1, ERROR = 2, STALE = 3 };
 
 // A single diagnostic key/value. The value keeps its type so the ROS node can format it exactly
 // the way DiagnosticsInterface would (e.g. bool as "True"/"False").
-//
-// Note on the numeric alternatives: DiagnosticsInterface formats with std::to_string, so widening
-// an int to int64_t or a float to double on the way in produces the same string it would have
-// produced from the narrower type. Key values therefore survive this round trip unchanged.
 struct DiagnosticKeyValue
 {
   std::string key;

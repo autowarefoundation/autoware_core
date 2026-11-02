@@ -45,10 +45,6 @@ struct ScanMatchEvaluation
 /**
  * \brief Decide whether an NDT alignment result is good enough to publish.
  *
- * Pure decision logic: no ROS node, clock, TF or publisher is involved, so this is unit-testable
- * without spinning a node. Diagnostics are accumulated into \p diagnostics in the same order the
- * node previously added them, which keeps the published `/diagnostics` content unchanged.
- *
  * \param ndt_result            the alignment result to judge.
  * \param max_iterations        the NDT's iteration limit, i.e. `getMaximumIterations()`.
  * \param transformation_array  the per-iteration poses, used to detect oscillation around a local
