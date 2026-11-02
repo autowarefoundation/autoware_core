@@ -46,6 +46,12 @@ bool is_fixed(const sensor_msgs::msg::NavSatStatus & nav_sat_status_msg)
   return nav_sat_status_msg.status >= sensor_msgs::msg::NavSatStatus::STATUS_FIX;
 }
 
+/// The stamp as the time since the epoch of the clock that stamped it.
+std::chrono::nanoseconds to_stamp_time(const builtin_interfaces::msg::Time & stamp)
+{
+  return std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec);
+}
+
 /// True when the receiver reports a covariance type other than UNKNOWN.
 bool can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg)
 {
@@ -226,16 +232,14 @@ void GnssPoser::set_ins_orientation(
   ins_orientation_ = orientation;
 }
 
-GnssPoser::Result GnssPoser::input_fix(
-  const sensor_msgs::msg::NavSatFix & fix, const Clock::time_point now)
+GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 {
-  const Result result = process_fix(fix, now);
-  update_issues(now);
+  const Result result = process_fix(fix);
+  update_issues(fix.header.stamp);
   return result;
 }
 
-GnssPoser::Result GnssPoser::process_fix(
-  const sensor_msgs::msg::NavSatFix & fix, const Clock::time_point now)
+GnssPoser::Result GnssPoser::process_fix(const sensor_msgs::msg::NavSatFix & fix)
 {
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
@@ -295,7 +299,7 @@ GnssPoser::Result GnssPoser::process_fix(
   // zero translation and rotation w = 1).
   const auto transform = lookup_antenna_to_base_link_(fix.header.frame_id, fix.header.stamp);
   if (!transform.has_value()) {
-    record_lookup_failure(fix.header.frame_id, now);
+    record_lookup_failure(fix.header.frame_id, fix.header.stamp);
   } else {
     clear_lookup_failure();
   }
@@ -331,10 +335,11 @@ GnssPoser::Result GnssPoser::process_fix(
     make_transform_stamped(pose, params_.gnss_base_frame)};
 }
 
-void GnssPoser::record_lookup_failure(const std::string & frame, const Clock::time_point now)
+void GnssPoser::record_lookup_failure(
+  const std::string & frame, const builtin_interfaces::msg::Time & stamp)
 {
   if (!transform_lookup_failure_.has_value() || transform_lookup_failure_.value().frame != frame) {
-    transform_lookup_failure_ = TransformLookupFailure{frame, now};
+    transform_lookup_failure_ = TransformLookupFailure{frame, to_stamp_time(stamp)};
   }
 }
 
@@ -343,8 +348,18 @@ void GnssPoser::clear_lookup_failure()
   transform_lookup_failure_.reset();
 }
 
-void GnssPoser::update_issues(const Clock::time_point now)
+void GnssPoser::update_issues(const builtin_interfaces::msg::Time & stamp)
 {
+  const StampTime now = to_stamp_time(stamp);
+  if (previous_stamp_.has_value() && transform_lookup_failure_.has_value()) {
+    const StampTime step = now - previous_stamp_.value();
+    if (step < StampTime::zero() || step > fix_stamp_jump_threshold) {
+      // Not time that passed: start over as if this were the first fix that could not get it.
+      transform_lookup_failure_.value().since = now;
+    }
+  }
+  previous_stamp_ = now;
+
   if (transform_lookup_failure_.has_value()) {
     TransformLookupFailure & failure = transform_lookup_failure_.value();
     // Expected right after startup, until the transform is published.

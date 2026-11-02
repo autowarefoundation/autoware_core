@@ -36,8 +36,7 @@
 #include <utility>
 
 // The rclcpp-free part of the GNSS poser: it turns GNSS fixes into base_link poses. Everything
-// here takes and returns message types but needs no node, clock, TF listener or publisher; the
-// caller passes the time a fix is received.
+// here takes and returns message types but needs no node, clock, TF listener or publisher.
 namespace autoware::gnss_poser
 {
 // How the published position is derived from the incoming fixes: the latest one as-is, or the
@@ -66,8 +65,14 @@ constexpr std::array<double, 3> default_motion_rotation_variances = {0.1, 0.1, 1
 constexpr double default_ins_placeholder_rmse = 1.0;                                      // [rad]
 
 // How long the antenna transform may be unavailable before it is an issue: right after startup
-// /tf_static may arrive after the first fixes.
+// /tf_static may arrive after the first fixes. Measured by the fix header stamps, so that it
+// follows the data, e.g. a rosbag replayed at another rate.
 constexpr std::chrono::seconds antenna_transform_grace_period{5};
+// A step between the header stamps of consecutive fixes that goes backward, or forward by more than
+// this, is a jump of the clock that stamps the fixes rather than time that passed (e.g. a receiver
+// switching to GNSS time, or a rosbag replayed in a loop); the grace period starts over there.
+// Receivers publish at 1 Hz or faster, so this allows for one missing fix at 1 Hz.
+constexpr std::chrono::seconds fix_stamp_jump_threshold{2};
 
 /// \brief The covariance values above, as GnssPoser takes them.
 ///
@@ -95,8 +100,6 @@ struct GnssPoserCovarianceDefaults
 class GnssPoser
 {
 public:
-  using Clock = std::chrono::steady_clock;
-
   /// \brief Resolves the transform from the antenna frame named in the fix header to base_link at
   /// the fix header stamp, or std::nullopt when it cannot be resolved.
   ///
@@ -172,21 +175,26 @@ public:
 
   /// \brief Process one fix: gate, project, buffer, orient, compose with the antenna transform and
   /// attach the covariance.
-  /// \param now when the fix was received; how long an input has been missing is measured by it.
-  Result input_fix(const sensor_msgs::msg::NavSatFix & fix, Clock::time_point now);
+  /// How long an input has been missing is measured by the fix header stamps.
+  Result input_fix(const sensor_msgs::msg::NavSatFix & fix);
 
 private:
-  // input_fix() without the issue update.
-  Result process_fix(const sensor_msgs::msg::NavSatFix & fix, Clock::time_point now);
+  // A fix header stamp as the time since the epoch of the clock that stamped it.
+  using StampTime = std::chrono::nanoseconds;
 
-  // Issue management. Only these functions touch transform_lookup_failure_.
-  // The transform for `frame` could not be looked up at `now`. A failure that continues keeps its
-  // start, so that the grace period runs from there.
-  void record_lookup_failure(const std::string & frame, Clock::time_point now);
+  // input_fix() without the issue update.
+  Result process_fix(const sensor_msgs::msg::NavSatFix & fix);
+
+  // Issue management. Only these functions touch transform_lookup_failure_ and previous_stamp_.
+  // The transform for `frame` could not be looked up for the fix stamped `stamp`. A failure that
+  // continues keeps its start, so that the grace period runs from there.
+  void record_lookup_failure(
+    const std::string & frame, const builtin_interfaces::msg::Time & stamp);
   // The transform could be looked up.
   void clear_lookup_failure();
-  // Raise transform_lookup_failure_ as an issue through on_issue_raised_ once it is one at `now`.
-  void update_issues(Clock::time_point now);
+  // Raise transform_lookup_failure_ as an issue through on_issue_raised_ once it is one at the fix
+  // stamped `stamp`. Where the stamps jump, the grace period starts over at `stamp`.
+  void update_issues(const builtin_interfaces::msg::Time & stamp);
 
   GnssPoserParams params_;
   TransformLookup lookup_antenna_to_base_link_;
@@ -205,10 +213,12 @@ private:
   struct TransformLookupFailure
   {
     std::string frame;
-    Clock::time_point since;
+    StampTime since;
     bool raised = false;
   };
   std::optional<TransformLookupFailure> transform_lookup_failure_;
+  // The header stamp of the previous fix, to tell a jump of the stamps from time that passed.
+  std::optional<StampTime> previous_stamp_;
 };
 
 }  // namespace autoware::gnss_poser

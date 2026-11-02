@@ -18,7 +18,6 @@
 
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
 
-#include <chrono>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -101,8 +100,7 @@ void GnssPoserNode::callback_map_projector_info(
 void GnssPoserNode::callback_nav_sat_fix(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::NavSatFix) & nav_sat_fix_msg_ptr)
 {
-  const GnssPoser::Result result =
-    gnss_poser_.input_fix(*nav_sat_fix_msg_ptr, GnssPoser::Clock::now());
+  const GnssPoser::Result result = gnss_poser_.input_fix(*nav_sat_fix_msg_ptr);
 
   switch (result.outcome) {
     case GnssPoser::Outcome::NoProjectorInfo:
