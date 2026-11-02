@@ -120,9 +120,7 @@ int64_t int_value_of(const DiagnosticsReport & report, const std::string & key)
 
 }  // namespace
 
-// The happy path: the solver stopped before the iteration limit and the score cleared its
-// threshold, so the pose is published. The key set and its order are asserted here because the
-// characterization suite pins exactly this sequence on /diagnostics.
+// The happy path
 TEST(ScanMatchEvaluation, ConvergesWhenIterationsAndScoreAreOk)  // NOLINT
 {
   // Arrange
@@ -183,9 +181,6 @@ TEST(ScanMatchEvaluation, DoesNotConvergeWhenScoreIsBelowThreshold)  // NOLINT
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
-// Frozen behavior worth stating explicitly: hitting the iteration limit does NOT by itself block
-// convergence when the solver was oscillating, because the two are combined with `||`. Oscillation
-// is treated as "it was never going to settle", so the limit is excused.
 TEST(ScanMatchEvaluation, ConvergesAtIterationLimitWhenOscillating)  // NOLINT
 {
   // Arrange
@@ -254,9 +249,6 @@ TEST(ScanMatchEvaluation, SelectsNearestVoxelLikelihoodWhenConfigured)  // NOLIN
   EXPECT_TRUE(evaluation->is_converged);
 }
 
-// A `converged_param_type` outside the enum aborts the evaluation: there is no score to judge, so
-// no verdict is returned and the caller must skip publishing. The keys gathered before the abort
-// are still reported.
 TEST(ScanMatchEvaluation, ReturnsNulloptOnUnknownConvergedParamType)  // NOLINT
 {
   // Arrange
@@ -279,8 +271,6 @@ TEST(ScanMatchEvaluation, ReturnsNulloptOnUnknownConvergedParamType)  // NOLINT
                        "transform_probability", "nearest_voxel_transformation_likelihood"}));
 }
 
-// A score array out of step with iteration_num is reported but does not veto the pose: the diff
-// keys are simply omitted. Both arrays are checked independently, in order.
 TEST(ScanMatchEvaluation, WarnsButStillConvergesWhenScoreArraySizesMismatch)  // NOLINT
 {
   // Arrange
