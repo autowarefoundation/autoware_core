@@ -79,4 +79,121 @@ nav_msgs::msg::Odometry create_odom(const double x, const double y, const double
 }
 }  // namespace
 
+// Expects constructor to throw exception when vehicle_length_m is negative.
+TEST(PathGeneratorTest, ThrowsExceptionWhenVehicleLengthIsNegative)
+{
+  // Arrange
+  auto config = create_default_config();
+  config.vehicle_length_m = -1.0;
+
+  // Act & Assert
+  EXPECT_THROW(PathGeneratorCore{config}, std::invalid_argument);
+}
+
+// Expects constructor to throw exception when max_longitudinal_offset_m is negative.
+TEST(PathGeneratorTest, ThrowsExceptionWhenMaxLongitudinalOffsetIsNegative)
+{
+  // Arrange
+  auto config = create_default_config();
+  config.max_longitudinal_offset_m = -0.5;
+
+  // Act & Assert
+  EXPECT_THROW(PathGeneratorCore{config}, std::invalid_argument);
+}
+
+// Expects generate to return error when map or route pointer is missing.
+TEST(PathGeneratorTest, ReturnsErrorWhenMapOrRouteMissing)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  input.odometry = create_odom(10.5, 0.0);
+  input.params = create_default_params();
+
+  // Act (Null map)
+  auto result_no_map = generator.generate(input);
+
+  // Assert
+  EXPECT_FALSE(result_no_map.has_value());
+  EXPECT_EQ(result_no_map.error(), "Vector map is not provided");
+
+  // Act (Null route)
+  input.map_ptr =
+    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_common_map_bin());
+  auto result_no_route = generator.generate(input);
+
+  // Assert
+  EXPECT_FALSE(result_no_route.has_value());
+  EXPECT_EQ(result_no_route.error(), "Route is not provided");
+}
+
+// Expects generate to return error when input route has no segments.
+TEST(PathGeneratorTest, ReturnsErrorWhenRouteIsEmpty)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  input.map_ptr =
+    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_common_map_bin());
+  auto empty_route = create_mock_route();
+  empty_route.segments.clear();
+  input.route_ptr = std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(empty_route);
+  input.odometry = create_odom(10.5, 0.0);
+  input.params = create_default_params();
+
+  // Act
+  const auto result = generator.generate(input);
+
+  // Assert
+  EXPECT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), "Input route is empty");
+}
+
+// Expects generate to return error when route primitives are empty and RouteManager creation fails.
+TEST(PathGeneratorTest, ReturnsErrorWhenRoutePrimitivesEmptyAndRouteManagerCannotBeCreated)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  input.map_ptr =
+    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_common_map_bin());
+
+  auto route = create_mock_route();
+  for (auto & segment : route.segments) {
+    segment.primitives.clear();
+  }
+  input.route_ptr = std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(route);
+  input.odometry = create_odom(10.5, 0.0);
+  input.params = create_default_params();
+
+  // Act
+  const auto result = generator.generate(input);
+
+  // Assert
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), "Failed to create route manager");
+}
+
+// Expects generate to return error when initial ego pose is far away so trajectory build fails.
+TEST(PathGeneratorTest, ReturnsErrorWhenTrajectoryBuildFails)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  input.map_ptr =
+    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_common_map_bin());
+  input.route_ptr =
+    std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(create_mock_route());
+  // Initial pose is 1000m away from the lanelet
+  input.odometry = create_odom(1000.0, 1000.0);
+  input.params = create_default_params();
+
+  // Act
+  const auto result = generator.generate(input);
+
+  // Assert
+  ASSERT_FALSE(result.has_value());
+  EXPECT_EQ(result.error(), "Failed to build trajectory from path points");
+}
+
 }  // namespace autoware::path_generator
