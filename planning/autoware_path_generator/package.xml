@@ -5,7 +5,6 @@
   <version>1.10.0</version>
   <description>The autoware_path_generator package</description>
   <maintainer email="mitsuhiro.sakamoto@tier4.jp">Mitsuhiro Sakamoto</maintainer>
-  <maintainer email="kosuke.takeuchi@tier4.jp">Kosuke Takeuchi</maintainer>
   <maintainer email="junya.sasaki@tier4.jp">Junya Sasaki</maintainer>
   <maintainer email="masahiro.kubota@tier4.jp">Masahiro Kubota</maintainer>
   <maintainer email="riku.kimura@tier4.jp">Riku Kimura</maintainer>
