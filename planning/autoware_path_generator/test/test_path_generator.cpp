@@ -196,4 +196,156 @@ TEST(PathGeneratorTest, ReturnsErrorWhenTrajectoryBuildFails)
   EXPECT_EQ(result.error(), "Failed to build trajectory from path points");
 }
 
+// Expects generate to successfully output path and signal commands on nominal input.
+TEST(PathGeneratorTest, GeneratesPathSuccessfullyWhenValidInputProvided)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  input.map_ptr =
+    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_common_map_bin());
+  input.route_ptr =
+    std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(create_mock_route());
+  input.odometry = create_odom(10.5, 0.0);
+  input.params = create_default_params();
+
+  // Act
+  const auto result = generator.generate(input);
+
+  // Assert
+  ASSERT_TRUE(result.has_value()) << result.error();
+  EXPECT_FALSE(result->path.points.empty());
+  EXPECT_EQ(result->path.header.frame_id, "map");
+  EXPECT_EQ(result->path.header.stamp, input.odometry.header.stamp);
+  EXPECT_FALSE(result->path.left_bound.empty());
+  EXPECT_FALSE(result->path.right_bound.empty());
+  EXPECT_EQ(result->turn_indicators_cmd.command, TurnIndicatorsCommand::NO_COMMAND);
+  EXPECT_EQ(result->hazard_lights_cmd.command, HazardLightsCommand::NO_COMMAND);
+}
+
+// Expects RouteManager to be reused across consecutive calls with same pointers, and rebuilt when
+// pointers change.
+TEST(PathGeneratorTest, CachesRouteManagerAndRebuildsWhenPointersChange)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  const auto map_ptr_1 =
+    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_common_map_bin());
+  const auto route_ptr_1 =
+    std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(create_mock_route());
+
+  input.map_ptr = map_ptr_1;
+  input.route_ptr = route_ptr_1;
+  input.odometry = create_odom(10.5, 0.0);
+  input.params = create_default_params();
+
+  // Act 1: Initial call (builds RouteManager)
+  const auto result1 = generator.generate(input);
+  ASSERT_TRUE(result1.has_value()) << result1.error();
+
+  // Act 2: Advance ego pose slightly with identical map/route pointers (reuses cached RouteManager)
+  input.odometry = create_odom(15.0, 0.0);
+  const auto result2 = generator.generate(input);
+  ASSERT_TRUE(result2.has_value()) << result2.error();
+  EXPECT_FALSE(result2->path.points.empty());
+
+  // Act 3: Update route pointer to a new route instance (triggers RouteManager rebuild)
+  const auto route_ptr_2 =
+    std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(create_mock_route());
+  input.route_ptr = route_ptr_2;
+  const auto result3 = generator.generate(input);
+  ASSERT_TRUE(result3.has_value()) << result3.error();
+  EXPECT_FALSE(result3->path.points.empty());
+}
+
+// Expects turn indicators to be commanded when approaching a lanelet with turn_direction.
+TEST(PathGeneratorTest, GeneratesTurnSignalWhenApproachingTurn)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  input.map_ptr = std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(
+    create_mock_three_lanelets_map_bin("left"));
+  input.route_ptr =
+    std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(create_mock_three_lanelets_route());
+
+  // Ego at x = 10.0 on lane 1001 (0 to 20m), moving at 5 m/s approaching left-turn lane 1002 (20 to
+  // 40m)
+  input.odometry = create_odom(10.0, 0.0, 5.0);
+  input.params = create_default_params();
+
+  // Act
+  const auto result = generator.generate(input);
+
+  // Assert
+  ASSERT_TRUE(result.has_value()) << result.error();
+  EXPECT_EQ(result->turn_indicators_cmd.command, TurnIndicatorsCommand::ENABLE_LEFT);
+  EXPECT_EQ(result->turn_indicators_cmd.stamp, input.odometry.header.stamp);
+  EXPECT_EQ(result->hazard_lights_cmd.command, HazardLightsCommand::NO_COMMAND);
+}
+
+// Expects path to be truncated before self-intersection on a loop route.
+TEST(PathGeneratorTest, TruncatesPathWhenLoopSelfIntersectionDetected)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  input.map_ptr =
+    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_loop_map_bin());
+  input.route_ptr =
+    std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(create_mock_loop_route());
+  input.odometry = create_odom(5.5, 0.0);
+
+  auto params = create_default_params();
+  params.path_length.forward = 200.0;  // Long enough to loop around
+  input.params = params;
+
+  // Act
+  const auto result = generator.generate(input);
+
+  // Assert
+  ASSERT_TRUE(result.has_value()) << result.error();
+  EXPECT_FALSE(result->path.points.empty());
+
+  // Check truncation: Path should not cross into second pass over X=20 on L1
+  for (const auto & pt : result->path.points) {
+    if (pt.point.pose.position.x > 38.0) {
+      // Must be on the northern loop or right turn, not looping back into L1
+      EXPECT_GE(pt.point.pose.position.y, -2.5);
+    }
+  }
+}
+
+// Expects path to connect smoothly to goal when goal is within forward planning distance.
+TEST(PathGeneratorTest, ConnectsPathToGoalWhenGoalWithinForwardDistance)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
+  PathGeneratorInput input;
+  input.map_ptr =
+    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_dense_map_bin());
+
+  auto route = create_mock_route();
+  route.goal_pose.position.x = 45.0;
+  route.goal_pose.position.y = 1.0;  // Slight lateral offset inside lane
+  input.route_ptr = std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(route);
+
+  input.odometry = create_odom(10.5, 0.0);
+  auto params = create_default_params();
+  params.path_length.forward = 50.0;  // Goal at 45.0 is within 10.5 + 50.0 = 60.5
+  input.params = params;
+
+  // Act
+  const auto result = generator.generate(input);
+
+  // Assert
+  ASSERT_TRUE(result.has_value()) << result.error();
+  ASSERT_FALSE(result->path.points.empty());
+
+  const auto & final_point = result->path.points.back().point.pose.position;
+  EXPECT_NEAR(final_point.x, route.goal_pose.position.x, near_tol);
+  EXPECT_NEAR(final_point.y, route.goal_pose.position.y, near_tol);
+}
+
 }  // namespace autoware::path_generator
