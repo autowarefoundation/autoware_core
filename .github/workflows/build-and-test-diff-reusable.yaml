@@ -82,7 +82,7 @@ jobs:
         shell: bash
 
       - name: Attempt to restore ccache
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             /root/.ccache
