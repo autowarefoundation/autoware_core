@@ -604,16 +604,21 @@ bool EKFLocalizer::measurement_update_pose(
   const Eigen::Vector3d y_ekf(
     kalman_filter_.getXelement(delay_step * dim_x_ + IDX::X),
     kalman_filter_.getXelement(delay_step * dim_x_ + IDX::Y), ekf_yaw);
+  const Eigen::Matrix<double, 3, 6> c = pose_measurement_matrix();
+  const Eigen::Matrix3d r =
+    pose_measurement_covariance(pose.pose.covariance, params_.pose_smoothing_steps);
   const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
-  const Eigen::MatrixXd p_y = p_curr.block(0, 0, dim_y, dim_y);
+  const Eigen::Matrix3d s = c * p_curr * c.transpose() + r;
 
-  const double distance = mahalanobis(y_ekf, y, p_y);
+  const double squared_distance = squared_mahalanobis(y_ekf, y, s);
+  const double distance = std::sqrt(squared_distance);
   pose_diag_info.mahalanobis_distance = std::max(distance, pose_diag_info.mahalanobis_distance);
   // is_passed_mahalanobis_gate is initialized true before the first calling measurement_update_pose
   // every ekf_localizer call.
-  if (distance > params_.pose_gate_dist) {
+  if (squared_distance > params_.pose_gate_dist) {
     pose_diag_info.is_passed_mahalanobis_gate = false;
-    warnings_out.push_back({mahalanobis_warning_message(distance, params_.pose_gate_dist), 2000});
+    warnings_out.push_back(
+      {mahalanobis_warning_message(distance, std::sqrt(params_.pose_gate_dist)), 2000});
     warnings_out.push_back({"Ignore the measurement data.", 2000});
     return false;
   }
@@ -621,10 +626,6 @@ bool EKFLocalizer::measurement_update_pose(
   DEBUG_PRINT_MAT(y.transpose());
   DEBUG_PRINT_MAT(y_ekf.transpose());
   DEBUG_PRINT_MAT((y - y_ekf).transpose());
-
-  const Eigen::Matrix<double, 3, 6> c = pose_measurement_matrix();
-  const Eigen::Matrix3d r =
-    pose_measurement_covariance(pose.pose.covariance, params_.pose_smoothing_steps);
 
   kalman_filter_.updateWithDelay(y, c, r, static_cast<int>(delay_step));
 
@@ -734,16 +735,21 @@ bool EKFLocalizer::measurement_update_twist(
   const Eigen::Vector2d y_ekf(
     kalman_filter_.getXelement(delay_step * dim_x_ + IDX::VX),
     kalman_filter_.getXelement(delay_step * dim_x_ + IDX::WZ));
+  const Eigen::Matrix<double, 2, 6> c = twist_measurement_matrix();
+  const Eigen::Matrix2d r =
+    twist_measurement_covariance(twist.twist.covariance, params_.twist_smoothing_steps);
   const Eigen::MatrixXd p_curr = kalman_filter_.getLatestP();
-  const Eigen::MatrixXd p_y = p_curr.block(4, 4, dim_y, dim_y);
+  const Eigen::Matrix2d s = c * p_curr * c.transpose() + r;
 
-  const double distance = mahalanobis(y_ekf, y, p_y);
+  const double squared_distance = squared_mahalanobis(y_ekf, y, s);
+  const double distance = std::sqrt(squared_distance);
   twist_diag_info.mahalanobis_distance = std::max(distance, twist_diag_info.mahalanobis_distance);
   // is_passed_mahalanobis_gate is initialized true before the first calling
   // measurement_update_twist every ekf_localizer call.
-  if (distance > params_.twist_gate_dist) {
+  if (squared_distance > params_.twist_gate_dist) {
     twist_diag_info.is_passed_mahalanobis_gate = false;
-    warnings_out.push_back({mahalanobis_warning_message(distance, params_.twist_gate_dist), 2000});
+    warnings_out.push_back(
+      {mahalanobis_warning_message(distance, std::sqrt(params_.twist_gate_dist)), 2000});
     warnings_out.push_back({"Ignore the measurement data.", 2000});
     return false;
   }
@@ -751,10 +757,6 @@ bool EKFLocalizer::measurement_update_twist(
   DEBUG_PRINT_MAT(y.transpose());
   DEBUG_PRINT_MAT(y_ekf.transpose());
   DEBUG_PRINT_MAT((y - y_ekf).transpose());
-
-  const Eigen::Matrix<double, 2, 6> c = twist_measurement_matrix();
-  const Eigen::Matrix2d r =
-    twist_measurement_covariance(twist.twist.covariance, params_.twist_smoothing_steps);
 
   kalman_filter_.updateWithDelay(y, c, r, static_cast<int>(delay_step));
 
