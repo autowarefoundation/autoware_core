@@ -396,6 +396,48 @@ public:
     return create_client<ServiceT>(service_name, detail::to_qos(qos_profile), group);
   }
 
+  // ===== Generic (type-erased) client / service =====
+  GenericClient::SharedPtr create_generic_client(
+    const std::string & service_name, const std::string & service_type,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    const rclcpp::CallbackGroup::SharedPtr & group = nullptr)
+  {
+    return visit_node([&](auto & n) -> GenericClient::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastGenericClient>(
+          n.get(), service_name, service_type, qos, group);
+      } else {
+        // Delegate rather than re-registering a ROS2GenericClient inline: the Method 1 free
+        // function above already does exactly this registration, and duplicating it here would
+        // let the two paths drift apart.
+        return autoware::agnocast_wrapper::create_generic_client(
+          n.get(), service_name, service_type, qos, group);
+      }
+    });
+  }
+
+  template <typename Func>
+  GenericService::SharedPtr create_generic_service(
+    const std::string & service_name, const std::string & service_type, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    const rclcpp::CallbackGroup::SharedPtr & group = nullptr)
+  {
+    return visit_node([&](auto & n) -> GenericService::SharedPtr {
+      using NodeT = std::decay_t<decltype(*n)>;
+      if constexpr (std::is_same_v<NodeT, agnocast::Node>) {
+        return std::make_shared<AgnocastGenericService>(
+          n.get(), service_name, service_type, std::forward<Func>(callback), qos, group);
+      } else {
+        // Delegate rather than re-registering a ROS2GenericService inline: the Method 1 free
+        // function above already does exactly this registration, and duplicating it here would
+        // let the two paths drift apart.
+        return autoware::agnocast_wrapper::create_generic_service(
+          n.get(), service_name, service_type, std::forward<Func>(callback), qos, group);
+      }
+    });
+  }
+
   // Service with a callback taking AUTOWARE_SERVER_REQUEST_PTR/RESPONSE_PTR (message_ptr).
   template <
     typename ServiceT, typename Func,
@@ -975,6 +1017,26 @@ public:
   {
     return create_service<ServiceT>(
       service_name, std::forward<Func>(callback), detail::to_qos(qos_profile), group);
+  }
+
+  // ===== Generic (type-erased) client / service =====
+  GenericClient::SharedPtr create_generic_client(
+    const std::string & service_name, const std::string & service_type,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    const rclcpp::CallbackGroup::SharedPtr & group = nullptr)
+  {
+    return autoware::agnocast_wrapper::create_generic_client(
+      node_.get(), service_name, service_type, qos, group);
+  }
+
+  template <typename Func>
+  GenericService::SharedPtr create_generic_service(
+    const std::string & service_name, const std::string & service_type, Func && callback,
+    const rclcpp::QoS & qos = rclcpp::ServicesQoS(),
+    const rclcpp::CallbackGroup::SharedPtr & group = nullptr)
+  {
+    return autoware::agnocast_wrapper::create_generic_service(
+      node_.get(), service_name, service_type, std::forward<Func>(callback), qos, group);
   }
 
   // ===== Timer =====
