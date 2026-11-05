@@ -8,6 +8,9 @@
       stop_planning:
         stop_margin : 5.0 # longitudinal margin to obstacle [m]
         terminal_stop_margin : 3.0 # Stop margin at the goal. This value cannot exceed stop margin. [m]
+        backward: # stop margins used while driving backward
+          stop_margin: 5.0 # longitudinal margin from the rear bumper to obstacle [m]
+          terminal_stop_margin: 3.0 # Stop margin at the goal. This value cannot exceed stop margin. [m]
         min_behavior_stop_margin: 3.0 # [m]
         behavior_stop_margin_hold_time: 2.0 # [s] time to hold the min_behavior_stop_margin after disappearing the behavior stop point
 
