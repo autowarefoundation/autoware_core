@@ -916,17 +916,17 @@ std::optional<lanelet::ConstPoint2d> get_turn_signal_required_end_point(
   centerline->align_orientation_with_trajectory_direction();
 
   const auto terminal_yaw = tf2::getYaw(centerline->compute(centerline->length()).orientation);
-  const auto intervals = autoware::experimental::trajectory::find_intervals(
+  const auto interval_opt = autoware::experimental::trajectory::find_first_interval(
     centerline.value(),
     [terminal_yaw, angle_threshold_deg](const geometry_msgs::msg::Pose & point) {
       const auto yaw = tf2::getYaw(point.orientation);
       return std::fabs(autoware_utils_math::normalize_radian(yaw - terminal_yaw)) <
              autoware_utils_math::deg2rad(angle_threshold_deg);
     });
-  if (intervals.empty()) return std::nullopt;
+  if (!interval_opt.has_value()) return std::nullopt;
 
   return experimental::lanelet2_utils::from_ros(
-    centerline->compute(intervals.front().start).position);
+    centerline->compute(interval_opt.value().start).position);
 }
 }  // namespace utils
 }  // namespace autoware::path_generator

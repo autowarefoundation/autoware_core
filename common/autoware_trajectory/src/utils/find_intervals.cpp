@@ -58,4 +58,31 @@ std::vector<Interval> find_intervals_impl(
   return intervals;
 }
 
+std::optional<Interval> find_first_interval_impl(
+  const std::vector<double> & bases, const std::function<bool(const double &)> & constraint,
+  int max_iter)
+{
+  double start = -1.0;
+  bool is_started = false;
+
+  for (size_t i = 0; i < bases.size(); ++i) {
+    if (!is_started && constraint(bases.at(i))) {
+      start = i > 0 ? autoware::experimental::trajectory::detail::lower_bound_by_predicate(
+                        bases.at(i - 1), bases.at(i), constraint, static_cast<size_t>(max_iter))
+                    : bases.at(i);
+
+      is_started = true;
+    } else if (is_started && !constraint(bases.at(i))) {
+      const double end = autoware::experimental::trajectory::detail::upper_bound_by_predicate(
+        bases.at(i - 1), bases.at(i), constraint, static_cast<size_t>(max_iter));
+
+      return Interval{start, end};
+    } else if (is_started && i == bases.size() - 1) {
+      return Interval{start, bases.at(i)};
+    }
+  }
+
+  return std::nullopt;
+}
+
 }  // namespace autoware::experimental::trajectory::detail::impl
