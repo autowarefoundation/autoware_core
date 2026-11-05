@@ -4,7 +4,7 @@ project(autoware_object_recognition_utils)
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
-find_package(Boost REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/predicted_path_utils.cpp
