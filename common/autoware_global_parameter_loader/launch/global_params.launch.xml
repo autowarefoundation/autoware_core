@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<launch>
+  <arg name="use_sim_time"/>
+  <arg name="vehicle_info_param_file"/>
+
+  <set_parameter name="use_sim_time" value="$(var use_sim_time)"/>
+  <include file="$(find-pkg-share autoware_vehicle_info_utils)/launch/vehicle_info.launch.py">
+    <arg name="vehicle_info_param_file" value="$(var vehicle_info_param_file)"/>
+  </include>
+</launch>
