@@ -67,6 +67,7 @@
 #include <pcl/kdtree/kdtree_flann.h>
 #include <pcl/point_types.h>
 
+#include <cstdint>
 #include <future>
 #include <map>
 #include <memory>
@@ -221,6 +222,84 @@ public:
   using GridNodeType = std::vector<Leaf>;
   using GridNodePtr = std::shared_ptr<GridNodeType>;
 
+  // All grids share leaf_size_, so occupied voxels live on ONE global integer lattice.
+  // Indexing that lattice directly makes neighbour lookup O(1) and independent of how many
+  // map segments are loaded -- unlike a per-grid scan, which costs O(number of grids).
+  static inline int64_t packVoxelKey(int i, int j, int k)
+  {
+    // 21 bits per axis, biased to keep negatives positive: +/-1,048,576 voxels per axis,
+    // i.e. +/-2,097 km at a 2 m resolution.
+    constexpr int64_t kBias = 1 << 20;
+    return ((static_cast<int64_t>(i) + kBias) << 42) | ((static_cast<int64_t>(j) + kBias) << 21) |
+           (static_cast<int64_t>(k) + kBias);
+  }
+
+  // Dense lookup over the bounding box of the currently loaded voxels. Autoware loads a
+  // bounded region around the vehicle (map_loader's map_radius), so this box is small, and a
+  // direct index needs no hashing at all -- one multiply-add and one load. Falls back to a
+  // hash map if the box is ever too large to be worth materialising.
+  struct VoxelGridIndex
+  {
+    std::vector<const Leaf *> cells;                   // dense, nullptr = empty
+    std::unordered_map<int64_t, const Leaf *> sparse;  // fallback
+    int min_i{0}, min_j{0}, min_k{0};
+    int64_t dim_i{0}, dim_j{0}, dim_k{0};
+    bool dense_ok{false};
+
+    // 12 M cells x 8 B = 96 MB ceiling; a 150 m radius map at 2 m is ~0.5 M cells.
+    static constexpr int64_t kMaxCells = 12000000;
+
+    void clear()
+    {
+      cells.clear();
+      sparse.clear();
+      dense_ok = false;
+      dim_i = dim_j = dim_k = 0;
+    }
+
+    void build(int lo_i, int lo_j, int lo_k, int hi_i, int hi_j, int hi_k, size_t n_leaves)
+    {
+      min_i = lo_i;
+      min_j = lo_j;
+      min_k = lo_k;
+      dim_i = static_cast<int64_t>(hi_i) - lo_i + 1;
+      dim_j = static_cast<int64_t>(hi_j) - lo_j + 1;
+      dim_k = static_cast<int64_t>(hi_k) - lo_k + 1;
+      const int64_t total = dim_i * dim_j * dim_k;
+      dense_ok = (dim_i > 0 && dim_j > 0 && dim_k > 0 && total > 0 && total <= kMaxCells);
+      if (dense_ok) {
+        cells.assign(static_cast<size_t>(total), nullptr);
+      } else {
+        sparse.reserve(n_leaves * 2);
+      }
+    }
+
+    inline void insert(int i, int j, int k, const Leaf * v)
+    {
+      if (dense_ok) {
+        const int64_t di = i - min_i, dj = j - min_j, dk = k - min_k;
+        if (di < 0 || dj < 0 || dk < 0 || di >= dim_i || dj >= dim_j || dk >= dim_k) return;
+        auto & slot = cells[static_cast<size_t>((di * dim_j + dj) * dim_k + dk)];
+        if (slot == nullptr) slot = v;
+      } else {
+        sparse.emplace(packVoxelKey(i, j, k), v);
+      }
+    }
+
+    inline const Leaf * find(int i, int j, int k) const
+    {
+      if (dense_ok) {
+        const int64_t di = i - min_i, dj = j - min_j, dk = k - min_k;
+        if (di < 0 || dj < 0 || dk < 0 || di >= dim_i || dj >= dim_j || dk >= dim_k) {
+          return nullptr;
+        }
+        return cells[static_cast<size_t>((di * dim_j + dj) * dim_k + dk)];
+      }
+      const auto it = sparse.find(packVoxelKey(i, j, k));
+      return it == sparse.end() ? nullptr : it->second;
+    }
+  };
+
 public:
   /** \brief Constructor.
    * Sets \ref leaf_size_ to 0
@@ -265,6 +344,12 @@ public:
   int radiusSearch(
     const PointT & point, double radius, std::vector<LeafConstPtr> & k_leaves,
     unsigned int max_nn = 0) const;
+
+  // Direct voxel-index neighbour search. Exactly reproduces radiusSearch() for radius == the
+  // voxel edge length: enumerate the candidate cells that could hold a centroid within radius,
+  // then keep those whose centroid actually is.
+  int radiusSearchDirect(
+    const PointT & point, double radius, std::vector<LeafConstPtr> & k_leaves) const;
 
   /** \brief Search for all the nearest occupied voxels of the query point in a given radius.
    * \note Only voxels containing a sufficient number of points are used.
@@ -385,6 +470,8 @@ protected:
   std::map<std::string, int> sid_to_iid_;
   // Grids of leaves are held in a vector for faster access speed
   std::vector<GridNodePtr> grid_list_;
+  // Global voxel lattice index: packed voxel key -> leaf. Rebuilt by createKdtree().
+  VoxelGridIndex voxel_index_;
   // A kdtree built from the leaves of grids
   pcl::KdTreeFLANN<PointT> kdtree_;
   // To access leaf by the search results by kdtree
