@@ -13,7 +13,7 @@
 // limitations under the License.
 
 /// @file
-/// @brief Characterization tests for `NDTScanMatcher`.
+/// @brief Characterization tests for `NdtScanMatcherNode`.
 ///
 /// These pin what the node does *today* through its ROS surface (`/diagnostics`, output topics,
 /// services), so a refactor into a ROS-free core can be shown to preserve it. Conventions:
