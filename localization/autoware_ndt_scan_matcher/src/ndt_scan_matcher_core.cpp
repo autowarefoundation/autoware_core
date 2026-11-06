@@ -1075,6 +1075,7 @@ void NDTScanMatcher::service_ndt_align_main(
 
     // estimate initial pose
     const auto [pose_with_covariance, score] = align_pose(initial_pose_msg_in_map_frame, *ndt_ptr);
+    diagnostics_ndt_align_->add_key_value("best_particle_score", score);
 
     // check reliability of initial pose result
     res->reliable =
@@ -1190,7 +1191,6 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
 
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_output", result_pose_with_cov_msg);
-  diagnostics_ndt_align_->add_key_value("best_particle_score", best_particle_ptr->score);
 
   return std::make_tuple(result_pose_with_cov_msg, best_particle_ptr->score);
 }
