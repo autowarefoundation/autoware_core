@@ -77,7 +77,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   tf2_buffer_(this->get_clock()),
   tf2_listener_(tf2_buffer_, *this),
   is_activated_(false),
-  param_(this)
+  param_(declare_hyper_parameters(this))
 {
   timer_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::CallbackGroup::SharedPtr initial_pose_callback_group =

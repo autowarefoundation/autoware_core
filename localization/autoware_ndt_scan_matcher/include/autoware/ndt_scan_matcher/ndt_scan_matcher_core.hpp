@@ -18,7 +18,7 @@
 #define FMT_HEADER_ONLY
 
 #include "guarded.hpp"
-#include "hyper_parameters.hpp"
+#include "hyper_parameters_loader.hpp"
 #include "map_update_module.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
 #include "scan_match_diagnostics.hpp"

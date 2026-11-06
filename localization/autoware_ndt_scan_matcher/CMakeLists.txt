@@ -43,6 +43,7 @@ else()
 endif()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/hyper_parameters_loader.cpp
   src/map_update_module.cpp
   src/ndt_scan_matcher_core.cpp
   src/ndt_scan_matcher_helper.cpp
