@@ -188,7 +188,7 @@ bool MapUpdateModule::update_map_internal(
     // 2. Swap the pointers inside the ndt_ptr_'s lock.
     // - During the swap, the reference count does not decrease to zero,
     //   so the heavy destructor is not called here.
-    // - This prevents the align process of NDTScanMatcher from being
+    // - This prevents the align process of NdtScanMatcherNode from being
     //   blocked for a long time.
     ndt_ptr_.with([&](auto & ndt_ptr) { std::swap(ndt_ptr, new_ndt_ptr); });
 

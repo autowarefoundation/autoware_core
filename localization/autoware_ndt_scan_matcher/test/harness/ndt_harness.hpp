@@ -21,7 +21,7 @@
 #include "topic_capture.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
-#include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
+#include <autoware/ndt_scan_matcher/ndt_scan_matcher_node.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2_ros/static_transform_broadcaster.hpp>
 
@@ -94,7 +94,7 @@ struct ScanOutcome
   int attempt{0};
 };
 
-/// @brief Drives a real `NDTScanMatcher` and observes everything it emits.
+/// @brief Drives a real `NdtScanMatcherNode` and observes everything it emits.
 ///
 /// ## Executor topology
 ///
@@ -102,7 +102,7 @@ struct ScanOutcome
 ///
 /// | What                                        | Executor                 | Thread        |
 /// |---------------------------------------------|--------------------------|---------------|
-/// | `NDTScanMatcher`                            | `MultiThreadedExecutor`  | dedicated     |
+/// | `NdtScanMatcherNode`                        | `MultiThreadedExecutor`  | dedicated     |
 /// | `StubMapLoader`                             | `SingleThreadedExecutor` | dedicated     |
 /// | observer node (captures, stimulus, clients) | `SingleThreadedExecutor` | test thread   |
 ///
@@ -122,7 +122,7 @@ public:
   explicit NdtHarness(std::vector<rclcpp::Parameter> overrides = {}, bool with_map_loader = true)
   : overrides_(std::move(overrides))
   {
-    node_ = std::make_shared<autoware::ndt_scan_matcher::NDTScanMatcher>(build_node_options());
+    node_ = std::make_shared<autoware::ndt_scan_matcher::NdtScanMatcherNode>(build_node_options());
 
     observer_ = std::make_shared<rclcpp::Node>("ndt_test_observer_" + unique_suffix());
     diagnostics_ = std::make_unique<DiagnosticsCapture>(observer_.get());
@@ -593,7 +593,7 @@ private:
 
   std::vector<rclcpp::Parameter> overrides_;
 
-  std::shared_ptr<autoware::ndt_scan_matcher::NDTScanMatcher> node_;
+  std::shared_ptr<autoware::ndt_scan_matcher::NdtScanMatcherNode> node_;
   std::shared_ptr<rclcpp::Node> observer_;
   std::shared_ptr<StubMapLoader> map_loader_;
 

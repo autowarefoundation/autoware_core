@@ -10,7 +10,7 @@ package:
   provider: autoware
 
 launch:
-  plugin: autoware::ndt_scan_matcher::NDTScanMatcher
+  plugin: autoware::ndt_scan_matcher::NdtScanMatcherNode
   executable: autoware_ndt_scan_matcher_node
   node_output: screen
 
