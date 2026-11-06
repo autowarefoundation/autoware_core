@@ -19,7 +19,7 @@
 
 #include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 #include "guarded.hpp"
-#include "hyper_parameters.hpp"
+#include "hyper_parameters_loader.hpp"
 #include "map_update_module.hpp"
 #include "scan_match_diagnostics.hpp"
 

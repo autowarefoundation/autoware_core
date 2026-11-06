@@ -43,6 +43,7 @@ endif()
 
 # NO_TARGET_LINK_LIBRARIES: the node does not use ndt_omp. Only the backend "ndt_omp" does.
 ament_auto_add_library(${PROJECT_NAME} SHARED NO_TARGET_LINK_LIBRARIES
+  src/hyper_parameters_loader.cpp
   src/map_update_module.cpp
   src/ndt_backend_loader.cpp
   src/ndt_omp/estimate_covariance.cpp

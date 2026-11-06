@@ -79,7 +79,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   tf2_buffer_(this->get_clock()),
   tf2_listener_(tf2_buffer_, *this),
   is_activated_(false),
-  param_(this)
+  param_(declare_hyper_parameters(this))
 {
   // Load the backend first, so that a wrong backend name stops the node before the constructor
   // body creates publishers, subscriptions, services and timers. Only the tf broadcaster and the
