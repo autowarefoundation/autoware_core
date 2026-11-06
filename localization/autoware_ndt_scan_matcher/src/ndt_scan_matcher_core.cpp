@@ -204,6 +204,10 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
       return this->get_differential_point_cloud_map(request);
     });
 
+  scan_match_diagnostics_ = std::make_unique<ScanMatchDiagnostics>(ScanMatchDiagnosticsConfig{
+    param_.validation.initial_to_result_distance_tolerance_m,
+    param_.validation.critical_upper_bound_exe_time_ms});
+
   diagnostics_scan_points_ = std::make_unique<DiagnosticsInterface>(this, "scan_matching_status");
   diagnostics_initial_pose_ =
     std::make_unique<DiagnosticsInterface>(this, "initial_pose_subscriber_status");
@@ -557,37 +561,29 @@ bool NDTScanMatcher::callback_sensor_points_main(
       transformation_msg_array.push_back(pose_ros);
     }
 
+    ScanMatchDiagnosticValues diagnostic_values;
+    diagnostic_values.iteration_num = ndt_result.iteration_num;
+    diagnostic_values.maximum_iterations = ndt_ptr->getMaximumIterations();
+    diagnostic_values.transform_probability = ndt_result.transform_probability;
+    diagnostic_values.nearest_voxel_transformation_likelihood =
+      ndt_result.nearest_voxel_transformation_likelihood;
+    diagnostic_values.transform_probability_array = ndt_result.transform_probability_array;
+    diagnostic_values.nearest_voxel_transformation_likelihood_array =
+      ndt_result.nearest_voxel_transformation_likelihood_array;
+
     // check iteration_num
-    diagnostics_scan_points_->add_key_value("iteration_num", ndt_result.iteration_num);
     const bool is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->getMaximumIterations());
-    if (!is_ok_iteration_num) {
-      std::stringstream message;
-      message << "The number of iterations has reached its upper limit. The number of iterations: "
-              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->getMaximumIterations() << ".";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    }
+    diagnostic_values.is_ok_iteration_num = is_ok_iteration_num;
 
     // check local_optimal_solution_oscillation_num
     constexpr int oscillation_num_threshold = 10;
     const int oscillation_num = count_oscillation(transformation_msg_array);
-    diagnostics_scan_points_->add_key_value(
-      "local_optimal_solution_oscillation_num", oscillation_num);
     const bool is_local_optimal_solution_oscillation =
       (oscillation_num > oscillation_num_threshold);
-    if (is_local_optimal_solution_oscillation) {
-      std::stringstream message;
-      message << "There is a possibility of oscillation in a local minimum";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    }
+    diagnostic_values.oscillation_num = oscillation_num;
+    diagnostic_values.is_local_optimal_solution_oscillation = is_local_optimal_solution_oscillation;
 
     // check score
-    diagnostics_scan_points_->add_key_value(
-      "transform_probability", ndt_result.transform_probability);
-    diagnostics_scan_points_->add_key_value(
-      "nearest_voxel_transformation_likelihood",
-      ndt_result.nearest_voxel_transformation_likelihood);
     double score = 0.0;
     double score_threshold = 0.0;
     if (param_.score_estimation.converged_param_type == ConvergedParamType::TRANSFORM_PROBABILITY) {
@@ -600,56 +596,21 @@ bool NDTScanMatcher::callback_sensor_points_main(
       score_threshold =
         param_.score_estimation.converged_param_nearest_voxel_transformation_likelihood;
     } else {
-      std::stringstream message;
-      message
-        << "Unknown converged param type. Please check `score_estimation.converged_param_type`";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::ERROR, message.str());
+      diagnostic_values.is_known_converged_param_type = false;
+      apply_diagnostics_update(
+        *diagnostics_scan_points_, scan_match_diagnostics_->make_report(diagnostic_values));
       return false;
-    }
-
-    // check score diff
-    const std::vector<float> & tp_array = ndt_result.transform_probability_array;
-    if (static_cast<int>(tp_array.size()) != ndt_result.iteration_num + 1) {
-      // only publish warning to /diagnostics, not skip publishing pose
-      std::stringstream message;
-      message << "transform_probability_array size is not equal to iteration_num + 1."
-              << " transform_probability_array size: " << tp_array.size()
-              << ", iteration_num: " << ndt_result.iteration_num;
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    } else {
-      const float diff = tp_array.back() - tp_array.front();
-      diagnostics_scan_points_->add_key_value("transform_probability_diff", diff);
-      diagnostics_scan_points_->add_key_value("transform_probability_before", tp_array.front());
-    }
-    const std::vector<float> & nvtl_array =
-      ndt_result.nearest_voxel_transformation_likelihood_array;
-    if (static_cast<int>(nvtl_array.size()) != ndt_result.iteration_num + 1) {
-      // only publish warning to /diagnostics, not skip publishing pose
-      std::stringstream message;
-      message
-        << "nearest_voxel_transformation_likelihood_array size is not equal to iteration_num + 1."
-        << " nearest_voxel_transformation_likelihood_array size: " << nvtl_array.size()
-        << ", iteration_num: " << ndt_result.iteration_num;
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    } else {
-      const float diff = nvtl_array.back() - nvtl_array.front();
-      diagnostics_scan_points_->add_key_value("nearest_voxel_transformation_likelihood_diff", diff);
-      diagnostics_scan_points_->add_key_value(
-        "nearest_voxel_transformation_likelihood_before", nvtl_array.front());
     }
 
     bool is_ok_score = (score > score_threshold);
     if (!is_ok_score) {
-      std::stringstream message;
-      message << "Score is below the threshold. Score: " << score
-              << ", Threshold: " << score_threshold;
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-      RCLCPP_WARN_STREAM_THROTTLE(this->get_logger(), *this->get_clock(), 1000, message.str());
+      RCLCPP_WARN_STREAM_THROTTLE(
+        this->get_logger(), *this->get_clock(), 1000,
+        "Score is below the threshold. Score: " << score << ", Threshold: " << score_threshold);
     }
+    diagnostic_values.score = score;
+    diagnostic_values.score_threshold = score_threshold;
+    diagnostic_values.is_ok_score = is_ok_score;
 
     // check is_converged
     bool is_converged =
@@ -681,31 +642,18 @@ bool NDTScanMatcher::callback_sensor_points_main(
       ndt_covariance[0 + 6 * 1] = estimated_covariance_2d_adj(0, 1);
     }
 
-    // check distance_initial_to_result
-    const auto distance_initial_to_result = static_cast<double>(autoware::localization_util::norm(
-      interpolation_result.interpolated_pose.pose.pose.position, result_pose_msg.position));
-    diagnostics_scan_points_->add_key_value(
-      "distance_initial_to_result", distance_initial_to_result);
-    if (distance_initial_to_result > param_.validation.initial_to_result_distance_tolerance_m) {
-      std::stringstream message;
-      message << "distance_initial_to_result is too large (" << distance_initial_to_result
-              << " [m]).";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    }
+    diagnostic_values.distance_initial_to_result =
+      static_cast<double>(autoware::localization_util::norm(
+        interpolation_result.interpolated_pose.pose.pose.position, result_pose_msg.position));
 
-    // check execution_time
     const auto exe_end_time = std::chrono::system_clock::now();
     const auto duration_micro_sec =
       std::chrono::duration_cast<std::chrono::microseconds>(exe_end_time - exe_start_time).count();
     const auto exe_time = static_cast<float>(duration_micro_sec) / 1000.0f;
-    diagnostics_scan_points_->add_key_value("execution_time", exe_time);
-    if (exe_time > param_.validation.critical_upper_bound_exe_time_ms) {
-      std::stringstream message;
-      message << "NDT exe time is too long (took " << exe_time << " [ms]).";
-      diagnostics_scan_points_->update_level_and_message(
-        diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
-    }
+    diagnostic_values.execution_time_ms = exe_time;
+
+    apply_diagnostics_update(
+      *diagnostics_scan_points_, scan_match_diagnostics_->make_report(diagnostic_values));
 
     // publish
     initial_pose_with_covariance_pub_->publish(interpolation_result.interpolated_pose);
