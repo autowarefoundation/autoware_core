@@ -44,6 +44,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <optional>
 #include <stdexcept>
@@ -62,6 +63,8 @@ using geometry_msgs::msg::Quaternion;
 using geometry_msgs::msg::Transform;
 using sensor_msgs::msg::NavSatFix;
 using sensor_msgs::msg::NavSatStatus;
+using std::chrono_literals::operator""ms;
+using std::chrono_literals::operator""s;
 
 // ---------------------------------------------------------------------------------------
 // Reference input used throughout (same point as autoware_geography_utils' own tests).
@@ -404,8 +407,8 @@ void expect_rotation_variances_near(
   EXPECT_NEAR(covariance[cov_yaw_yaw], yaw, rmse_squared_tolerance);
 }
 
-// The fixes of these cases carry the frame `gnss`, for which the node had no transform and
-// composed with the identity; the lookup that stands in for TF provides the identity directly.
+// The lookup that stands in for TF provides the identity, so that the cases taken from the node
+// characterization stay about what they check rather than about the antenna transform.
 const GnssPoser::TransformLookup identity_lookup =
   [](const std::string &, const builtin_interfaces::msg::Time &) {
     return std::optional<Transform>(Transform{});
@@ -495,6 +498,76 @@ struct CovarianceType
 };
 
 class GnssPoserKnownCovarianceType : public ::testing::TestWithParam<CovarianceType>
+{
+};
+
+constexpr std::chrono::milliseconds grace_period =
+  autoware::gnss_poser::antenna_transform_grace_period;
+constexpr std::chrono::milliseconds beyond_grace_period = grace_period + 1ms;
+constexpr std::chrono::milliseconds beyond_jump_threshold =
+  autoware::gnss_poser::fix_stamp_jump_threshold + 1ms;
+// Fixes arrive once a second, as from a 1 Hz receiver: the stamps advance by less than the jump
+// threshold, so they count as time that passed.
+constexpr std::chrono::milliseconds fix_interval = 1s;
+
+// What the antenna transform lookup gives for a fix, or that the fix does not reach it.
+enum class Lookup { Available, Unavailable, NotReached };
+
+// Fixes stamped `from` to `to` after the first one, every fix_interval and at `to`, all naming the
+// same antenna frame and getting the same lookup.
+struct ReceivedFixes
+{
+  std::chrono::milliseconds from;
+  std::chrono::milliseconds to;
+  const char * antenna_frame;
+  Lookup lookup;
+};
+
+// A sequence of fixes and the antenna transform issues it should raise, in order.
+struct AntennaTransformIssueCase
+{
+  const char * name;
+  std::vector<ReceivedFixes> fixes;
+  std::vector<GnssPoser::Issue> raised;
+};
+
+// `stamp` advanced by `offset`.
+builtin_interfaces::msg::Time stamp_after(
+  const builtin_interfaces::msg::Time & stamp, const std::chrono::nanoseconds offset)
+{
+  const std::chrono::nanoseconds time =
+    std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec) + offset;
+  const std::chrono::seconds sec = std::chrono::floor<std::chrono::seconds>(time);
+  builtin_interfaces::msg::Time advanced;
+  advanced.sec = static_cast<int32_t>(sec.count());
+  advanced.nanosec = static_cast<uint32_t>((time - sec).count());
+  return advanced;
+}
+
+// The fixes `received` describes, stamped after the reference fix. A fix that does not reach the
+// lookup is one that the receiver reports as not fixed.
+std::vector<NavSatFix> make_received_fixes(const ReceivedFixes & received)
+{
+  NavSatStatus::_status_type status = NavSatStatus::STATUS_FIX;
+  if (received.lookup == Lookup::NotReached) {
+    status = NavSatStatus::STATUS_NO_FIX;
+  }
+  NavSatFix fix = make_reference_fix(status);
+  fix.header.frame_id = received.antenna_frame;
+  const builtin_interfaces::msg::Time first_stamp = fix.header.stamp;
+
+  std::vector<NavSatFix> fixes;
+  for (std::chrono::milliseconds after = received.from; after < received.to;
+       after += fix_interval) {
+    fix.header.stamp = stamp_after(first_stamp, after);
+    fixes.push_back(fix);
+  }
+  fix.header.stamp = stamp_after(first_stamp, received.to);
+  fixes.push_back(fix);
+  return fixes;
+}
+
+class GnssPoserAntennaTransformIssue : public ::testing::TestWithParam<AntennaTransformIssueCase>
 {
 };
 }  // namespace
@@ -1157,3 +1230,99 @@ TEST(GnssPoser, Covariance_UnknownType_PositionVariancesAreTen)
     }
   }
 }
+
+// =======================================================================================
+// 6. Antenna transform
+// =======================================================================================
+
+// An unavailable antenna transform is expected right after startup, so it is raised as an issue
+// only once it has been unavailable for longer than the grace period, measured by the fix stamps
+// from the first fix that could not get it for the same frame. The callback receives it once when
+// it is raised, not again while it persists. A fix that gets the transform clears it, so it can be
+// raised again; a fix that does not reach the lookup says nothing about the transform but still
+// moves the time. Where the stamps go backward or jump forward, the grace period starts over.
+TEST_P(GnssPoserAntennaTransformIssue, IssueRaisedCallback_AfterFixes_ReceivesEachRaisedIssueOnce)
+{
+  // Arrange
+  Lookup lookup = Lookup::Available;
+  std::vector<GnssPoser::Issue> raised;
+  GnssPoser poser(
+    {},
+    [&lookup](const std::string &, const builtin_interfaces::msg::Time &) {
+      std::optional<Transform> transform;
+      if (lookup != Lookup::Unavailable) {
+        transform = Transform{};
+      }
+      return transform;
+    },
+    [&raised](const GnssPoser::Issue & issue) { raised.push_back(issue); });
+  poser.set_projector_info(make_mgrs_projector_info());
+
+  // Act
+  for (const ReceivedFixes & received : GetParam().fixes) {
+    lookup = received.lookup;
+    for (const NavSatFix & fix : make_received_fixes(received)) {
+      poser.input_fix(fix);
+    }
+  }
+
+  // Assert
+  const std::vector<GnssPoser::Issue> & expected = GetParam().raised;
+  ASSERT_EQ(raised.size(), expected.size());
+  for (std::size_t i = 0; i < raised.size(); ++i) {
+    EXPECT_EQ(raised[i].cause, expected[i].cause) << "issue " << i;
+    EXPECT_EQ(raised[i].antenna_frame, expected[i].antenna_frame) << "issue " << i;
+  }
+}
+
+const GnssPoser::Issue gnss_unavailable{GnssPoser::Issue::Cause::TransformUnavailable, "gnss"};
+
+INSTANTIATE_TEST_SUITE_P(
+  FixSequences, GnssPoserAntennaTransformIssue,
+  ::testing::Values(
+    AntennaTransformIssueCase{
+      "UnavailableForTheGracePeriod", {{0ms, grace_period, "gnss", Lookup::Unavailable}}, {}},
+    AntennaTransformIssueCase{
+      "UnavailableBeyondTheGracePeriod",
+      {{0ms, beyond_grace_period, "gnss", Lookup::Unavailable}},
+      {gnss_unavailable}},
+    AntennaTransformIssueCase{
+      "StillUnavailableAfterRaised",
+      {{0ms, beyond_grace_period + 1s, "gnss", Lookup::Unavailable}},
+      {gnss_unavailable}},
+    AntennaTransformIssueCase{
+      "UnavailableThenFixesNotReachingTheLookup",
+      {{0ms, 1s, "gnss", Lookup::Unavailable},
+       {2s, beyond_grace_period, "gnss", Lookup::NotReached}},
+      {gnss_unavailable}},
+    AntennaTransformIssueCase{
+      "AvailableInBetweenRestartsTheGracePeriod",
+      {{0ms, 1s, "gnss", Lookup::Unavailable},
+       {2s, 2s, "gnss", Lookup::Available},
+       {3s, 3s + grace_period, "gnss", Lookup::Unavailable}},
+      {}},
+    AntennaTransformIssueCase{
+      "AnotherFrameRestartsTheGracePeriod",
+      {{0ms, 1s, "gnss", Lookup::Unavailable},
+       {2s, 2s + grace_period, "gnss_2", Lookup::Unavailable}},
+      {}},
+    AntennaTransformIssueCase{
+      "RaisedAgainAfterAvailable",
+      {{0ms, beyond_grace_period, "gnss", Lookup::Unavailable},
+       {6s, 6s, "gnss", Lookup::Available},
+       {7s, 7s + beyond_grace_period, "gnss", Lookup::Unavailable}},
+      {gnss_unavailable, gnss_unavailable}},
+    AntennaTransformIssueCase{
+      "StampGoingBackRestartsTheGracePeriod",
+      {{0ms, 3s, "gnss", Lookup::Unavailable},
+       {1s, 1s + grace_period, "gnss", Lookup::Unavailable}},
+      {}},
+    AntennaTransformIssueCase{
+      "StampJumpingForwardRestartsTheGracePeriod",
+      {{0ms, 1s, "gnss", Lookup::Unavailable},
+       {1s + beyond_jump_threshold, 1s + beyond_jump_threshold + grace_period, "gnss",
+        Lookup::Unavailable}},
+      {}}),
+  [](const ::testing::TestParamInfo<AntennaTransformIssueCase> & info) {
+    return std::string(info.param.name);
+  });

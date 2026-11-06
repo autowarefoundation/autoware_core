@@ -14,6 +14,8 @@
 
 #include "gnss_poser_node.hpp"
 
+#include <tf2/exceptions.hpp>
+
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
 
 #include <memory>
@@ -52,7 +54,8 @@ GnssPoserNode::GnssPoserNode(const rclcpp::NodeOptions & node_options)
     declare_gnss_poser_params(),
     [this](const std::string & gnss_frame, const builtin_interfaces::msg::Time & stamp) {
       return get_static_transform(gnss_frame, base_frame_, stamp);
-    })
+    },
+    [this](const GnssPoser::Issue & issue) { log_issue(issue); })
 {
   // Subscribe to map_projector_info topic
   sub_map_projector_info_ = create_subscription<autoware_map_msgs::msg::MapProjectorInfo>(
@@ -150,6 +153,18 @@ void GnssPoserNode::publish_data(const GnssPoser::Result & result)
   }
 }
 
+// Called only when the issue is raised, so it is logged once rather than for every fix.
+void GnssPoserNode::log_issue(const GnssPoser::Issue & issue)
+{
+  switch (issue.cause) {
+    case GnssPoser::Issue::Cause::TransformUnavailable:
+      RCLCPP_ERROR_STREAM(
+        this->get_logger(), "No transform from " << issue.antenna_frame << " to " << base_frame_
+                                                 << " is available; please publish it on TF.");
+      break;
+  }
+}
+
 void GnssPoserNode::callback_gnss_ins_orientation_stamped(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
   msg)
@@ -171,12 +186,7 @@ std::optional<geometry_msgs::msg::Transform> GnssPoserNode::get_static_transform
         target_frame, source_frame,
         tf2::TimePoint(std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec)))
       .transform;
-  } catch (tf2::TransformException & ex) {
-    RCLCPP_WARN_STREAM_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(), ex.what());
-    RCLCPP_WARN_STREAM_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(),
-      "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str());
+  } catch (const tf2::TransformException &) {
     return std::nullopt;
   }
 }

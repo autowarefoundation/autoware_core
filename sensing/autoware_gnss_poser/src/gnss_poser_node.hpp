@@ -54,13 +54,14 @@ private:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
     msg);
 
-  // The transform between the two frames at `stamp`, or std::nullopt (with a throttled warning)
-  // when TF cannot provide it.
+  // The transform between the two frames at `stamp`, or std::nullopt when TF cannot provide it.
   std::optional<geometry_msgs::msg::Transform> get_static_transform(
     const std::string & target_frame, const std::string & source_frame,
     const builtin_interfaces::msg::Time & stamp);
   // Publish the messages the pose computation produced.
   void publish_data(const GnssPoser::Result & result);
+  // Log an issue of the pose computation when it is raised.
+  void log_issue(const GnssPoser::Issue & issue);
 
   tf2::BufferCore tf2_buffer_;
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
