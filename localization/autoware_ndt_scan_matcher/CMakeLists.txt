@@ -47,6 +47,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/ndt_scan_matcher_core.cpp
   src/ndt_scan_matcher_helper.cpp
   src/particle.cpp
+  src/scan_match_diagnostics.cpp
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
@@ -115,6 +116,11 @@ if(BUILD_TESTING)
     test/test_ndt_scan_matcher_helper.cpp
   )
   target_link_libraries(test_ndt_scan_matcher_helper ${PROJECT_NAME})
+
+  ament_auto_add_gtest(test_scan_match_diagnostics
+    test/test_scan_match_diagnostics.cpp
+  )
+  target_link_libraries(test_scan_match_diagnostics ${PROJECT_NAME})
 
   # Unit tests for the map update module driven by an injected fake pcd loader (no ROS service).
   ament_auto_add_gtest(test_map_update_module
