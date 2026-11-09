@@ -186,7 +186,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
       &NDTScanMatcher::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
     service_qos, sensor_callback_group);
 
-  ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
+  ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->set_params(param_.ndt); });
 
   initial_pose_buffer_ = std::make_unique<SmartPoseBuffer>(
     this->get_logger(), param_.validation.initial_pose_timeout_sec,
@@ -533,7 +533,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
     }
 
     // check is_set_map_points
-    const bool is_set_map_points = ndt_ptr->hasTarget();
+    const bool is_set_map_points = ndt_ptr->has_target();
     diagnostics_scan_points_->add_key_value("is_set_map_points", is_set_map_points);
     if (!is_set_map_points) {
       std::stringstream message;
@@ -548,7 +548,7 @@ bool NDTScanMatcher::callback_sensor_points_main(
       pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);
     auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
     ndt_ptr->align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
-    const pclomp::NdtResult ndt_result = ndt_ptr->getResult();
+    const pclomp::NdtResult ndt_result = ndt_ptr->get_result();
 
     const geometry_msgs::msg::Pose result_pose_msg = matrix4f_to_pose(ndt_result.pose);
     std::vector<geometry_msgs::msg::Pose> transformation_msg_array;
@@ -559,11 +559,12 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     // check iteration_num
     diagnostics_scan_points_->add_key_value("iteration_num", ndt_result.iteration_num);
-    const bool is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->getMaximumIterations());
+    const bool is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->get_maximum_iterations());
     if (!is_ok_iteration_num) {
       std::stringstream message;
       message << "The number of iterations has reached its upper limit. The number of iterations: "
-              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->getMaximumIterations() << ".";
+              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->get_maximum_iterations()
+              << ".";
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
     }
@@ -770,9 +771,9 @@ bool NDTScanMatcher::callback_sensor_points_main(
       no_ground_points_aligned_pose_pub_->publish(std::move(no_ground_points_msg_in_map));
       // calculate score
       const auto no_ground_transform_probability = static_cast<float>(
-        ndt_ptr->calculateTransformationProbability(*no_ground_points_in_map_ptr));
+        ndt_ptr->calculate_transformation_probability(*no_ground_points_in_map_ptr));
       const auto no_ground_nearest_voxel_transformation_likelihood = static_cast<float>(
-        ndt_ptr->calculateNearestVoxelTransformationLikelihood(*no_ground_points_in_map_ptr));
+        ndt_ptr->calculate_nearest_voxel_transformation_likelihood(*no_ground_points_in_map_ptr));
       // pub score
       no_ground_transform_probability_pub_->publish(
         make_float32_stamped(sensor_ros_time, no_ground_transform_probability));
@@ -874,7 +875,7 @@ void NDTScanMatcher::publish_marker(
   }
 
   // TODO(Tier IV): delete old marker
-  for (; i < ndt_ref.getMaximumIterations() + 2;) {
+  for (; i < ndt_ref.get_maximum_iterations() + 2;) {
     marker.id = i++;
     marker.pose = geometry_msgs::msg::Pose();
     marker.color = exchange_color_crc(0);
@@ -980,7 +981,8 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
 {
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
-  nvs_points_in_map_ptr_i = ndt_ref.calculateNearestVoxelScoreEachPoint(*sensor_points_in_map_ptr);
+  nvs_points_in_map_ptr_i =
+    ndt_ref.calculate_nearest_voxel_score_each_point(*sensor_points_in_map_ptr);
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr nvs_points_in_map_ptr_rgb{
     new pcl::PointCloud<pcl::PointXYZRGB>};
 
@@ -1003,7 +1005,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
 void NDTScanMatcher::add_regularization_pose(
   const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
 {
-  ndt_ref.unsetRegularizationPose();
+  ndt_ref.unset_regularization_pose();
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
     regularization_pose_buffer_->interpolate(sensor_ros_time);
   if (!interpolation_result_opt) {
@@ -1013,7 +1015,7 @@ void NDTScanMatcher::add_regularization_pose(
   const SmartPoseBuffer::InterpolateResult & interpolation_result =
     interpolation_result_opt.value();
   const Eigen::Matrix4f pose = pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);
-  ndt_ref.setRegularizationPose(pose);
+  ndt_ref.set_regularization_pose(pose);
 }
 
 void NDTScanMatcher::service_trigger_node(
@@ -1100,7 +1102,7 @@ void NDTScanMatcher::service_ndt_align_main(
 
   ndt_ptr_.with([&](auto & ndt_ptr) {
     // check is_set_map_points
-    bool is_set_map_points = ndt_ptr->hasTarget();
+    bool is_set_map_points = ndt_ptr->has_target();
     diagnostics_ndt_align_->add_key_value("is_set_map_points", is_set_map_points);
     if (!is_set_map_points) {
       std::stringstream message;
@@ -1198,7 +1200,7 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
 
     const Eigen::Matrix4f initial_pose_matrix = pose_to_matrix4f(initial_pose);
     ndt_ref.align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
-    const pclomp::NdtResult ndt_result = ndt_ref.getResult();
+    const pclomp::NdtResult ndt_result = ndt_ref.get_result();
 
     Particle particle(
       initial_pose, matrix4f_to_pose(ndt_result.pose),
