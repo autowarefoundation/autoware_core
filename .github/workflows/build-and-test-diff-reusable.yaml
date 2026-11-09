@@ -74,6 +74,8 @@ jobs:
       - name: Get modified packages
         id: get-modified-packages
         uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
+        with:
+          base-ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Create ccache directory
         run: |
@@ -196,11 +198,15 @@ jobs:
       - name: Get modified packages
         id: get-modified-packages
         uses: autowarefoundation/autoware-github-actions/get-modified-packages@v1
+        with:
+          base-ref: ${{ github.event.pull_request.base.ref }}
 
       - name: Get changed files (existing files only, excluding header-only packages)
         id: get-changed-files
+        env:
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: |
-          changed_files=$(git diff --diff-filter=d --name-only "origin/${{ github.base_ref }}"...HEAD | { grep -E '\.(cpp|hpp)$' || true; } | { grep -Ev '(^|/)test/' || true; } | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)
+          changed_files=$(git diff --diff-filter=d --name-only "origin/${BASE_REF}"...HEAD | { grep -E '\.(cpp|hpp)$' || true; } | { grep -Ev '(^|/)test/' || true; } | while read -r file; do [ -e "$file" ] && echo -n "$file "; done)
 
           # Exclude files belonging to header-only packages (no .cpp in src/).
           # These packages don't generate compile_commands.json, which causes clang-tidy to fail.
