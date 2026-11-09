@@ -15,9 +15,9 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
-#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>

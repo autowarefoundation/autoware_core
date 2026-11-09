@@ -17,10 +17,10 @@
 
 #define FMT_HEADER_ONLY
 
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
-#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 #include "ndt_backend_loader.hpp"
 
 #include <autoware/agnocast_wrapper/node.hpp>

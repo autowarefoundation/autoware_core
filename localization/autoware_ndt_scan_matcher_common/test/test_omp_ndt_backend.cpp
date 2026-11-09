@@ -17,6 +17,7 @@
 #include "omp_ndt_backend.hpp"
 
 #include <Eigen/Geometry>
+
 #include <autoware/ndt_scan_matcher_common/ndt_omp/multigrid_ndt_omp.h>
 #include <gtest/gtest.h>
 #include <pcl/common/transforms.h>
