@@ -17,10 +17,10 @@
 
 #define FMT_HEADER_ONLY
 
+#include "autoware/ndt_omp/multigrid_ndt_omp.h"
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
-#include "ndt_omp/multigrid_ndt_omp.h"
 
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>

@@ -13,7 +13,7 @@
 // limitations under the License.
 
 #include <Eigen/Core>
-#include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
+#include <autoware/ndt_scan_matcher/estimate_covariance.hpp>
 
 #include <gtest/gtest.h>
 

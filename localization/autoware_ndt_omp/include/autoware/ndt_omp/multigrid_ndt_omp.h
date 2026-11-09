@@ -52,13 +52,13 @@
  *
  */
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTIGRID_NDT_OMP_H_
-#define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTIGRID_NDT_OMP_H_
+#ifndef AUTOWARE__NDT_OMP__MULTIGRID_NDT_OMP_H_
+#define AUTOWARE__NDT_OMP__MULTIGRID_NDT_OMP_H_
 
 // cspell:ignore multigrid, Magnusson, Thuente, Todor, Stoyanov, Okorn
 
+#include "autoware/ndt_scan_matcher_common/ndt_types.hpp"
 #include "multi_voxel_grid_covariance_omp.h"
-#include "ndt_struct.hpp"
 
 #include <unsupported/Eigen/NonLinearOptimization>
 
@@ -488,4 +488,4 @@ public:
 
 }  // namespace pclomp
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__MULTIGRID_NDT_OMP_H_
+#endif  // AUTOWARE__NDT_OMP__MULTIGRID_NDT_OMP_H_

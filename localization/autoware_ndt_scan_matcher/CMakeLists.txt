@@ -1,8 +1,6 @@
 cmake_minimum_required(VERSION 3.14)
 project(autoware_ndt_scan_matcher)
 
-# cspell:ignore multigrid
-
 find_package(autoware_cmake REQUIRED)
 autoware_package()
 
@@ -11,6 +9,7 @@ autoware_package()
 # All packages linked to `ndt_omp` should use the same SIMD instruction set.
 # In case mismatched instruction set are used, program causes a crash at its initialization
 # because of a misaligned access to the `Eigen` libraries' data structure.
+# Keep these options the same as in autoware_ndt_omp.
 if(${CMAKE_SYSTEM_PROCESSOR} MATCHES "x86_64")
   # For x86_64 architecture, SIMD instruction set is fixed below versions,
   # because the `ndt_omp` is optimized to these versions.
@@ -24,25 +23,11 @@ else()
   endif()
 endif()
 
-find_package(OpenMP)
-
 find_package(PCL REQUIRED COMPONENTS common io registration)
 include_directories(${PCL_INCLUDE_DIRS})
 
-ament_auto_add_library(multigrid_ndt_omp SHARED
-  src/ndt_omp/multi_voxel_grid_covariance_omp.cpp
-  src/ndt_omp/multigrid_ndt_omp.cpp
-  src/ndt_omp/estimate_covariance.cpp
-)
-target_link_libraries(multigrid_ndt_omp ${PCL_LIBRARIES})
-
-if(OpenMP_CXX_FOUND)
-  target_link_libraries(multigrid_ndt_omp OpenMP::OpenMP_CXX)
-else()
-  message(WARNING "OpenMP not found")
-endif()
-
 ament_auto_add_library(${PROJECT_NAME} SHARED
+  src/estimate_covariance.cpp
   src/map_update_module.cpp
   src/ndt_scan_matcher_core.cpp
   src/ndt_scan_matcher_helper.cpp
@@ -50,7 +35,7 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
-target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES} multigrid_ndt_omp)
+target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ndt_scan_matcher::NDTScanMatcher"
@@ -109,7 +94,7 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_estimate_covariance
     test/test_estimate_covariance.cpp
   )
-  target_link_libraries(test_estimate_covariance multigrid_ndt_omp ${PCL_LIBRARIES})
+  target_link_libraries(test_estimate_covariance ${PROJECT_NAME} ${PCL_LIBRARIES})
 
   ament_auto_add_gtest(test_ndt_scan_matcher_helper
     test/test_ndt_scan_matcher_helper.cpp
@@ -120,7 +105,7 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_map_update_module
     test/test_map_update_module.cpp
   )
-  target_link_libraries(test_map_update_module ${PROJECT_NAME} multigrid_ndt_omp ${PCL_LIBRARIES})
+  target_link_libraries(test_map_update_module ${PROJECT_NAME} ${PCL_LIBRARIES})
 endif()
 
 autoware_ament_auto_package(
