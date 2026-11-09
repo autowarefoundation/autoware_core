@@ -182,19 +182,28 @@ private:
   // A fix header stamp as the time since the epoch of the clock that stamped it.
   using StampTime = std::chrono::nanoseconds;
 
-  // input_fix() without the issue update.
+  // input_fix() without the stamp continuity and the issue update.
   Result process_fix(const sensor_msgs::msg::NavSatFix & fix);
 
-  // Issue management. Only these functions touch transform_lookup_failure_ and previous_stamp_.
-  // The transform for `frame` could not be looked up for the fix stamped `stamp`. A failure that
-  // continues keeps its start, so that the grace period runs from there.
+  // Stamp continuity. Only this function touches previous_stamp_.
+  // Whether the fix stamped `stamp` continues the stamps of the previous fix, whether or not either
+  // reaches the lookup: false for the first fix and where the stamps jump, which is no error.
+  bool update_stamp_continuity(const builtin_interfaces::msg::Time & stamp);
+
+  // Issue management. Only these functions touch transform_lookup_failure_.
+  // The transform for `frame` could not be looked up for the fix stamped `stamp`, so the failure
+  // now lasts until `stamp`. A failure that continues keeps its start, so that the grace period
+  // runs from there.
   void record_lookup_failure(
     const std::string & frame, const builtin_interfaces::msg::Time & stamp);
-  // The transform could be looked up.
+  // Forget the failure: the transform could be looked up, or the stamps jumped, so that how long
+  // the failure has lasted is not known. The next fix that cannot get the transform starts a new
+  // failure, which is raised again once it lasts beyond the grace period.
   void clear_lookup_failure();
-  // Raise transform_lookup_failure_ as an issue through on_issue_raised_ once it is one at the fix
-  // stamped `stamp`. Where the stamps jump, the grace period starts over at `stamp`.
-  void update_issues(const builtin_interfaces::msg::Time & stamp);
+  // Raise transform_lookup_failure_ as an issue through on_issue_raised_ once it has lasted beyond
+  // the grace period, from its start to its latest failure. As only a fix that reaches the lookup
+  // extends the failure, only such a fix can make it an issue.
+  void update_issues();
 
   GnssPoserParams params_;
   TransformLookup lookup_antenna_to_base_link_;
@@ -207,13 +216,14 @@ private:
   geometry_msgs::msg::Point prev_position_;
   bool has_prev_position_ = false;
   autoware_sensing_msgs::msg::GnssInsOrientation ins_orientation_;
-  // The antenna transform the latest fix to reach the lookup could not get: for which frame, since
-  // when that has been so, and whether it has been raised as an issue, so that it is raised once.
-  // Kept across fixes that do not reach the lookup, as they say nothing about it.
+  // The antenna transform the latest fix to reach the lookup could not get: for which frame, from
+  // which fix to which that has been so, and whether it has been raised as an issue, so that it is
+  // raised once. Kept across fixes that do not reach the lookup, as they say nothing about it.
   struct TransformLookupFailure
   {
     std::string frame;
     StampTime since;
+    StampTime last;
     bool raised = false;
   };
   std::optional<TransformLookupFailure> transform_lookup_failure_;

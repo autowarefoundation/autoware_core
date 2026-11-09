@@ -517,7 +517,8 @@ enum class InputCondition {
   TransformAvailable,
   // Fixed, but the transform is not there yet, as right after startup before /tf_static arrives.
   TransformUnavailable,
-  // The receiver reports no fix (e.g. in a tunnel), so GnssPoser drops the fix before the lookup.
+  // The receiver reports no fix (e.g. in a tunnel), so GnssPoser drops the fix before the lookup:
+  // the fix tells nothing about the transform, so it neither raises nor clears an issue.
   NotFixed
 };
 
@@ -1248,8 +1249,9 @@ TEST(GnssPoser, Covariance_UnknownType_PositionVariancesAreTen)
 // only once it has been unavailable for longer than the grace period, measured by the fix stamps
 // from the first fix that could not get it for the same frame. The callback receives it once when
 // it is raised, not again while it persists. A fix that gets the transform clears it, so it can be
-// raised again; a fix that does not reach the lookup says nothing about the transform but still
-// moves the time. Where the stamps go backward or jump forward, the grace period starts over.
+// raised again. A fix that does not reach the lookup says nothing about the transform, so it
+// neither raises nor clears it: both happen only at a fix that reaches the lookup. Where the stamps
+// go backward or jump forward, the grace period starts over.
 TEST_P(GnssPoserAntennaTransformIssue, IssueRaisedCallback_AfterFixes_ReceivesEachRaisedIssueOnce)
 {
   // Arrange
@@ -1314,13 +1316,29 @@ INSTANTIATE_TEST_SUITE_P(
       "StillUnavailableAfterRaised",
       {{beyond_grace_period + 1s, "gnss", InputCondition::TransformUnavailable}},
       {gnss_unavailable}},
-    // One unavailable fix, then not fixed for the grace period: the not fixed fixes still move the
-    // time, so it is raised at the last fix, past the grace period from the unavailable one.
+    // One unavailable fix, then not fixed for the grace period: the grace period has passed at the
+    // last fix, but no fix after the unavailable one has looked the transform up, so nothing is
+    // raised.
     AntennaTransformIssueCase{
       "UnavailableThenNotFixed",
       {{0s, "gnss", InputCondition::TransformUnavailable},
        {grace_period, "gnss", InputCondition::NotFixed}},
+      {}},
+    // As above, then one more unavailable fix: it finds the transform still unavailable, now past
+    // the grace period counted from the first unavailable fix, so it is raised there.
+    AntennaTransformIssueCase{
+      "UnavailableAgainAfterNotFixed",
+      {{0s, "gnss", InputCondition::TransformUnavailable},
+       {grace_period, "gnss", InputCondition::NotFixed},
+       {0s, "gnss", InputCondition::TransformUnavailable}},
       {gnss_unavailable}},
+    // As above, but the next fix gets the transform: it clears the failure, so nothing is raised.
+    AntennaTransformIssueCase{
+      "AvailableAfterNotFixed",
+      {{0s, "gnss", InputCondition::TransformUnavailable},
+       {grace_period, "gnss", InputCondition::NotFixed},
+       {0s, "gnss", InputCondition::TransformAvailable}},
+      {}},
     // Unavailable, one available fix, then unavailable for the grace period: counted from after the
     // available fix, so nothing is raised.
     AntennaTransformIssueCase{
@@ -1358,7 +1376,23 @@ INSTANTIATE_TEST_SUITE_P(
       "StampJumpingForwardRestartsTheGracePeriod",
       {{1s, "gnss", InputCondition::TransformUnavailable},
        {grace_period, "gnss", InputCondition::TransformUnavailable, beyond_jump_threshold}},
-      {}}),
+      {}},
+    // One unavailable fix, then a not fixed fix whose stamp jumps forward, then unavailable for the
+    // grace period: the not fixed fix tells nothing about the transform, so the count starts again
+    // at the first unavailable fix after the jump, not at the jump, and nothing is raised.
+    AntennaTransformIssueCase{
+      "StampJumpingAtNotFixedRestartsAtTheNextFailure",
+      {{0s, "gnss", InputCondition::TransformUnavailable},
+       {0s, "gnss", InputCondition::NotFixed, beyond_jump_threshold},
+       {grace_period, "gnss", InputCondition::TransformUnavailable}},
+      {}},
+    // Unavailable past the grace period (raised), then the stamps go back to the first fix and the
+    // same fixes come again, as from a rosbag replayed in a loop: raised again, as the first time.
+    AntennaTransformIssueCase{
+      "RaisedAgainAfterStampGoingBack",
+      {{beyond_grace_period, "gnss", InputCondition::TransformUnavailable},
+       {beyond_grace_period, "gnss", InputCondition::TransformUnavailable, -beyond_grace_period}},
+      {gnss_unavailable, gnss_unavailable}}),
   [](const ::testing::TestParamInfo<AntennaTransformIssueCase> & info) {
     return std::string(info.param.name);
   });

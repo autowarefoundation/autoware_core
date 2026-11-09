@@ -234,8 +234,11 @@ void GnssPoser::set_ins_orientation(
 
 GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 {
+  if (!update_stamp_continuity(fix.header.stamp)) {
+    clear_lookup_failure();
+  }
   const Result result = process_fix(fix);
-  update_issues(fix.header.stamp);
+  update_issues();
   return result;
 }
 
@@ -335,12 +338,26 @@ GnssPoser::Result GnssPoser::process_fix(const sensor_msgs::msg::NavSatFix & fix
     make_transform_stamped(pose, params_.gnss_base_frame)};
 }
 
+bool GnssPoser::update_stamp_continuity(const builtin_interfaces::msg::Time & stamp)
+{
+  const StampTime now = to_stamp_time(stamp);
+  bool continues = false;
+  if (previous_stamp_.has_value()) {
+    const StampTime step = now - previous_stamp_.value();
+    continues = StampTime::zero() <= step && step <= fix_stamp_jump_threshold;
+  }
+  previous_stamp_ = now;
+  return continues;
+}
+
 void GnssPoser::record_lookup_failure(
   const std::string & frame, const builtin_interfaces::msg::Time & stamp)
 {
+  const StampTime now = to_stamp_time(stamp);
   if (!transform_lookup_failure_.has_value() || transform_lookup_failure_.value().frame != frame) {
-    transform_lookup_failure_ = TransformLookupFailure{frame, to_stamp_time(stamp)};
+    transform_lookup_failure_ = TransformLookupFailure{frame, now, now};
   }
+  transform_lookup_failure_.value().last = now;
 }
 
 void GnssPoser::clear_lookup_failure()
@@ -348,22 +365,12 @@ void GnssPoser::clear_lookup_failure()
   transform_lookup_failure_.reset();
 }
 
-void GnssPoser::update_issues(const builtin_interfaces::msg::Time & stamp)
+void GnssPoser::update_issues()
 {
-  const StampTime now = to_stamp_time(stamp);
-  if (previous_stamp_.has_value() && transform_lookup_failure_.has_value()) {
-    const StampTime step = now - previous_stamp_.value();
-    if (step < StampTime::zero() || step > fix_stamp_jump_threshold) {
-      // Not time that passed: start over as if this were the first fix that could not get it.
-      transform_lookup_failure_.value().since = now;
-    }
-  }
-  previous_stamp_ = now;
-
   if (transform_lookup_failure_.has_value()) {
     TransformLookupFailure & failure = transform_lookup_failure_.value();
     // Expected right after startup, until the transform is published.
-    if (!failure.raised && now - failure.since > antenna_transform_grace_period) {
+    if (!failure.raised && failure.last - failure.since > antenna_transform_grace_period) {
       failure.raised = true;
       if (on_issue_raised_) {
         on_issue_raised_({Issue::Cause::TransformUnavailable, failure.frame});
