@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/ndt_scan_matcher/omp_ndt_backend.hpp"
+#include "omp_ndt_backend.hpp"
 
 #include <pluginlib/class_list_macros.hpp>
 

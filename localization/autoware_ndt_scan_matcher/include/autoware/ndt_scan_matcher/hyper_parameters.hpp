@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__HYPER_PARAMETERS_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__HYPER_PARAMETERS_HPP_
 
-#include "ndt_omp/ndt_struct.hpp"
+#include "autoware/ndt_scan_matcher_common/ndt_omp/ndt_struct.hpp"
 
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>

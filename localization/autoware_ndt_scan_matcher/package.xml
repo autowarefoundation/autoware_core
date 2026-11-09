@@ -19,6 +19,7 @@
   <depend>autoware_internal_localization_msgs</depend>
   <depend>autoware_localization_util</depend>
   <depend>autoware_map_msgs</depend>
+  <depend>autoware_ndt_scan_matcher_common</depend>
   <depend>autoware_qos_utils</depend>
   <depend>autoware_utils_diagnostics</depend>
   <depend>autoware_utils_geometry</depend>

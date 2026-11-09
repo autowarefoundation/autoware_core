@@ -14,12 +14,10 @@
 
 // The OMP backend must give exactly the results of ndt_omp, and its copies must be independent.
 
-#include "test_util.hpp"
+#include "omp_ndt_backend.hpp"
 
 #include <Eigen/Geometry>
-#include <autoware/ndt_scan_matcher/omp_ndt_backend.hpp>
-
-#include <autoware/ndt_scan_matcher/ndt_omp/multigrid_ndt_omp.h>
+#include <autoware/ndt_scan_matcher_common/ndt_omp/multigrid_ndt_omp.h>
 #include <gtest/gtest.h>
 #include <pcl/common/transforms.h>
 
@@ -44,15 +42,40 @@ pclomp::NdtParams make_params()
   return params;
 }
 
+// Three orthogonal planes of 20 m x 20 m, with a point every 0.2 m.
+pcl::PointCloud<pcl::PointXYZ> make_half_cube()
+{
+  constexpr float length = 20.0F;
+  constexpr float interval = 0.2F;
+  constexpr int num_points_per_line = static_cast<int>(length / interval) + 1;
+  pcl::PointCloud<pcl::PointXYZ> cloud;
+  for (int plane = 0; plane < 3; ++plane) {
+    for (int i = 0; i < num_points_per_line; ++i) {
+      for (int j = 0; j < num_points_per_line; ++j) {
+        const float u = interval * static_cast<float>(j);
+        const float v = interval * static_cast<float>(i);
+        if (plane == 0) {
+          cloud.push_back(pcl::PointXYZ(u, v, 0.0F));
+        } else if (plane == 1) {
+          cloud.push_back(pcl::PointXYZ(0.0F, u, v));
+        } else {
+          cloud.push_back(pcl::PointXYZ(u, 0.0F, v));
+        }
+      }
+    }
+  }
+  return cloud;
+}
+
 pcl::PointCloud<pcl::PointXYZ>::Ptr make_map()
 {
-  return std::make_shared<pcl::PointCloud<pcl::PointXYZ>>(make_sample_half_cubic_pcd());
+  return std::make_shared<pcl::PointCloud<pcl::PointXYZ>>(make_half_cube());
 }
 
 // Every 10th point of the map, as the scan.
 pcl::PointCloud<pcl::PointXYZ>::Ptr make_scan()
 {
-  const auto map = make_sample_half_cubic_pcd();
+  const auto map = make_half_cube();
   auto scan = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
   for (std::size_t i = 0; i < map.size(); i += 10) {
     scan->push_back(map.points[i]);

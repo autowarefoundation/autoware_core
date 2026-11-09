@@ -15,7 +15,7 @@
 #include "test_util.hpp"
 
 #include <autoware/ndt_scan_matcher/map_update_module.hpp>
-#include <autoware/ndt_scan_matcher/omp_ndt_backend.hpp>
+#include <autoware/ndt_scan_matcher/ndt_backend_loader.hpp>
 
 #include <autoware_map_msgs/msg/point_cloud_map_cell_with_id.hpp>
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
@@ -132,7 +132,9 @@ protected:
     return ndt_ptr.with([](const auto & ndt) { return ndt->has_target(); });
   }
 
-  Guarded<MapUpdateModule::NdtPtrType> ndt_ptr_{std::make_shared<OmpNdtBackend>()};
+  // The loader must outlive the backend that it creates, so it is declared first.
+  NdtBackendLoader loader_;
+  Guarded<MapUpdateModule::NdtPtrType> ndt_ptr_{loader_.create("omp")};
   HyperParameters::DynamicMapLoading param_{};
 };
 

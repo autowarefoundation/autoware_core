@@ -12,8 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_BACKEND_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__NDT_BACKEND_HPP_
+#ifndef AUTOWARE__NDT_SCAN_MATCHER_COMMON__NDT_BACKEND_HPP_
+#define AUTOWARE__NDT_SCAN_MATCHER_COMMON__NDT_BACKEND_HPP_
 
 #include "ndt_omp/ndt_struct.hpp"
 
@@ -91,4 +91,4 @@ public:
 
 }  // namespace autoware::ndt_scan_matcher
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_BACKEND_HPP_
+#endif  // AUTOWARE__NDT_SCAN_MATCHER_COMMON__NDT_BACKEND_HPP_

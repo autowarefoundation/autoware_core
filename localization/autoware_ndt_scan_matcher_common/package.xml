@@ -1,0 +1,31 @@
+<?xml version="1.0"?>
+<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
+<package format="3">
+  <name>autoware_ndt_scan_matcher_common</name>
+  <version>1.10.0</version>
+  <description>The NDT backend interface of autoware_ndt_scan_matcher, ndt_omp and the omp backend</description>
+  <maintainer email="yamato.ando@tier4.jp">Yamato Ando</maintainer>
+  <maintainer email="masahiro.sakamoto@tier4.jp">Masahiro Sakamoto</maintainer>
+  <maintainer email="anh.nguyen.2@tier4.jp">NGUYEN Viet Anh</maintainer>
+  <maintainer email="taiki.yamada@tier4.jp">Taiki Yamada</maintainer>
+  <license>Apache License 2.0</license>
+  <license>BSD</license>
+  <author email="yamato.ando@tier4.jp">Yamato Ando</author>
+  <buildtool_depend>ament_cmake_auto</buildtool_depend>
+  <buildtool_depend>autoware_cmake</buildtool_depend>
+
+  <depend>eigen</depend>
+  <depend>libboost-dev</depend>
+  <depend>libpcl-all</depend>
+  <depend>pluginlib</depend>
+  <build_depend>libpcl-all-dev</build_depend>
+
+  <test_depend>ament_cmake_cppcheck</test_depend>
+  <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_lint_auto</test_depend>
+  <test_depend>autoware_lint_common</test_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

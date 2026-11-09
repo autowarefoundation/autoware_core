@@ -12,11 +12,11 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__OMP_NDT_BACKEND_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__OMP_NDT_BACKEND_HPP_
+#ifndef OMP_NDT_BACKEND_HPP_
+#define OMP_NDT_BACKEND_HPP_
 
-#include "ndt_backend.hpp"
-#include "ndt_omp/multigrid_ndt_omp.h"
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
+#include "autoware/ndt_scan_matcher_common/ndt_omp/multigrid_ndt_omp.h"
 
 #include <string>
 #include <vector>
@@ -63,4 +63,4 @@ private:
 
 }  // namespace autoware::ndt_scan_matcher
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__OMP_NDT_BACKEND_HPP_
+#endif  // OMP_NDT_BACKEND_HPP_

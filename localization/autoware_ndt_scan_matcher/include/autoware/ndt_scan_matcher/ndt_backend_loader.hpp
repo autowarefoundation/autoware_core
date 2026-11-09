@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_BACKEND_LOADER_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_BACKEND_LOADER_HPP_
 
-#include "ndt_backend.hpp"
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 
 #include <memory>
 #include <string>

@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
 
-#include "autoware/ndt_scan_matcher/ndt_backend.hpp"
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 
 #include <Eigen/Core>
 

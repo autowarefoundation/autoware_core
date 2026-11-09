@@ -17,7 +17,7 @@
 
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
-#include "ndt_backend.hpp"
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>
