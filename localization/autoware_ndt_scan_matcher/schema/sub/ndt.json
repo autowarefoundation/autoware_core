@@ -35,6 +35,12 @@
           "default": 4,
           "minimum": 1
         },
+        "backend": {
+          "type": "string",
+          "description": "The pluginlib lookup name of the NDT backend. \"ndt_omp\" is the NDT on the CPU with OpenMP.",
+          "default": "ndt_omp",
+          "minLength": 1
+        },
         "regularization": {
           "$ref": "ndt_regularization.json#/definitions/regularization"
         }
@@ -45,6 +51,7 @@
         "resolution",
         "max_iterations",
         "num_threads",
+        "backend",
         "regularization"
       ],
       "additionalProperties": false
