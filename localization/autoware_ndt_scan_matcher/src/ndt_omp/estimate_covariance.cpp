@@ -47,7 +47,7 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
   for (const Eigen::Matrix4f & curr_pose : poses_to_search) {
     auto sub_output_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
     ndt_ref.align(*sub_output_cloud, curr_pose, source);
-    const NdtResult sub_ndt_result = ndt_ref.getResult();
+    const NdtResult sub_ndt_result = ndt_ref.get_result();
     ndt_results.push_back(sub_ndt_result);
 
     const Eigen::Matrix4f sub_ndt_pose = sub_ndt_result.pose;
@@ -88,7 +88,7 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
     ndt_pose_2d_vec.emplace_back(sub_ndt_pose_2d);
 
     pcl::transformPointCloud(*source, trans_cloud, curr_pose);
-    const double nvtl = ndt_ref.calculateNearestVoxelTransformationLikelihood(trans_cloud);
+    const double nvtl = ndt_ref.calculate_nearest_voxel_transformation_likelihood(trans_cloud);
     score_vec.emplace_back(nvtl);
 
     NdtResult sub_ndt_result{};

@@ -134,35 +134,35 @@ public:
   /** \brief Empty destructor */
   ~MultiGridNormalDistributionsTransform() = default;
 
-  inline void setInputTarget(const PointCloudTargetConstPtr & cloud)
+  inline void set_input_target(const PointCloudTargetConstPtr & cloud)
   {
     const std::string default_target_id = "default";
-    addTarget(cloud, default_target_id);
-    createVoxelKdtree();
+    add_target(cloud, default_target_id);
+    create_voxel_kdtree();
   }
 
   /** \brief Provide a pointer to the input target (e.g., the point cloud that we want to align the
    * input source to). \param[in] cloud the input point cloud target
    */
-  inline void addTarget(const PointCloudTargetConstPtr & cloud, const std::string & target_id)
+  inline void add_target(const PointCloudTargetConstPtr & cloud, const std::string & target_id)
   {
     target_cells_.setLeafSize(params_.resolution, params_.resolution, params_.resolution);
     target_cells_.setInputCloudAndFilter(cloud, target_id);
   }
 
-  inline void removeTarget(const std::string & target_id) { target_cells_.removeCloud(target_id); }
+  inline void remove_target(const std::string & target_id) { target_cells_.removeCloud(target_id); }
 
-  inline void createVoxelKdtree() { target_cells_.createKdtree(); }
+  inline void create_voxel_kdtree() { target_cells_.createKdtree(); }
 
   /** \brief Check if the target map has been set. */
-  inline bool hasTarget() const { return !target_cells_.getCurrentMapIDs().empty(); }
+  inline bool has_target() const { return !target_cells_.getCurrentMapIDs().empty(); }
 
   /** \brief Get the registration alignment probability.
    * \return transformation probability
    */
-  inline double getTransformationProbability() const { return (trans_probability_); }
+  inline double get_transformation_probability() const { return (trans_probability_); }
 
-  inline double getNearestVoxelTransformationLikelihood() const
+  inline double get_nearest_voxel_transformation_likelihood() const
   {
     return nearest_voxel_transformation_likelihood_;
   }
@@ -170,20 +170,20 @@ public:
   /** \brief Get the number of iterations required to calculate alignment.
    * \return final number of iterations
    */
-  inline int getFinalNumIteration() const { return (nr_iterations_); }
+  inline int get_final_num_iteration() const { return (nr_iterations_); }
 
   /** \brief Return the final transformation matrix. */
-  inline Eigen::Matrix4f getFinalTransformation() const { return final_transformation_; }
+  inline Eigen::Matrix4f get_final_transformation() const { return final_transformation_; }
 
   /** \brief Return the maximum number of iterations. */
-  inline int getMaximumIterations() const { return max_iterations_; }
+  inline int get_maximum_iterations() const { return max_iterations_; }
 
   /** \brief Return the hessian matrix */
-  inline Eigen::Matrix<double, 6, 6> getHessian() const { return hessian_; }
+  inline Eigen::Matrix<double, 6, 6> get_hessian() const { return hessian_; }
 
   /** \brief Return the transformation array */
   inline const std::vector<Eigen::Matrix4f, Eigen::aligned_allocator<Eigen::Matrix4f>> &
-  getFinalTransformationArray() const
+  get_final_transformation_array() const
   {
     return transformation_array_;
   }
@@ -192,7 +192,7 @@ public:
    * \param[in] x transformation vector of the form [x, y, z, roll, pitch, yaw]
    * \param[out] trans affine transform corresponding to given transformation vector
    */
-  static void convertTransform(const Eigen::Matrix<double, 6, 1> & x, Eigen::Affine3f & trans)
+  static void convert_transform(const Eigen::Matrix<double, 6, 1> & x, Eigen::Affine3f & trans)
   {
     trans = Eigen::Translation<float, 3>(
               static_cast<float>(x(0)), static_cast<float>(x(1)), static_cast<float>(x(2))) *
@@ -205,10 +205,10 @@ public:
    * \param[in] x transformation vector of the form [x, y, z, roll, pitch, yaw]
    * \param[out] trans 4x4 transformation matrix corresponding to given transformation vector
    */
-  static void convertTransform(const Eigen::Matrix<double, 6, 1> & x, Eigen::Matrix4f & trans)
+  static void convert_transform(const Eigen::Matrix<double, 6, 1> & x, Eigen::Matrix4f & trans)
   {
     Eigen::Affine3f _affine;
-    convertTransform(x, _affine);
+    convert_transform(x, _affine);
     trans = _affine.matrix();
   }
 
@@ -223,34 +223,35 @@ public:
 
   // negative log likelihood function
   // lower is better
-  double calculateTransformationProbability(const PointCloudSource & cloud) const;
-  double calculateNearestVoxelTransformationLikelihood(const PointCloudSource & cloud) const;
-  pcl::PointCloud<pcl::PointXYZI> calculateNearestVoxelScoreEachPoint(
+  double calculate_transformation_probability(const PointCloudSource & cloud) const;
+  double calculate_nearest_voxel_transformation_likelihood(const PointCloudSource & cloud) const;
+  pcl::PointCloud<pcl::PointXYZI> calculate_nearest_voxel_score_each_point(
     const PointCloudSource & cloud) const;
 
-  inline void setRegularizationPose(Eigen::Matrix4f regularization_pose)
+  inline void set_regularization_pose(Eigen::Matrix4f regularization_pose)
   {
     regularization_pose_ = regularization_pose;
   }
 
-  inline void unsetRegularizationPose() { regularization_pose_ = boost::none; }
+  inline void unset_regularization_pose() { regularization_pose_ = boost::none; }
 
-  NdtResult getResult() const
+  NdtResult get_result() const
   {
     NdtResult ndt_result;
-    ndt_result.pose = getFinalTransformation();
-    ndt_result.transformation_array = getFinalTransformationArray();
-    ndt_result.transform_probability = getTransformationProbability();
+    ndt_result.pose = get_final_transformation();
+    ndt_result.transformation_array = get_final_transformation_array();
+    ndt_result.transform_probability = get_transformation_probability();
     ndt_result.transform_probability_array = transform_probability_array_;
-    ndt_result.nearest_voxel_transformation_likelihood = getNearestVoxelTransformationLikelihood();
+    ndt_result.nearest_voxel_transformation_likelihood =
+      get_nearest_voxel_transformation_likelihood();
     ndt_result.nearest_voxel_transformation_likelihood_array =
       nearest_voxel_transformation_likelihood_array_;
-    ndt_result.iteration_num = getFinalNumIteration();
-    ndt_result.hessian = getHessian();
+    ndt_result.iteration_num = get_final_num_iteration();
+    ndt_result.hessian = get_hessian();
     return ndt_result;
   }
 
-  void setParams(const NdtParams & ndt_params)
+  void set_params(const NdtParams & ndt_params)
   {
     params_ = ndt_params;
     max_iterations_ = params_.max_iterations;
@@ -258,11 +259,11 @@ public:
     target_cells_.setThreadNum(params_.num_threads);
   }
 
-  NdtParams getParams() const { return params_; }
+  NdtParams get_params() const { return params_; }
 
-  pcl::PointCloud<PointTarget> getVoxelPCD() const { return target_cells_.getVoxelPCD(); }
+  pcl::PointCloud<PointTarget> get_voxel_pcd() const { return target_cells_.getVoxelPCD(); }
 
-  std::vector<std::string> getCurrentMapIDs() const { return target_cells_.getCurrentMapIDs(); }
+  std::vector<std::string> get_current_map_ids() const { return target_cells_.getCurrentMapIDs(); }
 
 protected:
   /** \brief Estimate the transformation and returns the transformed source (input) as output.
