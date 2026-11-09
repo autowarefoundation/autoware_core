@@ -38,11 +38,9 @@ MapUpdateModule::MapUpdateModule(
     // and ndt_ptr_ is only locked when swapping its pointer with
     // secondary_ndt_ptr_.
     builder_state.need_rebuild = true;
-    builder_state.secondary_ndt_ptr.reset(new NdtType);
-
     return ndt_ptr_.with([&](const auto & ptr) {
       if (ptr) {
-        *builder_state.secondary_ndt_ptr = *ptr;
+        builder_state.secondary_ndt_ptr = ptr->clone();
         return true;
       } else {
         return false;
@@ -135,13 +133,10 @@ bool MapUpdateModule::update_map_internal(
   if (builder_state.need_rebuild) {
     bool updated = false;
     ndt_ptr_.with([&](auto & ndt_ptr) {
-      auto param = ndt_ptr->get_params();
-
-      ndt_ptr.reset(new NdtType);
+      // A new backend of the same type and parameters, without a map.
+      ndt_ptr = ndt_ptr->clone_empty();
       // The map is rebuilt from scratch, so reset the accumulated debug map as well.
       loaded_pcd_map_.clear();
-
-      ndt_ptr->set_params(param);
 
       updated = update_ndt(position, *ndt_ptr, diagnostics);
     });
@@ -158,10 +153,14 @@ bool MapUpdateModule::update_map_internal(
       return false;
     }
 
+    // Destroy the old secondary before the copy, outside the lock of ndt_ptr_, so that at most two
+    // maps exist at the same time. need_rebuild stays true until the copy exists. No caller catches
+    // an exception of the copy today. If a caller does that later, the next update is a rebuild,
+    // and the null secondary is never used.
+    builder_state.secondary_ndt_ptr.reset();
+    builder_state.secondary_ndt_ptr =
+      ndt_ptr_.with([](const auto & ndt_ptr) { return ndt_ptr->clone(); });
     builder_state.need_rebuild = false;
-
-    builder_state.secondary_ndt_ptr.reset(new NdtType);
-    ndt_ptr_.with([&](const auto & ndt_ptr) { *builder_state.secondary_ndt_ptr = *ndt_ptr; });
   } else {
     // Load map to the secondary_ndt_ptr, which does not require a mutex lock
     // Since the update of the secondary ndt ptr and the NDT align (done on
@@ -183,7 +182,7 @@ bool MapUpdateModule::update_map_internal(
     // while only the fast pointer swap is performed inside the lock scope.
 
     // 1. Clone the contents of secondary_ndt_ptr to create new_ndt_ptr.
-    auto new_ndt_ptr = std::make_shared<NdtType>(*builder_state.secondary_ndt_ptr);
+    auto new_ndt_ptr = builder_state.secondary_ndt_ptr->clone();
 
     // 2. Swap the pointers inside the ndt_ptr_'s lock.
     // - During the swap, the reference count does not decrease to zero,
@@ -279,7 +278,7 @@ bool MapUpdateModule::update_ndt(
     }
   }
 
-  ndt.create_voxel_kdtree();
+  ndt.commit_target();
 
   const auto exe_end_time = std::chrono::system_clock::now();
   const auto duration_micro_sec =

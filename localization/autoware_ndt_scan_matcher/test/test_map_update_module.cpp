@@ -15,6 +15,7 @@
 #include "test_util.hpp"
 
 #include <autoware/ndt_scan_matcher/map_update_module.hpp>
+#include <autoware/ndt_scan_matcher/ndt_backend_loader.hpp>
 
 #include <autoware_map_msgs/msg/point_cloud_map_cell_with_id.hpp>
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
@@ -99,14 +100,14 @@ class MapUpdateModuleTest : public ::testing::Test
 protected:
   void SetUp() override
   {
-    pclomp::NdtParams ndt_params{};
+    NdtParams ndt_params{};
     ndt_params.trans_epsilon = 0.01;
     ndt_params.step_size = 0.1;
     ndt_params.resolution = 2.0F;
     ndt_params.max_iterations = 30;
     ndt_params.num_threads = 1;
     ndt_params.regularization_scale_factor = 0.0F;
-    ndt_ptr_.with([&](auto & ndt) { ndt->set_params(ndt_params); });
+    ndt_ptr_.with([&](auto & ndt) { ndt->initialize(ndt_params); });
 
     param_.update_distance = 5.0;
     param_.map_radius = 30.0;
@@ -131,7 +132,7 @@ protected:
     return ndt_ptr.with([](const auto & ndt) { return ndt->has_target(); });
   }
 
-  Guarded<MapUpdateModule::NdtPtrType> ndt_ptr_{std::make_shared<MapUpdateModule::NdtType>()};
+  Guarded<MapUpdateModule::NdtPtrType> ndt_ptr_{load_ndt_backend("ndt_omp")};
   HyperParameters::DynamicMapLoading param_{};
 };
 
@@ -144,6 +145,33 @@ TEST_F(MapUpdateModuleTest, FirstUpdateRebuildsAndLoadsMap)  // NOLINT
 
   EXPECT_TRUE(result.map_updated);
   EXPECT_TRUE(ndt_has_target(ndt_ptr_));
+}
+
+// The second update loads the new cell into the secondary backend, then swaps a copy of it in.
+// This runs clone_empty() and clone() on a backend that pluginlib made.
+TEST_F(MapUpdateModuleTest, SecondUpdateLoadsIntoTheSecondaryAndSwaps)  // NOLINT
+{
+  int calls = 0;
+  MapUpdateModule::PcdLoaderFunction loader =
+    [&calls](const GetDifferentialPointCloudMap::Request::SharedPtr & /*request*/)
+    -> GetDifferentialPointCloudMap::Response::SharedPtr {
+    auto response = std::make_shared<GetDifferentialPointCloudMap::Response>();
+    autoware_map_msgs::msg::PointCloudMapCellWithID cell;
+    cell.cell_id = std::to_string(calls++);
+    pcl::toROSMsg(make_sample_half_cubic_pcd(), cell.pointcloud);
+    response->new_pointcloud_with_ids.push_back(cell);
+    response->header.frame_id = "map";
+    return response;
+  };
+  MapUpdateModule module(ndt_ptr_, param_, loader);
+
+  ASSERT_TRUE(update_map(module, make_point(0.0, 0.0)).map_updated);  // rebuild: cell "0"
+  // 6 m > update_distance (5 m), and 6 + 5 < map_radius (30 m): no rebuild.
+  const auto result = update_map(module, make_point(6.0, 0.0));
+
+  EXPECT_TRUE(result.map_updated);
+  const auto map_ids = ndt_ptr_.with([](const auto & ndt) { return ndt->get_current_map_ids(); });
+  EXPECT_EQ(map_ids.size(), 2U);
 }
 
 // out_of_map_range is true before any update, false at the last update position, and true again
