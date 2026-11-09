@@ -15,10 +15,10 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 #include "diagnostics_report.hpp"
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
-#include "ndt_omp/multigrid_ndt_omp.h"
 
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>
@@ -46,8 +46,8 @@ class MapUpdateModule
 public:
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
-  using NdtType = pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
-  using NdtPtrType = std::shared_ptr<NdtType>;
+  using NdtType = NdtBackend;
+  using NdtPtrType = NdtBackend::SharedPtr;
 
   using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;
 

@@ -1,0 +1,17 @@
+<class_libraries>
+  <library path="test_ndt_backend_constructor_throws">
+    <class name="test_constructor_throws" type="test_ndt_backend::ConstructorThrowsBackend" base_class_type="autoware::ndt_scan_matcher::NdtBackend">
+      <description>A test backend whose constructor throws.</description>
+    </class>
+  </library>
+  <library path="test_ndt_backend_initialize_throws">
+    <class name="test_initialize_throws" type="test_ndt_backend::InitializeThrowsBackend" base_class_type="autoware::ndt_scan_matcher::NdtBackend">
+      <description>A test backend whose initialize() throws.</description>
+    </class>
+  </library>
+  <library path="test_ndt_backend_other_abi">
+    <class name="test_other_abi" type="test_ndt_backend::OtherAbiBackend" base_class_type="autoware::ndt_scan_matcher::NdtBackend">
+      <description>A test backend that was built with another heap allocator of Eigen.</description>
+    </class>
+  </library>
+</class_libraries>
