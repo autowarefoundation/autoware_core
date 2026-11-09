@@ -34,6 +34,7 @@
   <depend>libpcl-all</depend>
   <depend>nav_msgs</depend>
   <depend>pcl_conversions</depend>
+  <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>

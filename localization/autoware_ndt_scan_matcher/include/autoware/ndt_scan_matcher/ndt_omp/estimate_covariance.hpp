@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
 
-#include "multigrid_ndt_omp.h"
+#include "autoware/ndt_scan_matcher/ndt_backend.hpp"
 
 #include <Eigen/Core>
 
@@ -38,14 +38,12 @@ struct ResultOfMultiNdtCovarianceEstimation
 Eigen::Matrix2d estimate_xy_covariance_by_laplace_approximation(
   const Eigen::Matrix<double, 6, 6> & hessian);
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
-  const NdtResult & ndt_result,
-  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const NdtResult & ndt_result, autoware::ndt_scan_matcher::NdtBackend & ndt_ref,
 
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source);
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
-  const NdtResult & ndt_result,
-  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const NdtResult & ndt_result, autoware::ndt_scan_matcher::NdtBackend & ndt_ref,
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source, const double temperature);
 

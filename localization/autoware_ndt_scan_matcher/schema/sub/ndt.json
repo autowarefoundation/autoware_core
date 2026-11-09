@@ -37,6 +37,11 @@
         },
         "regularization": {
           "$ref": "ndt_regularization.json#/definitions/regularization"
+        },
+        "backend": {
+          "type": "string",
+          "description": "The pluginlib name of the NDT backend. \"omp\" is ndt_omp on the CPU.",
+          "default": "omp"
         }
       },
       "required": [

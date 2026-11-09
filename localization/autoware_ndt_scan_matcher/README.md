@@ -84,6 +84,14 @@ One optional function is regularization. Please see the regularization chapter i
 
 {{ json_to_markdown("localization/autoware_ndt_scan_matcher/schema/sub/covariance.json") }}
 
+## NDT backends
+
+The node does the NDT computations through a backend, which it loads with [pluginlib](https://github.com/ros/pluginlib). The parameter `ndt.backend` sets the name of the backend. This package has one backend, `omp`, which is ndt_omp on the CPU. It is the default.
+
+A backend is a class that implements `autoware::ndt_scan_matcher::NdtBackend` (`include/autoware/ndt_scan_matcher/ndt_backend.hpp`). Another package can add a backend: it implements the interface and exports the class with `pluginlib_export_plugin_description_file(autoware_ndt_scan_matcher <file>.xml)`. The header of the interface lists the rules that a backend must obey, for example for thread safety and copies.
+
+If the node cannot load the backend, it stops at startup and lists the available backends.
+
 ## Regularization
 
 ### Abstract
