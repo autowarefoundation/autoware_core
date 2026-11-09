@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "../src/copy_vector_to_array.hpp"
+#include "../src/utils/copy_vector_to_array.hpp"
 
 #include <gmock/gmock.h>
 

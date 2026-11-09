@@ -89,13 +89,14 @@ interpolator::InterpolationResult Trajectory<PointType>::build(
       interpolator::InterpolationFailure{"failed to interpolate PathPointWithLaneId::point"} +
       result.error());
   }
-  if (const auto result = detail::build_with_fallback(
-        lane_ids_, bases_, lane_ids_values,
-        [] {
-          return std::make_shared<detail::InterpolatedArray<std::vector<int64_t>>>(
-            std::make_shared<interpolator::NearestNeighbor<std::vector<int64_t>>>());
-        });
-      !result) {
+  if (
+    const auto result = detail::build_with_fallback(
+      lane_ids_, bases_, lane_ids_values,
+      [] {
+        return std::make_shared<detail::InterpolatedArray<std::vector<int64_t>>>(
+          std::make_shared<interpolator::NearestNeighbor<std::vector<int64_t>>>());
+      });
+    !result) {
     return tl::unexpected(
       interpolator::InterpolationFailure{"failed to interpolate PathPointWithLaneId::lane_id"});
   }

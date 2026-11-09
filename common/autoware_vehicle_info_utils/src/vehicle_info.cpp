@@ -185,13 +185,10 @@ double VehicleInfo::calcCurvatureFromSteerAngle(const double steer_angle) const
 
 double VehicleInfo::calcSteerAngleFromCurvature(const double curvature) const
 {
-  static constexpr double MIN_CURVATURE = 1e-6;
-  if (std::abs(curvature) < MIN_CURVATURE) {
-    return 0.0;
-  }
-
-  const double radius = 1.0 / curvature;
-  return std::atan2(wheel_base_m, radius);
+  // steer_angle = atan(wheel_base_m / radius) = atan(wheel_base_m * curvature)
+  // Use curvature directly to avoid division by zero, and use atan instead of atan2(wheel_base_m,
+  // radius) so that the result stays in (-pi/2, pi/2) and keeps the sign of curvature.
+  return std::atan(wheel_base_m * curvature);
 }
 
 std::pair<double, double> VehicleInfo::calcMaxMinDimension() const

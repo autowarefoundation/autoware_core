@@ -187,6 +187,7 @@ SetLaneletRouteResult MissionPlanner::set_lanelet_route(const SetLaneletRoute::R
     transform_to_map =
       tf_buffer_.lookupTransform(map_frame_, req.header.frame_id, tf2::TimePointZero);
   } catch (const tf2::TransformException &) {
+    change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
     set_fail_response(
       res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR,
       "Failed to transform pose to map frame.");
@@ -260,6 +261,7 @@ SetWaypointRouteResult MissionPlanner::set_waypoint_route(const SetWaypointRoute
     transform_to_map =
       tf_buffer_.lookupTransform(map_frame_, req.header.frame_id, tf2::TimePointZero);
   } catch (const tf2::TransformException &) {
+    change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
     set_fail_response(
       res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR,
       "Failed to transform pose to map frame.");

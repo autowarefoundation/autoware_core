@@ -12,29 +12,35 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef POSE_ERROR_CHECK_MODULE_HPP_
-#define POSE_ERROR_CHECK_MODULE_HPP_
+#ifndef UTILS__LOCALIZATION_MODULE_HPP_
+#define UTILS__LOCALIZATION_MODULE_HPP_
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include <geometry_msgs/msg/pose.hpp>
+#include <autoware_internal_localization_msgs/srv/pose_with_covariance_stamped.hpp>
+#include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
+
+#include <string>
+#include <tuple>
 
 namespace autoware::pose_initializer
 {
-class PoseErrorCheckModule
+class LocalizationModule
 {
+private:
+  using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
+  using RequestPoseAlignment = autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped;
+
 public:
-  explicit PoseErrorCheckModule(autoware::agnocast_wrapper::Node * node);
-  bool check_pose_error(
-    const geometry_msgs::msg::Pose & reference_pose, const geometry_msgs::msg::Pose & result_pose,
-    double & error_2d);
+  LocalizationModule(autoware::agnocast_wrapper::Node * node, const std::string & service_name);
+  std::tuple<PoseWithCovarianceStamped, bool> align_pose(const PoseWithCovarianceStamped & pose);
 
 private:
-  autoware::agnocast_wrapper::Node * node_;
-  double pose_error_threshold_;
+  rclcpp::Logger logger_;
+  AUTOWARE_CLIENT_PTR(RequestPoseAlignment) cli_align_;
 };
 }  // namespace autoware::pose_initializer
 
-#endif  // POSE_ERROR_CHECK_MODULE_HPP_
+#endif  // UTILS__LOCALIZATION_MODULE_HPP_

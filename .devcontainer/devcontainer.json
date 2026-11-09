@@ -57,7 +57,12 @@
     "ghcr.io/devcontainers/features/common-utils:2": {},
     "ghcr.io/devcontainers/features/git:1": {},
     "ghcr.io/devcontainers/features/github-cli:1": {},
-    "ghcr.io/devcontainers-extra/features/pre-commit:2": {}
+    "ghcr.io/devcontainers-extra/features/pre-commit:2": {},
+    "ghcr.io/anthropics/devcontainer-features/claude-code:1.0": {},
+    "ghcr.io/devcontainers-extra/features/npm-packages:latest": {
+      "packages": "@openai/codex,@google/gemini-cli"
+    },
+    "ghcr.io/fjktkm/devcontainer-features/agent-persistence:1": {}
   },
 
   "containerEnv": {

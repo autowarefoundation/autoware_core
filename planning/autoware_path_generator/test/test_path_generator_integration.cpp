@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "autoware/path_generator/node.hpp"
+#include "autoware/path_generator/path_generator_node.hpp"
 
 #include <ament_index_cpp/get_package_share_directory.hpp>
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -68,7 +68,7 @@ protected:
        path_generator_dir + "/config/path_generator.param.yaml"});
 
     // Init nodes
-    node_ = std::make_shared<PathGenerator>(node_options);
+    node_ = std::make_shared<PathGeneratorNode>(node_options);
     executor_ = std::make_shared<rclcpp::executors::SingleThreadedExecutor>();
     executor_->add_node(node_);
 
@@ -413,7 +413,7 @@ protected:
   }
 
   // Harness pointers
-  std::shared_ptr<PathGenerator> node_;
+  std::shared_ptr<PathGeneratorNode> node_;
   std::shared_ptr<rclcpp::executors::SingleThreadedExecutor> executor_;
   std::shared_ptr<rclcpp::Node> harness_node_;
 

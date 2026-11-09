@@ -111,6 +111,23 @@ TEST(spline_interpolation, splineYawFromPoints)
       EXPECT_NEAR(yaws.at(i), ans.at(i), epsilon);
     }
   }
+
+  {  // duplicated points at the end
+    std::vector<geometry_msgs::msg::Point> points;
+    points.push_back(create_point(1.0, 0.0, 0.0));
+    points.push_back(create_point(2.0, 1.5, 0.0));
+    points.push_back(create_point(3.0, 3.0, 0.0));
+    points.push_back(create_point(3.0, 3.0, 0.0));
+    points.push_back(create_point(3.0, 3.0, 0.0));
+
+    const std::vector<double> ans{0.9827937, 0.9827937, 0.9827937, 0.9827937, 0.9827937};
+
+    const auto yaws = autoware::interpolation::splineYawFromPoints(points);
+    ASSERT_EQ(yaws.size(), ans.size());
+    for (size_t i = 0; i < yaws.size(); ++i) {
+      EXPECT_NEAR(yaws.at(i), ans.at(i), epsilon);
+    }
+  }
 }
 
 TEST(spline_interpolation, SplineInterpolationPoints2d)

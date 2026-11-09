@@ -1,4 +1,4 @@
-// Copyright 2024 The Autoware Contributors
+// Copyright 2022 The Autoware Contributors
 //
 // Licensed under the Apache License, Version 2.0 (the "License");
 // you may not use this file except in compliance with the License.
@@ -12,35 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef LOCALIZATION_MODULE_HPP_
-#define LOCALIZATION_MODULE_HPP_
+#ifndef UTILS__GNSS_MODULE_HPP_
+#define UTILS__GNSS_MODULE_HPP_
 
 #include <autoware/agnocast_wrapper/autoware_agnocast_wrapper.hpp>
 #include <autoware/agnocast_wrapper/node.hpp>
+#include <autoware/map_height_fitter/map_height_fitter.hpp>
 #include <rclcpp/rclcpp.hpp>
 
-#include <autoware_internal_localization_msgs/srv/pose_with_covariance_stamped.hpp>
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
-
-#include <string>
-#include <tuple>
 
 namespace autoware::pose_initializer
 {
-class LocalizationModule
+class GnssModule
 {
 private:
   using PoseWithCovarianceStamped = geometry_msgs::msg::PoseWithCovarianceStamped;
-  using RequestPoseAlignment = autoware_internal_localization_msgs::srv::PoseWithCovarianceStamped;
 
 public:
-  LocalizationModule(autoware::agnocast_wrapper::Node * node, const std::string & service_name);
-  std::tuple<PoseWithCovarianceStamped, bool> align_pose(const PoseWithCovarianceStamped & pose);
+  explicit GnssModule(autoware::agnocast_wrapper::Node * node);
+  PoseWithCovarianceStamped get_pose();
 
 private:
-  rclcpp::Logger logger_;
-  AUTOWARE_CLIENT_PTR(RequestPoseAlignment) cli_align_;
+  void on_pose(PoseWithCovarianceStamped::ConstSharedPtr msg);
+
+  autoware::map_height_fitter::MapHeightFitter fitter_;
+  rclcpp::Clock::SharedPtr clock_;
+  AUTOWARE_SUBSCRIPTION_PTR(PoseWithCovarianceStamped) sub_gnss_pose_;
+  PoseWithCovarianceStamped::ConstSharedPtr pose_;
+  double timeout_;
 };
 }  // namespace autoware::pose_initializer
 
-#endif  // LOCALIZATION_MODULE_HPP_
+#endif  // UTILS__GNSS_MODULE_HPP_

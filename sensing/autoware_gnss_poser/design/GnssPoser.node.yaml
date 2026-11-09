@@ -8,7 +8,7 @@ package:
   provider: autoware
 
 launch:
-  plugin: autoware::gnss_poser::GNSSPoser
+  plugin: autoware::gnss_poser::GnssPoserNode
   executable: gnss_poser
   node_output: screen
 

@@ -310,6 +310,41 @@ TEST(VoxelGridBasedEuclideanClusterTest, BoundaryVoxelPointsAreNotDropped)
   EXPECT_EQ(result.skipped_cluster_count, 1);
 }
 
+// Regression test: `max_cluster_size` counts points, not voxels. A cluster that spans more voxels
+// than `max_cluster_size` must still be rejected and reported as skipped, not dropped silently.
+// The 10 by 10 grid puts one point in each voxel, and the neighbors are within `tolerance`, so
+// all 100 voxels form one cluster of 100 points.
+TEST(VoxelGridBasedEuclideanClusterTest, ClusterWithMoreVoxelsThanMaxSizeIsSkipped)
+{
+  constexpr int grid_size = 10;
+  constexpr float voxel_leaf_size = 0.3f;
+
+  std::vector<PointXYZI> points;
+  for (int i = 0; i < grid_size; ++i) {
+    for (int j = 0; j < grid_size; ++j) {
+      // the center of voxel (i, j), away from the voxel boundaries
+      const float x = (static_cast<float>(i) + 0.5f) * voxel_leaf_size;
+      const float y = (static_cast<float>(j) + 0.5f) * voxel_leaf_size;
+      points.push_back(PointXYZI{x, y, 0.0f, 0.0f});
+    }
+  }
+
+  autoware::euclidean_cluster::EuclideanClusterParams param;
+  param.use_height = false;
+  param.min_cluster_size = 1;
+  // one fewer than the voxels and the points of the cluster
+  param.max_cluster_size = grid_size * grid_size - 1;
+  param.tolerance = 0.7f;
+  param.voxel_leaf_size = voxel_leaf_size;
+  param.min_points_number_per_voxel = 1;
+
+  autoware::euclidean_cluster::VoxelGridBasedEuclideanClusterDetector cluster(param);
+  auto result = cluster.cluster(make_point_cloud(points));
+
+  EXPECT_EQ(result.cluster_message.objects.size(), 0u);
+  EXPECT_EQ(result.skipped_cluster_count, 1);
+}
+
 // A cloud with its fields and point_step set but no data must pass through without crashing and
 // produce no objects.
 TEST(VoxelGridBasedEuclideanClusterTest, ClusterEmptyInput)

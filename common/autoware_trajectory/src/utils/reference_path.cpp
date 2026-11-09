@@ -266,10 +266,11 @@ public:
       return;
     }
 
-    if (const auto & last_waypoints = reference_points_chunks_.back().points;
-        lanelet::geometry::distance3d(
-          last_waypoints.back().point, user_defined_reference_points.front().point) >
-        group_separation_distance) {
+    if (
+      const auto & last_waypoints = reference_points_chunks_.back().points;
+      lanelet::geometry::distance3d(
+        last_waypoints.back().point, user_defined_reference_points.front().point) >
+      group_separation_distance) {
       const auto [start, end] = compute_smooth_interval(
         user_defined_reference_points, current_lanelet_distance_from_route_start, defined_lanelet,
         connection_from_default_point_gradient);
@@ -413,8 +414,9 @@ static std::string append_reference_points_no_check(
     }
 
     // add border point if lane id changed
-    if (const auto prev_reference_point = reference_lanelet_points.back();
-        has_passed_lanelet_border(prev_reference_point, located_lane_id)) {
+    if (
+      const auto prev_reference_point = reference_lanelet_points.back();
+      has_passed_lanelet_border(prev_reference_point, located_lane_id)) {
       const auto & [prev_point, prev_located_lane_id, prev_next_lane_id] = prev_reference_point;
       const auto located_lanelet = std::find_if(
         lanelet_sequence.begin(), lanelet_sequence.end(),
@@ -597,8 +599,8 @@ consolidate_user_defined_waypoints_and_native_centerline(
             native_s >= next_target_chunk_iter->start_s) {
             current_overlapping_chunk_iter.emplace(*next_target_chunk_iter);
 
-            if (const auto exceeded_start = exceeded_start_for_the_1st_time_check();
-                exceeded_start) {
+            if (
+              const auto exceeded_start = exceeded_start_for_the_1st_time_check(); exceeded_start) {
               // this is possible if s_start is on the waypoint
               // the position at s_start needs to be interpolated
               points_to_add_native.emplace_back(*exceeded_start);
@@ -829,8 +831,9 @@ build_reference_path(
       std::next(lanelet) == lanelet_sequence.end()
         ? std::nullopt
         : std::make_optional<lanelet::ConstLanelet>(*std::next(lanelet));
-    if (auto user_defined_waypoint_opt = get_user_defined_waypoint(*lanelet, lanelet_map);
-        user_defined_waypoint_opt) {
+    if (
+      auto user_defined_waypoint_opt = get_user_defined_waypoint(*lanelet, lanelet_map);
+      user_defined_waypoint_opt) {
       const auto validation = validate_relaxed_vm_01_11_spec(
         *lanelet, prev_lanelet, next_lanelet, user_defined_waypoint_opt.value());
       if (!validation) {

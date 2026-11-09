@@ -20,11 +20,25 @@
 #include <sensor_msgs/msg/point_cloud2.hpp>
 #include <sensor_msgs/msg/point_field.hpp>
 
+#include <algorithm>
 #include <vector>
 
 namespace autoware::point_types
 {
 
+// Two families of checks live here:
+//
+// - is_data_layout_compatible_with_point_*: the input's fields match the point type's memory
+//   layout, so the data can be read through a pointer to that type. Some of these are *prefix*
+//   checks (further trailing fields are allowed, so the input's point_step may exceed
+//   sizeof(PointT)), others are *exact*; each function states which. Prefix-compatible data must
+//   be read with the input's point_step, never with sizeof(PointT).
+//
+// - is_data_convertible_to: the input carries every field of a target layout by name, datatype
+//   and count, at arbitrary offsets. Sufficient for a per-field copy (e.g. via
+//   sensor_msgs::PointCloud2Iterator), never for a reinterpret_cast.
+
+/// Prefix check: fields 0-3 must be PointXYZI's; further fields are allowed.
 inline bool is_data_layout_compatible_with_point_xyzi(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
@@ -63,6 +77,7 @@ inline bool is_data_layout_compatible_with_point_xyzi(const sensor_msgs::msg::Po
   return is_data_layout_compatible_with_point_xyzi(input.fields);
 }
 
+/// Prefix check: fields 0-5 must be PointXYZIRC's; further fields are allowed.
 inline bool is_data_layout_compatible_with_point_xyzirc(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
@@ -111,6 +126,7 @@ inline bool is_data_layout_compatible_with_point_xyzirc(const sensor_msgs::msg::
   return is_data_layout_compatible_with_point_xyzirc(input.fields);
 }
 
+/// Exact check: the fields must be exactly PointXYZIRCT's.
 inline bool is_data_layout_compatible_with_point_xyzirct(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
@@ -165,6 +181,7 @@ inline bool is_data_layout_compatible_with_point_xyzirct(
   return is_data_layout_compatible_with_point_xyzirct(input.fields);
 }
 
+/// Prefix check: fields 0-8 must be PointXYZIRADRT's; further fields are allowed.
 inline bool is_data_layout_compatible_with_point_xyziradrt(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
@@ -229,6 +246,7 @@ inline bool is_data_layout_compatible_with_point_xyziradrt(
   return is_data_layout_compatible_with_point_xyziradrt(input.fields);
 }
 
+/// Exact check: the fields must be exactly PointXYZIRCAEDT's.
 inline bool is_data_layout_compatible_with_point_xyzircaedt(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
@@ -298,6 +316,7 @@ inline bool is_data_layout_compatible_with_point_xyzircaedt(
   return is_data_layout_compatible_with_point_xyzircaedt(input.fields);
 }
 
+/// Exact check: the fields must be exactly PointXYZCPE's.
 inline bool is_data_layout_compatible_with_point_xyzcpe(
   const std::vector<sensor_msgs::msg::PointField> & fields)
 {
@@ -603,6 +622,32 @@ inline std::vector<sensor_msgs::msg::PointField> create_fields_point_xyzcpe()
   fields[static_cast<std::size_t>(PointIndex::Entropy)].count = 1;
 
   return fields;
+}
+
+/// Whether `fields` contains every field of `target_fields` with the same name, datatype and
+/// count. Offsets, order and further fields are not constrained, so this only licenses a
+/// per-field copy into the target layout (e.g. via sensor_msgs::PointCloud2Iterator), never a
+/// reinterpret_cast; use the is_data_layout_compatible_with_point_* checks for that.
+inline bool is_data_convertible_to(
+  const std::vector<sensor_msgs::msg::PointField> & fields,
+  const std::vector<sensor_msgs::msg::PointField> & target_fields)
+{
+  return std::all_of(
+    target_fields.begin(), target_fields.end(),
+    [&fields](const sensor_msgs::msg::PointField & target) {
+      return std::any_of(
+        fields.begin(), fields.end(), [&target](const sensor_msgs::msg::PointField & field) {
+          return field.name == target.name && field.datatype == target.datatype &&
+                 field.count == target.count;
+        });
+    });
+}
+
+inline bool is_data_convertible_to(
+  const sensor_msgs::msg::PointCloud2 & input,
+  const std::vector<sensor_msgs::msg::PointField> & target_fields)
+{
+  return is_data_convertible_to(input.fields, target_fields);
 }
 
 }  // namespace autoware::point_types

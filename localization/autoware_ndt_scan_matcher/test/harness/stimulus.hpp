@@ -48,10 +48,18 @@ inline constexpr const char * initial_pose_status =
   "ndt_scan_matcher: initial_pose_subscriber_status";
 inline constexpr const char * map_update_status = "ndt_scan_matcher: map_update_status";
 inline constexpr const char * ndt_align_status = "ndt_scan_matcher: ndt_align_service_status";
+/// Published only when `ndt.regularization.enable` is true; the node creates no subscriber or
+/// diagnostics publisher for it otherwise.
+inline constexpr const char * regularization_pose_status =
+  "ndt_scan_matcher: regularization_pose_subscriber_status";
 
 /// @brief The map is served by `StubMapLoader` centered here, so all valid poses sit at (100, 100).
 inline constexpr double map_center_x = 100.0;
 inline constexpr double map_center_y = 100.0;
+
+/// @brief Anchor of the stub's second cell. Placed where only the cell-boundary walk can reach it;
+/// `StubMapLoader` says why it must not move closer.
+inline constexpr double second_cell_x = 300.0;
 
 // ------------------------------------------------------------------------------- world geometry
 
@@ -118,11 +126,14 @@ inline pcl::PointCloud<pcl::PointXYZ> make_corner_cloud(
 // -------------------------------------------------------------------------------------- stimulus
 
 /// @brief A normal scan stamped at `stamp`: the corner cloud at 1 m spacing, 1,323 points.
+/// `shift_x` / `shift_y` move the corner, so a scan taken at one position can describe the cell
+/// anchored at another.
 inline sensor_msgs::msg::PointCloud2 make_scan_at(
-  const builtin_interfaces::msg::Time & stamp, const std::string & frame_id = sensor_frame)
+  const builtin_interfaces::msg::Time & stamp, const double shift_x = 0.0,
+  const double shift_y = 0.0, const std::string & frame_id = sensor_frame)
 {
   sensor_msgs::msg::PointCloud2 cloud;
-  pcl::toROSMsg(make_corner_cloud(scan_spacing), cloud);
+  pcl::toROSMsg(make_corner_cloud(scan_spacing, shift_x, shift_y), cloud);
   cloud.header.stamp = stamp;
   cloud.header.frame_id = frame_id;
   return cloud;

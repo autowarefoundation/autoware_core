@@ -84,7 +84,7 @@ TEST_F(VehicleInfoUtilTest, check_vehicle_info_value)
   EXPECT_FLOAT_EQ(
     vehicle_info.calcSteerAngleFromCurvature(1.0 / (vehicle_info.wheel_base_m / std::tan(0.7))),
     0.7);
-  EXPECT_FLOAT_EQ(vehicle_info.calcSteerAngleFromCurvature(1e-8), 0.0);
+  EXPECT_NEAR(vehicle_info.calcSteerAngleFromCurvature(1e-8), 0.0, 1e-6);
 }
 
 TEST_F(VehicleInfoUtilTest, check_internal_pose_transformation)
