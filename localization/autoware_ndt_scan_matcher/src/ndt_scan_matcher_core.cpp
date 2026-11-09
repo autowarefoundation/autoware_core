@@ -186,7 +186,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
       &NDTScanMatcher::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
     service_qos, sensor_callback_group);
 
-  ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->set_params(param_.ndt); });
+  ndt_ptr_.with([&](auto & ndt_ptr) { ndt_ptr = create_ndt_backend(param_.ndt_backend); });
 
   initial_pose_buffer_ = std::make_unique<SmartPoseBuffer>(
     this->get_logger(), param_.validation.initial_pose_timeout_sec,
@@ -214,6 +214,14 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
 
   logger_configure_ = std::make_unique<
     autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
+}
+
+NdtBackend::SharedPtr NDTScanMatcher::create_ndt_backend(const std::string & backend_name)
+{
+  NdtBackend::SharedPtr backend = ndt_backend_loader_.create(backend_name);
+  backend->initialize(param_.ndt);
+  RCLCPP_INFO_STREAM(get_logger(), "NDT backend: " << backend->name());
+  return backend;
 }
 
 MapUpdateModule::GetDifferentialPointCloudMap::Response::ConstSharedPtr
@@ -546,9 +554,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // perform ndt scan matching
     const Eigen::Matrix4f initial_pose_matrix =
       pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);
-    auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
-    ndt_ptr->align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
-    const pclomp::NdtResult ndt_result = ndt_ptr->get_result();
+    const pclomp::NdtResult ndt_result =
+      ndt_ptr->align(initial_pose_matrix, sensor_points_in_baselink_frame_);
 
     const geometry_msgs::msg::Pose result_pose_msg = matrix4f_to_pose(ndt_result.pose);
     std::vector<geometry_msgs::msg::Pose> transformation_msg_array;
@@ -559,11 +566,12 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     // check iteration_num
     diagnostics_scan_points_->add_key_value("iteration_num", ndt_result.iteration_num);
-    const bool is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->get_maximum_iterations());
+    const bool is_ok_iteration_num =
+      (ndt_result.iteration_num < ndt_ptr->get_params().max_iterations);
     if (!is_ok_iteration_num) {
       std::stringstream message;
       message << "The number of iterations has reached its upper limit. The number of iterations: "
-              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->get_maximum_iterations()
+              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->get_params().max_iterations
               << ".";
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
@@ -855,7 +863,7 @@ void NDTScanMatcher::publish_point_cloud(
 
 void NDTScanMatcher::publish_marker(
   const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
-  NormalDistributionsTransform & ndt_ref)
+  NdtBackend & ndt_ref)
 {
   auto marker_array = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(ndt_marker_pub_);
   visualization_msgs::msg::Marker marker;
@@ -875,7 +883,7 @@ void NDTScanMatcher::publish_marker(
   }
 
   // TODO(Tier IV): delete old marker
-  for (; i < ndt_ref.get_maximum_iterations() + 2;) {
+  for (; i < ndt_ref.get_params().max_iterations + 2;) {
     marker.id = i++;
     marker.pose = geometry_msgs::msg::Pose();
     marker.color = exchange_color_crc(0);
@@ -922,7 +930,7 @@ int NDTScanMatcher::count_oscillation(
 
 Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
   const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
+  const rclcpp::Time & sensor_ros_time, NdtBackend & ndt_ref)
 {
   geometry_msgs::msg::PoseArray multi_ndt_result_msg;
   geometry_msgs::msg::PoseArray multi_initial_pose_msg;
@@ -978,7 +986,7 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-  const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
+  const float & lower_nvs, const float & upper_nvs, NdtBackend & ndt_ref)
 {
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
   nvs_points_in_map_ptr_i =
@@ -1003,7 +1011,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
 }
 
 void NDTScanMatcher::add_regularization_pose(
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
+  const rclcpp::Time & sensor_ros_time, NdtBackend & ndt_ref)
 {
   ndt_ref.unset_regularization_pose();
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
@@ -1144,8 +1152,7 @@ void NDTScanMatcher::service_ndt_align_main(
 }
 
 std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher::align_pose(
-  const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-  NormalDistributionsTransform & ndt_ref)
+  const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov, NdtBackend & ndt_ref)
 {
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
@@ -1175,7 +1182,6 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     param_.initial_pose_estimation.n_startup_trials, sample_mean, sample_stddev);
 
   std::vector<Particle> particle_array;
-  auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
 
   // publish the estimated poses in 20 times to see the progress and to avoid dropping data
   visualization_msgs::msg::MarkerArray marker_array;
@@ -1199,8 +1205,8 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     initial_pose.orientation = tf2::toMsg(tf_quaternion);
 
     const Eigen::Matrix4f initial_pose_matrix = pose_to_matrix4f(initial_pose);
-    ndt_ref.align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
-    const pclomp::NdtResult ndt_result = ndt_ref.get_result();
+    const pclomp::NdtResult ndt_result =
+      ndt_ref.align(initial_pose_matrix, sensor_points_in_baselink_frame_);
 
     Particle particle(
       initial_pose, matrix4f_to_pose(ndt_result.pose),

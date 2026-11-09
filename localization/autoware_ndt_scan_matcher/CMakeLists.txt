@@ -44,6 +44,7 @@ endif()
 
 ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_update_module.cpp
+  src/ndt_backend_loader.cpp
   src/ndt_scan_matcher_core.cpp
   src/ndt_scan_matcher_helper.cpp
   src/particle.cpp
@@ -58,6 +59,14 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   ROS2_EXECUTOR MultiThreadedExecutor
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
+
+# The CPU backend (ndt_omp). The node loads it with pluginlib, so the node library must not link it:
+# NO_TARGET_LINK_LIBRARIES, and it is added after the node library.
+ament_auto_add_library(${PROJECT_NAME}_omp_backend SHARED NO_TARGET_LINK_LIBRARIES
+  src/omp_ndt_backend.cpp
+)
+target_link_libraries(${PROJECT_NAME}_omp_backend multigrid_ndt_omp ${PCL_LIBRARIES})
+pluginlib_export_plugin_description_file(${PROJECT_NAME} plugins.xml)
 
 if(BUILD_TESTING)
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
@@ -120,7 +129,24 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_map_update_module
     test/test_map_update_module.cpp
   )
-  target_link_libraries(test_map_update_module ${PROJECT_NAME} multigrid_ndt_omp ${PCL_LIBRARIES})
+  target_link_libraries(test_map_update_module
+    ${PROJECT_NAME} ${PROJECT_NAME}_omp_backend multigrid_ndt_omp ${PCL_LIBRARIES})
+
+  # The OMP backend against ndt_omp, and its copies.
+  ament_auto_add_gtest(test_omp_ndt_backend
+    test/test_omp_ndt_backend.cpp
+  )
+  target_link_libraries(test_omp_ndt_backend
+    ${PROJECT_NAME}_omp_backend multigrid_ndt_omp ${PCL_LIBRARIES})
+
+  # pluginlib loads the backend library here, so this test must not link it. ament_auto_add_gtest()
+  # links every library of the package, so this test uses ament_add_gtest().
+  find_package(ament_cmake_gtest REQUIRED)
+  ament_add_gtest(test_ndt_backend_loader
+    test/test_ndt_backend_loader.cpp
+  )
+  target_include_directories(test_ndt_backend_loader PRIVATE include)
+  target_link_libraries(test_ndt_backend_loader ${PROJECT_NAME})
 endif()
 
 autoware_ament_auto_package(

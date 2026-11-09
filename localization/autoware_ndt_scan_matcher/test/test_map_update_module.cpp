@@ -15,6 +15,7 @@
 #include "test_util.hpp"
 
 #include <autoware/ndt_scan_matcher/map_update_module.hpp>
+#include <autoware/ndt_scan_matcher/omp_ndt_backend.hpp>
 
 #include <autoware_map_msgs/msg/point_cloud_map_cell_with_id.hpp>
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
@@ -106,7 +107,7 @@ protected:
     ndt_params.max_iterations = 30;
     ndt_params.num_threads = 1;
     ndt_params.regularization_scale_factor = 0.0F;
-    ndt_ptr_.with([&](auto & ndt) { ndt->set_params(ndt_params); });
+    ndt_ptr_.with([&](auto & ndt) { ndt->initialize(ndt_params); });
 
     param_.update_distance = 5.0;
     param_.map_radius = 30.0;
@@ -131,7 +132,7 @@ protected:
     return ndt_ptr.with([](const auto & ndt) { return ndt->has_target(); });
   }
 
-  Guarded<MapUpdateModule::NdtPtrType> ndt_ptr_{std::make_shared<MapUpdateModule::NdtType>()};
+  Guarded<MapUpdateModule::NdtPtrType> ndt_ptr_{std::make_shared<OmpNdtBackend>()};
   HyperParameters::DynamicMapLoading param_{};
 };
 

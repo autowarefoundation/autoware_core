@@ -1,0 +1,5 @@
+<library path="autoware_ndt_scan_matcher_omp_backend">
+  <class name="omp" type="autoware::ndt_scan_matcher::OmpNdtBackend" base_class_type="autoware::ndt_scan_matcher::NdtBackend">
+    <description>NDT on the CPU with OpenMP (ndt_omp). This is the default backend.</description>
+  </class>
+</library>

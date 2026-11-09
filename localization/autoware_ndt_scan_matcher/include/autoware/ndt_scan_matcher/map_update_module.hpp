@@ -17,7 +17,7 @@
 
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
-#include "ndt_omp/multigrid_ndt_omp.h"
+#include "ndt_backend.hpp"
 
 #include <autoware_map_msgs/srv/get_differential_point_cloud_map.hpp>
 #include <geometry_msgs/msg/point.hpp>
@@ -47,8 +47,8 @@ class MapUpdateModule
 public:
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
-  using NdtType = pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
-  using NdtPtrType = std::shared_ptr<NdtType>;
+  using NdtType = NdtBackend;
+  using NdtPtrType = NdtBackend::SharedPtr;
 
   using GetDifferentialPointCloudMap = autoware_map_msgs::srv::GetDifferentialPointCloudMap;
 

@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__HYPER_PARAMETERS_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__HYPER_PARAMETERS_HPP_
 
-#include "ndt_omp/multigrid_ndt_omp.h"
+#include "ndt_omp/ndt_struct.hpp"
 
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <rclcpp/rclcpp.hpp>
@@ -56,6 +56,7 @@ struct HyperParameters
   } sensor_points{};
 
   pclomp::NdtParams ndt{};
+  std::string ndt_backend{};
   bool ndt_regularization_enable{};
 
   struct InitialPoseEstimation
@@ -124,6 +125,7 @@ public:
     ndt.max_iterations = static_cast<int>(node->declare_parameter<int64_t>("ndt.max_iterations"));
     ndt.num_threads = static_cast<int>(node->declare_parameter<int64_t>("ndt.num_threads"));
     ndt.num_threads = std::max(ndt.num_threads, 1);
+    ndt_backend = node->declare_parameter<std::string>("ndt.backend");
     ndt_regularization_enable = node->declare_parameter<bool>("ndt.regularization.enable");
     ndt.regularization_scale_factor =
       static_cast<float>(node->declare_parameter<float>("ndt.regularization.scale_factor"));
