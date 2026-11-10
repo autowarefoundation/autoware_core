@@ -25,6 +25,14 @@ SmartPoseBuffer::SmartPoseBuffer(
 {
 }
 
+SmartPoseBuffer::SmartPoseBuffer(
+  const double & pose_timeout_sec, const double & pose_distance_tolerance_meters)
+: logger_(std::nullopt),
+  pose_timeout_sec_(pose_timeout_sec),
+  pose_distance_tolerance_meters_(pose_distance_tolerance_meters)
+{
+}
+
 std::optional<SmartPoseBuffer::InterpolateResult> SmartPoseBuffer::interpolate(
   const rclcpp::Time & target_ros_time)
 {
@@ -34,7 +42,9 @@ std::optional<SmartPoseBuffer::InterpolateResult> SmartPoseBuffer::interpolate(
     std::lock_guard<std::mutex> lock(mutex_);
 
     if (pose_buffer_.size() < 2) {
-      RCLCPP_INFO(logger_, "pose_buffer_.size() < 2");
+      if (logger_) {
+        RCLCPP_INFO(*logger_, "pose_buffer_.size() < 2");
+      }
       return std::nullopt;
     }
 
@@ -42,7 +52,9 @@ std::optional<SmartPoseBuffer::InterpolateResult> SmartPoseBuffer::interpolate(
     const rclcpp::Time time_last = pose_buffer_.back()->header.stamp;
 
     if (target_ros_time < time_first) {
-      RCLCPP_INFO(logger_, "Mismatch between pose timestamp and current timestamp");
+      if (logger_) {
+        RCLCPP_INFO(*logger_, "Mismatch between pose timestamp and current timestamp");
+      }
       return std::nullopt;
     }
 
@@ -130,9 +142,9 @@ bool SmartPoseBuffer::validate_time_stamp_difference(
 {
   const double dt = std::abs((target_time - reference_time).seconds());
   const bool success = dt < time_tolerance_sec;
-  if (!success) {
+  if (!success && logger_) {
     RCLCPP_WARN(
-      logger_,
+      *logger_,
       "Validation error. The reference time is %lf[sec], but the target time is %lf[sec]. The "
       "difference is %lf[sec] (the tolerance is %lf[sec]).",
       reference_time.seconds(), target_time.seconds(), dt, time_tolerance_sec);
@@ -146,9 +158,9 @@ bool SmartPoseBuffer::validate_position_difference(
 {
   const double distance = norm(target_point, reference_point);
   const bool success = distance < distance_tolerance_m_;
-  if (!success) {
+  if (!success && logger_) {
     RCLCPP_WARN(
-      logger_,
+      *logger_,
       "Validation error. The distance from reference position to target position is %lf[m] (the "
       "tolerance is %lf[m]).",
       distance, distance_tolerance_m_);
