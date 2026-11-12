@@ -44,6 +44,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <optional>
 #include <stdexcept>
@@ -62,6 +63,8 @@ using geometry_msgs::msg::Quaternion;
 using geometry_msgs::msg::Transform;
 using sensor_msgs::msg::NavSatFix;
 using sensor_msgs::msg::NavSatStatus;
+using std::chrono_literals::operator""ms;
+using std::chrono_literals::operator""s;
 
 // ---------------------------------------------------------------------------------------
 // Reference input used throughout (same point as autoware_geography_utils' own tests).
@@ -495,6 +498,42 @@ struct CovarianceType
 
 class GnssPoserKnownCovarianceType : public ::testing::TestWithParam<CovarianceType>
 {
+};
+
+constexpr std::chrono::milliseconds grace_period =
+  autoware::gnss_poser::antenna_transform_grace_period;
+constexpr std::chrono::milliseconds beyond_grace_period = grace_period + 1ms;
+
+// `stamp` advanced by `offset`.
+builtin_interfaces::msg::Time stamp_after(
+  const builtin_interfaces::msg::Time & stamp, const std::chrono::nanoseconds offset)
+{
+  const std::chrono::nanoseconds time =
+    std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec) + offset;
+  const std::chrono::seconds sec = std::chrono::floor<std::chrono::seconds>(time);
+  builtin_interfaces::msg::Time advanced;
+  advanced.sec = static_cast<int32_t>(sec.count());
+  advanced.nanosec = static_cast<uint32_t>((time - sec).count());
+  return advanced;
+}
+
+// A GnssPoser with the MGRS projector whose antenna transform lookup gives `available`.
+class GnssPoserAntennaTransformReport : public ::testing::Test
+{
+protected:
+  void SetUp() override { poser.set_projector_info(make_mgrs_projector_info()); }
+
+  // Whether the reference fix, stamped `offset` after the first fix, reports the antenna transform
+  // missing.
+  bool input_fix_at(const std::chrono::milliseconds offset)
+  {
+    NavSatFix fix = make_reference_fix();
+    fix.header.stamp = stamp_after(fix.header.stamp, offset);
+    return poser.input_fix(fix).antenna_transform_missing;
+  }
+
+  std::optional<Transform> available;  // no transform until it is assigned
+  GnssPoser poser{{}, [this](const std::string &) { return available; }};
 };
 }  // namespace
 
@@ -1222,4 +1261,65 @@ TEST(GnssPoser, Tf_MissingTransform_FixAdvancesMotionHeading)
   // Assert
   EXPECT_NEAR(
     yaw_of(pose_of(result).orientation), std::atan2(p3.y - p2.y, p3.x - p2.x), angle_tolerance);
+}
+
+// Right after startup /tf_static may not have arrived yet, so a missing transform is not reported
+// within the grace period from the first fix.
+TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableWithinGracePeriod_NotReported)
+{
+  // Act
+  const bool first = input_fix_at(0s);
+  const bool at_grace_period = input_fix_at(grace_period);
+
+  // Assert
+  EXPECT_FALSE(first);
+  EXPECT_FALSE(at_grace_period);
+}
+
+// Past the grace period a missing transform is reported, once: the fixes after it, still without
+// the transform, do not report it again.
+TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableBeyondGracePeriod_ReportedOnce)
+{
+  // Act
+  const bool first = input_fix_at(0s);
+  const bool beyond_grace_period_fix = input_fix_at(beyond_grace_period);
+  const bool next = input_fix_at(beyond_grace_period + 1s);
+
+  // Assert
+  EXPECT_FALSE(first);
+  EXPECT_TRUE(beyond_grace_period_fix);
+  EXPECT_FALSE(next);
+}
+
+// The grace period is measured from the first fix of all, not from the first fix without the
+// transform: a transform missing only after the grace period is reported at once.
+TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableAfterGracePeriod_ReportedAtOnce)
+{
+  // Arrange
+  available = Transform{};
+  input_fix_at(0s);
+  available.reset();
+
+  // Act
+  const bool reported = input_fix_at(beyond_grace_period);
+
+  // Assert
+  EXPECT_TRUE(reported);
+}
+
+// A fix that gets the transform ends the outage, so a transform missing again is reported again.
+TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableAgainAfterAvailable_ReportedAgain)
+{
+  // Arrange
+  input_fix_at(0s);
+  ASSERT_TRUE(input_fix_at(beyond_grace_period));
+  available = Transform{};
+  input_fix_at(beyond_grace_period + 1s);
+  available.reset();
+
+  // Act
+  const bool reported = input_fix_at(beyond_grace_period + 2s);
+
+  // Assert
+  EXPECT_TRUE(reported);
 }

@@ -47,6 +47,12 @@ bool is_fixed(const sensor_msgs::msg::NavSatStatus & nav_sat_status_msg)
   return nav_sat_status_msg.status >= sensor_msgs::msg::NavSatStatus::STATUS_FIX;
 }
 
+/// The stamp as the time since the epoch of the clock that stamped it.
+std::chrono::nanoseconds to_stamp_time(const builtin_interfaces::msg::Time & stamp)
+{
+  return std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec);
+}
+
 /// True when the receiver reports a covariance type other than UNKNOWN.
 bool can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg)
 {
@@ -228,6 +234,10 @@ void GnssPoser::set_ins_orientation(
 
 GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 {
+  if (!first_fix_stamp_.has_value()) {
+    first_fix_stamp_ = to_stamp_time(fix.header.stamp);
+  }
+
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
     return {Outcome::NoProjectorInfo};
@@ -283,8 +293,14 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   // base_link pose without it. The transform is static, so this does not resolve by asking for
   // another time; it resolves once the transform is published.
   if (!transform.has_value()) {
-    return {Outcome::TransformLookupFailed, make_gnss_fixed(fix.header.stamp, true)};
+    Result result{Outcome::TransformLookupFailed, make_gnss_fixed(fix.header.stamp, true)};
+    if (should_report_transform_missing(fix.header.stamp)) {
+      antenna_transform_missing_reported_ = true;
+      result.antenna_transform_missing = true;
+    }
+    return result;
   }
+  antenna_transform_missing_reported_ = false;
   const geometry_msgs::msg::Transform antenna_to_base_link = transform.value();
 
   std::array<double, 3> rotation_variances{};
@@ -314,6 +330,14 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   return {
     Outcome::Published, make_gnss_fixed(fix.header.stamp, true), pose, pose_cov,
     make_transform_stamped(pose, params_.gnss_base_frame)};
+}
+
+bool GnssPoser::should_report_transform_missing(const builtin_interfaces::msg::Time & stamp) const
+{
+  // Missing within the grace period is expected, as /tf_static may arrive after the first fixes.
+  const bool expected =
+    to_stamp_time(stamp) - first_fix_stamp_.value() <= antenna_transform_grace_period;
+  return !expected && !antenna_transform_missing_reported_;
 }
 
 }  // namespace autoware::gnss_poser

@@ -126,10 +126,17 @@ void GnssPoserNode::callback_nav_sat_fix(
         "Buffering Position. Output Skipped.");
       break;
 
-    // A missing antenna transform has been warned about by the lookup.
+    // A missing antenna transform is logged below, when the result says it is to be reported;
+    // every fix without it would be too many.
     case GnssPoser::Outcome::TransformLookupFailed:
     case GnssPoser::Outcome::Published:
       break;
+  }
+  if (result.antenna_transform_missing) {
+    RCLCPP_ERROR_STREAM(
+      this->get_logger(), "No transform from "
+                            << nav_sat_fix_msg_ptr->header.frame_id << " to " << base_frame_
+                            << " is available; please publish it on TF. Fixes are skipped.");
   }
 
   publish_data(result);
@@ -174,12 +181,7 @@ std::optional<geometry_msgs::msg::Transform> GnssPoserNode::get_static_transform
     // than /tf_static and the fix is newer than the last /tf message, which tf2 refuses to
     // extrapolate.
     return tf2_buffer_.lookupTransform(target_frame, source_frame, tf2::TimePointZero).transform;
-  } catch (tf2::TransformException & ex) {
-    RCLCPP_WARN_STREAM_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(), ex.what());
-    RCLCPP_WARN_STREAM_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(),
-      "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str());
+  } catch (const tf2::TransformException &) {
     return std::nullopt;
   }
 }

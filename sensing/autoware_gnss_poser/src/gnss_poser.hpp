@@ -14,6 +14,8 @@
 #ifndef GNSS_POSER_HPP_
 #define GNSS_POSER_HPP_
 
+#include <builtin_interfaces/msg/time.hpp>
+
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation.hpp>
@@ -27,6 +29,7 @@
 #include <boost/circular_buffer.hpp>
 
 #include <array>
+#include <chrono>
 #include <functional>
 #include <optional>
 #include <string>
@@ -60,6 +63,11 @@ struct GnssPoserParams
 constexpr std::array<double, 3> default_unknown_position_variances = {10.0, 10.0, 10.0};  // [m^2]
 constexpr std::array<double, 3> default_motion_rotation_variances = {0.1, 0.1, 1.0};      // [rad^2]
 constexpr double default_ins_placeholder_rmse = 1.0;                                      // [rad]
+
+// How long after the first fix the antenna transform may be unavailable without being an issue:
+// depending on the startup order, /tf_static may arrive after the first fixes. Measured by the fix
+// header stamps, so that it follows the data, e.g. a rosbag replayed at another rate.
+constexpr std::chrono::seconds antenna_transform_grace_period{5};
 
 /// \brief The covariance values above, as GnssPoser takes them.
 ///
@@ -132,6 +140,9 @@ public:
     std::optional<geometry_msgs::msg::PoseWithCovarianceStamped> gnss_pose_cov = std::nullopt;
     /// The same pose as a transform, map_frame -> gnss_base_frame, ready to broadcast.
     std::optional<geometry_msgs::msg::TransformStamped> transform = std::nullopt;
+    /// True at the first fix that cannot get the antenna transform after the grace period from the
+    /// first fix, to be logged once; true again only after a fix has got the transform.
+    bool antenna_transform_missing = false;
   };
 
   void set_projector_info(const autoware_map_msgs::msg::MapProjectorInfo & projector_info);
@@ -146,6 +157,11 @@ public:
   Result input_fix(const sensor_msgs::msg::NavSatFix & fix);
 
 private:
+  // Whether a fix stamped `stamp` whose antenna transform lookup failed reports it as
+  // Result::antenna_transform_missing: not within the grace period from the first fix, and not
+  // when already reported since the transform was last obtained.
+  bool should_report_transform_missing(const builtin_interfaces::msg::Time & stamp) const;
+
   GnssPoserParams params_;
   TransformLookup lookup_antenna_to_base_link_;
   GnssPoserCovarianceDefaults covariance_defaults_;
@@ -156,6 +172,11 @@ private:
   geometry_msgs::msg::Point prev_position_;
   bool has_prev_position_ = false;
   autoware_sensing_msgs::msg::GnssInsOrientation ins_orientation_;
+  // The header stamp of the first fix, whatever its status, from which the grace period runs. Set
+  // once, so a rosbag replayed in a loop gets the grace period only on its first pass.
+  std::optional<std::chrono::nanoseconds> first_fix_stamp_;
+  // Whether Result::antenna_transform_missing has been set since a fix last got the transform.
+  bool antenna_transform_missing_reported_ = false;
 };
 
 }  // namespace autoware::gnss_poser
