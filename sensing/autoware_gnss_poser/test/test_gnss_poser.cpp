@@ -28,6 +28,7 @@
 #include <autoware/geography_utils/projection.hpp>
 #include <tf2/LinearMath/Matrix3x3.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
+#include <tl/expected.hpp>
 
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation.hpp>
@@ -63,6 +64,7 @@ using geometry_msgs::msg::Quaternion;
 using geometry_msgs::msg::Transform;
 using sensor_msgs::msg::NavSatFix;
 using sensor_msgs::msg::NavSatStatus;
+using TransformLookupError = GnssPoser::TransformLookupError;
 using std::chrono_literals::operator""ms;
 using std::chrono_literals::operator""s;
 
@@ -410,7 +412,7 @@ void expect_rotation_variances_near(
 // The lookup that stands in for TF provides the identity, so that the cases taken from the node
 // characterization stay about what they check rather than about the antenna transform.
 const GnssPoser::TransformLookup identity_lookup = [](const std::string &) {
-  return std::optional<Transform>(Transform{});
+  return tl::expected<Transform, TransformLookupError>(Transform{});
 };
 
 // A GnssPoser that has received the MGRS projector info.
@@ -500,6 +502,17 @@ class GnssPoserKnownCovarianceType : public ::testing::TestWithParam<CovarianceT
 {
 };
 
+// A failed antenna transform lookup.
+struct MissingTransformCase
+{
+  const char * name;
+  TransformLookupError error;
+};
+
+class GnssPoserMissingTransform : public ::testing::TestWithParam<MissingTransformCase>
+{
+};
+
 constexpr std::chrono::milliseconds grace_period =
   autoware::gnss_poser::antenna_transform_grace_period;
 constexpr std::chrono::milliseconds beyond_grace_period = grace_period + 1ms;
@@ -517,22 +530,26 @@ builtin_interfaces::msg::Time stamp_after(
   return advanced;
 }
 
+constexpr TransformLookupError unavailable = TransformLookupError::Unavailable;
+constexpr TransformLookupError failed = TransformLookupError::Failed;
+
 // A GnssPoser with the MGRS projector whose antenna transform lookup gives `available`.
 class GnssPoserAntennaTransformReport : public ::testing::Test
 {
 protected:
   void SetUp() override { poser.set_projector_info(make_mgrs_projector_info()); }
 
-  // Whether the reference fix, stamped `offset` after the first fix, reports the antenna transform
-  // missing.
-  bool input_fix_at(const std::chrono::milliseconds offset)
+  // The antenna transform error that the reference fix, stamped `offset` after the first fix,
+  // reports.
+  std::optional<TransformLookupError> input_fix_at(const std::chrono::milliseconds offset)
   {
     NavSatFix fix = make_reference_fix();
     fix.header.stamp = stamp_after(fix.header.stamp, offset);
-    return poser.input_fix(fix).antenna_transform_missing;
+    return poser.input_fix(fix).antenna_transform_error;
   }
 
-  std::optional<Transform> available;  // no transform until it is assigned
+  // no transform until it is assigned
+  tl::expected<Transform, TransformLookupError> available = tl::unexpected(unavailable);
   GnssPoser poser{{}, [this](const std::string &) { return available; }};
 };
 }  // namespace
@@ -1201,11 +1218,17 @@ TEST(GnssPoser, Covariance_UnknownType_PositionVariancesAreTen)
 // =======================================================================================
 
 // Without the antenna transform the fix cannot be expressed as a base_link pose, so it is dropped.
-// The receiver had a position solution, so its status is still reported.
-TEST(GnssPoser, Tf_MissingTransform_PublishesOnlyGnssFixed)
+// The receiver had a position solution, so its status is still reported. Either lookup error gives
+// the same outcome; Result::antenna_transform_error tells whether the transform may still become
+// available.
+TEST_P(GnssPoserMissingTransform, Tf_MissingTransform_PublishesOnlyGnssFixed)
 {
   // Arrange
-  GnssPoser poser({}, [](const std::string &) { return std::optional<Transform>(); });
+  const TransformLookupError error = GetParam().error;
+  GnssPoser poser(
+    {}, [error](const std::string &) -> tl::expected<Transform, TransformLookupError> {
+      return tl::unexpected(error);
+    });
   poser.set_projector_info(make_mgrs_projector_info());
 
   // Act
@@ -1217,12 +1240,23 @@ TEST(GnssPoser, Tf_MissingTransform_PublishesOnlyGnssFixed)
   EXPECT_TRUE(result.gnss_fixed.value().data);
 }
 
+INSTANTIATE_TEST_SUITE_P(
+  LookupErrors, GnssPoserMissingTransform,
+  ::testing::Values(
+    MissingTransformCase{"Unavailable", TransformLookupError::Unavailable},
+    MissingTransformCase{"Failed", TransformLookupError::Failed}),
+  [](const ::testing::TestParamInfo<MissingTransformCase> & info) {
+    return std::string(info.param.name);
+  });
+
 // A fix dropped for lack of the transform has still been observed: it stays in the position
 // buffer, so the average once the transform is available includes it.
 TEST(GnssPoser, Tf_MissingTransform_FixStaysInPositionBuffer)
 {
   // Arrange
-  std::optional<Transform> available;  // no transform until it is assigned
+  // no transform until it is assigned
+  tl::expected<Transform, TransformLookupError> available =
+    tl::unexpected(TransformLookupError::Unavailable);
   GnssPoser poser(
     make_buffer_params(1, 2), [&available](const std::string &) { return available; });
   poser.set_projector_info(make_mgrs_projector_info());
@@ -1246,7 +1280,9 @@ TEST(GnssPoser, Tf_MissingTransform_FixAdvancesMotionHeading)
   GnssPoserParams params;
   params.gnss_pose_pub_method = GnssPosePubMethod::Instant;
   params.use_gnss_ins_orientation = false;
-  std::optional<Transform> available;  // no transform until it is assigned
+  // no transform until it is assigned
+  tl::expected<Transform, TransformLookupError> available =
+    tl::unexpected(TransformLookupError::Unavailable);
   GnssPoser poser(params, [&available](const std::string &) { return available; });
   poser.set_projector_info(make_mgrs_projector_info());
   const auto fixes = make_motion_fixes();
@@ -1268,12 +1304,12 @@ TEST(GnssPoser, Tf_MissingTransform_FixAdvancesMotionHeading)
 TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableWithinGracePeriod_NotReported)
 {
   // Act
-  const bool first = input_fix_at(0s);
-  const bool at_grace_period = input_fix_at(grace_period);
+  const std::optional<TransformLookupError> first = input_fix_at(0s);
+  const std::optional<TransformLookupError> at_grace_period = input_fix_at(grace_period);
 
   // Assert
-  EXPECT_FALSE(first);
-  EXPECT_FALSE(at_grace_period);
+  EXPECT_EQ(first, std::nullopt);
+  EXPECT_EQ(at_grace_period, std::nullopt);
 }
 
 // Past the grace period a missing transform is reported, once: the fixes after it, still without
@@ -1281,14 +1317,15 @@ TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableWithinGracePeriod_NotRepor
 TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableBeyondGracePeriod_ReportedOnce)
 {
   // Act
-  const bool first = input_fix_at(0s);
-  const bool beyond_grace_period_fix = input_fix_at(beyond_grace_period);
-  const bool next = input_fix_at(beyond_grace_period + 1s);
+  const std::optional<TransformLookupError> first = input_fix_at(0s);
+  const std::optional<TransformLookupError> beyond_grace_period_fix =
+    input_fix_at(beyond_grace_period);
+  const std::optional<TransformLookupError> next = input_fix_at(beyond_grace_period + 1s);
 
   // Assert
-  EXPECT_FALSE(first);
-  EXPECT_TRUE(beyond_grace_period_fix);
-  EXPECT_FALSE(next);
+  EXPECT_EQ(first, std::nullopt);
+  EXPECT_EQ(beyond_grace_period_fix, unavailable);
+  EXPECT_EQ(next, std::nullopt);
 }
 
 // The grace period is measured from the first fix of all, not from the first fix without the
@@ -1298,13 +1335,13 @@ TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableAfterGracePeriod_ReportedA
   // Arrange
   available = Transform{};
   input_fix_at(0s);
-  available.reset();
+  available = tl::unexpected(unavailable);
 
   // Act
-  const bool reported = input_fix_at(beyond_grace_period);
+  const std::optional<TransformLookupError> reported = input_fix_at(beyond_grace_period);
 
   // Assert
-  EXPECT_TRUE(reported);
+  EXPECT_EQ(reported, unavailable);
 }
 
 // A fix that gets the transform ends the outage, so a transform missing again is reported again.
@@ -1312,14 +1349,28 @@ TEST_F(GnssPoserAntennaTransformReport, Tf_UnavailableAgainAfterAvailable_Report
 {
   // Arrange
   input_fix_at(0s);
-  ASSERT_TRUE(input_fix_at(beyond_grace_period));
+  ASSERT_EQ(input_fix_at(beyond_grace_period), unavailable);
   available = Transform{};
   input_fix_at(beyond_grace_period + 1s);
-  available.reset();
+  available = tl::unexpected(unavailable);
 
   // Act
-  const bool reported = input_fix_at(beyond_grace_period + 2s);
+  const std::optional<TransformLookupError> reported = input_fix_at(beyond_grace_period + 2s);
 
   // Assert
-  EXPECT_TRUE(reported);
+  EXPECT_EQ(reported, unavailable);
+}
+
+// A lookup that fails although TF is ready does not resolve by waiting, so it is reported at once,
+// without the grace period.
+TEST_F(GnssPoserAntennaTransformReport, Tf_LookupFailed_ReportedAtOnce)
+{
+  // Arrange
+  available = tl::unexpected(failed);
+
+  // Act
+  const std::optional<TransformLookupError> first = input_fix_at(0s);
+
+  // Assert
+  EXPECT_EQ(first, failed);
 }

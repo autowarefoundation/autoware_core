@@ -15,6 +15,7 @@
 #define GNSS_POSER_HPP_
 
 #include <builtin_interfaces/msg/time.hpp>
+#include <tl/expected.hpp>
 
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
@@ -93,8 +94,17 @@ struct GnssPoserCovarianceDefaults
 class GnssPoser
 {
 public:
+  /// \brief Why a TransformLookup could not provide the transform.
+  enum class TransformLookupError {
+    /// TF is not ready for the lookup yet: it has not received the frames, or not the transforms
+    /// that connect them. Expected right after startup, until the transform is published.
+    Unavailable,
+    /// TF was ready for the lookup, but the lookup failed.
+    Failed,
+  };
+
   /// \brief Resolves the transform from the antenna frame named in the fix header to base_link,
-  /// or std::nullopt when it cannot be resolved.
+  /// or the reason it cannot be resolved.
   ///
   /// The antenna is rigidly mounted on the vehicle, so this transform does not change over time
   /// and no stamp is passed; a moving antenna is out of scope. input_fix() calls the lookup only
@@ -102,7 +112,8 @@ public:
   /// Obtaining the transform (TF lookup, logging) is the caller's business; what to do when there
   /// is none is decided here.
   using TransformLookup =
-    std::function<std::optional<geometry_msgs::msg::Transform>(const std::string & antenna_frame)>;
+    std::function<tl::expected<geometry_msgs::msg::Transform, TransformLookupError>(
+      const std::string & antenna_frame)>;
 
   /// \param lookup_antenna_to_base_link see TransformLookup; kept for the lifetime of the object.
   /// \param covariance_defaults see GnssPoserCovarianceDefaults; the node leaves it at its
@@ -118,8 +129,9 @@ public:
     LocalProjector,   ///< the map uses a local projector, so a GNSS fix cannot be converted
     NotFixed,         ///< the receiver reports no fix; its status is known but no pose is computed
     Buffering,        ///< the position buffer is not full yet (average and median methods)
-    TransformLookupFailed,  ///< TransformLookup could not provide the antenna transform
-    Published,              ///< a pose was computed, see Result::gnss_pose
+    /// TransformLookup gave a TransformLookupError, of either kind.
+    TransformLookupFailed,
+    Published,  ///< a pose was computed, see Result::gnss_pose
   };
 
   /// \brief What the fix produced, as the messages to publish.
@@ -140,9 +152,10 @@ public:
     std::optional<geometry_msgs::msg::PoseWithCovarianceStamped> gnss_pose_cov = std::nullopt;
     /// The same pose as a transform, map_frame -> gnss_base_frame, ready to broadcast.
     std::optional<geometry_msgs::msg::TransformStamped> transform = std::nullopt;
-    /// True at the first fix that cannot get the antenna transform after the grace period from the
-    /// first fix, to be logged once; true again only after a fix has got the transform.
-    bool antenna_transform_missing = false;
+    /// Why the antenna transform is missing, at the fix where that is to be logged: the first
+    /// Unavailable after the grace period from the first fix, or the first Failed. Each is set
+    /// once, and again only after a fix has got the transform.
+    std::optional<TransformLookupError> antenna_transform_error = std::nullopt;
   };
 
   void set_projector_info(const autoware_map_msgs::msg::MapProjectorInfo & projector_info);
@@ -157,10 +170,14 @@ public:
   Result input_fix(const sensor_msgs::msg::NavSatFix & fix);
 
 private:
-  // Whether a fix stamped `stamp` whose antenna transform lookup failed reports it as
-  // Result::antenna_transform_missing: not within the grace period from the first fix, and not
-  // when already reported since the transform was last obtained.
-  bool should_report_transform_missing(const builtin_interfaces::msg::Time & stamp) const;
+  // Whether a fix stamped `stamp` whose antenna transform lookup failed with `error` reports it as
+  // Result::antenna_transform_error: not Unavailable within the grace period from the first fix,
+  // and not an error of a kind already reported since the transform was last obtained.
+  bool should_report_transform_error(
+    TransformLookupError error, const builtin_interfaces::msg::Time & stamp) const;
+  // Record that `error` has been reported, so that its kind is not reported again until the
+  // transform is obtained.
+  void mark_transform_error_reported(TransformLookupError error);
 
   GnssPoserParams params_;
   TransformLookup lookup_antenna_to_base_link_;
@@ -175,8 +192,10 @@ private:
   // The header stamp of the first fix, whatever its status, from which the grace period runs. Set
   // once, so a rosbag replayed in a loop gets the grace period only on its first pass.
   std::optional<std::chrono::nanoseconds> first_fix_stamp_;
-  // Whether Result::antenna_transform_missing has been set since a fix last got the transform.
-  bool antenna_transform_missing_reported_ = false;
+  // Whether Result::antenna_transform_error has been set to Unavailable, and to Failed, since a
+  // fix last got the transform: each kind is reported once.
+  bool transform_unavailable_reported_ = false;
+  bool transform_lookup_failed_reported_ = false;
 };
 
 }  // namespace autoware::gnss_poser

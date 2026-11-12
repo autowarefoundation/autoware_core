@@ -293,14 +293,16 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   // base_link pose without it. The transform is static, so this does not resolve by asking for
   // another time; it resolves once the transform is published.
   if (!transform.has_value()) {
+    const TransformLookupError error = transform.error();
     Result result{Outcome::TransformLookupFailed, make_gnss_fixed(fix.header.stamp, true)};
-    if (should_report_transform_missing(fix.header.stamp)) {
-      antenna_transform_missing_reported_ = true;
-      result.antenna_transform_missing = true;
+    if (should_report_transform_error(error, fix.header.stamp)) {
+      mark_transform_error_reported(error);
+      result.antenna_transform_error = error;
     }
     return result;
   }
-  antenna_transform_missing_reported_ = false;
+  transform_unavailable_reported_ = false;
+  transform_lookup_failed_reported_ = false;
   const geometry_msgs::msg::Transform antenna_to_base_link = transform.value();
 
   std::array<double, 3> rotation_variances{};
@@ -332,12 +334,37 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
     make_transform_stamped(pose, params_.gnss_base_frame)};
 }
 
-bool GnssPoser::should_report_transform_missing(const builtin_interfaces::msg::Time & stamp) const
+bool GnssPoser::should_report_transform_error(
+  const TransformLookupError error, const builtin_interfaces::msg::Time & stamp) const
 {
-  // Missing within the grace period is expected, as /tf_static may arrive after the first fixes.
-  const bool expected =
-    to_stamp_time(stamp) - first_fix_stamp_.value() <= antenna_transform_grace_period;
-  return !expected && !antenna_transform_missing_reported_;
+  bool expected = false;
+  bool reported = false;
+  switch (error) {
+    case TransformLookupError::Unavailable:
+      // Expected within the grace period, as /tf_static may arrive after the first fixes.
+      expected = to_stamp_time(stamp) - first_fix_stamp_.value() <= antenna_transform_grace_period;
+      reported = transform_unavailable_reported_;
+      break;
+
+    case TransformLookupError::Failed:
+      // Never expected: it does not resolve by waiting.
+      reported = transform_lookup_failed_reported_;
+      break;
+  }
+  return !expected && !reported;
+}
+
+void GnssPoser::mark_transform_error_reported(const TransformLookupError error)
+{
+  switch (error) {
+    case TransformLookupError::Unavailable:
+      transform_unavailable_reported_ = true;
+      break;
+
+    case TransformLookupError::Failed:
+      transform_lookup_failed_reported_ = true;
+      break;
+  }
 }
 
 }  // namespace autoware::gnss_poser
