@@ -1,0 +1,205 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 520" role="img" aria-labelledby="ndt-backend-calls-title">
+  <title id="ndt-backend-calls-title">
+    How the node calls a backend. At startup, pluginlib makes the backend and the node calls initialize(). The map update thread fills an instance with add_target(), remove_target() and
+    commit_target(), and the node then swaps the instances. The scan callback calls align() on the active instance and uses the NdtResult.
+  </title>
+  <style data-aw-standalone="">
+    svg { --aw-c-cyan: #0098c7; --aw-c-indigo: var(--aw-indigo); --aw-d-accent: var(--aw-c-cyan); --aw-d-bg: color-mix(in
+    srgb, var(--aw-c-indigo) 2%, var(--md-default-bg-color)); --aw-d-fg: var(--md-default-fg-color); --aw-d-group: color-mix(in
+    srgb, var(--aw-c-indigo) 6%, var(--md-default-bg-color)); --aw-d-group-stroke: color-mix(in
+    srgb, var(--aw-c-indigo) 25%, transparent); --aw-d-line: #8d90a3; --aw-d-muted: var(--md-default-fg-color--light); --aw-d-node: var(--md-default-bg-color); --aw-d-node-stroke: color-mix(in
+    srgb, var(--aw-c-indigo) 45%, transparent); --aw-flow-tone: 22%; --aw-halo-opacity: 0.22; --aw-heading-font-family: Outfit, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; --aw-indigo: #3f2ee3; --md-code-font-family: Roboto
+    Mono, ui-monospace, monospace; --md-default-bg-color: #fff; --md-default-fg-color: #000000de; --md-default-fg-color--light: #0000008c; font-family: var(--aw-heading-font-family); background-color: var(--aw-d-bg, #fff); } .aw-d-arrow {
+  fill: var(--aw-d-line);
+} .aw-d-arrow--accent {
+  fill: var(--aw-d-accent);
+} .box {
+  fill: var(--aw-d-node);
+  stroke: var(--aw-d-node-stroke);
+  stroke-width: 1.5;
+} .box.primary {
+  fill: url("#aw-grad-primary");
+  stroke: none;
+} .group {
+  fill: var(--aw-d-group);
+  stroke: var(--aw-d-group-stroke);
+  stroke-width: 1.5;
+} text {
+  font-size: 14px;
+  fill: var(--aw-d-fg);
+} .lbl {
+  font-weight: 600;
+} .sub {
+  font-size: 12px;
+  fill: var(--aw-d-muted);
+} .code {
+  font-family: var(--md-code-font-family);
+  font-size: 12px;
+} .ttl {
+  font-size: 12px;
+  font-weight: 700;
+  fill: var(--aw-d-muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+} .on-primary {
+  fill: #fff;
+} .on-primary.sub {
+  fill: #ffffffc7;
+} .edge-lbl {
+  font-size: 12px;
+  fill: var(--aw-d-muted);
+  paint-order: stroke;
+  stroke: var(--aw-d-bg);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+} .edge {
+  fill: none;
+  stroke: var(--aw-d-line);
+  stroke-width: 1.6;
+  marker-end: url("#aw-arrow");
+} .edge.accent {
+  stroke: var(--aw-d-accent);
+  stroke-width: 2;
+  marker-end: url("#aw-arrow-accent");
+} .aw-dot {
+  fill: var(--aw-d-fg);
+  opacity: 0.12;
+} .dots {
+  fill: url("#aw-dots");
+} .halo {
+  fill: url("#aw-grad-halo");
+  opacity: var(--aw-halo-opacity);
+} .card {
+  fill: var(--aw-d-node);
+  stroke: var(--aw-d-node-stroke);
+  stroke-width: 1.2;
+  filter: url("#aw-shadow");
+} .flow {
+  fill: none;
+  stroke: color-mix(in srgb, var(--aw-d-line) var(--aw-flow-tone), #fff);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 6 44;
+  animation: aw-flow 2.4s linear infinite;
+} .flow.flow-accent {
+  stroke: color-mix(in srgb, var(--aw-d-accent) var(--aw-flow-tone), #fff);
+} .edge.head, .edge.accent.head, .traj.head, .route.head {
+  stroke: none;
+} @keyframes aw-flow {
+  from {
+    stroke-dashoffset: 6;
+  }
+
+  to {
+    stroke-dashoffset: -94;
+  }
+} @media (prefers-reduced-motion: reduce) {.flow {
+    display: none;
+    animation: none;
+  }}
+  </style>
+  <defs data-aw-standalone="">
+    <marker id="aw-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="aw-d-arrow" d="M0,0.5 L10,5 L0,9.5 z"/>
+    </marker>
+    <marker id="aw-arrow-accent" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="aw-d-arrow aw-d-arrow--accent" d="M0,0.5 L10,5 L0,9.5 z"/>
+    </marker>
+    <pattern id="aw-dots" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle class="aw-dot" cx="2" cy="2" r="1.1"/>
+    </pattern>
+    <radialGradient id="aw-grad-halo">
+      <stop offset="0" stop-color="#3f2ee3" stop-opacity="1"/>
+      <stop offset="1" stop-color="#3f2ee3" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="aw-grad-primary" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3f2ee3"/>
+      <stop offset="1" stop-color="#2a6df2"/>
+    </linearGradient>
+    <filter id="aw-shadow" filterUnits="userSpaceOnUse" x="-2000" y="-2000" width="6000" height="6000">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#00002a" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="960" height="520" rx="16" fill="#fff"/>
+  <rect class="dots" x="0" y="0" width="960" height="520"/>
+  <circle class="halo" cx="805" cy="110" r="120"/>
+
+  <!-- Startup -->
+  <rect class="group" x="20" y="20" width="290" height="440" rx="16"/>
+  <text class="ttl" x="40" y="44">1. At startup</text>
+  <text class="sub" x="40" y="62">Once, in the constructor of the node</text>
+
+  <rect class="card" x="40" y="80" width="250" height="64" rx="14"/>
+  <text class="lbl" x="60" y="101" dominant-baseline="central">pluginlib makes the backend</text>
+  <text class="code" x="60" y="123" dominant-baseline="central">ndt.backend: "ndt_omp"</text>
+  <path class="edge" d="M165 144 V174"/>
+
+  <rect class="card" x="40" y="180" width="250" height="64" rx="14"/>
+  <text class="code" x="60" y="201" dominant-baseline="central">initialize(params)</text>
+  <text class="sub" x="60" y="223" dominant-baseline="central">Gets resources, for example a GPU</text>
+  <path class="edge" d="M165 244 V274"/>
+
+  <rect class="card" x="40" y="280" width="250" height="64" rx="14"/>
+  <text class="code" x="60" y="301" dominant-baseline="central">has_target() == false</text>
+  <text class="sub" x="60" y="323" dominant-baseline="central">No alignment before the first map</text>
+
+  <text class="sub" x="40" y="384">An error here stops the node</text>
+  <text class="sub" x="40" y="402">with the name of the backend.</text>
+
+  <!-- Map update -->
+  <rect class="group" x="335" y="20" width="290" height="440" rx="16"/>
+  <text class="ttl" x="355" y="44">2. Map update thread</text>
+  <text class="sub" x="355" y="62">When the vehicle moves to new map cells</text>
+
+  <rect class="card" x="355" y="80" width="250" height="64" rx="14"/>
+  <text class="code" x="375" y="101" dominant-baseline="central">clone_empty() or clone()</text>
+  <text class="sub" x="375" y="123" dominant-baseline="central">A second instance for the new map</text>
+  <path class="edge" d="M480 144 V174"/>
+
+  <rect class="card" x="355" y="180" width="250" height="64" rx="14"/>
+  <text class="code" x="375" y="201" dominant-baseline="central">add_target(), remove_target()</text>
+  <text class="sub" x="375" y="223" dominant-baseline="central">Map clouds, each with an id</text>
+  <path class="edge" d="M480 244 V274"/>
+
+  <rect class="card" x="355" y="280" width="250" height="64" rx="14"/>
+  <text class="code" x="375" y="301" dominant-baseline="central">commit_target()</text>
+  <text class="sub" x="375" y="323" dominant-baseline="central">All heavy map work finishes here</text>
+  <path class="edge" d="M480 344 V374"/>
+
+  <rect class="card" x="355" y="380" width="250" height="64" rx="14"/>
+  <text class="lbl" x="375" y="401" dominant-baseline="central">The node swaps the instances</text>
+  <text class="sub" x="375" y="423" dominant-baseline="central">Under a short lock</text>
+
+  <!-- Scan callback -->
+  <rect class="group" x="650" y="20" width="290" height="440" rx="16"/>
+  <text class="ttl" x="670" y="44">3. Scan callback</text>
+  <text class="sub" x="670" y="62">For each LiDAR scan</text>
+
+  <rect class="box primary" x="670" y="80" width="250" height="64" rx="14"/>
+  <text class="code on-primary" x="690" y="101" dominant-baseline="central">align(guess, scan)</text>
+  <text class="sub on-primary" x="690" y="123" dominant-baseline="central">On the active instance, no map work</text>
+  <path class="edge" d="M795 144 V174"/>
+
+  <rect class="card" x="670" y="180" width="250" height="64" rx="14"/>
+  <text class="code" x="690" y="201" dominant-baseline="central">NdtResult</text>
+  <text class="sub" x="690" y="223" dominant-baseline="central">Pose, scores, iterations, hessian</text>
+  <path class="edge" d="M795 244 V274"/>
+
+  <rect class="card" x="670" y="280" width="250" height="64" rx="14"/>
+  <text class="code" x="690" y="301" dominant-baseline="central">calculate_...(cloud_in_map)</text>
+  <text class="sub" x="690" y="323" dominant-baseline="central">Scores of other clouds, if enabled</text>
+  <path class="edge" d="M795 344 V374"/>
+
+  <rect class="card" x="670" y="380" width="250" height="64" rx="14"/>
+  <text class="lbl" x="690" y="401" dominant-baseline="central">The node accepts or rejects</text>
+  <text class="sub" x="690" y="423" dominant-baseline="central">It compares the scores with thresholds</text>
+
+  <!-- The swap gives the active instance -->
+  <path class="edge accent" d="M605 412 H638 V112 H664"/>
+  <path class="flow flow-accent" pathLength="100" d="M605 412 H638 V112 H660"/>
+  <path class="edge accent head" d="M605 412 H638 V112 H664"/>
+  <text class="edge-lbl" x="638" y="262" text-anchor="middle" dominant-baseline="central">active</text>
+
+  <text class="sub" x="20" y="486">One thread at a time uses one instance. The active instance and the instance that the map update thread builds</text>
+  <text class="sub" x="20" y="504">run at the same time, so they must not share mutable state.</text>
+</svg>
