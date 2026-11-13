@@ -133,9 +133,11 @@ Increasing the number will improve the smoothness of the estimation, but may hav
 
 ### 3. Tune gate parameters
 
-EKF performs gating using Mahalanobis distance before updating by observation. The gate size is determined by the `pose_gate_dist` parameter and the `twist_gate_dist`. If the Mahalanobis distance is larger than this value, the observation is ignored.
+EKF performs gating using Mahalanobis distance before updating by observation. The distance is computed from the innovation (the difference between the measurement and the predicted state) and its covariance, which is the sum of the predicted state covariance and the measurement covariance. The gate size is determined by the `pose_gate_dist` parameter and the `twist_gate_dist`. If the squared Mahalanobis distance is larger than this value, the observation is ignored.
 
-This gating process is based on a statistical test using the chi-square distribution. As modeled, we assume that the Mahalanobis distance follows a chi-square distribution with 3 degrees of freedom for pose and 2 degrees of freedom for twist.
+This gating process is based on a statistical test using the chi-square distribution. As modeled, we assume that the squared Mahalanobis distance follows a chi-square distribution with 3 degrees of freedom for pose and 2 degrees of freedom for twist.
+
+The diagnostics report the unsquared Mahalanobis distance, and the reported threshold is the square root of `pose_gate_dist` or `twist_gate_dist`.
 
 Currently, the accuracy of covariance estimation itself is not very good, so it is recommended to set the significance level to a very small value to reduce rejection due to false positives.
 
