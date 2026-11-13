@@ -42,9 +42,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_ground_filter
     ${PROJECT_NAME}
   )
-  ament_target_dependencies(test_ground_filter
-    autoware_test_utils
-    ament_index_cpp
+  target_link_libraries(test_ground_filter
+    ${autoware_test_utils_LIBRARIES}
+    ${ament_index_cpp_TARGETS}
+  )
+  target_include_directories(test_ground_filter PRIVATE
+    ${autoware_test_utils_INCLUDE_DIRS}
   )
 
   ament_add_ros_isolated_gtest(test_sanity_check
@@ -54,9 +57,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_sanity_check
     ${PROJECT_NAME}
   )
-  ament_target_dependencies(test_sanity_check
-    autoware_test_utils
-    ament_index_cpp
+  target_link_libraries(test_sanity_check
+    ${autoware_test_utils_LIBRARIES}
+    ${ament_index_cpp_TARGETS}
+  )
+  target_include_directories(test_sanity_check PRIVATE
+    ${autoware_test_utils_INCLUDE_DIRS}
   )
 
   ament_add_ros_isolated_gtest(test_ground_filter_integration
@@ -66,9 +72,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_ground_filter_integration
     ${PROJECT_NAME}
   )
-  ament_target_dependencies(test_ground_filter_integration
-    autoware_test_utils
-    ament_index_cpp
+  target_link_libraries(test_ground_filter_integration
+    ${autoware_test_utils_LIBRARIES}
+    ${ament_index_cpp_TARGETS}
+  )
+  target_include_directories(test_ground_filter_integration PRIVATE
+    ${autoware_test_utils_INCLUDE_DIRS}
   )
 endif()
 

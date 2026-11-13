@@ -65,7 +65,10 @@ if(BUILD_TESTING)
     Python3
   )
   set(Python3_TARGETS Python3::Python)
-  set(yaml-cpp_TARGETS yaml-cpp::yaml-cpp)
+  # Humble's yaml-cpp 0.7 has no yaml-cpp::yaml-cpp target
+  if(TARGET yaml-cpp::yaml-cpp)
+    set(yaml-cpp_TARGETS yaml-cpp::yaml-cpp)
+  endif()
 
   set(test_files
     test/test_main.cpp
@@ -123,8 +126,22 @@ examples/example_pchip_vs_cubic_spline.cpp
     ament_auto_add_executable(${example_name}
       ${example_file}
     )
-    ament_target_dependencies(${example_name}
-      ${${PROJECT_NAME}_FOUND_TEST_DEPENDS}
+    ament_libraries_deduplicate(deduplicated_libraries
+      ${autoware_motion_utils_LIBRARIES}
+      ${autoware_pyplot_LIBRARIES}
+      ${autoware_test_utils_LIBRARIES}
+      ${lanelet2_io_LIBRARIES}
+    )
+    target_link_libraries(${example_name}
+      ${deduplicated_libraries}
+      ${ament_index_cpp_TARGETS}
+      ${Python3_TARGETS}
+      ${yaml-cpp_TARGETS}
+    )
+    target_include_directories(${example_name} PRIVATE
+      ${autoware_motion_utils_INCLUDE_DIRS}
+      ${autoware_pyplot_INCLUDE_DIRS}
+      ${autoware_test_utils_INCLUDE_DIRS}
     )
   endforeach()
 

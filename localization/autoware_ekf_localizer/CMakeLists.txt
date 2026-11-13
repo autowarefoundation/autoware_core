@@ -33,7 +33,12 @@ target_include_directories(autoware_ekf_localizer
   $<INSTALL_INTERFACE:include/autoware_ekf_localizer>
 )
 
-ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
+target_link_libraries(${PROJECT_NAME}
+  ${autoware_agnocast_wrapper_LIBRARIES}
+)
+target_include_directories(${PROJECT_NAME} PUBLIC
+  ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+)
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ekf_localizer::EKFLocalizerNode"
@@ -51,8 +56,12 @@ function(add_testcase filepath)
   ament_add_gtest(${test_name} ${filepath})
   target_link_libraries("${test_name}" ${PROJECT_NAME})
   target_include_directories("${test_name}" PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
-  ament_target_dependencies(${test_name} ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
-  ament_target_dependencies(${test_name} autoware_agnocast_wrapper)
+  target_link_libraries(${test_name}
+    ${autoware_agnocast_wrapper_LIBRARIES}
+  )
+  target_include_directories(${test_name} PRIVATE
+    ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+  )
   autoware_agnocast_wrapper_setup(${test_name})
 endfunction()
 
@@ -89,7 +98,7 @@ endif()
 #     PRIVATE
 #     include
 #   )
-#   ament_target_dependencies(ekf_localizer-test geometry_msgs rclcpp tf2 tf2_ros)
+#   target_link_libraries(ekf_localizer-test ${geometry_msgs_TARGETS} ${rclcpp_TARGETS} ${tf2_TARGETS} ${tf2_ros_TARGETS})
 # endif()
 
 autoware_ament_auto_package(

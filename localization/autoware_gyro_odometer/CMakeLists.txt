@@ -24,9 +24,6 @@ if(BUILD_TESTING)
   ament_add_gtest(test_gyro_odometer
     test/test_gyro_odometer.cpp
   )
-  ament_target_dependencies(test_gyro_odometer
-    ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS}
-  )
   target_link_libraries(test_gyro_odometer
     ${PROJECT_NAME}
   )
@@ -37,9 +34,6 @@ if(BUILD_TESTING)
   # The diagnostics decision is a pure function too, so the same plain-gtest treatment applies.
   ament_add_gtest(test_gyro_odometer_diagnostics
     test/test_gyro_odometer_diagnostics.cpp
-  )
-  ament_target_dependencies(test_gyro_odometer_diagnostics
-    ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS}
   )
   target_link_libraries(test_gyro_odometer_diagnostics
     ${PROJECT_NAME}
@@ -54,10 +48,10 @@ if(BUILD_TESTING)
     ament_add_ros_isolated_gtest(test_gyro_odometer_node
       test/test_gyro_odometer_node.cpp
     )
-    ament_target_dependencies(test_gyro_odometer_node
-      rclcpp
-      rosgraph_msgs
-      tf2_ros
+    target_link_libraries(test_gyro_odometer_node
+      ${rclcpp_TARGETS}
+      ${rosgraph_msgs_TARGETS}
+      ${tf2_ros_TARGETS}
     )
     target_link_libraries(test_gyro_odometer_node
       ${PROJECT_NAME}

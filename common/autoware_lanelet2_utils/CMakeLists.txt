@@ -76,7 +76,9 @@ if(BUILD_TESTING)
     ament_auto_add_executable(${example_name}
       ${example_file}
     )
-    ament_target_dependencies(${example_name} ament_index_cpp)
+    target_link_libraries(${example_name}
+      ${ament_index_cpp_TARGETS}
+    )
     target_link_libraries(${example_name}
       autoware_lanelet2_utils
       range-v3::range-v3

@@ -31,28 +31,32 @@ target_include_directories(${PROJECT_NAME} PUBLIC
   $<INSTALL_INTERFACE:include>
 )
 if("$ENV{ENABLE_AGNOCAST}" STREQUAL "1")
-  ament_target_dependencies(${PROJECT_NAME}
-    rclcpp
-    agnocastlib
-    autoware_utils_rclcpp
-    message_filters
-    diagnostic_updater
-    geometry_msgs
-    tf2
-    tf2_ros
-    glog
+  target_link_libraries(${PROJECT_NAME}
+    ${rclcpp_TARGETS}
+    ${agnocastlib_TARGETS}
+    ${autoware_utils_rclcpp_LIBRARIES}
+    ${message_filters_TARGETS}
+    ${diagnostic_updater_TARGETS}
+    ${geometry_msgs_TARGETS}
+    ${tf2_TARGETS}
+    ${tf2_ros_TARGETS}
+  )
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    ${autoware_utils_rclcpp_INCLUDE_DIRS}
   )
   target_compile_definitions(${PROJECT_NAME} PUBLIC USE_AGNOCAST_ENABLED)
 else()
-  ament_target_dependencies(${PROJECT_NAME}
-    rclcpp
-    autoware_utils_rclcpp
-    message_filters
-    diagnostic_updater
-    geometry_msgs
-    tf2
-    tf2_ros
-    glog
+  target_link_libraries(${PROJECT_NAME}
+    ${rclcpp_TARGETS}
+    ${autoware_utils_rclcpp_LIBRARIES}
+    ${message_filters_TARGETS}
+    ${diagnostic_updater_TARGETS}
+    ${geometry_msgs_TARGETS}
+    ${tf2_TARGETS}
+    ${tf2_ros_TARGETS}
+  )
+  target_include_directories(${PROJECT_NAME} PUBLIC
+    ${autoware_utils_rclcpp_INCLUDE_DIRS}
   )
 endif()
 
@@ -124,7 +128,9 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_${PROJECT_NAME} ${test_files})
   target_include_directories(test_${PROJECT_NAME} PRIVATE test)
   target_link_libraries(test_${PROJECT_NAME} ${PROJECT_NAME})
-  ament_target_dependencies(test_${PROJECT_NAME} std_msgs)
+  target_link_libraries(test_${PROJECT_NAME}
+    ${std_msgs_TARGETS}
+  )
 endif()
 
 autoware_ament_auto_package()

@@ -19,7 +19,10 @@ if(BUILD_TESTING)
     Python3
   )
   set(Python3_TARGETS Python3::Python)
-  set(yaml-cpp_TARGETS yaml-cpp::yaml-cpp)
+  # Humble's yaml-cpp 0.7 has no yaml-cpp::yaml-cpp target
+  if(TARGET yaml-cpp::yaml-cpp)
+    set(yaml-cpp_TARGETS yaml-cpp::yaml-cpp)
+  endif()
 
   ament_add_ros_isolated_gtest(test_autoware_route_handler
     test/test_main.cpp
@@ -29,13 +32,21 @@ if(BUILD_TESTING)
     test/test_getCenterLinePath_vm_10_spec.cpp
     test/test_getCenterLinePath_vm_10_spec_invalid.cpp)
 
-  ament_target_dependencies(test_autoware_route_handler
-    autoware_lanelet2_utils
-    autoware_test_utils
-    autoware_pyplot
-    fmt
-    yaml-cpp
-    Python3
+  ament_libraries_deduplicate(deduplicated_libraries
+    ${autoware_lanelet2_utils_LIBRARIES}
+    ${autoware_test_utils_LIBRARIES}
+    ${autoware_pyplot_LIBRARIES}
+  )
+  target_link_libraries(test_autoware_route_handler
+    ${deduplicated_libraries}
+    ${fmt_TARGETS}
+    ${yaml-cpp_TARGETS}
+    ${Python3_TARGETS}
+  )
+  target_include_directories(test_autoware_route_handler PRIVATE
+    ${autoware_lanelet2_utils_INCLUDE_DIRS}
+    ${autoware_test_utils_INCLUDE_DIRS}
+    ${autoware_pyplot_INCLUDE_DIRS}
   )
 
   target_compile_definitions(test_${PROJECT_NAME}

@@ -74,24 +74,30 @@ if(BUILD_TESTING)
       TIMEOUT "300"
     )
     target_link_libraries(standard_sequence_for_initial_pose_estimation ${PROJECT_NAME})
-    ament_target_dependencies(standard_sequence_for_initial_pose_estimation
-      ament_index_cpp rcl_yaml_param_parser)
+    target_link_libraries(standard_sequence_for_initial_pose_estimation
+      ${ament_index_cpp_TARGETS}
+      ${rcl_yaml_param_parser_TARGETS}
+    )
 
     ament_add_ros_isolated_gtest(once_initialize_at_out_of_map_then_initialize_correctly
       test/test_cases/once_initialize_at_out_of_map_then_initialize_correctly.cpp
       TIMEOUT "300"
     )
     target_link_libraries(once_initialize_at_out_of_map_then_initialize_correctly ${PROJECT_NAME})
-    ament_target_dependencies(once_initialize_at_out_of_map_then_initialize_correctly
-      ament_index_cpp rcl_yaml_param_parser)
+    target_link_libraries(once_initialize_at_out_of_map_then_initialize_correctly
+      ${ament_index_cpp_TARGETS}
+      ${rcl_yaml_param_parser_TARGETS}
+    )
 
     ament_add_ros_isolated_gtest(particles_num_less_than_publish_num
       test/test_cases/particles_num_less_than_publish_num.cpp
       TIMEOUT "300"
     )
     target_link_libraries(particles_num_less_than_publish_num ${PROJECT_NAME})
-    ament_target_dependencies(particles_num_less_than_publish_num
-      ament_index_cpp rcl_yaml_param_parser)
+    target_link_libraries(particles_num_less_than_publish_num
+      ${ament_index_cpp_TARGETS}
+      ${rcl_yaml_param_parser_TARGETS}
+    )
 
     # Characterization tests: they pin the node's current observable behaviour through
     # `/diagnostics`, its output topics and its services, so that extracting the decision logic into
@@ -101,8 +107,10 @@ if(BUILD_TESTING)
       TIMEOUT "600"
     )
     target_link_libraries(test_ndt_scan_matcher_characteristics ${PROJECT_NAME})
-    ament_target_dependencies(test_ndt_scan_matcher_characteristics
-      ament_index_cpp rcl_yaml_param_parser)
+    target_link_libraries(test_ndt_scan_matcher_characteristics
+      ${ament_index_cpp_TARGETS}
+      ${rcl_yaml_param_parser_TARGETS}
+    )
   endif()
 
   # Fast, dependency-light unit tests for the pure covariance / oscillation math.
