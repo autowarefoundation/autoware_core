@@ -15,9 +15,12 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/utils/pose_error_check_module.cpp
   src/utils/localization_trigger_module.cpp
 )
-target_link_libraries(${PROJECT_NAME}
+ament_libraries_deduplicate(deduplicated_libraries
   ${autoware_agnocast_wrapper_LIBRARIES}
   ${autoware_map_height_fitter_LIBRARIES}
+)
+target_link_libraries(${PROJECT_NAME}
+  ${deduplicated_libraries}
 )
 target_include_directories(${PROJECT_NAME} PUBLIC
   ${autoware_agnocast_wrapper_INCLUDE_DIRS}
@@ -54,9 +57,12 @@ if(BUILD_TESTING)
     ament_add_gtest(test_pose_initializer_node_integration test/test_pose_initializer_node_integration.cpp)
     target_include_directories(test_pose_initializer_node_integration PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_link_libraries(test_pose_initializer_node_integration ${PROJECT_NAME})
-    target_link_libraries(test_pose_initializer_node_integration
+    ament_libraries_deduplicate(deduplicated_libraries
       ${autoware_agnocast_wrapper_LIBRARIES}
       ${autoware_map_height_fitter_LIBRARIES}
+    )
+    target_link_libraries(test_pose_initializer_node_integration
+      ${deduplicated_libraries}
     )
     target_include_directories(test_pose_initializer_node_integration PRIVATE
       ${autoware_agnocast_wrapper_INCLUDE_DIRS}

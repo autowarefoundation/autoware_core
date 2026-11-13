@@ -32,10 +32,13 @@ if(BUILD_TESTING)
     test/test_getCenterLinePath_vm_10_spec.cpp
     test/test_getCenterLinePath_vm_10_spec_invalid.cpp)
 
-  target_link_libraries(test_autoware_route_handler
+  ament_libraries_deduplicate(deduplicated_libraries
     ${autoware_lanelet2_utils_LIBRARIES}
     ${autoware_test_utils_LIBRARIES}
     ${autoware_pyplot_LIBRARIES}
+  )
+  target_link_libraries(test_autoware_route_handler
+    ${deduplicated_libraries}
     ${fmt_TARGETS}
     ${yaml-cpp_TARGETS}
     ${Python3_TARGETS}

@@ -126,12 +126,15 @@ examples/example_pchip_vs_cubic_spline.cpp
     ament_auto_add_executable(${example_name}
       ${example_file}
     )
-    target_link_libraries(${example_name}
-      ${ament_index_cpp_TARGETS}
+    ament_libraries_deduplicate(deduplicated_libraries
       ${autoware_motion_utils_LIBRARIES}
       ${autoware_pyplot_LIBRARIES}
       ${autoware_test_utils_LIBRARIES}
       ${lanelet2_io_LIBRARIES}
+    )
+    target_link_libraries(${example_name}
+      ${deduplicated_libraries}
+      ${ament_index_cpp_TARGETS}
       ${Python3_TARGETS}
       ${yaml-cpp_TARGETS}
     )
