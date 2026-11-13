@@ -8584,7 +8584,7 @@ and the subscription callback.</p>
 <p>To use the Node wrapper in your package, add the following to your <code>CMakeLists.txt</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_agnocast_wrapper</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
 <span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">my_node_component</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_LIBRARIES</span><span class="o">}</span><span class="p">)</span>
-<span class="nb">target_include_directories</span><span class="p">(</span><span class="s">my_node_component</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_INCLUDE_DIRS</span><span class="o">}</span><span class="p">)</span>
+<span class="nb">target_include_directories</span><span class="p">(</span><span class="s">my_node_component</span><span class="w"> </span><span class="s">PUBLIC</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_INCLUDE_DIRS</span><span class="o">}</span><span class="p">)</span>
 <span class="nb">autoware_agnocast_wrapper_setup</span><span class="p">(</span><span class="s">my_node_component</span><span class="p">)</span>
 </code></pre></div>
 <p><code>autoware_agnocast_wrapper_setup()</code> is required: it defines <code>USE_AGNOCAST_ENABLED</code> on the target, which
@@ -8602,7 +8602,7 @@ linking the package does not propagate. Apply it to every target that includes a
 
 <span class="nb">ament_auto_add_library</span><span class="p">(</span><span class="s">my_node_component</span><span class="w"> </span><span class="s">SHARED</span><span class="w"> </span><span class="s">src/my_node.cpp</span><span class="p">)</span>
 <span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">my_node_component</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_LIBRARIES</span><span class="o">}</span><span class="p">)</span>
-<span class="nb">target_include_directories</span><span class="p">(</span><span class="s">my_node_component</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_INCLUDE_DIRS</span><span class="o">}</span><span class="p">)</span>
+<span class="nb">target_include_directories</span><span class="p">(</span><span class="s">my_node_component</span><span class="w"> </span><span class="s">PUBLIC</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_INCLUDE_DIRS</span><span class="o">}</span><span class="p">)</span>
 
 <span class="nb">autoware_agnocast_wrapper_register_node</span><span class="p">(</span><span class="s">my_node_component</span>
 <span class="w">  </span><span class="s">PLUGIN</span><span class="w"> </span><span class="s2">"my_package::MyNode"</span>

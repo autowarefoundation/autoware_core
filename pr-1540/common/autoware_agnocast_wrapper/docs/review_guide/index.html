@@ -9791,7 +9791,7 @@ publisher/subscription macros above.</p>
 <p><strong>CMakeLists.txt:</strong></p>
 <div class="highlight"><pre><span></span><code><span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_agnocast_wrapper</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
 <span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">target</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_LIBRARIES</span><span class="o">}</span><span class="p">)</span>
-<span class="nb">target_include_directories</span><span class="p">(</span><span class="s">target</span><span class="w"> </span><span class="s">PRIVATE</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_INCLUDE_DIRS</span><span class="o">}</span><span class="p">)</span>
+<span class="nb">target_include_directories</span><span class="p">(</span><span class="s">target</span><span class="w"> </span><span class="s">PUBLIC</span><span class="w"> </span><span class="o">${</span><span class="nv">autoware_agnocast_wrapper_INCLUDE_DIRS</span><span class="o">}</span><span class="p">)</span>
 <span class="nb">autoware_agnocast_wrapper_setup</span><span class="p">(</span><span class="s">target</span><span class="p">)</span>
 </code></pre></div>
 <p> </p>
