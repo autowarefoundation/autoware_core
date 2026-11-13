@@ -110,7 +110,8 @@ public:
     LocalProjector,   ///< the map uses a local projector, so a GNSS fix cannot be converted
     NotFixed,         ///< the receiver reports no fix; its status is known but no pose is computed
     Buffering,        ///< the position buffer is not full yet (average and median methods)
-    Published,        ///< a pose was computed, see Result::gnss_pose
+    TransformLookupFailed,  ///< TransformLookup could not provide the antenna transform
+    Published,              ///< a pose was computed, see Result::gnss_pose
   };
 
   /// \brief What the fix produced, as the messages to publish.
@@ -140,7 +141,8 @@ public:
   void set_ins_orientation(const autoware_sensing_msgs::msg::GnssInsOrientation & orientation);
 
   /// \brief Process one fix: gate, project, buffer, orient, compose with the antenna transform and
-  /// attach the covariance.
+  /// attach the covariance. A fix whose antenna transform cannot be resolved is dropped; it has
+  /// still been observed, so the position buffer and the motion orientation take it into account.
   Result input_fix(const sensor_msgs::msg::NavSatFix & fix);
 
 private:

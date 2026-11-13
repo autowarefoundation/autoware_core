@@ -14,6 +14,7 @@
 
 #include "gnss_poser_node.hpp"
 
+#include <tf2/exceptions.hpp>
 #include <tf2/time.hpp>
 
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
@@ -125,6 +126,8 @@ void GnssPoserNode::callback_nav_sat_fix(
         "Buffering Position. Output Skipped.");
       break;
 
+    // A missing antenna transform has been warned about by the lookup.
+    case GnssPoser::Outcome::TransformLookupFailed:
     case GnssPoser::Outcome::Published:
       break;
   }

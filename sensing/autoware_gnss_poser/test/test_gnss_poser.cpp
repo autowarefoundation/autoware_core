@@ -404,8 +404,8 @@ void expect_rotation_variances_near(
   EXPECT_NEAR(covariance[cov_yaw_yaw], yaw, rmse_squared_tolerance);
 }
 
-// The fixes of these cases carry the frame `gnss`, for which the node had no transform and
-// composed with the identity; the lookup that stands in for TF provides the identity directly.
+// The lookup that stands in for TF provides the identity, so that the cases taken from the node
+// characterization stay about what they check rather than about the antenna transform.
 const GnssPoser::TransformLookup identity_lookup = [](const std::string &) {
   return std::optional<Transform>(Transform{});
 };
@@ -1155,4 +1155,71 @@ TEST(GnssPoser, Covariance_UnknownType_PositionVariancesAreTen)
       }
     }
   }
+}
+
+// =======================================================================================
+// 6. Antenna transform
+// =======================================================================================
+
+// Without the antenna transform the fix cannot be expressed as a base_link pose, so it is dropped.
+// The receiver had a position solution, so its status is still reported.
+TEST(GnssPoser, Tf_MissingTransform_PublishesOnlyGnssFixed)
+{
+  // Arrange
+  GnssPoser poser({}, [](const std::string &) { return std::optional<Transform>(); });
+  poser.set_projector_info(make_mgrs_projector_info());
+
+  // Act
+  const auto result = poser.input_fix(make_reference_fix());
+
+  // Assert
+  EXPECT_EQ(result.outcome, GnssPoser::Outcome::TransformLookupFailed);
+  expect_only_gnss_fixed(result);
+  EXPECT_TRUE(result.gnss_fixed.value().data);
+}
+
+// A fix dropped for lack of the transform has still been observed: it stays in the position
+// buffer, so the average once the transform is available includes it.
+TEST(GnssPoser, Tf_MissingTransform_FixStaysInPositionBuffer)
+{
+  // Arrange
+  std::optional<Transform> available;  // no transform until it is assigned
+  GnssPoser poser(
+    make_buffer_params(1, 2), [&available](const std::string &) { return available; });
+  poser.set_projector_info(make_mgrs_projector_info());
+  const auto fixes = make_average_fixes();
+  input_fixes(poser, {fixes[0], fixes[1]});
+  available = Transform{};
+
+  // Act
+  const auto result = poser.input_fix(fixes[2]);
+
+  // Assert
+  expect_point_near(
+    pose_of(result).position, mean_of({project_mgrs(fixes[1]), project_mgrs(fixes[2])}));
+}
+
+// Likewise a dropped fix is the previous position of the motion heading: the first fix with the
+// transform heads along the step from the last dropped fix, not from an older one.
+TEST(GnssPoser, Tf_MissingTransform_FixAdvancesMotionHeading)
+{
+  // Arrange
+  GnssPoserParams params;
+  params.gnss_pose_pub_method = GnssPosePubMethod::Instant;
+  params.use_gnss_ins_orientation = false;
+  std::optional<Transform> available;  // no transform until it is assigned
+  GnssPoser poser(params, [&available](const std::string &) { return available; });
+  poser.set_projector_info(make_mgrs_projector_info());
+  const auto fixes = make_motion_fixes();
+  input_fixes(poser, {fixes[0], fixes[1]});
+  available = Transform{};
+  const auto p2 = project_mgrs(fixes[1]);
+  const auto p3 = project_mgrs(fixes[2]);
+
+  // Act
+  const auto result = poser.input_fix(fixes[2]);
+
+  // Assert
+  EXPECT_NEAR(
+    yaw_of(pose_of(result).orientation), std::atan2(p3.y - p2.y, p3.x - p2.x), angle_tolerance);
 }

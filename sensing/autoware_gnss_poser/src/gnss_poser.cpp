@@ -277,11 +277,15 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 
   gnss_antenna_pose.orientation = orientation;
 
-  // get TF from gnss_antenna to base_link. If it cannot be obtained, the antenna pose is published
-  // as the base_link pose, i.e. the identity transform is used (a default-constructed Transform has
-  // zero translation and rotation w = 1).
-  const geometry_msgs::msg::Transform antenna_to_base_link =
-    lookup_antenna_to_base_link_(fix.header.frame_id).value_or(geometry_msgs::msg::Transform{});
+  // get TF from gnss_antenna to base_link.
+  const auto transform = lookup_antenna_to_base_link_(fix.header.frame_id);
+  // Drop this fix if its antenna transform is not available: the fix cannot be expressed as a
+  // base_link pose without it. The transform is static, so this does not resolve by asking for
+  // another time; it resolves once the transform is published.
+  if (!transform.has_value()) {
+    return {Outcome::TransformLookupFailed, make_gnss_fixed(fix.header.stamp, true)};
+  }
+  const geometry_msgs::msg::Transform antenna_to_base_link = transform.value();
 
   std::array<double, 3> rotation_variances{};
   if (params_.use_gnss_ins_orientation) {
