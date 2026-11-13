@@ -406,10 +406,9 @@ void expect_rotation_variances_near(
 
 // The fixes of these cases carry the frame `gnss`, for which the node had no transform and
 // composed with the identity; the lookup that stands in for TF provides the identity directly.
-const GnssPoser::TransformLookup identity_lookup =
-  [](const std::string &, const builtin_interfaces::msg::Time &) {
-    return std::optional<Transform>(Transform{});
-  };
+const GnssPoser::TransformLookup identity_lookup = [](const std::string &) {
+  return std::optional<Transform>(Transform{});
+};
 
 // A GnssPoser that has received the MGRS projector info.
 GnssPoser make_poser_with_mgrs_projector(const GnssPoserParams & params)

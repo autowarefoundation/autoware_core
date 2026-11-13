@@ -16,6 +16,7 @@
 
 #include <autoware/geography_utils/height.hpp>
 #include <autoware/geography_utils/projection.hpp>
+#include <builtin_interfaces/msg/time.hpp>
 #include <tf2/LinearMath/Quaternion.hpp>
 #include <tf2/LinearMath/Transform.hpp>
 
@@ -284,8 +285,7 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   // as the base_link pose, i.e. the identity transform is used (a default-constructed Transform has
   // zero translation and rotation w = 1).
   const geometry_msgs::msg::Transform antenna_to_base_link =
-    lookup_antenna_to_base_link_(fix.header.frame_id, fix.header.stamp)
-      .value_or(geometry_msgs::msg::Transform{});
+    lookup_antenna_to_base_link_(fix.header.frame_id).value_or(geometry_msgs::msg::Transform{});
 
   std::array<double, 3> rotation_variances{};
   if (params_.use_gnss_ins_orientation) {
