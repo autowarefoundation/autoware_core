@@ -44,6 +44,7 @@
 
 #include <algorithm>
 #include <array>
+#include <chrono>
 #include <cmath>
 #include <optional>
 #include <stdexcept>
@@ -62,6 +63,8 @@ using geometry_msgs::msg::Quaternion;
 using geometry_msgs::msg::Transform;
 using sensor_msgs::msg::NavSatFix;
 using sensor_msgs::msg::NavSatStatus;
+using std::chrono_literals::operator""ms;
+using std::chrono_literals::operator""s;
 
 // ---------------------------------------------------------------------------------------
 // Reference input used throughout (same point as autoware_geography_utils' own tests).
@@ -495,6 +498,86 @@ struct CovarianceType
 };
 
 class GnssPoserKnownCovarianceType : public ::testing::TestWithParam<CovarianceType>
+{
+};
+
+constexpr std::chrono::milliseconds grace_period =
+  autoware::gnss_poser::antenna_transform_grace_period;
+constexpr std::chrono::milliseconds beyond_grace_period = grace_period + 1ms;
+constexpr std::chrono::milliseconds beyond_jump_threshold =
+  autoware::gnss_poser::fix_stamp_jump_threshold + 1ms;
+// Fixes arrive once a second, as from a 1 Hz receiver: the stamps advance by less than the jump
+// threshold, so they count as time that passed.
+constexpr std::chrono::milliseconds fix_interval = 1s;
+
+// The inputs for the fixes of a span: what the receiver reports and what the antenna transform
+// lookup gives.
+enum class InputCondition {
+  // Fixed, and the transform is there, as once /tf_static has been received.
+  TransformAvailable,
+  // Fixed, but the transform is not there yet, as right after startup before /tf_static arrives.
+  TransformUnavailable,
+  // The receiver reports no fix (e.g. in a tunnel), so GnssPoser drops the fix before the lookup:
+  // the fix tells nothing about the transform, so it neither raises nor clears an issue.
+  NotFixed
+};
+
+// Fixes from the first one for `duration`, every fix_interval and one at `duration`, all naming the
+// same antenna frame and in the same input condition.
+struct ReceivedFixes
+{
+  std::chrono::milliseconds duration;
+  const char * antenna_frame;
+  InputCondition condition;
+  // From the stamp of the last fix of the previous span to that of the first fix of this one. Other
+  // than fix_interval, it makes the stamps go back or jump forward.
+  std::chrono::milliseconds step = fix_interval;
+};
+
+// A sequence of fixes and the antenna transform issues it should raise, in order.
+struct AntennaTransformIssueCase
+{
+  const char * name;
+  std::vector<ReceivedFixes> fixes;
+  std::vector<GnssPoser::Issue> raised;
+};
+
+// `stamp` advanced by `offset`.
+builtin_interfaces::msg::Time stamp_after(
+  const builtin_interfaces::msg::Time & stamp, const std::chrono::nanoseconds offset)
+{
+  const std::chrono::nanoseconds time =
+    std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec) + offset;
+  const std::chrono::seconds sec = std::chrono::floor<std::chrono::seconds>(time);
+  builtin_interfaces::msg::Time advanced;
+  advanced.sec = static_cast<int32_t>(sec.count());
+  advanced.nanosec = static_cast<uint32_t>((time - sec).count());
+  return advanced;
+}
+
+// The fixes `received` describes, the first one stamped `start` after the reference fix.
+std::vector<NavSatFix> make_received_fixes(
+  const ReceivedFixes & received, const std::chrono::milliseconds start)
+{
+  NavSatStatus::_status_type status = NavSatStatus::STATUS_FIX;
+  if (received.condition == InputCondition::NotFixed) {
+    status = NavSatStatus::STATUS_NO_FIX;
+  }
+  NavSatFix fix = make_reference_fix(status);
+  fix.header.frame_id = received.antenna_frame;
+  const builtin_interfaces::msg::Time reference_stamp = fix.header.stamp;
+
+  std::vector<NavSatFix> fixes;
+  for (std::chrono::milliseconds after = 0ms; after < received.duration; after += fix_interval) {
+    fix.header.stamp = stamp_after(reference_stamp, start + after);
+    fixes.push_back(fix);
+  }
+  fix.header.stamp = stamp_after(reference_stamp, start + received.duration);
+  fixes.push_back(fix);
+  return fixes;
+}
+
+class GnssPoserAntennaTransformIssue : public ::testing::TestWithParam<AntennaTransformIssueCase>
 {
 };
 }  // namespace
@@ -1157,3 +1240,159 @@ TEST(GnssPoser, Covariance_UnknownType_PositionVariancesAreTen)
     }
   }
 }
+
+// =======================================================================================
+// 6. Antenna transform
+// =======================================================================================
+
+// An unavailable antenna transform is expected right after startup, so it is raised as an issue
+// only once it has been unavailable for longer than the grace period, measured by the fix stamps
+// from the first fix that could not get it for the same frame. The callback receives it once when
+// it is raised, not again while it persists. A fix that gets the transform clears it, so it can be
+// raised again. A fix that does not reach the lookup says nothing about the transform, so it
+// neither raises nor clears it: both happen only at a fix that reaches the lookup. Where the stamps
+// go backward or jump forward, the grace period starts over.
+TEST_P(GnssPoserAntennaTransformIssue, IssueRaisedCallback_AfterFixes_ReceivesEachRaisedIssueOnce)
+{
+  // Arrange
+  InputCondition condition = InputCondition::TransformAvailable;
+  std::vector<GnssPoser::Issue> raised;
+  GnssPoser poser(
+    {},
+    [&condition](const std::string &, const builtin_interfaces::msg::Time &) {
+      std::optional<Transform> transform;
+      if (condition != InputCondition::TransformUnavailable) {
+        transform = Transform{};
+      }
+      return transform;
+    },
+    [&raised](const GnssPoser::Issue & issue) { raised.push_back(issue); });
+  poser.set_projector_info(make_mgrs_projector_info());
+
+  // Act
+  // The first span starts at the reference stamp, a later one `step` after the last fix of the
+  // previous span.
+  std::optional<std::chrono::milliseconds> last;
+  for (const ReceivedFixes & received : GetParam().fixes) {
+    // The lookup above answers the fixes of this span by their input condition.
+    condition = received.condition;
+
+    const std::chrono::milliseconds start = last.has_value() ? last.value() + received.step : 0ms;
+    for (const NavSatFix & fix : make_received_fixes(received, start)) {
+      poser.input_fix(fix);
+    }
+    last = start + received.duration;
+  }
+
+  // Assert
+  const std::vector<GnssPoser::Issue> & expected = GetParam().raised;
+  ASSERT_EQ(raised.size(), expected.size());
+  for (std::size_t i = 0; i < raised.size(); ++i) {
+    EXPECT_EQ(raised[i].cause, expected[i].cause) << "issue " << i;
+    EXPECT_EQ(raised[i].antenna_frame, expected[i].antenna_frame) << "issue " << i;
+  }
+}
+
+const GnssPoser::Issue gnss_unavailable{GnssPoser::Issue::Cause::TransformUnavailable, "gnss"};
+
+// Each case lists spans of fixes {duration, antenna frame, input condition[, step]}, one after
+// another: within a span and from one span to the next, the stamps advance by fix_interval (1 s)
+// unless a step says otherwise.
+INSTANTIATE_TEST_SUITE_P(
+  FixSequences, GnssPoserAntennaTransformIssue,
+  ::testing::Values(
+    // Unavailable for just the grace period (5 s): not longer than it, so nothing is raised.
+    AntennaTransformIssueCase{
+      "UnavailableForTheGracePeriod",
+      {{grace_period, "gnss", InputCondition::TransformUnavailable}},
+      {}},
+    // Unavailable for just past the grace period: raised at the last fix.
+    AntennaTransformIssueCase{
+      "UnavailableBeyondTheGracePeriod",
+      {{beyond_grace_period, "gnss", InputCondition::TransformUnavailable}},
+      {gnss_unavailable}},
+    // As above, 1 s longer: raised once, not again by the fixes after that.
+    AntennaTransformIssueCase{
+      "StillUnavailableAfterRaised",
+      {{beyond_grace_period + 1s, "gnss", InputCondition::TransformUnavailable}},
+      {gnss_unavailable}},
+    // One unavailable fix, then not fixed for the grace period: the grace period has passed at the
+    // last fix, but no fix after the unavailable one has looked the transform up, so nothing is
+    // raised.
+    AntennaTransformIssueCase{
+      "UnavailableThenNotFixed",
+      {{0s, "gnss", InputCondition::TransformUnavailable},
+       {grace_period, "gnss", InputCondition::NotFixed}},
+      {}},
+    // As above, then one more unavailable fix: it finds the transform still unavailable, now past
+    // the grace period counted from the first unavailable fix, so it is raised there.
+    AntennaTransformIssueCase{
+      "UnavailableAgainAfterNotFixed",
+      {{0s, "gnss", InputCondition::TransformUnavailable},
+       {grace_period, "gnss", InputCondition::NotFixed},
+       {0s, "gnss", InputCondition::TransformUnavailable}},
+      {gnss_unavailable}},
+    // As above, but the next fix gets the transform: it clears the failure, so nothing is raised.
+    AntennaTransformIssueCase{
+      "AvailableAfterNotFixed",
+      {{0s, "gnss", InputCondition::TransformUnavailable},
+       {grace_period, "gnss", InputCondition::NotFixed},
+       {0s, "gnss", InputCondition::TransformAvailable}},
+      {}},
+    // Unavailable, one available fix, then unavailable for the grace period: counted from after the
+    // available fix, so nothing is raised.
+    AntennaTransformIssueCase{
+      "AvailableInBetweenRestartsTheGracePeriod",
+      {{1s, "gnss", InputCondition::TransformUnavailable},
+       {0s, "gnss", InputCondition::TransformAvailable},
+       {grace_period, "gnss", InputCondition::TransformUnavailable}},
+      {}},
+    // Unavailable for "gnss", then for "gnss_2" for the grace period: counted anew for the new
+    // frame, so nothing is raised.
+    AntennaTransformIssueCase{
+      "AnotherFrameRestartsTheGracePeriod",
+      {{1s, "gnss", InputCondition::TransformUnavailable},
+       {grace_period, "gnss_2", InputCondition::TransformUnavailable}},
+      {}},
+    // Unavailable past the grace period (raised), one available fix, then unavailable past the
+    // grace period again: raised a second time.
+    AntennaTransformIssueCase{
+      "RaisedAgainAfterAvailable",
+      {{beyond_grace_period, "gnss", InputCondition::TransformUnavailable},
+       {0s, "gnss", InputCondition::TransformAvailable},
+       {beyond_grace_period, "gnss", InputCondition::TransformUnavailable}},
+      {gnss_unavailable, gnss_unavailable}},
+    // Unavailable for 3 s, then the stamps go back by 2 s and run for the grace period: counted
+    // from the step back, so nothing is raised (from the first fix, the last one would be 6 s
+    // later).
+    AntennaTransformIssueCase{
+      "StampGoingBackRestartsTheGracePeriod",
+      {{3s, "gnss", InputCondition::TransformUnavailable},
+       {grace_period, "gnss", InputCondition::TransformUnavailable, -2s}},
+      {}},
+    // Unavailable for 1 s, then the stamps jump forward by just over the 2 s jump threshold and run
+    // for the grace period: counted from the jump, so nothing is raised.
+    AntennaTransformIssueCase{
+      "StampJumpingForwardRestartsTheGracePeriod",
+      {{1s, "gnss", InputCondition::TransformUnavailable},
+       {grace_period, "gnss", InputCondition::TransformUnavailable, beyond_jump_threshold}},
+      {}},
+    // One unavailable fix, then a not fixed fix whose stamp jumps forward, then unavailable for the
+    // grace period: the not fixed fix tells nothing about the transform, so the count starts again
+    // at the first unavailable fix after the jump, not at the jump, and nothing is raised.
+    AntennaTransformIssueCase{
+      "StampJumpingAtNotFixedRestartsAtTheNextFailure",
+      {{0s, "gnss", InputCondition::TransformUnavailable},
+       {0s, "gnss", InputCondition::NotFixed, beyond_jump_threshold},
+       {grace_period, "gnss", InputCondition::TransformUnavailable}},
+      {}},
+    // Unavailable past the grace period (raised), then the stamps go back to the first fix and the
+    // same fixes come again, as from a rosbag replayed in a loop: raised again, as the first time.
+    AntennaTransformIssueCase{
+      "RaisedAgainAfterStampGoingBack",
+      {{beyond_grace_period, "gnss", InputCondition::TransformUnavailable},
+       {beyond_grace_period, "gnss", InputCondition::TransformUnavailable, -beyond_grace_period}},
+      {gnss_unavailable, gnss_unavailable}}),
+  [](const ::testing::TestParamInfo<AntennaTransformIssueCase> & info) {
+    return std::string(info.param.name);
+  });
