@@ -37,6 +37,9 @@
       # Number of threads used for parallel computing
       num_threads: 4
 
+      # The pluginlib lookup name of the NDT backend. "ndt_omp" is the NDT on the CPU with OpenMP.
+      backend: "ndt_omp"
+
       regularization:
         enable: false
 
