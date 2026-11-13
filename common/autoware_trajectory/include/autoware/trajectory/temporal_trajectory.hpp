@@ -18,7 +18,7 @@
 #include "autoware/trajectory/detail/time_distance_mapping.hpp"
 #include "autoware/trajectory/trajectory_point.hpp"
 
-#include <tl_expected/expected.hpp>
+#include <tl/expected.hpp>
 
 #include <memory>
 #include <utility>

@@ -64,15 +64,16 @@ tl::expected<PointCloud2, std::string> VoxelGridDownsampleFilter::filter(
   const auto intensity_index = find_field_index(*input, "intensity");
 
   if (!x_index.has_value() || !y_index.has_value() || !z_index.has_value()) {
-    return tl::unexpected("The input point cloud does not have required x, y, z fields.");
+    return tl::make_unexpected("The input point cloud does not have required x, y, z fields.");
   }
   if (!intensity_index.has_value()) {
-    return tl::unexpected("There is no intensity field in the input point cloud.");
+    return tl::make_unexpected("There is no intensity field in the input point cloud.");
   }
   if (
     input->fields[static_cast<size_t>(intensity_index.value())].datatype !=
     sensor_msgs::msg::PointField::UINT8) {
-    return tl::unexpected("The intensity field in the input point cloud is not of type UINT8.");
+    return tl::make_unexpected(
+      "The intensity field in the input point cloud is not of type UINT8.");
   }
 
   // Apply filter
