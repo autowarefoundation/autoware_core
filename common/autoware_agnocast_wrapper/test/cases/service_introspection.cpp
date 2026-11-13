@@ -18,7 +18,6 @@
 #include "autoware/agnocast_wrapper/client.hpp"
 #include "autoware/agnocast_wrapper/macros.hpp"
 #include "autoware/agnocast_wrapper/node.hpp"
-#include "autoware/agnocast_wrapper/runtime.hpp"
 #include "autoware/agnocast_wrapper/service.hpp"
 #include "heaphook_probe.hpp"
 
@@ -35,7 +34,6 @@ namespace
 {
 
 using autoware::agnocast_wrapper::Node;
-using autoware::agnocast_wrapper::test::agnocast_heaphook_loaded;
 using ListParameters = rcl_interfaces::srv::ListParameters;
 
 /// The handles are held through the abstract base because that is the type callers deduce from
@@ -51,10 +49,7 @@ protected:
                  << " has no service introspection, so configure_introspection() is not declared "
                     "on the wrapper handles either.";
 #else
-    if (autoware::agnocast_wrapper::use_agnocast() && !agnocast_heaphook_loaded()) {
-      GTEST_SKIP() << "ENABLE_AGNOCAST=1 without the agnocast heaphook: the agnocast backend "
-                      "cannot be exercised in this environment.";
-    }
+    AUTOWARE_SKIP_WITHOUT_AGNOCAST_HEAPHOOK();
     node_ = std::make_shared<Node>("service_introspection");
     client_ = node_->create_client<ListParameters>("~/introspected_client");
     service_ = node_->create_service<ListParameters>(
