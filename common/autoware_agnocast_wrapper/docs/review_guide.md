@@ -576,7 +576,7 @@ class MyNode : public rclcpp::Node  // Remains rclcpp::Node
 ```cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
 target_link_libraries(target ${autoware_agnocast_wrapper_LIBRARIES})
-target_include_directories(target PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DIRS})
+target_include_directories(target PUBLIC ${autoware_agnocast_wrapper_INCLUDE_DIRS})
 autoware_agnocast_wrapper_setup(target)
 ```
 

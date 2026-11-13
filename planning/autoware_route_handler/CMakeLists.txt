@@ -19,7 +19,10 @@ if(BUILD_TESTING)
     Python3
   )
   set(Python3_TARGETS Python3::Python)
-  set(yaml-cpp_TARGETS yaml-cpp::yaml-cpp)
+  # Humble's yaml-cpp 0.7 has no yaml-cpp::yaml-cpp target
+  if(TARGET yaml-cpp::yaml-cpp)
+    set(yaml-cpp_TARGETS yaml-cpp::yaml-cpp)
+  endif()
 
   ament_add_ros_isolated_gtest(test_autoware_route_handler
     test/test_main.cpp

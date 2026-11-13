@@ -282,7 +282,7 @@ To use the Node wrapper in your package, add the following to your `CMakeLists.t
 ```cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
 target_link_libraries(my_node_component ${autoware_agnocast_wrapper_LIBRARIES})
-target_include_directories(my_node_component PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DIRS})
+target_include_directories(my_node_component PUBLIC ${autoware_agnocast_wrapper_INCLUDE_DIRS})
 autoware_agnocast_wrapper_setup(my_node_component)
 ```
 
@@ -305,7 +305,7 @@ find_package(autoware_agnocast_wrapper REQUIRED)
 
 ament_auto_add_library(my_node_component SHARED src/my_node.cpp)
 target_link_libraries(my_node_component ${autoware_agnocast_wrapper_LIBRARIES})
-target_include_directories(my_node_component PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DIRS})
+target_include_directories(my_node_component PUBLIC ${autoware_agnocast_wrapper_INCLUDE_DIRS})
 
 autoware_agnocast_wrapper_register_node(my_node_component
   PLUGIN "my_package::MyNode"

@@ -209,7 +209,7 @@ macro(autoware_agnocast_wrapper_register_node target)
 
     # Apply agnocast wrapper setup (adds USE_AGNOCAST_ENABLED if ENABLE_AGNOCAST=1)
     # Both the component library and the executable must have USE_AGNOCAST_ENABLED defined
-    # to ensure ABI consistency (linking the packages above does not propagate their definitions)
+    # to ensure ABI consistency (linking the wrapper library does not propagate its PUBLIC compile definitions)
     autoware_agnocast_wrapper_setup(${target})
     autoware_agnocast_wrapper_setup(${ARGS_EXECUTABLE})
 
