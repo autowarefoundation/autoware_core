@@ -179,7 +179,7 @@ TEST_F(MapUpdateModuleTest, LoaderFailureReportsError)  // NOLINT
   const auto result = update_map(module, make_point(0.0, 0.0));
 
   EXPECT_FALSE(result.map_updated);
-  EXPECT_EQ(result.diagnostics.level, MapUpdateModule::DiagnosticLevel::ERROR);
+  EXPECT_EQ(result.diagnostics.level, DiagnosticLevel::ERROR);
   EXPECT_NE(
     result.diagnostics.message.find("pcd_loader service is not working."), std::string::npos);
 }
@@ -222,7 +222,7 @@ TEST_F(MapUpdateModuleTest, MergesAllLoadedCellsIntoOneCloud)  // NOLINT
     static_cast<std::size_t>(result.loaded_pcd_map->width),
     num_cells * static_cast<std::size_t>(one_cell.width) * one_cell.height);
   EXPECT_EQ(result.loaded_pcd_map->data.size(), num_cells * one_cell.data.size());
-  EXPECT_EQ(result.diagnostics.level, MapUpdateModule::DiagnosticLevel::OK);
+  EXPECT_EQ(result.diagnostics.level, DiagnosticLevel::OK);
 }
 
 // Without publish_loaded_map, no debug cloud is produced even on a successful update.
@@ -241,21 +241,21 @@ TEST_F(MapUpdateModuleTest, DoesNotProduceLoadedMapWhenDisabled)  // NOLINT
 // messages are joined with "; ". This is pure logic and needs no module instance.
 TEST(MapUpdateModuleDiagnosticsReport, RaisesLevelAndJoinsMessages)  // NOLINT
 {
-  MapUpdateModule::DiagnosticsReport report;
-  EXPECT_EQ(report.level, MapUpdateModule::DiagnosticLevel::OK);
+  DiagnosticsReport report;
+  EXPECT_EQ(report.level, DiagnosticLevel::OK);
   EXPECT_TRUE(report.message.empty());
 
   // OK-level updates neither raise the level nor append a message.
-  report.update_level_and_message(MapUpdateModule::DiagnosticLevel::OK, "ignored");
-  EXPECT_EQ(report.level, MapUpdateModule::DiagnosticLevel::OK);
+  report.update_level_and_message(DiagnosticLevel::OK, "ignored");
+  EXPECT_EQ(report.level, DiagnosticLevel::OK);
   EXPECT_TRUE(report.message.empty());
 
-  report.update_level_and_message(MapUpdateModule::DiagnosticLevel::WARN, "first");
-  report.update_level_and_message(MapUpdateModule::DiagnosticLevel::ERROR, "second");
+  report.update_level_and_message(DiagnosticLevel::WARN, "first");
+  report.update_level_and_message(DiagnosticLevel::ERROR, "second");
   // A later, lower level must not lower the accumulated level.
-  report.update_level_and_message(MapUpdateModule::DiagnosticLevel::WARN, "third");
+  report.update_level_and_message(DiagnosticLevel::WARN, "third");
 
-  EXPECT_EQ(report.level, MapUpdateModule::DiagnosticLevel::ERROR);
+  EXPECT_EQ(report.level, DiagnosticLevel::ERROR);
   EXPECT_EQ(report.message, "first; second; third");
 }
 
