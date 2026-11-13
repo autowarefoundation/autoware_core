@@ -57,6 +57,7 @@
 #include <autoware/ndt_scan_matcher/ndt_omp/multi_voxel_grid_covariance_omp.h>
 #include <pcl/common/common.h>
 
+#include <algorithm>
 #include <limits>
 #include <map>
 #include <string>
@@ -228,9 +229,45 @@ void MultiVoxelGridCovariance<PointT>::createKdtree()
   voxel_centroids_ptr_->reserve(total_leaf_num);
   leaf_ptrs_.clear();
   leaf_ptrs_.reserve(total_leaf_num);
+  voxel_index_.clear();
+  {
+    // Bounding box of every occupied voxel currently loaded.
+    int lo_i = 0, lo_j = 0, lo_k = 0, hi_i = 0, hi_j = 0, hi_k = 0;
+    bool first = true;
+    for (const auto & grid_ptr : grid_list_) {
+      for (const auto & leaf : *grid_ptr) {
+        const int i = static_cast<int>(floor(leaf.mean_[0] * inverse_leaf_size_[0]));
+        const int j = static_cast<int>(floor(leaf.mean_[1] * inverse_leaf_size_[1]));
+        const int k = static_cast<int>(floor(leaf.mean_[2] * inverse_leaf_size_[2]));
+        if (first) {
+          lo_i = hi_i = i;
+          lo_j = hi_j = j;
+          lo_k = hi_k = k;
+          first = false;
+        } else {
+          lo_i = std::min(lo_i, i);
+          hi_i = std::max(hi_i, i);
+          lo_j = std::min(lo_j, j);
+          hi_j = std::max(hi_j, j);
+          lo_k = std::min(lo_k, k);
+          hi_k = std::max(hi_k, k);
+        }
+      }
+    }
+    if (!first) {
+      voxel_index_.build(lo_i, lo_j, lo_k, hi_i, hi_j, hi_k, static_cast<size_t>(total_leaf_num));
+    }
+  }
 
   for (const auto & grid_ptr : grid_list_) {
     for (const auto & leaf : *grid_ptr) {
+      // Index this leaf on the global voxel lattice, keyed by the voxel its MEAN falls in --
+      // the same cell the kd-tree neighbourhood search would have to consider.
+      voxel_index_.insert(
+        static_cast<int>(floor(leaf.mean_[0] * inverse_leaf_size_[0])),
+        static_cast<int>(floor(leaf.mean_[1] * inverse_leaf_size_[1])),
+        static_cast<int>(floor(leaf.mean_[2] * inverse_leaf_size_[2])), &leaf);
+
       PointT new_leaf;
 
       new_leaf.x = leaf.centroid_[0];
@@ -245,6 +282,42 @@ void MultiVoxelGridCovariance<PointT>::createKdtree()
   if (voxel_centroids_ptr_->size() > 0) {
     kdtree_.setInputCloud(voxel_centroids_ptr_);
   }
+}
+
+template <typename PointT>
+int MultiVoxelGridCovariance<PointT>::radiusSearchDirect(
+  const PointT & point, double radius, std::vector<LeafConstPtr> & k_leaves) const
+{
+  k_leaves.clear();
+
+  const double r2 = radius * radius;
+
+  // Only cells overlapping the query sphere can hold a centroid within radius.
+  const int i0 = static_cast<int>(floor((point.x - radius) * inverse_leaf_size_[0]));
+  const int i1 = static_cast<int>(floor((point.x + radius) * inverse_leaf_size_[0]));
+  const int j0 = static_cast<int>(floor((point.y - radius) * inverse_leaf_size_[1]));
+  const int j1 = static_cast<int>(floor((point.y + radius) * inverse_leaf_size_[1]));
+  const int k0 = static_cast<int>(floor((point.z - radius) * inverse_leaf_size_[2]));
+  const int k1 = static_cast<int>(floor((point.z + radius) * inverse_leaf_size_[2]));
+
+  for (int i = i0; i <= i1; ++i) {
+    for (int j = j0; j <= j1; ++j) {
+      for (int k = k0; k <= k1; ++k) {
+        const Leaf * leaf = voxel_index_.find(i, j, k);
+        if (leaf == nullptr) {
+          continue;
+        }
+        const double dx = leaf->centroid_[0] - point.x;
+        const double dy = leaf->centroid_[1] - point.y;
+        const double dz = leaf->centroid_[2] - point.z;
+        if (dx * dx + dy * dy + dz * dz <= r2) {
+          k_leaves.push_back(leaf);
+        }
+      }
+    }
+  }
+
+  return static_cast<int>(k_leaves.size());
 }
 
 template <typename PointT>
@@ -356,6 +429,8 @@ void MultiVoxelGridCovariance<PointT>::apply_filter(
 
   // Set up the division multiplier
   bbox.div_mul = Eigen::Vector4i(1, div_b[0], div_b[0] * div_b[1], 0);
+
+  // Retain the bbox so neighbours can later be found by index arithmetic.
 
   int centroid_size = 4;
   std::map<int64_t, Leaf> map_leaves;
