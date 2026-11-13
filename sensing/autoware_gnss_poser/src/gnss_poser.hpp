@@ -14,8 +14,6 @@
 #ifndef GNSS_POSER_HPP_
 #define GNSS_POSER_HPP_
 
-#include <builtin_interfaces/msg/time.hpp>
-
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation.hpp>
@@ -87,14 +85,16 @@ struct GnssPoserCovarianceDefaults
 class GnssPoser
 {
 public:
-  /// \brief Resolves the transform from the antenna frame named in the fix header to base_link at
-  /// the fix header stamp, or std::nullopt when it cannot be resolved.
+  /// \brief Resolves the transform from the antenna frame named in the fix header to base_link,
+  /// or std::nullopt when it cannot be resolved.
   ///
-  /// input_fix() calls it only for a fix that passed the gates and the buffering, right before the
-  /// pose is composed. Obtaining the transform (TF lookup, logging) is the caller's business; what
-  /// to do when there is none is decided here.
-  using TransformLookup = std::function<std::optional<geometry_msgs::msg::Transform>(
-    const std::string & antenna_frame, const builtin_interfaces::msg::Time & stamp)>;
+  /// The antenna is rigidly mounted on the vehicle, so this transform does not change over time
+  /// and no stamp is passed; a moving antenna is out of scope. input_fix() calls the lookup only
+  /// for a fix that passed the gates and the buffering, right before the pose is composed.
+  /// Obtaining the transform (TF lookup, logging) is the caller's business; what to do when there
+  /// is none is decided here.
+  using TransformLookup =
+    std::function<std::optional<geometry_msgs::msg::Transform>(const std::string & antenna_frame)>;
 
   /// \param lookup_antenna_to_base_link see TransformLookup; kept for the lifetime of the object.
   /// \param covariance_defaults see GnssPoserCovarianceDefaults; the node leaves it at its

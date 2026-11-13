@@ -54,11 +54,11 @@ private:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
     msg);
 
-  // The transform between the two frames at `stamp`, or std::nullopt (with a throttled warning)
-  // when TF cannot provide it.
+  // The latest transform between the two frames, or std::nullopt (with a throttled warning) when TF
+  // cannot provide it. The antenna sits rigidly on the vehicle, so the transform is static and the
+  // latest one is the one that applies to every fix.
   std::optional<geometry_msgs::msg::Transform> get_static_transform(
-    const std::string & target_frame, const std::string & source_frame,
-    const builtin_interfaces::msg::Time & stamp);
+    const std::string & target_frame, const std::string & source_frame);
   // Publish the messages the pose computation produced.
   void publish_data(const GnssPoser::Result & result);
 
