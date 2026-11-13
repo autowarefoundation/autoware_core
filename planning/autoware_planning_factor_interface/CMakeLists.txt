@@ -13,7 +13,12 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_${PROJECT_NAME}
     test/test_planning_factor_interface.cpp
   )
-  ament_target_dependencies(test_${PROJECT_NAME} autoware_agnocast_wrapper)
+  target_link_libraries(test_${PROJECT_NAME}
+    ${autoware_agnocast_wrapper_LIBRARIES}
+  )
+  target_include_directories(test_${PROJECT_NAME} PRIVATE
+    ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+  )
 endif()
 
 autoware_ament_auto_package()

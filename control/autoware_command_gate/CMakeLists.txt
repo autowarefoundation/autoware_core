@@ -32,12 +32,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_command_gate_mode_builder
     ${PROJECT_NAME}_node
   )
-  ament_target_dependencies(test_command_gate_mode_builder
-    autoware_adapi_v1_msgs
-    autoware_common_msgs
-    autoware_system_msgs
-    autoware_vehicle_msgs
-    builtin_interfaces
+  target_link_libraries(test_command_gate_mode_builder
+    ${autoware_adapi_v1_msgs_TARGETS}
+    ${autoware_common_msgs_TARGETS}
+    ${autoware_system_msgs_TARGETS}
+    ${autoware_vehicle_msgs_TARGETS}
+    ${builtin_interfaces_TARGETS}
   )
 
   ament_add_ros_isolated_gtest(test_ros_integration
@@ -46,13 +46,13 @@ if(BUILD_TESTING)
   target_link_libraries(test_ros_integration
     ${PROJECT_NAME}_node
   )
-  ament_target_dependencies(test_ros_integration
-    autoware_adapi_v1_msgs
-    autoware_system_msgs
-    autoware_vehicle_msgs
-    class_loader
-    rclcpp
-    rclcpp_components
+  target_link_libraries(test_ros_integration
+    ${autoware_adapi_v1_msgs_TARGETS}
+    ${autoware_system_msgs_TARGETS}
+    ${autoware_vehicle_msgs_TARGETS}
+    ${class_loader_TARGETS}
+    ${rclcpp_TARGETS}
+    ${rclcpp_components_TARGETS}
   )
 endif()
 

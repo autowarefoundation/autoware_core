@@ -123,8 +123,19 @@ examples/example_pchip_vs_cubic_spline.cpp
     ament_auto_add_executable(${example_name}
       ${example_file}
     )
-    ament_target_dependencies(${example_name}
-      ${${PROJECT_NAME}_FOUND_TEST_DEPENDS}
+    target_link_libraries(${example_name}
+      ${ament_index_cpp_TARGETS}
+      ${autoware_motion_utils_LIBRARIES}
+      ${autoware_pyplot_LIBRARIES}
+      ${autoware_test_utils_LIBRARIES}
+      ${lanelet2_io_LIBRARIES}
+      ${Python3_TARGETS}
+      ${yaml-cpp_TARGETS}
+    )
+    target_include_directories(${example_name} PRIVATE
+      ${autoware_motion_utils_INCLUDE_DIRS}
+      ${autoware_pyplot_INCLUDE_DIRS}
+      ${autoware_test_utils_INCLUDE_DIRS}
     )
   endforeach()
 

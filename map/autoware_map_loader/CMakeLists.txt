@@ -76,7 +76,7 @@ if(BUILD_TESTING)
     target_include_directories(${test_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_link_libraries(${test_name} ${${PROJECT_NAME}_LIBRARIES})
     target_link_libraries(${test_name} yaml-cpp)
-    ament_target_dependencies(${test_name} ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS} ament_index_cpp)
+    target_link_libraries(${test_name} ${ament_index_cpp_TARGETS})
   endfunction()
 
   find_package(ament_lint_auto REQUIRED)

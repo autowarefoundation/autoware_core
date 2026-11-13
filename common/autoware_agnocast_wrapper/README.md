@@ -281,12 +281,13 @@ To use the Node wrapper in your package, add the following to your `CMakeLists.t
 
 ```cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
-ament_target_dependencies(my_node_component autoware_agnocast_wrapper)
+target_link_libraries(my_node_component ${autoware_agnocast_wrapper_LIBRARIES})
+target_include_directories(my_node_component PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DIRS})
 autoware_agnocast_wrapper_setup(my_node_component)
 ```
 
 `autoware_agnocast_wrapper_setup()` is required: it defines `USE_AGNOCAST_ENABLED` on the target, which
-`ament_target_dependencies()` does not propagate. Apply it to every target that includes a wrapper header;
+linking the package does not propagate. Apply it to every target that includes a wrapper header;
 `autoware_agnocast_wrapper_register_node()` does it for the targets it handles.
 
 #### Registering a Node with `autoware_agnocast_wrapper_register_node`
@@ -303,7 +304,8 @@ When `ENABLE_AGNOCAST` is not set or set to `0`, this macro falls back to standa
 find_package(autoware_agnocast_wrapper REQUIRED)
 
 ament_auto_add_library(my_node_component SHARED src/my_node.cpp)
-ament_target_dependencies(my_node_component autoware_agnocast_wrapper)
+target_link_libraries(my_node_component ${autoware_agnocast_wrapper_LIBRARIES})
+target_include_directories(my_node_component PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DIRS})
 
 autoware_agnocast_wrapper_register_node(my_node_component
   PLUGIN "my_package::MyNode"
@@ -446,7 +448,7 @@ To use the macros provided by this package in your own package, include the foll
 
 ```cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
-ament_target_dependencies(target autoware_agnocast_wrapper)
+target_link_libraries(target ${autoware_agnocast_wrapper_LIBRARIES})
 target_include_directories(target PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DIRS})
 autoware_agnocast_wrapper_setup(target)
 ```

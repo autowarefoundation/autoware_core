@@ -15,7 +15,14 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/utils/pose_error_check_module.cpp
   src/utils/localization_trigger_module.cpp
 )
-ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper autoware_map_height_fitter)
+target_link_libraries(${PROJECT_NAME}
+  ${autoware_agnocast_wrapper_LIBRARIES}
+  ${autoware_map_height_fitter_LIBRARIES}
+)
+target_include_directories(${PROJECT_NAME} PUBLIC
+  ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+  ${autoware_map_height_fitter_INCLUDE_DIRS}
+)
 autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
@@ -31,7 +38,7 @@ if(BUILD_TESTING)
     string(REGEX REPLACE ".cpp" "" test_name ${filename})
     ament_add_gmock(${test_name} ${filepath})
     target_include_directories(${test_name} PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
-    ament_target_dependencies(${test_name} ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
+    target_link_libraries(${test_name} ${PROJECT_NAME})
   endfunction()
 
   find_package(ament_lint_auto REQUIRED)
@@ -47,8 +54,14 @@ if(BUILD_TESTING)
     ament_add_gtest(test_pose_initializer_node_integration test/test_pose_initializer_node_integration.cpp)
     target_include_directories(test_pose_initializer_node_integration PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
     target_link_libraries(test_pose_initializer_node_integration ${PROJECT_NAME})
-    ament_target_dependencies(test_pose_initializer_node_integration ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
-    ament_target_dependencies(test_pose_initializer_node_integration autoware_agnocast_wrapper autoware_map_height_fitter)
+    target_link_libraries(test_pose_initializer_node_integration
+      ${autoware_agnocast_wrapper_LIBRARIES}
+      ${autoware_map_height_fitter_LIBRARIES}
+    )
+    target_include_directories(test_pose_initializer_node_integration PRIVATE
+      ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+      ${autoware_map_height_fitter_INCLUDE_DIRS}
+    )
     autoware_agnocast_wrapper_setup(test_pose_initializer_node_integration)
   endif()
 endif()

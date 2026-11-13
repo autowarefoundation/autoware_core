@@ -575,7 +575,8 @@ class MyNode : public rclcpp::Node  // Remains rclcpp::Node
 
 ```cmake
 find_package(autoware_agnocast_wrapper REQUIRED)
-ament_target_dependencies(target autoware_agnocast_wrapper)
+target_link_libraries(target ${autoware_agnocast_wrapper_LIBRARIES})
+target_include_directories(target PRIVATE ${autoware_agnocast_wrapper_INCLUDE_DIRS})
 autoware_agnocast_wrapper_setup(target)
 ```
 
@@ -683,7 +684,7 @@ its component class and to the `ENABLE_AGNOCAST` it was built with, which `<auto
 
 Note that the macro applies `autoware_agnocast_wrapper_setup()` to **both** the component library and the
 generated executable. Both need `USE_AGNOCAST_ENABLED` defined for ABI consistency, and
-`ament_target_dependencies()` does not propagate the wrapper's `PUBLIC` compile definitions.
+linking the package does not propagate the wrapper's `PUBLIC` compile definitions.
 
 &nbsp;
 
