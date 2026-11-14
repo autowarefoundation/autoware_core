@@ -6,23 +6,24 @@
     "vehicle_velocity_converter": {
       "type": "object",
       "properties": {
-        "stddev_vx": {
-          "type": "number",
-          "default": 0.2,
-          "description": "speed scale factor (ideal value is 1.0)"
-        },
-        "stddev_wz": {
-          "type": "number",
-          "default": 0.1,
-          "description": "standard deviation for vx."
-        },
         "speed_scale_factor": {
           "type": "number",
           "default": 1.0,
-          "description": "standard deviation for yaw rate."
+          "description": "speed scale factor (ideal value is 1.0)"
+        },
+        "velocity_stddev_xx": {
+          "type": "number",
+          "default": 0.2,
+          "description": "standard deviation for vx [m/s]."
+        },
+        "angular_velocity_stddev_zz": {
+          "type": "number",
+          "default": 0.1,
+          "description": "standard deviation for yaw rate [rad/s]."
         }
       },
-      "required": ["stddev_vx", "stddev_wz", "speed_scale_factor"]
+      "required": ["speed_scale_factor", "velocity_stddev_xx", "angular_velocity_stddev_zz"],
+      "additionalProperties": false
     }
   },
   "properties": {
@@ -33,8 +34,10 @@
           "$ref": "#/definitions/vehicle_velocity_converter"
         }
       },
-      "required": ["ros__parameters"]
+      "required": ["ros__parameters"],
+      "additionalProperties": false
     }
   },
-  "required": ["/**"]
+  "required": ["/**"],
+  "additionalProperties": false
 }
