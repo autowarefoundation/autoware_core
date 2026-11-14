@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "test_route_handler.hpp"
+#include "autoware/route_handler/start_yaw.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
@@ -25,6 +26,25 @@
 
 namespace autoware::route_handler::test
 {
+TEST(RouteHandlerStartYaw, KeepsRoadStartHeadingRestriction)
+{
+  constexpr double pi = 3.14159265358979323846;
+  EXPECT_TRUE(is_start_yaw_acceptable(pi * 84.0 / 180.0, false));
+  EXPECT_TRUE(is_start_yaw_acceptable(pi * 87.0 / 180.0, false));
+  EXPECT_FALSE(is_start_yaw_acceptable(pi * 93.0 / 180.0, false));
+  EXPECT_FALSE(is_start_yaw_acceptable(pi, false));
+}
+
+TEST(RouteHandlerStartYaw, AllowsPerpendicularStallStartOnlyInParkingLot)
+{
+  constexpr double pi = 3.14159265358979323846;
+  EXPECT_TRUE(is_start_yaw_acceptable(pi * 93.0 / 180.0, true));
+  EXPECT_TRUE(is_start_yaw_acceptable(pi * 135.0 / 180.0, true));
+  EXPECT_FALSE(is_start_yaw_acceptable(pi * 136.0 / 180.0, true));
+  EXPECT_FALSE(is_start_yaw_acceptable(pi, true));
+  EXPECT_FALSE(is_start_yaw_acceptable(std::numeric_limits<double>::quiet_NaN(), true));
+}
+
 TEST_F(TestRouteHandler, isRouteHandlerReadyTest)
 {
   ASSERT_TRUE(route_handler_->isHandlerReady());
