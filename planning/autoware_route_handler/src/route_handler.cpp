@@ -14,6 +14,8 @@
 
 #include "autoware/route_handler/route_handler.hpp"
 
+#include "autoware/route_handler/start_yaw.hpp"
+
 #include <autoware/lanelet2_utils/conversion.hpp>
 #include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware/lanelet2_utils/kind.hpp>
@@ -37,6 +39,7 @@
 
 #include <boost/geometry/algorithms/detail/comparable_distance/interface.hpp>
 #include <boost/geometry/algorithms/detail/envelope/interface.hpp>
+#include <boost/geometry/algorithms/distance.hpp>
 #include <boost/geometry/index/distance_predicates.hpp>
 #include <boost/geometry/index/predicates.hpp>
 
@@ -2507,6 +2510,19 @@ std::optional<lanelet::ConstLanelet> RouteHandler::getGoalRoadLaneletForCheckpoi
   return std::nullopt;
 }
 
+namespace
+{
+bool isStartInsideParkingLot(const lanelet::LaneletMapPtr & map, const Pose & start_pose)
+{
+  const auto start_point = autoware::experimental::lanelet2_utils::from_ros(start_pose.position);
+  const auto parking_lots = lanelet::utils::query::getAllParkingLots(map);
+  return std::any_of(parking_lots.begin(), parking_lots.end(), [&](const auto & lot) {
+    return boost::geometry::distance(to2D(lot).basicPolygon(), to2D(start_point).basicPoint()) <
+           std::numeric_limits<double>::epsilon();
+  });
+}
+}  // namespace
+
 bool RouteHandler::planLaneletPathBetweenResolvedEndpoints(
   const Pose & start_checkpoint, const Pose & goal_checkpoint,
   const lanelet::ConstLanelets & start_lanelets, const lanelet::ConstLanelet & goal_lanelet,
@@ -2517,7 +2533,9 @@ bool RouteHandler::planLaneletPathBetweenResolvedEndpoints(
   bool is_route_found = false;
 
   double min_route_cost = std::numeric_limits<double>::max();
-  constexpr double yaw_threshold = M_PI / 2.0;
+  // Reverse parking starts may face almost perpendicular to the aisle.
+  // Relax yaw only when the map confirms that the start is inside a parking lot.
+  const bool start_in_parking_lot = isStartInsideParkingLot(lanelet_map_ptr_, start_checkpoint);
   constexpr double angle_diff_weight = 1000.0;
 
   lanelet::ConstLanelet start_lanelet;
@@ -2531,7 +2549,7 @@ bool RouteHandler::planLaneletPathBetweenResolvedEndpoints(
     double pose_yaw = tf2::getYaw(start_checkpoint.orientation);
     double angle_diff = std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
 
-    bool is_proper_angle = angle_diff <= std::abs(yaw_threshold);
+    const bool is_proper_angle = is_start_yaw_acceptable(angle_diff, start_in_parking_lot);
 
     optional_route = routing_graph_ptr_->getRoute(st_llt, goal_lanelet, 0);
     if (!optional_route || !is_proper_angle) {
@@ -2603,7 +2621,9 @@ bool RouteHandler::planLaneletOrAreaPathBetweenResolvedEndpoints(
   bool is_route_found = false;
 
   double min_route_cost = std::numeric_limits<double>::max();
-  constexpr double yaw_threshold = M_PI / 2.0;
+  // Reverse parking starts may face almost perpendicular to the aisle.
+  // Relax yaw only when the map confirms that the start is inside a parking lot.
+  const bool start_in_parking_lot = isStartInsideParkingLot(lanelet_map_ptr_, start_checkpoint);
   constexpr double angle_diff_weight = 1000.0;
 
   lanelet::ConstLanelet start_lanelet;
@@ -2615,7 +2635,7 @@ bool RouteHandler::planLaneletOrAreaPathBetweenResolvedEndpoints(
     double pose_yaw = tf2::getYaw(start_checkpoint.orientation);
     double angle_diff = std::abs(autoware_utils_math::normalize_radian(lanelet_angle - pose_yaw));
 
-    bool is_proper_angle = angle_diff <= std::abs(yaw_threshold);
+    const bool is_proper_angle = is_start_yaw_acceptable(angle_diff, start_in_parking_lot);
 
     optional_path = routing_graph_ptr_->shortestPathIncludingAreas(st_llt, goal_lanelet, 0);
     if (!optional_path || !is_proper_angle) {
