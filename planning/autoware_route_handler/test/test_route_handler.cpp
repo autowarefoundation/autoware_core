@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "test_route_handler.hpp"
+
 #include "autoware/route_handler/start_yaw.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>

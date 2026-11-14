@@ -22,8 +22,7 @@ namespace autoware::route_handler
 // Preserve the existing 90 degree limit for road starts. For a start verified
 // inside a parking lot, permit the small reverse-facing yaw mismatch of a
 // perpendicular stall without accepting nearly backwards (180 degree) headings.
-inline bool is_start_yaw_acceptable(
-  const double angle_diff, const bool start_inside_parking_lot)
+inline bool is_start_yaw_acceptable(const double angle_diff, const bool start_inside_parking_lot)
 {
   constexpr double pi = 3.14159265358979323846;
   constexpr double road_yaw_limit = pi / 2.0;
