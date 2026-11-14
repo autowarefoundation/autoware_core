@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/twist2accel.schema.json
 /**:
   ros__parameters:
     use_odom: true
