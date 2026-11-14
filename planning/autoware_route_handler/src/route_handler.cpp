@@ -13,6 +13,7 @@
 // limitations under the License.
 
 #include "autoware/route_handler/route_handler.hpp"
+
 #include "autoware/route_handler/start_yaw.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
@@ -37,8 +38,8 @@
 #include <autoware_planning_msgs/msg/path.hpp>
 
 #include <boost/geometry/algorithms/detail/comparable_distance/interface.hpp>
-#include <boost/geometry/algorithms/distance.hpp>
 #include <boost/geometry/algorithms/detail/envelope/interface.hpp>
+#include <boost/geometry/algorithms/distance.hpp>
 #include <boost/geometry/index/distance_predicates.hpp>
 #include <boost/geometry/index/predicates.hpp>
 
@@ -2516,8 +2517,7 @@ bool isStartInsideParkingLot(const lanelet::LaneletMapPtr & map, const Pose & st
   const auto start_point = autoware::experimental::lanelet2_utils::from_ros(start_pose.position);
   const auto parking_lots = lanelet::utils::query::getAllParkingLots(map);
   return std::any_of(parking_lots.begin(), parking_lots.end(), [&](const auto & lot) {
-    return boost::geometry::distance(
-             to2D(lot).basicPolygon(), to2D(start_point).basicPoint()) <
+    return boost::geometry::distance(to2D(lot).basicPolygon(), to2D(start_point).basicPoint()) <
            std::numeric_limits<double>::epsilon();
   });
 }
