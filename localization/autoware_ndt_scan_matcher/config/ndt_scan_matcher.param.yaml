@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/ndt_scan_matcher.schema.json
 /**:
   ros__parameters:
     frame:

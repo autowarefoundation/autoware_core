@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/gnss_poser.schema.json
 /**:
   ros__parameters:
     base_frame: base_link

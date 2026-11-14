@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/ekf_localizer.schema.json
 /**:
   ros__parameters:
     node:

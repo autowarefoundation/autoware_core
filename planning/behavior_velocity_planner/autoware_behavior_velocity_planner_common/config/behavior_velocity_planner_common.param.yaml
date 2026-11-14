@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/behavior_velocity_planner_common.schema.json
 /**:
   ros__parameters:
     max_accel: -2.8

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/pose_initializer.schema.json
 /**:
   ros__parameters:
     user_defined_initial_pose:

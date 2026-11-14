@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/vehicle_velocity_converter.schema.json
 /**:
   ros__parameters:
     speed_scale_factor: 1.0  # [.]

@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/gyro_odometer.schema.json
 /**:
   ros__parameters:
     output_frame: "base_link"
