@@ -124,13 +124,13 @@ public:
     Outcome outcome;
     /// The receiver's fix status. Empty for a fix that was rejected before the fixed check,
     /// which says nothing about the receiver.
-    std::optional<autoware_internal_debug_msgs::msg::BoolStamped> gnss_fixed;
+    std::optional<autoware_internal_debug_msgs::msg::BoolStamped> gnss_fixed = std::nullopt;
     /// The base_link pose in the map frame.
-    std::optional<geometry_msgs::msg::PoseStamped> gnss_pose;
+    std::optional<geometry_msgs::msg::PoseStamped> gnss_pose = std::nullopt;
     /// The same pose with its 6x6 covariance (only the diagonal is filled).
-    std::optional<geometry_msgs::msg::PoseWithCovarianceStamped> gnss_pose_cov;
+    std::optional<geometry_msgs::msg::PoseWithCovarianceStamped> gnss_pose_cov = std::nullopt;
     /// The same pose as a transform, map_frame -> gnss_base_frame, ready to broadcast.
-    std::optional<geometry_msgs::msg::TransformStamped> transform;
+    std::optional<geometry_msgs::msg::TransformStamped> transform = std::nullopt;
   };
 
   void set_projector_info(const autoware_map_msgs::msg::MapProjectorInfo & projector_info);

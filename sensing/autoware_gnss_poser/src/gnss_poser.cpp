@@ -230,18 +230,16 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 {
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
-    return {Outcome::NoProjectorInfo, std::nullopt, std::nullopt, std::nullopt, std::nullopt};
+    return {Outcome::NoProjectorInfo};
   }
 
   if (projector_info_.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL) {
-    return {Outcome::LocalProjector, std::nullopt, std::nullopt, std::nullopt, std::nullopt};
+    return {Outcome::LocalProjector};
   }
 
   // check fixed topic
   if (!is_fixed(fix.status)) {
-    return {
-      Outcome::NotFixed, make_gnss_fixed(fix.header.stamp, false), std::nullopt, std::nullopt,
-      std::nullopt};
+    return {Outcome::NotFixed, make_gnss_fixed(fix.header.stamp, false)};
   }
 
   // get position
@@ -256,9 +254,7 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
     // fill position buffer
     position_buffer_.push_front(position);
     if (!position_buffer_.full()) {
-      return {
-        Outcome::Buffering, make_gnss_fixed(fix.header.stamp, true), std::nullopt, std::nullopt,
-        std::nullopt};
+      return {Outcome::Buffering, make_gnss_fixed(fix.header.stamp, true)};
     }
     // publish average pose or median pose of position buffer
     gnss_antenna_pose.position = (params_.gnss_pose_pub_method == GnssPosePubMethod::Average)
