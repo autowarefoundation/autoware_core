@@ -14,6 +14,8 @@
 
 #include "gnss_poser_node.hpp"
 
+#include <tf2/time.hpp>
+
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
 
 #include <memory>
@@ -48,11 +50,9 @@ GnssPoserNode::GnssPoserNode(const rclcpp::NodeOptions & node_options)
   tf2_listener_(tf2_buffer_, *this),
   tf2_broadcaster_(*this),
   base_frame_(declare_parameter<std::string>("base_frame")),
-  gnss_poser_(
-    declare_gnss_poser_params(),
-    [this](const std::string & gnss_frame, const builtin_interfaces::msg::Time & stamp) {
-      return get_static_transform(gnss_frame, base_frame_, stamp);
-    })
+  gnss_poser_(declare_gnss_poser_params(), [this](const std::string & gnss_frame) {
+    return get_static_transform(gnss_frame, base_frame_);
+  })
 {
   // Subscribe to map_projector_info topic
   sub_map_projector_info_ = create_subscription<autoware_map_msgs::msg::MapProjectorInfo>(
@@ -158,19 +158,19 @@ void GnssPoserNode::callback_gnss_ins_orientation_stamped(
 }
 
 std::optional<geometry_msgs::msg::Transform> GnssPoserNode::get_static_transform(
-  const std::string & target_frame, const std::string & source_frame,
-  const builtin_interfaces::msg::Time & stamp)
+  const std::string & target_frame, const std::string & source_frame)
 {
   if (target_frame == source_frame) {
     return geometry_msgs::msg::Transform{};  // identity: zero translation, rotation w = 1
   }
 
   try {
-    return tf2_buffer_
-      .lookupTransform(
-        target_frame, source_frame,
-        tf2::TimePoint(std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec)))
-      .transform;
+    // tf2::TimePointZero asks for the latest transform. The antenna is rigidly mounted, so every
+    // sample of this transform carries the same value and the latest one applies to every fix.
+    // Asking for the fix stamp instead would fail whenever the relation is published on /tf rather
+    // than /tf_static and the fix is newer than the last /tf message, which tf2 refuses to
+    // extrapolate.
+    return tf2_buffer_.lookupTransform(target_frame, source_frame, tf2::TimePointZero).transform;
   } catch (tf2::TransformException & ex) {
     RCLCPP_WARN_STREAM_THROTTLE(
       this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(), ex.what());
