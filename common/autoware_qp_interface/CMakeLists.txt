@@ -8,6 +8,7 @@ find_package(Eigen3 REQUIRED)
 find_package(proxsuite REQUIRED)
 
 # proxsuite links cereal::cereal, and libcereal-dev 1.3.1 on Ubuntu 22.04 exports "/include" as its include directory
+# TODO: remove this when proxsuite handles it or Humble support ends: https://github.com/Simple-Robotics/proxsuite/issues/503
 if(TARGET cereal::cereal)
   get_target_property(_cereal_include_dirs cereal::cereal INTERFACE_INCLUDE_DIRECTORIES)
   if(_cereal_include_dirs STREQUAL "/include")
