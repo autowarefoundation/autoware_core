@@ -5,7 +5,6 @@
   <version>1.10.0</version>
   <description>The autoware_simple_pure_pursuit package</description>
   <maintainer email="yuki.takagi@tier4.jp">Yuki Takagi</maintainer>
-  <maintainer email="kosuke.takeuchi@tier4.jp">Kosuke Takeuchi</maintainer>
   <maintainer email="takayuki.murooka@tier4.jp">Takayuki Murooka</maintainer>
 
   <license>Apache License 2.0</license>

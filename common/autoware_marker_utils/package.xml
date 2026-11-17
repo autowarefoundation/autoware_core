@@ -4,7 +4,6 @@
   <name>autoware_marker_utils</name>
   <version>1.10.0</version>
   <description>The autoware_marker_utils package</description>
-  <maintainer email="kosuke.takeuchi@tier4.jp">Kosuke Takeuchi</maintainer>
   <maintainer email="mamoru.sobue@tier4.jp">Mamoru Sobue</maintainer>
   <maintainer email="radit.giovanni@tier4.jp">MRaditya Giovanni</maintainer>
   <license>Apache License 2.0</license>
