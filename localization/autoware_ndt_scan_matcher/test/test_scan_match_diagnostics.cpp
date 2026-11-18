@@ -81,20 +81,26 @@ double double_value_of(const DiagnosticsReport & report, const std::string & key
 
 TEST(ScanMatchDiagnostics, ReportsOkWhenAllChecksPass)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(make_healthy_values());
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::OK);
   EXPECT_TRUE(report.message.empty());
 }
 
 TEST(ScanMatchDiagnostics, ReportsAllScanMatchingKeysInOrder)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(make_healthy_values());
 
+  // Assert
   const std::vector<std::string> expected{
     "iteration_num",
     "local_optimal_solution_oscillation_num",
@@ -111,56 +117,71 @@ TEST(ScanMatchDiagnostics, ReportsAllScanMatchingKeysInOrder)  // NOLINT
 
 TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.is_ok_iteration_num = false;
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenOscillationIsDetected)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.is_local_optimal_solution_oscillation = true;
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenScoreIsBelowThreshold)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.is_ok_score = false;
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
 TEST(ScanMatchDiagnostics, ReportsErrorWhenConvergedParamTypeIsUnknown)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.is_known_converged_param_type = false;
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::ERROR);
 }
 
 TEST(ScanMatchDiagnostics, StopsReportingKeysWhenConvergedParamTypeIsUnknown)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.is_known_converged_param_type = false;
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   const std::vector<std::string> expected{
     "iteration_num", "local_optimal_solution_oscillation_num", "transform_probability",
     "nearest_voxel_transformation_likelihood"};
@@ -169,54 +190,69 @@ TEST(ScanMatchDiagnostics, StopsReportingKeysWhenConvergedParamTypeIsUnknown)  /
 
 TEST(ScanMatchDiagnostics, ReportsFirstToLastChangeOfTransformProbability)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(make_healthy_values());
 
+  // Assert
   EXPECT_DOUBLE_EQ(double_value_of(report, "transform_probability_diff"), 1.0);
   EXPECT_DOUBLE_EQ(double_value_of(report, "transform_probability_before"), 2.0);
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenScoreArraySizeDoesNotMatchIterationNum)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.transform_probability_array = {2.0f, 3.0f};
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenDistanceInitialToResultExceedsTolerance)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.distance_initial_to_result = 3.5;
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
 TEST(ScanMatchDiagnostics, ReportsOkWhenDistanceInitialToResultEqualsTolerance)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.distance_initial_to_result = 3.0;
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::OK);
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenExecutionTimeExceedsUpperBound)  // NOLINT
 {
+  // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
   values.execution_time_ms = 150.0f;
 
+  // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
+  // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
