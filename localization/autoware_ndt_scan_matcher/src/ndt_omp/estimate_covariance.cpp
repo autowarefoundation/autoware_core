@@ -14,6 +14,8 @@
 
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 
+#include <pcl/common/transforms.h>
+
 #include <algorithm>
 #include <fstream>
 #include <iomanip>
@@ -33,8 +35,8 @@ Eigen::Matrix2d estimate_xy_covariance_by_laplace_approximation(
 }
 
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
-  const NdtResult & ndt_result,
-  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const autoware::ndt_scan_matcher::NdtResult & ndt_result,
+  autoware::ndt_scan_matcher::NdtBackend & ndt_ref,
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source)
 {
@@ -43,11 +45,9 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
   std::vector<Eigen::Vector2d> ndt_pose_2d_vec{ndt_pose_2d};
 
   // multiple searches
-  std::vector<NdtResult> ndt_results;
+  std::vector<autoware::ndt_scan_matcher::NdtResult> ndt_results;
   for (const Eigen::Matrix4f & curr_pose : poses_to_search) {
-    auto sub_output_cloud = std::make_shared<pcl::PointCloud<pcl::PointXYZ>>();
-    ndt_ref.align(*sub_output_cloud, curr_pose, source);
-    const NdtResult sub_ndt_result = ndt_ref.get_result();
+    const autoware::ndt_scan_matcher::NdtResult sub_ndt_result = ndt_ref.align(curr_pose, source);
     ndt_results.push_back(sub_ndt_result);
 
     const Eigen::Matrix4f sub_ndt_pose = sub_ndt_result.pose;
@@ -69,8 +69,8 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
 }
 
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
-  const NdtResult & ndt_result,
-  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const autoware::ndt_scan_matcher::NdtResult & ndt_result,
+  autoware::ndt_scan_matcher::NdtBackend & ndt_ref,
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source, const double temperature)
 {
@@ -82,7 +82,7 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
   pcl::PointCloud<pcl::PointXYZ> trans_cloud;
 
   // multiple searches
-  std::vector<NdtResult> ndt_results;
+  std::vector<autoware::ndt_scan_matcher::NdtResult> ndt_results;
   for (const Eigen::Matrix4f & curr_pose : poses_to_search) {
     const Eigen::Vector2d sub_ndt_pose_2d = curr_pose.topRightCorner<2, 1>().cast<double>();
     ndt_pose_2d_vec.emplace_back(sub_ndt_pose_2d);
@@ -91,7 +91,7 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
     const double nvtl = ndt_ref.calculate_nearest_voxel_transformation_likelihood(trans_cloud);
     score_vec.emplace_back(nvtl);
 
-    NdtResult sub_ndt_result{};
+    autoware::ndt_scan_matcher::NdtResult sub_ndt_result{};
     sub_ndt_result.pose = curr_pose;
     sub_ndt_result.iteration_num = 0;
     sub_ndt_result.nearest_voxel_transformation_likelihood = static_cast<float>(nvtl);
@@ -107,7 +107,7 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
 }
 
 std::vector<Eigen::Matrix4f> propose_poses_to_search(
-  const NdtResult & ndt_result, const std::vector<double> & offset_x,
+  const autoware::ndt_scan_matcher::NdtResult & ndt_result, const std::vector<double> & offset_x,
   const std::vector<double> & offset_y)
 {
   assert(offset_x.size() == offset_y.size());

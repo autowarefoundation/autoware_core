@@ -19,6 +19,7 @@
   <depend>autoware_internal_localization_msgs</depend>
   <depend>autoware_localization_util</depend>
   <depend>autoware_map_msgs</depend>
+  <depend>autoware_ndt_scan_matcher_common</depend>
   <depend>autoware_qos_utils</depend>
   <depend>autoware_utils_diagnostics</depend>
   <depend>autoware_utils_geometry</depend>
@@ -34,6 +35,7 @@
   <depend>libpcl-all</depend>
   <depend>nav_msgs</depend>
   <depend>pcl_conversions</depend>
+  <depend>pluginlib</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
   <depend>sensor_msgs</depend>
@@ -51,6 +53,7 @@
   <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_index_cpp</test_depend>
   <test_depend>ament_lint_auto</test_depend>
+  <test_depend>console_bridge_vendor</test_depend>
   <test_depend>launch_testing_ament_cmake</test_depend>
   <test_depend>rcl_yaml_param_parser</test_depend>
   <test_depend>ros_testing</test_depend>

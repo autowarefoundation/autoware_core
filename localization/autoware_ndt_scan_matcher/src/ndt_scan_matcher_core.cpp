@@ -17,6 +17,7 @@
 #include <autoware/localization_util/matrix_type.hpp>
 #include <autoware/localization_util/tree_structured_parzen_estimator.hpp>
 #include <autoware/localization_util/util_func.hpp>
+#include <autoware/ndt_scan_matcher/ndt_backend_loader.hpp>
 #include <autoware/ndt_scan_matcher/ndt_omp/estimate_covariance.hpp>
 #include <autoware/ndt_scan_matcher/ndt_scan_matcher_core.hpp>
 #include <autoware/ndt_scan_matcher/particle.hpp>
@@ -44,6 +45,7 @@
 #include <future>
 #include <iomanip>
 #include <map>
+#include <stdexcept>
 #include <thread>
 #include <utility>
 #include <variant>
@@ -79,6 +81,11 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   is_activated_(false),
   param_(this)
 {
+  // Load the backend first, so that a wrong backend name stops the node before the constructor
+  // body creates publishers, subscriptions, services and timers. Only the tf broadcaster and the
+  // tf listener exist earlier, because they are members.
+  ndt_ptr_.with([&](auto & ndt_ptr) { ndt_ptr = create_ndt_backend(param_.ndt_backend); });
+
   timer_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::CallbackGroup::SharedPtr initial_pose_callback_group =
     this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
@@ -186,8 +193,6 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
       &NDTScanMatcher::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
     service_qos, sensor_callback_group);
 
-  ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->set_params(param_.ndt); });
-
   initial_pose_buffer_ = std::make_unique<SmartPoseBuffer>(
     this->get_logger(), param_.validation.initial_pose_timeout_sec,
     param_.validation.initial_pose_distance_tolerance_m);
@@ -214,6 +219,19 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
 
   logger_configure_ = std::make_unique<
     autoware_utils_logging::BasicLoggerLevelConfigure<autoware::agnocast_wrapper::Node>>(this);
+}
+
+NdtBackend::SharedPtr NDTScanMatcher::create_ndt_backend(const std::string & backend_name)
+{
+  NdtBackend::SharedPtr backend = load_ndt_backend(backend_name);
+  try {
+    backend->initialize(param_.ndt);
+  } catch (const std::exception & e) {
+    throw std::runtime_error(
+      "Failed to initialize the NDT backend '" + backend_name + "': " + std::string(e.what()));
+  }
+  RCLCPP_INFO_STREAM(get_logger(), "NDT backend: " << backend->name());
+  return backend;
 }
 
 MapUpdateModule::GetDifferentialPointCloudMap::Response::ConstSharedPtr
@@ -546,9 +564,8 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // perform ndt scan matching
     const Eigen::Matrix4f initial_pose_matrix =
       pose_to_matrix4f(interpolation_result.interpolated_pose.pose.pose);
-    auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
-    ndt_ptr->align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
-    const pclomp::NdtResult ndt_result = ndt_ptr->get_result();
+    const NdtResult ndt_result =
+      ndt_ptr->align(initial_pose_matrix, sensor_points_in_baselink_frame_);
 
     const geometry_msgs::msg::Pose result_pose_msg = matrix4f_to_pose(ndt_result.pose);
     std::vector<geometry_msgs::msg::Pose> transformation_msg_array;
@@ -559,11 +576,12 @@ bool NDTScanMatcher::callback_sensor_points_main(
 
     // check iteration_num
     diagnostics_scan_points_->add_key_value("iteration_num", ndt_result.iteration_num);
-    const bool is_ok_iteration_num = (ndt_result.iteration_num < ndt_ptr->get_maximum_iterations());
+    const bool is_ok_iteration_num =
+      (ndt_result.iteration_num < ndt_ptr->get_params().max_iterations);
     if (!is_ok_iteration_num) {
       std::stringstream message;
       message << "The number of iterations has reached its upper limit. The number of iterations: "
-              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->get_maximum_iterations()
+              << ndt_result.iteration_num << ", Limit: " << ndt_ptr->get_params().max_iterations
               << ".";
       diagnostics_scan_points_->update_level_and_message(
         diagnostic_msgs::msg::DiagnosticStatus::WARN, message.str());
@@ -855,7 +873,7 @@ void NDTScanMatcher::publish_point_cloud(
 
 void NDTScanMatcher::publish_marker(
   const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
-  NormalDistributionsTransform & ndt_ref)
+  NdtBackend & ndt_ref)
 {
   auto marker_array = ALLOCATE_OUTPUT_MESSAGE_UNIQUE(ndt_marker_pub_);
   visualization_msgs::msg::Marker marker;
@@ -875,7 +893,8 @@ void NDTScanMatcher::publish_marker(
   }
 
   // TODO(Tier IV): delete old marker
-  for (; i < ndt_ref.get_maximum_iterations() + 2;) {
+  const int max_iterations = ndt_ref.get_params().max_iterations;
+  for (; i < max_iterations + 2;) {
     marker.id = i++;
     marker.pose = geometry_msgs::msg::Pose();
     marker.color = exchange_color_crc(0);
@@ -921,8 +940,8 @@ int NDTScanMatcher::count_oscillation(
 }
 
 Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
-  const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
+  const NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
+  const rclcpp::Time & sensor_ros_time, NdtBackend & ndt_ref)
 {
   geometry_msgs::msg::PoseArray multi_ndt_result_msg;
   geometry_msgs::msg::PoseArray multi_initial_pose_msg;
@@ -944,7 +963,7 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
       ndt_result, param_.covariance.covariance_estimation.initial_pose_offset_model_x,
       param_.covariance.covariance_estimation.initial_pose_offset_model_y);
     const pclomp::ResultOfMultiNdtCovarianceEstimation result_of_multi_ndt_covariance_estimation =
-      estimate_xy_covariance_by_multi_ndt(
+      pclomp::estimate_xy_covariance_by_multi_ndt(
         ndt_result, ndt_ref, poses_to_search, sensor_points_in_baselink_frame_);
     for (size_t i = 0; i < result_of_multi_ndt_covariance_estimation.ndt_initial_poses.size();
          i++) {
@@ -963,9 +982,10 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
       ndt_result, param_.covariance.covariance_estimation.initial_pose_offset_model_x,
       param_.covariance.covariance_estimation.initial_pose_offset_model_y);
     const pclomp::ResultOfMultiNdtCovarianceEstimation
-      result_of_multi_ndt_score_covariance_estimation = estimate_xy_covariance_by_multi_ndt_score(
-        ndt_result, ndt_ref, poses_to_search, sensor_points_in_baselink_frame_,
-        param_.covariance.covariance_estimation.temperature);
+      result_of_multi_ndt_score_covariance_estimation =
+        pclomp::estimate_xy_covariance_by_multi_ndt_score(
+          ndt_result, ndt_ref, poses_to_search, sensor_points_in_baselink_frame_,
+          param_.covariance.covariance_estimation.temperature);
     for (const auto & sub_initial_pose_matrix : poses_to_search) {
       multi_initial_pose_msg.poses.push_back(matrix4f_to_pose(sub_initial_pose_matrix));
     }
@@ -978,7 +998,7 @@ Eigen::Matrix2d NDTScanMatcher::estimate_covariance(
 
 pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
   const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-  const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref)
+  const float & lower_nvs, const float & upper_nvs, NdtBackend & ndt_ref)
 {
   pcl::PointCloud<pcl::PointXYZI> nvs_points_in_map_ptr_i;
   nvs_points_in_map_ptr_i =
@@ -1003,7 +1023,7 @@ pcl::PointCloud<pcl::PointXYZRGB>::Ptr NDTScanMatcher::visualize_point_score(
 }
 
 void NDTScanMatcher::add_regularization_pose(
-  const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref)
+  const rclcpp::Time & sensor_ros_time, NdtBackend & ndt_ref)
 {
   ndt_ref.unset_regularization_pose();
   std::optional<SmartPoseBuffer::InterpolateResult> interpolation_result_opt =
@@ -1144,8 +1164,7 @@ void NDTScanMatcher::service_ndt_align_main(
 }
 
 std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher::align_pose(
-  const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-  NormalDistributionsTransform & ndt_ref)
+  const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov, NdtBackend & ndt_ref)
 {
   autoware::localization_util::output_pose_with_cov_to_log(
     get_logger(), "align_pose_input", initial_pose_with_cov);
@@ -1175,7 +1194,6 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     param_.initial_pose_estimation.n_startup_trials, sample_mean, sample_stddev);
 
   std::vector<Particle> particle_array;
-  auto output_cloud = std::make_shared<pcl::PointCloud<PointSource>>();
 
   // publish the estimated poses in 20 times to see the progress and to avoid dropping data
   visualization_msgs::msg::MarkerArray marker_array;
@@ -1199,8 +1217,8 @@ std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> NDTScanMatcher
     initial_pose.orientation = tf2::toMsg(tf_quaternion);
 
     const Eigen::Matrix4f initial_pose_matrix = pose_to_matrix4f(initial_pose);
-    ndt_ref.align(*output_cloud, initial_pose_matrix, sensor_points_in_baselink_frame_);
-    const pclomp::NdtResult ndt_result = ndt_ref.get_result();
+    const NdtResult ndt_result =
+      ndt_ref.align(initial_pose_matrix, sensor_points_in_baselink_frame_);
 
     Particle particle(
       initial_pose, matrix4f_to_pose(ndt_result.pose),

@@ -17,10 +17,10 @@
 
 #define FMT_HEADER_ONLY
 
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
-#include "ndt_omp/multigrid_ndt_omp.h"
 
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>
@@ -72,8 +72,6 @@ class NDTScanMatcher : public autoware::agnocast_wrapper::Node
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
-  using NormalDistributionsTransform =
-    pclomp::MultiGridNormalDistributionsTransform<PointSource, PointTarget>;
 
 public:
   explicit NDTScanMatcher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
@@ -120,7 +118,7 @@ private:
 
   std::tuple<geometry_msgs::msg::PoseWithCovarianceStamped, double> align_pose(
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_with_cov,
-    NormalDistributionsTransform & ndt_ref);
+    NdtBackend & ndt_ref);
 
   void transform_sensor_measurement(
     const std::string & source_frame, const std::string & target_frame,
@@ -137,7 +135,7 @@ private:
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr);
   void publish_marker(
     const rclcpp::Time & sensor_ros_time, const std::vector<geometry_msgs::msg::Pose> & pose_array,
-    NormalDistributionsTransform & ndt_ref);
+    NdtBackend & ndt_ref);
   void publish_initial_to_result(
     const rclcpp::Time & sensor_ros_time, const geometry_msgs::msg::Pose & result_pose_msg,
     const geometry_msgs::msg::PoseWithCovarianceStamped & initial_pose_cov_msg,
@@ -149,15 +147,16 @@ private:
   static int count_oscillation(const std::vector<geometry_msgs::msg::Pose> & result_pose_msg_array);
 
   Eigen::Matrix2d estimate_covariance(
-    const pclomp::NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
-    const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
+    const NdtResult & ndt_result, const Eigen::Matrix4f & initial_pose_matrix,
+    const rclcpp::Time & sensor_ros_time, NdtBackend & ndt_ref);
 
   pcl::PointCloud<pcl::PointXYZRGB>::Ptr visualize_point_score(
     const pcl::shared_ptr<pcl::PointCloud<PointSource>> & sensor_points_in_map_ptr,
-    const float & lower_nvs, const float & upper_nvs, NormalDistributionsTransform & ndt_ref);
+    const float & lower_nvs, const float & upper_nvs, NdtBackend & ndt_ref);
 
-  void add_regularization_pose(
-    const rclcpp::Time & sensor_ros_time, NormalDistributionsTransform & ndt_ref);
+  void add_regularization_pose(const rclcpp::Time & sensor_ros_time, NdtBackend & ndt_ref);
+
+  NdtBackend::SharedPtr create_ndt_backend(const std::string & backend_name);
 
   // Performs the pcd_loader service call for MapUpdateModule, returning nullptr on failure.
   MapUpdateModule::GetDifferentialPointCloudMap::Response::ConstSharedPtr
@@ -218,8 +217,7 @@ private:
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
 
-  Guarded<std::shared_ptr<NormalDistributionsTransform>> ndt_ptr_{
-    std::make_shared<NormalDistributionsTransform>()};
+  Guarded<NdtBackend::SharedPtr> ndt_ptr_;
 
   pcl::shared_ptr<pcl::PointCloud<PointSource>> sensor_points_in_baselink_frame_;
 

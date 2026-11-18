@@ -32,7 +32,6 @@ include_directories(${PCL_INCLUDE_DIRS})
 ament_auto_add_library(multigrid_ndt_omp SHARED
   src/ndt_omp/multi_voxel_grid_covariance_omp.cpp
   src/ndt_omp/multigrid_ndt_omp.cpp
-  src/ndt_omp/estimate_covariance.cpp
 )
 target_link_libraries(multigrid_ndt_omp ${PCL_LIBRARIES})
 
@@ -42,15 +41,18 @@ else()
   message(WARNING "OpenMP not found")
 endif()
 
-ament_auto_add_library(${PROJECT_NAME} SHARED
+# NO_TARGET_LINK_LIBRARIES: the node does not use ndt_omp. Only the backend "ndt_omp" does.
+ament_auto_add_library(${PROJECT_NAME} SHARED NO_TARGET_LINK_LIBRARIES
   src/map_update_module.cpp
+  src/ndt_backend_loader.cpp
+  src/ndt_omp/estimate_covariance.cpp
   src/ndt_scan_matcher_core.cpp
   src/ndt_scan_matcher_helper.cpp
   src/particle.cpp
 )
 
 link_directories(${PCL_LIBRARY_DIRS})
-target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES} multigrid_ndt_omp)
+target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   PLUGIN "autoware::ndt_scan_matcher::NDTScanMatcher"
@@ -59,7 +61,52 @@ autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor
 )
 
+# The NDT backend "ndt_omp". The node loads it with pluginlib, so no other library may link it. It
+# is a plain library: ament_auto exports every library that ament_auto_add_library() adds, and it
+# links them into the later libraries and tests of this package and into the packages that depend on
+# it.
+add_library(${PROJECT_NAME}_omp_backend SHARED
+  src/omp_ndt_backend.cpp
+)
+target_link_libraries(${PROJECT_NAME}_omp_backend multigrid_ndt_omp ${PCL_LIBRARIES})
+ament_target_dependencies(${PROJECT_NAME}_omp_backend autoware_ndt_scan_matcher_common pluginlib)
+install(TARGETS ${PROJECT_NAME}_omp_backend
+  LIBRARY DESTINATION lib
+)
+pluginlib_export_plugin_description_file(autoware_ndt_scan_matcher_common plugins.xml)
+
 if(BUILD_TESTING)
+  # Three test backends in an install prefix inside the build directory, for the tests of the
+  # error messages. pluginlib finds them only in a test that has this prefix in AMENT_PREFIX_PATH.
+  set(test_backend_prefix ${CMAKE_CURRENT_BINARY_DIR}/test_ndt_backend_prefix)
+  set(test_backend_index ${test_backend_prefix}/share/ament_index/resource_index)
+  file(WRITE ${test_backend_index}/packages/test_ndt_backend "")
+  file(WRITE
+    ${test_backend_index}/autoware_ndt_scan_matcher_common__pluginlib__plugin/test_ndt_backend
+    "share/test_ndt_backend/test_ndt_backend_plugins.xml\n")
+  file(WRITE ${test_backend_prefix}/share/test_ndt_backend/package.xml
+    "<package format=\"3\"><name>test_ndt_backend</name></package>\n")
+  # configure_file() copies the file again when it changes.
+  # cspell: ignore COPYONLY
+  configure_file(test/test_ndt_backend_plugins.xml
+    ${test_backend_prefix}/share/test_ndt_backend/test_ndt_backend_plugins.xml COPYONLY)
+  foreach(variant constructor_throws initialize_throws other_abi)
+    add_library(test_ndt_backend_${variant} MODULE test/test_ndt_backend.cpp)
+    ament_target_dependencies(test_ndt_backend_${variant}
+      autoware_ndt_scan_matcher_common pluginlib)
+    # $<1:...> keeps a multi-config generator from adding a directory for each configuration.
+    set_target_properties(test_ndt_backend_${variant} PROPERTIES
+      LIBRARY_OUTPUT_DIRECTORY $<1:${test_backend_prefix}/lib>)
+  endforeach()
+  target_compile_definitions(test_ndt_backend_constructor_throws PRIVATE
+    TEST_NDT_BACKEND_CONSTRUCTOR_THROWS)
+  target_compile_definitions(test_ndt_backend_initialize_throws PRIVATE
+    TEST_NDT_BACKEND_INITIALIZE_THROWS)
+  # The other heap allocator of Eigen. test_ndt_backend_loader skips its test in a build where
+  # this definition does not change the allocator.
+  target_compile_definitions(test_ndt_backend_other_abi PRIVATE
+    EIGEN_MALLOC_ALREADY_ALIGNED=0)
+
   if(NOT (DEFINED ENV{ENABLE_AGNOCAST} AND "$ENV{ENABLE_AGNOCAST}" STREQUAL "1"))
     add_launch_test(
       test/test_ndt_scan_matcher_launch.py
@@ -99,7 +146,9 @@ if(BUILD_TESTING)
     ament_add_ros_isolated_gtest(test_ndt_scan_matcher_characteristics
       test/test_ndt_scan_matcher_characteristics.cpp
       TIMEOUT "600"
+      APPEND_ENV AMENT_PREFIX_PATH=${test_backend_prefix}
     )
+    add_dependencies(test_ndt_scan_matcher_characteristics test_ndt_backend_initialize_throws)
     target_link_libraries(test_ndt_scan_matcher_characteristics ${PROJECT_NAME})
     ament_target_dependencies(test_ndt_scan_matcher_characteristics
       ament_index_cpp rcl_yaml_param_parser)
@@ -109,7 +158,7 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_estimate_covariance
     test/test_estimate_covariance.cpp
   )
-  target_link_libraries(test_estimate_covariance multigrid_ndt_omp ${PCL_LIBRARIES})
+  target_link_libraries(test_estimate_covariance ${PROJECT_NAME} ${PCL_LIBRARIES})
 
   ament_auto_add_gtest(test_ndt_scan_matcher_helper
     test/test_ndt_scan_matcher_helper.cpp
@@ -120,7 +169,23 @@ if(BUILD_TESTING)
   ament_auto_add_gtest(test_map_update_module
     test/test_map_update_module.cpp
   )
-  target_link_libraries(test_map_update_module ${PROJECT_NAME} multigrid_ndt_omp ${PCL_LIBRARIES})
+  target_link_libraries(test_map_update_module ${PROJECT_NAME} ${PCL_LIBRARIES})
+
+  # The OMP backend against ndt_omp, and its copies.
+  ament_auto_add_gtest(test_omp_ndt_backend
+    test/test_omp_ndt_backend.cpp
+  )
+  target_include_directories(test_omp_ndt_backend PRIVATE src)
+  target_link_libraries(test_omp_ndt_backend ${PROJECT_NAME}_omp_backend ${PCL_LIBRARIES})
+
+  # pluginlib loads the backend library here. The test does not link it.
+  ament_auto_add_gtest(test_ndt_backend_loader
+    test/test_ndt_backend_loader.cpp
+    APPEND_ENV AMENT_PREFIX_PATH=${test_backend_prefix}
+  )
+  target_link_libraries(test_ndt_backend_loader ${PROJECT_NAME} ${CMAKE_DL_LIBS})
+  add_dependencies(test_ndt_backend_loader
+    test_ndt_backend_constructor_throws test_ndt_backend_other_abi)
 endif()
 
 autoware_ament_auto_package(
