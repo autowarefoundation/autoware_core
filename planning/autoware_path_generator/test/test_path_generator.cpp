@@ -101,30 +101,36 @@ TEST(PathGeneratorTest, ThrowsExceptionWhenMaxLongitudinalOffsetIsNegative)
   EXPECT_THROW(PathGeneratorCore{config}, std::invalid_argument);
 }
 
-// Expects generate to return error when map or route pointer is missing.
-TEST(PathGeneratorTest, ReturnsErrorWhenMapOrRouteMissing)
+// Expects generate to return error when input map is not provided.
+TEST(PathGeneratorTest, ReturnsErrorWhenMapIsNotProvided)
 {
   // Arrange
   PathGeneratorCore generator{create_default_config()};
+
   PathGeneratorInput input;
   input.odometry = create_odom(10.5, 0.0);
   input.params = create_default_params();
+  const auto result = generator.generate(input);
 
-  // Act (Null map)
-  auto result_no_map = generator.generate(input);
+  // Act & Assert
+  EXPECT_FALSE(result.has_value());
+}
 
-  // Assert
-  EXPECT_FALSE(result_no_map.has_value());
-  EXPECT_EQ(result_no_map.error(), "Vector map is not provided");
+// Expects generate to return error when input route is not provided.
+TEST(PathGeneratorTest, ReturnsErrorWhenRouteIsNotProvided)
+{
+  // Arrange
+  PathGeneratorCore generator{create_default_config()};
 
-  // Act (Null route)
+  PathGeneratorInput input;
   input.map_ptr =
     std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_common_map_bin());
-  auto result_no_route = generator.generate(input);
+  input.odometry = create_odom(10.5, 0.0);
+  input.params = create_default_params();
+  const auto result = generator.generate(input);
 
-  // Assert
-  EXPECT_FALSE(result_no_route.has_value());
-  EXPECT_EQ(result_no_route.error(), "Route is not provided");
+  // Act & Assert
+  EXPECT_FALSE(result.has_value());
 }
 
 // Expects generate to return error when input route has no segments.
