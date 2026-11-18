@@ -41,7 +41,9 @@
   <exec_depend>python3-flask</exec_depend>
 
   <test_depend>ament_cmake_gtest</test_depend>
+  <test_depend>ament_cmake_ros</test_depend>
   <test_depend>ament_lint_auto</test_depend>
+  <test_depend>autoware_command_gate</test_depend>
   <test_depend>autoware_lint_common</test_depend>
   <test_depend>geometry_msgs</test_depend>
   <test_depend>launch_testing</test_depend>
