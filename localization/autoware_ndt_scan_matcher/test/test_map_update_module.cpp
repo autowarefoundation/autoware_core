@@ -106,7 +106,7 @@ protected:
     ndt_params.max_iterations = 30;
     ndt_params.num_threads = 1;
     ndt_params.regularization_scale_factor = 0.0F;
-    ndt_ptr_.with([&](auto & ndt) { ndt->setParams(ndt_params); });
+    ndt_ptr_.with([&](auto & ndt) { ndt->set_params(ndt_params); });
 
     param_.update_distance = 5.0;
     param_.map_radius = 30.0;
@@ -128,7 +128,7 @@ protected:
   }
   static bool ndt_has_target(Guarded<MapUpdateModule::NdtPtrType> & ndt_ptr)
   {
-    return ndt_ptr.with([](const auto & ndt) { return ndt->hasTarget(); });
+    return ndt_ptr.with([](const auto & ndt) { return ndt->has_target(); });
   }
 
   Guarded<MapUpdateModule::NdtPtrType> ndt_ptr_{std::make_shared<MapUpdateModule::NdtType>()};

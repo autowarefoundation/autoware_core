@@ -1098,9 +1098,8 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::computeS
 }
 
 template <typename PointSource, typename PointTarget>
-double
-MultiGridNormalDistributionsTransform<PointSource, PointTarget>::calculateTransformationProbability(
-  const PointCloudSource & trans_cloud) const
+double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
+  calculate_transformation_probability(const PointCloudSource & trans_cloud) const
 {
   double score = 0;
 
@@ -1152,7 +1151,7 @@ MultiGridNormalDistributionsTransform<PointSource, PointTarget>::calculateTransf
 
 template <typename PointSource, typename PointTarget>
 double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
-  calculateNearestVoxelTransformationLikelihood(const PointCloudSource & trans_cloud) const
+  calculate_nearest_voxel_transformation_likelihood(const PointCloudSource & trans_cloud) const
 {
   double nearest_voxel_score = 0;
   size_t found_neighborhood_voxel_num = 0;
@@ -1219,7 +1218,7 @@ double MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
 
 template <typename PointSource, typename PointTarget>
 pcl::PointCloud<pcl::PointXYZI> MultiGridNormalDistributionsTransform<PointSource, PointTarget>::
-  calculateNearestVoxelScoreEachPoint(const PointCloudSource & trans_cloud) const
+  calculate_nearest_voxel_score_each_point(const PointCloudSource & trans_cloud) const
 {
   // Thread-wise results
   std::vector<pcl::PointCloud<pcl::PointXYZI>> threads_pc(params_.num_threads);
