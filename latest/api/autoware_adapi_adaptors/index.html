@@ -23,7 +23,7 @@
     
     
       
-        <title>Macro Rendering Error - Autoware Core Documentation</title>
+        <title>adapi_adaptors - Autoware Core Documentation</title>
       
     
     
@@ -78,7 +78,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#macro-rendering-error" class="md-skip">
+        <a href="#adapi_adaptors" class="md-skip">
           Skip to content
         </a>
       
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Macro Rendering Error
+              adapi_adaptors
             
           </span>
         </div>
@@ -7782,6 +7782,47 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#initial_pose_adaptor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        initial_pose_adaptor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#routing_adaptor" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        routing_adaptor
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -7800,21 +7841,122 @@
   
 
 
-<div><h1 id="macro-rendering-error"><em>Macro Rendering Error</em><a class="headerlink" href="#macro-rendering-error" title="Permanent link">#</a></h1>
-<p><em>File</em>: <code>api/autoware_adapi_adaptors/README.md</code></p>
-<p><em>FileNotFoundError</em>: [Errno 2] No such file or directory: 'system/autoware_default_adapi_helpers/adapi_adaptors/schema/adapi_adaptors.schema.json'</p>
-<div class="highlight"><pre><span></span><code>Traceback (most recent call last):
-  File "/opt/hostedtoolcache/Python/3.10.22/x64/lib/python3.10/site-packages/mkdocs_macros/plugin.py", line 703, in render
-    return md_template.render(**page_variables)
-  File "/opt/hostedtoolcache/Python/3.10.22/x64/lib/python3.10/site-packages/jinja2/environment.py", line 1295, in render
-    self.environment.handle_exception()
-  File "/opt/hostedtoolcache/Python/3.10.22/x64/lib/python3.10/site-packages/jinja2/environment.py", line 942, in handle_exception
-    raise rewrite_traceback_stack(source=source)
-  File "&lt;template&gt;", line 35, in top-level template code
-  File "/home/runner/work/autoware_core/autoware_core/mkdocs_macros.py", line 325, in json_to_markdown
-    with open(json_schema_file_path) as f:
-FileNotFoundError: [Errno 2] No such file or directory: 'system/autoware_default_adapi_helpers/adapi_adaptors/schema/adapi_adaptors.schema.json'
-</code></pre></div></div>
+<div><h1 id="adapi_adaptors">adapi_adaptors<a class="headerlink" href="#adapi_adaptors" title="Permanent link">#</a></h1>
+<h2 id="initial_pose_adaptor">initial_pose_adaptor<a class="headerlink" href="#initial_pose_adaptor" title="Permanent link">#</a></h2>
+<p>This node makes it easy to use the localization AD API from RViz.
+When a initial pose topic is received, call the localization initialize API.
+This node depends on the map height fitter library.
+<a href="../../common/autoware_map_height_fitter/">See here for more details.</a></p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Local Name</th>
+<th>Global Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subscription</td>
+<td>initialpose</td>
+<td>/initialpose</td>
+<td>The pose for localization initialization.</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>-</td>
+<td>/api/localization/initialize</td>
+<td>The localization initialize API.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="routing_adaptor">routing_adaptor<a class="headerlink" href="#routing_adaptor" title="Permanent link">#</a></h2>
+<p>This node makes it easy to use the routing AD API from RViz.
+When a goal pose topic is received, reset the waypoints and call the API.
+When a waypoint pose topic is received, append it to the end of the waypoints to call the API.
+The clear API is called automatically before setting the route.</p>
+<table>
+<thead>
+<tr>
+<th>Interface</th>
+<th>Local Name</th>
+<th>Global Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Subscription</td>
+<td>-</td>
+<td>/api/routing/state</td>
+<td>The state of the routing API.</td>
+</tr>
+<tr>
+<td>Subscription</td>
+<td>~/input/fixed_goal</td>
+<td>/planning/mission_planning/goal</td>
+<td>The goal pose of route. Disable goal modification.</td>
+</tr>
+<tr>
+<td>Subscription</td>
+<td>~/input/rough_goal</td>
+<td>/rviz/routing/rough_goal</td>
+<td>The goal pose of route. Enable goal modification.</td>
+</tr>
+<tr>
+<td>Subscription</td>
+<td>~/input/reroute</td>
+<td>/rviz/routing/reroute</td>
+<td>The goal pose of reroute.</td>
+</tr>
+<tr>
+<td>Subscription</td>
+<td>~/input/waypoint</td>
+<td>/planning/mission_planning/checkpoint</td>
+<td>The waypoint pose of route.</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>-</td>
+<td>/api/routing/clear_route</td>
+<td>The route clear API.</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>-</td>
+<td>/api/routing/set_route_points</td>
+<td>The route points set API.</td>
+</tr>
+<tr>
+<td>Client</td>
+<td>-</td>
+<td>/api/routing/change_route_points</td>
+<td>The route points change API.</td>
+</tr>
+</tbody>
+</table>
+<h2 id="parameters">parameters<a class="headerlink" href="#parameters" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+<th>Range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>initial_<wbr>pose_<wbr>particle_<wbr>covariance</wbr></wbr></wbr></td>
+<td>array</td>
+<td>initial_pose_particle_covariance</td>
+<td>[4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 4.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0]</td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table></div>
 
 
 

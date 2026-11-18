@@ -25,7 +25,7 @@
     
     
       
-        <title>Macro Rendering Error - Autoware Core Documentation</title>
+        <title>autoware_map_height_fitter - Autoware Core Documentation</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#macro-rendering-error" class="md-skip">
+        <a href="#autoware_map_height_fitter" class="md-skip">
           Skip to content
         </a>
       
@@ -120,7 +120,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Macro Rendering Error
+              autoware_map_height_fitter
             
           </span>
         </div>
@@ -7835,6 +7835,47 @@
     
   
   
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#parameters" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Parameters
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#topic-subscription" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Topic subscription
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#service-client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Service client
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
 </nav>
                   </div>
                 </div>
@@ -7853,21 +7894,68 @@
   
 
 
-<div><h1 id="macro-rendering-error"><em>Macro Rendering Error</em><a class="headerlink" href="#macro-rendering-error" title="Permanent link">#</a></h1>
-<p><em>File</em>: <code>common/autoware_map_height_fitter/README.md</code></p>
-<p><em>FileNotFoundError</em>: [Errno 2] No such file or directory: 'map/autoware_map_height_fitter/schema/map_height_fitter.schema.json'</p>
-<div class="highlight"><pre><span></span><code>Traceback (most recent call last):
-  File "/opt/hostedtoolcache/Python/3.10.22/x64/lib/python3.10/site-packages/mkdocs_macros/plugin.py", line 703, in render
-    return md_template.render(**page_variables)
-  File "/opt/hostedtoolcache/Python/3.10.22/x64/lib/python3.10/site-packages/jinja2/environment.py", line 1295, in render
-    self.environment.handle_exception()
-  File "/opt/hostedtoolcache/Python/3.10.22/x64/lib/python3.10/site-packages/jinja2/environment.py", line 942, in handle_exception
-    raise rewrite_traceback_stack(source=source)
-  File "&lt;template&gt;", line 9, in top-level template code
-  File "/home/runner/work/autoware_core/autoware_core/mkdocs_macros.py", line 325, in json_to_markdown
-    with open(json_schema_file_path) as f:
-FileNotFoundError: [Errno 2] No such file or directory: 'map/autoware_map_height_fitter/schema/map_height_fitter.schema.json'
-</code></pre></div></div>
+<div><h1 id="autoware_map_height_fitter">autoware_map_height_fitter<a class="headerlink" href="#autoware_map_height_fitter" title="Permanent link">#</a></h1>
+<p>This library fits the given point with the ground of the point cloud map.
+The map loading operation is switched by the parameter <code>enable_partial_load</code> of the node specified by <code>map_loader_name</code>.
+The node using this library must use multi thread executor.</p>
+<h2 id="parameters">Parameters<a class="headerlink" href="#parameters" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Name</th>
+<th>Type</th>
+<th>Description</th>
+<th>Default</th>
+<th>Range</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>map_<wbr>height_<wbr>fitter.<wbr>map_<wbr>loader_<wbr>name</wbr></wbr></wbr></wbr></wbr></td>
+<td>string</td>
+<td>Node name of the map loader from which this map_height_fitter will retrieve its parameters</td>
+<td>/<wbr>map/<wbr>pointcloud_<wbr>map_<wbr>loader</wbr></wbr></wbr></wbr></td>
+<td>N/A</td>
+</tr>
+<tr>
+<td>map_<wbr>height_<wbr>fitter.<wbr>target</wbr></wbr></wbr></td>
+<td>string</td>
+<td>Target map to fit (choose from 'pointcloud_map', 'vector_map')</td>
+<td>pointcloud_<wbr>map</wbr></td>
+<td>N/A</td>
+</tr>
+</tbody>
+</table>
+<h2 id="topic-subscription">Topic subscription<a class="headerlink" href="#topic-subscription" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Topic Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~/pointcloud_map</td>
+<td>The topic containing the whole pointcloud map (only used when <code>enable_partial_load = false</code>)</td>
+</tr>
+</tbody>
+</table>
+<h2 id="service-client">Service client<a class="headerlink" href="#service-client" title="Permanent link">#</a></h2>
+<table>
+<thead>
+<tr>
+<th>Service Name</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>~/partial_map_load</td>
+<td>The service to load the partial map</td>
+</tr>
+</tbody>
+</table></div>
 
 
 
