@@ -1058,17 +1058,16 @@ TEST_F(GnssPoserNodeIntegration, Tf_AntennaFrameComesFromFixHeader_BaseFrameUses
   expect_point_near(last_pose().pose.position, project_mgrs(fix_base));
 }
 
-// The antenna -> base transform is looked up at the fix's header stamp, not at "latest". With a
-// transform published on /tf (time-stamped, unlike /tf_static) at exactly t0: a fix stamped t0 gets
-// it applied, a fix stamped one second later needs extrapolation, which tf2 refuses, so the node
-// falls back to identity, and a fix with a zero stamp means "latest" to tf2 and gets it applied
-// again.
+// The antenna -> base transform is looked up as "latest" (tf2::TimePointZero), not at the fix's
+// header stamp. With a transform published on /tf (time-stamped, unlike /tf_static) at exactly t0,
+// a fix stamped t0 gets it applied. A lookup at the header stamp would apply it too, so this case
+// only checks that the transform is applied; the next one tells the two lookups apart.
 //
 // The antenna sits rigidly on the vehicle and is normally published on /tf_static, where time is
-// ignored; a time-stamped transform is the only way to observe which time the node asks for. What
-// this pins is the lookup policy, which decides how the node reacts when the receiver's clock and
-// the TF clock disagree.
-TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_FixAtTransformStampAppliesIt)
+// ignored; /tf is used here because a time-stamped transform is the only way to observe which time
+// the node asks for. It is also the configuration the "latest" lookup exists for: the same static
+// relation published on /tf, where the receiver's clock and the TF clock need not agree.
+TEST_F(GnssPoserNodeIntegration, Tf_LookupUsesTheLatestTransform_FixAtTransformStampAppliesIt)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
@@ -1084,19 +1083,24 @@ TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_FixAtTransformStamp
     last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z));
 }
 
-TEST_F(GnssPoserNodeIntegration, Tf_LookupIsAtFixHeaderStamp_LaterFixFallsBackToIdentity)
+// A fix stamped one second after the transform's stamp t0 gets the same transform applied. A lookup
+// at the header stamp would have to extrapolate past t0, which tf2 refuses, so that fix would get
+// no transform at all.
+TEST_F(GnssPoserNodeIntegration, Tf_LookupUsesTheLatestTransform_LaterFixAppliesIt)
 {
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node_with_timed_antenna_tf());
   const auto projected = project_mgrs(make_reference_fix());
 
   // Act
-  // Fix stamped 1 s later: lookup needs extrapolation, fails, and falls back to identity.
+  // Fix stamped 1 s later: a lookup at the header stamp would need extrapolation, which tf2
+  // refuses; the latest transform applies all the same.
   send_fix(make_antenna_fix_at(make_stamp(1001, 0)));
 
   // Assert
   ASSERT_NO_FATAL_FAILURE(wait_for_outputs(1));
-  expect_point_near(last_pose().pose.position, projected);
+  expect_point_near(
+    last_pose().pose.position, make_point(projected.x + 1.0, projected.y, projected.z));
   EXPECT_EQ(last_pose().header.stamp, make_stamp(1001, 0));
 }
 
