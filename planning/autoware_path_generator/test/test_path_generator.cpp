@@ -220,8 +220,28 @@ TEST(PathGeneratorTest, GeneratesPathSuccessfullyWhenValidInputProvided)
   EXPECT_FALSE(result->path.points.empty());
   EXPECT_EQ(result->path.header.frame_id, "map");
   EXPECT_EQ(result->path.header.stamp, input.odometry.header.stamp);
+
+  // Trajectory bound checks:
+  // With:
+  // - ego : (10.5, 0.0)
+  // - forward length : 50.0
+  // - backward length : 5.0
+  // Expected bounds:
+  // - Start point x = 10.5 - 5.0 = 5.5
+  // - End point x = 10.5 + 50.0 = 60.5
+  // - Lateral position y = 0.0
+  // - Left bound y = 1.75, right bound y = -1.75
+
+  EXPECT_NEAR(result->path.points.front().point.pose.position.x, 5.5, near_tol);
+  EXPECT_NEAR(result->path.points.back().point.pose.position.x, 60.5, near_tol);
+  EXPECT_NEAR(result->path.points.front().point.pose.position.y, 0.0, near_tol);
+  EXPECT_NEAR(result->path.points.back().point.pose.position.y, 0.0, near_tol);
+
   EXPECT_FALSE(result->path.left_bound.empty());
   EXPECT_FALSE(result->path.right_bound.empty());
+  EXPECT_NEAR(result->path.left_bound.front().y, 1.75, near_tol);
+  EXPECT_NEAR(result->path.right_bound.front().y, -1.75, near_tol);
+
   EXPECT_EQ(result->turn_indicators_cmd.command, TurnIndicatorsCommand::NO_COMMAND);
   EXPECT_EQ(result->hazard_lights_cmd.command, HazardLightsCommand::NO_COMMAND);
 }
