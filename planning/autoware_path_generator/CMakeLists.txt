@@ -36,6 +36,7 @@ if(BUILD_TESTING)
     test/test_lanelet.cpp
     test/test_turn_signal.cpp
     test/test_path_cut.cpp
+    test/test_path_generator.cpp
     TIMEOUT 180
   )
   target_link_libraries(test_${PROJECT_NAME}
