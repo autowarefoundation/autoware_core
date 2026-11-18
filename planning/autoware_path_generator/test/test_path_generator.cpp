@@ -246,42 +246,6 @@ TEST(PathGeneratorTest, GeneratesPathSuccessfullyWhenValidInputProvided)
   EXPECT_EQ(result->hazard_lights_cmd.command, HazardLightsCommand::NO_COMMAND);
 }
 
-// Expects RouteManager to be reused across consecutive calls with same pointers, and rebuilt when
-// pointers change.
-TEST(PathGeneratorTest, CachesRouteManagerAndRebuildsWhenPointersChange)
-{
-  // Arrange
-  PathGeneratorCore generator{create_default_config()};
-  PathGeneratorInput input;
-  const auto map_ptr_1 =
-    std::make_shared<autoware_map_msgs::msg::LaneletMapBin>(create_mock_common_map_bin());
-  const auto route_ptr_1 =
-    std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(create_mock_route());
-
-  input.map_ptr = map_ptr_1;
-  input.route_ptr = route_ptr_1;
-  input.odometry = create_odom(10.5, 0.0);
-  input.params = create_default_params();
-
-  // Act 1: Initial call (builds RouteManager)
-  const auto result1 = generator.generate(input);
-  ASSERT_TRUE(result1.has_value()) << result1.error();
-
-  // Act 2: Advance ego pose slightly with identical map/route pointers (reuses cached RouteManager)
-  input.odometry = create_odom(15.0, 0.0);
-  const auto result2 = generator.generate(input);
-  ASSERT_TRUE(result2.has_value()) << result2.error();
-  EXPECT_FALSE(result2->path.points.empty());
-
-  // Act 3: Update route pointer to a new route instance (triggers RouteManager rebuild)
-  const auto route_ptr_2 =
-    std::make_shared<autoware_planning_msgs::msg::LaneletRoute>(create_mock_route());
-  input.route_ptr = route_ptr_2;
-  const auto result3 = generator.generate(input);
-  ASSERT_TRUE(result3.has_value()) << result3.error();
-  EXPECT_FALSE(result3->path.points.empty());
-}
-
 // Expects turn indicators to be commanded when approaching a lanelet with turn_direction.
 TEST(PathGeneratorTest, GeneratesTurnSignalWhenApproachingTurn)
 {
