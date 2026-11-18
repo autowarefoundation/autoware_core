@@ -41,6 +41,7 @@
   <depend>lanelet2_core</depend>
   <depend>lanelet2_routing</depend>
   <depend>libboost-dev</depend>
+  <depend>libexpected-dev</depend>
   <depend>nav_msgs</depend>
   <depend>rclcpp</depend>
   <depend>rclcpp_components</depend>
