@@ -7,6 +7,15 @@ autoware_package()
 find_package(Eigen3 REQUIRED)
 find_package(proxsuite REQUIRED)
 
+# proxsuite links cereal::cereal, and libcereal-dev 1.3.1 on Ubuntu 22.04 exports "/include" as its include directory
+# TODO: remove this when proxsuite handles it or Humble support ends: https://github.com/Simple-Robotics/proxsuite/issues/503
+if(TARGET cereal::cereal)
+  get_target_property(_cereal_include_dirs cereal::cereal INTERFACE_INCLUDE_DIRECTORIES)
+  if(_cereal_include_dirs STREQUAL "/include")
+    set_target_properties(cereal::cereal PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "/usr/include")
+  endif()
+endif()
+
 # after find_package(osqp_vendor) in ament_auto_find_build_dependencies
 find_package(osqp REQUIRED)
 get_target_property(OSQP_INCLUDE_SUB_DIR osqp::osqp INTERFACE_INCLUDE_DIRECTORIES)
