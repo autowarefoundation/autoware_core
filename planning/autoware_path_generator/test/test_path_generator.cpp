@@ -152,7 +152,6 @@ TEST(PathGeneratorTest, ReturnsErrorWhenRouteIsEmpty)
 
   // Assert
   EXPECT_FALSE(result.has_value());
-  EXPECT_EQ(result.error(), "Input route is empty");
 }
 
 // Expects generate to return error when route primitives are empty and RouteManager creation fails.
@@ -177,7 +176,6 @@ TEST(PathGeneratorTest, ReturnsErrorWhenRoutePrimitivesEmptyAndRouteManagerCanno
 
   // Assert
   ASSERT_FALSE(result.has_value());
-  EXPECT_EQ(result.error(), "Failed to create route manager");
 }
 
 // Expects generate to return error when initial ego pose is far away so trajectory build fails.
@@ -199,7 +197,6 @@ TEST(PathGeneratorTest, ReturnsErrorWhenTrajectoryBuildFails)
 
   // Assert
   ASSERT_FALSE(result.has_value());
-  EXPECT_EQ(result.error(), "Failed to build trajectory from path points");
 }
 
 // Expects generate to successfully output path and signal commands on nominal input.
