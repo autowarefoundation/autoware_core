@@ -24,9 +24,9 @@ namespace
 {
 using autoware::ndt_scan_matcher::DiagnosticLevel;
 using autoware::ndt_scan_matcher::DiagnosticsReport;
-using autoware::ndt_scan_matcher::ScanMatchDiagnosticValues;
 using autoware::ndt_scan_matcher::ScanMatchDiagnostics;
 using autoware::ndt_scan_matcher::ScanMatchDiagnosticsConfig;
+using autoware::ndt_scan_matcher::ScanMatchDiagnosticValues;
 
 ScanMatchDiagnosticsConfig make_default_config()
 {

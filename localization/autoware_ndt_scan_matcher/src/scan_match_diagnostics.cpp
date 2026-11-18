@@ -84,8 +84,8 @@ DiagnosticsReport ScanMatchDiagnostics::make_report(const ScanMatchDiagnosticVal
   report_score_array(
     "transform_probability", values.transform_probability_array, values.iteration_num, report);
   report_score_array(
-    "nearest_voxel_transformation_likelihood",
-    values.nearest_voxel_transformation_likelihood_array, values.iteration_num, report);
+    "nearest_voxel_transformation_likelihood", values.nearest_voxel_transformation_likelihood_array,
+    values.iteration_num, report);
 
   if (!values.is_ok_score) {
     std::stringstream message;
