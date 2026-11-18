@@ -169,7 +169,7 @@ inline autoware_map_msgs::msg::LaneletMapBin create_mock_dense_map_bin(
                       ┃                       ┃
                       ┃                       ┃
                       ┃      L1 (go East)     ┃
-    S ━━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━➤┛ (X = 40, Y = 0)
+    S ━━━━━━━━━━━━━━━━╋━━━━━━━━━━━━━━━━━━━━━━➤┛ (X = 40, Y = 0)
     (X = 0, Y = 0)     ┃  (Truncated here)
                       ┃  (X = 20, Y = 0)
                       ┃
