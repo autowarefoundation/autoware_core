@@ -171,7 +171,7 @@ TEST(ScanMatchDiagnostics, ReportsErrorWhenConvergedParamTypeIsUnknown)  // NOLI
   EXPECT_EQ(report.level, DiagnosticLevel::ERROR);
 }
 
-TEST(ScanMatchDiagnostics, StopsReportingKeysWhenConvergedParamTypeIsUnknown)  // NOLINT
+TEST(ScanMatchDiagnostics, OmitsKeysAfterTheScoreCheckWhenConvergedParamTypeIsUnknown)  // NOLINT
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -182,6 +182,8 @@ TEST(ScanMatchDiagnostics, StopsReportingKeysWhenConvergedParamTypeIsUnknown)  /
   const DiagnosticsReport report = diagnostics.make_report(values);
 
   // Assert
+  // Only the keys added before the converged param type check; the score arrays, distance and
+  // execution time are skipped.
   const std::vector<std::string> expected{
     "iteration_num", "local_optimal_solution_oscillation_num", "transform_probability",
     "nearest_voxel_transformation_likelihood"};
