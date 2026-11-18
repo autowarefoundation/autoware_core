@@ -155,7 +155,7 @@ TEST(PathGeneratorTest, ReturnsErrorWhenRouteIsEmpty)
 }
 
 // Expects generate to return error when route primitives are empty and RouteManager creation fails.
-TEST(PathGeneratorTest, ReturnsErrorWhenRoutePrimitivesEmptyAndRouteManagerCannotBeCreated)
+TEST(PathGeneratorTest, ReturnsErrorWhenRouteSegmentsHaveNoPrimitives)
 {
   // Arrange
   PathGeneratorCore generator{create_default_config()};
@@ -179,7 +179,7 @@ TEST(PathGeneratorTest, ReturnsErrorWhenRoutePrimitivesEmptyAndRouteManagerCanno
 }
 
 // Expects generate to return error when initial ego pose is far away so trajectory build fails.
-TEST(PathGeneratorTest, ReturnsErrorWhenTrajectoryBuildFails)
+TEST(PathGeneratorTest, ReturnsErrorWhenEgoIsFarFromRoute)
 {
   // Arrange
   PathGeneratorCore generator{create_default_config()};
