@@ -98,7 +98,7 @@ jobs:
 
       - name: Attempt to restore ccache
         if: ${{ inputs.pull-ccache == true }}
-        uses: actions/cache/restore@v5
+        uses: actions/cache/restore@v6
         with:
           path: |
             /root/.ccache
@@ -159,7 +159,7 @@ jobs:
 
       - name: Push the ccache cache
         if: ${{ inputs.push-ccache == true && !inputs.enable-agnocast }}
-        uses: actions/cache/save@v5
+        uses: actions/cache/save@v6
         with:
           path: |
             /root/.ccache
