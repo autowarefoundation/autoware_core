@@ -19,15 +19,15 @@ repositories:
   autoware/autoware_universe:
     type: git
     url: https://github.com/autowarefoundation/autoware_universe.git
-    version: main
+    version: 0.53.2
   autoware/autoware_adapi_msgs:
     type: git
     url: https://github.com/autowarefoundation/autoware_adapi_msgs.git
-    version: main
+    version: 1.9.2
   launcher/autoware_launch:
     type: git
     url: https://github.com/autowarefoundation/autoware_launch.git
-    version: main
+    version: 0.53.0
   sensor_component/external/sync_tooling_msgs:
     type: git
     url: https://github.com/tier4/sync_tooling_msgs.git
@@ -64,7 +64,7 @@ repositories:
   universe/external/managed_transform_buffer:
     type: git
     url: https://github.com/autowarefoundation/managed_transform_buffer.git
-    version: main
+    version: 0.3.0
   universe/external/eagleye:
     type: git
     url: https://github.com/MapIV/eagleye.git
