@@ -21,6 +21,7 @@
 #include <geometry_msgs/msg/pose_with_covariance_stamped.hpp>
 
 #include <deque>
+#include <optional>
 
 namespace autoware::localization_util
 {
@@ -41,6 +42,8 @@ public:
   SmartPoseBuffer(
     const rclcpp::Logger & logger, const double & pose_timeout_sec,
     const double & pose_distance_tolerance_meters);
+  // A buffer that logs nothing, for users without a ROS logger.
+  SmartPoseBuffer(const double & pose_timeout_sec, const double & pose_distance_tolerance_meters);
 
   std::optional<InterpolateResult> interpolate(const rclcpp::Time & target_ros_time);
 
@@ -51,7 +54,7 @@ public:
   void clear();
 
 private:
-  rclcpp::Logger logger_;
+  std::optional<rclcpp::Logger> logger_;
   std::deque<PoseWithCovarianceStamped::ConstSharedPtr> pose_buffer_;
   std::mutex mutex_;  // This mutex is for pose_buffer_
 

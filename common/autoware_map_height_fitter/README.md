@@ -6,7 +6,7 @@ The node using this library must use multi thread executor.
 
 ## Parameters
 
-{{ json_to_markdown("map/autoware_map_height_fitter/schema/map_height_fitter.schema.json") }}
+{{ json_to_markdown("common/autoware_map_height_fitter/schema/map_height_fitter.schema.json") }}
 
 ## Topic subscription
 

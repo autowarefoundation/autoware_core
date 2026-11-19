@@ -294,6 +294,81 @@ TEST(TestSmartPoseBuffer, target_time_after_last_pose)  // NOLINT
   EXPECT_FALSE(result2.has_value());
 }
 
+namespace
+{
+builtin_interfaces::msg::Time make_time(const int32_t sec, const uint32_t nanosec = 0)
+{
+  builtin_interfaces::msg::Time time;
+  time.sec = sec;
+  time.nanosec = nanosec;
+  return time;
+}
+
+void push_pose(SmartPoseBuffer & smart_pose_buffer, const int32_t sec, const double x)
+{
+  auto pose = std::make_shared<PoseWithCovarianceStamped>();
+  pose->header.stamp = make_time(sec);
+  pose->pose.pose.position.x = x;
+  smart_pose_buffer.push_back(pose);
+}
+}  // namespace
+
+TEST(TestSmartPoseBuffer, without_logger_interpolates_between_poses)  // NOLINT
+{
+  // Arrange
+  SmartPoseBuffer smart_pose_buffer(1.0, 1.0);
+  push_pose(smart_pose_buffer, 10, 0.0);
+  push_pose(smart_pose_buffer, 11, 0.5);
+
+  // Act
+  const auto result = smart_pose_buffer.interpolate(make_time(10, 500000000));
+
+  // Assert
+  ASSERT_TRUE(result.has_value());
+  EXPECT_DOUBLE_EQ(result->interpolated_pose.pose.pose.position.x, 0.25);
+}
+
+TEST(TestSmartPoseBuffer, without_logger_fails_with_fewer_than_two_poses)  // NOLINT
+{
+  // Arrange
+  SmartPoseBuffer smart_pose_buffer(1.0, 1.0);
+  push_pose(smart_pose_buffer, 10, 0.0);
+
+  // Act
+  const auto result = smart_pose_buffer.interpolate(make_time(10));
+
+  // Assert
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(TestSmartPoseBuffer, without_logger_fails_beyond_timeout)  // NOLINT
+{
+  // Arrange
+  SmartPoseBuffer smart_pose_buffer(1.0, 1.0);
+  push_pose(smart_pose_buffer, 10, 0.0);
+  push_pose(smart_pose_buffer, 11, 0.5);
+
+  // Act
+  const auto result = smart_pose_buffer.interpolate(make_time(13));
+
+  // Assert
+  EXPECT_FALSE(result.has_value());
+}
+
+TEST(TestSmartPoseBuffer, without_logger_fails_beyond_distance_tolerance)  // NOLINT
+{
+  // Arrange
+  SmartPoseBuffer smart_pose_buffer(1.0, 1.0);
+  push_pose(smart_pose_buffer, 10, 0.0);
+  push_pose(smart_pose_buffer, 11, 2.0);
+
+  // Act
+  const auto result = smart_pose_buffer.interpolate(make_time(10, 500000000));
+
+  // Assert
+  EXPECT_FALSE(result.has_value());
+}
+
 int main(int argc, char ** argv)
 {
   rclcpp::init(argc, argv);
