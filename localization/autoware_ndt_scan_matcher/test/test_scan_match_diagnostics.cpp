@@ -151,8 +151,8 @@ TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
   EXPECT_EQ(
-  report.message,
-  "The number of iterations has reached its upper limit. The number of iterations: 3, Limit: 3.");
+    report.message,
+    "The number of iterations has reached its upper limit. The number of iterations: 3, Limit: 3.");
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenOscillationIsDetected)
