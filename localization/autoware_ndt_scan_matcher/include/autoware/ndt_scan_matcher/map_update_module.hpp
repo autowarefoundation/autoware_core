@@ -15,6 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__MAP_UPDATE_MODULE_HPP_
 
+#include "diagnostics_report.hpp"
 #include "guarded.hpp"
 #include "hyper_parameters.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
@@ -25,15 +26,11 @@
 
 #include <pcl/point_types.h>
 
-#include <cstdint>
 #include <functional>
 #include <map>
 #include <memory>
 #include <optional>
 #include <string>
-#include <utility>
-#include <variant>
-#include <vector>
 
 namespace autoware::ndt_scan_matcher
 {
@@ -56,44 +53,6 @@ public:
   // or nullptr if the map could not be fetched (e.g. the service is unavailable).
   using PcdLoaderFunction = std::function<GetDifferentialPointCloudMap::Response::ConstSharedPtr(
     const GetDifferentialPointCloudMap::Request::SharedPtr &)>;
-
-  // Severity of a diagnostics update. Mirrors diagnostic_msgs::msg::DiagnosticStatus levels so
-  // this module needs no ROS diagnostics dependency.
-  enum class DiagnosticLevel : int8_t { OK = 0, WARN = 1, ERROR = 2, STALE = 3 };
-
-  // A single diagnostic key/value. The value keeps its type so the ROS node can format it exactly
-  // the way DiagnosticsInterface would (e.g. bool as "True"/"False").
-  struct DiagnosticKeyValue
-  {
-    std::string key;
-    std::variant<bool, int64_t, double, std::string> value;
-  };
-
-  // Diagnostics accumulated while updating the map: key/values plus an overall status (level +
-  // message). Returned to the ROS node, which forwards it to a DiagnosticsInterface. Plain data,
-  // kept ROS-free on purpose.
-  struct DiagnosticsReport
-  {
-    DiagnosticLevel level{DiagnosticLevel::OK};
-    std::string message;
-    std::vector<DiagnosticKeyValue> key_values;
-
-    void add_key_value(DiagnosticKeyValue key_value) { key_values.push_back(std::move(key_value)); }
-
-    // Accumulates like DiagnosticsInterface: raises the level and appends the message.
-    void update_level_and_message(DiagnosticLevel new_level, const std::string & new_message)
-    {
-      if (static_cast<int8_t>(new_level) > static_cast<int8_t>(DiagnosticLevel::OK)) {
-        if (!message.empty()) {
-          message += "; ";
-        }
-        message += new_message;
-      }
-      if (static_cast<int8_t>(new_level) > static_cast<int8_t>(level)) {
-        level = new_level;
-      }
-    }
-  };
 
   // Result of a map update entry point: whether the NDT map changed, plus the diagnostics to
   // report for this call.
