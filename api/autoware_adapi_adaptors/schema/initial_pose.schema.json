@@ -25,7 +25,7 @@
       "type": "object",
       "properties": {
         "ros__parameters": {
-          "$ref": "#/definitions/initial_pose_particle_covariance"
+          "$ref": "#/definitions/adapi_adaptors"
         }
       },
       "required": ["ros__parameters"],
