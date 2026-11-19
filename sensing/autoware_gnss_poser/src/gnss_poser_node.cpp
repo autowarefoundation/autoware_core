@@ -14,12 +14,12 @@
 
 #include "gnss_poser_node.hpp"
 
+#include <tf2/exceptions.hpp>
 #include <tf2/time.hpp>
 
 #include <autoware_sensing_msgs/msg/gnss_ins_orientation_stamped.hpp>
 
 #include <memory>
-#include <optional>
 #include <stdexcept>
 #include <string>
 #include <utility>
@@ -125,8 +125,15 @@ void GnssPoserNode::callback_nav_sat_fix(
         "Buffering Position. Output Skipped.");
       break;
 
+    // A missing antenna transform is logged below, when the result says it is to be reported;
+    // every fix without it would be too many.
+    case GnssPoser::Outcome::TransformLookupFailed:
     case GnssPoser::Outcome::Published:
       break;
+  }
+  if (result.antenna_transform_error.has_value()) {
+    log_antenna_transform_error(
+      nav_sat_fix_msg_ptr->header.frame_id, result.antenna_transform_error.value());
   }
 
   publish_data(result);
@@ -150,6 +157,26 @@ void GnssPoserNode::publish_data(const GnssPoser::Result & result)
   }
 }
 
+void GnssPoserNode::log_antenna_transform_error(
+  const std::string & antenna_frame, const GnssPoser::TransformLookupError error)
+{
+  switch (error) {
+    case GnssPoser::TransformLookupError::Unavailable:
+      RCLCPP_ERROR_STREAM(
+        this->get_logger(), "No transform from "
+                              << antenna_frame << " to " << base_frame_
+                              << " is available; please publish it on TF. Fixes are skipped.");
+      break;
+
+    case GnssPoser::TransformLookupError::Failed:
+      RCLCPP_ERROR_STREAM(
+        this->get_logger(), "Failed to look up the transform from \"" << antenna_frame << "\" to \""
+                                                                      << base_frame_
+                                                                      << "\". Fixes are skipped.");
+      break;
+  }
+}
+
 void GnssPoserNode::callback_gnss_ins_orientation_stamped(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
   msg)
@@ -157,7 +184,8 @@ void GnssPoserNode::callback_gnss_ins_orientation_stamped(
   gnss_poser_.set_ins_orientation(msg->orientation);
 }
 
-std::optional<geometry_msgs::msg::Transform> GnssPoserNode::get_static_transform(
+tl::expected<geometry_msgs::msg::Transform, GnssPoser::TransformLookupError>
+GnssPoserNode::get_static_transform(
   const std::string & target_frame, const std::string & source_frame)
 {
   if (target_frame == source_frame) {
@@ -171,13 +199,15 @@ std::optional<geometry_msgs::msg::Transform> GnssPoserNode::get_static_transform
     // than /tf_static and the fix is newer than the last /tf message, which tf2 refuses to
     // extrapolate.
     return tf2_buffer_.lookupTransform(target_frame, source_frame, tf2::TimePointZero).transform;
-  } catch (tf2::TransformException & ex) {
-    RCLCPP_WARN_STREAM_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(), ex.what());
-    RCLCPP_WARN_STREAM_THROTTLE(
-      this->get_logger(), *this->get_clock(), std::chrono::milliseconds(1000).count(),
-      "Please publish TF " << target_frame.c_str() << " to " << source_frame.c_str());
-    return std::nullopt;
+  } catch (const tf2::LookupException &) {
+    // A frame has not been received.
+    return tl::unexpected(GnssPoser::TransformLookupError::Unavailable);
+  } catch (const tf2::ConnectivityException &) {
+    // The transforms that connect the frames have not been received.
+    return tl::unexpected(GnssPoser::TransformLookupError::Unavailable);
+  } catch (const tf2::TransformException &) {
+    // e.g. InvalidArgumentException for a frame name that TF does not accept.
+    return tl::unexpected(GnssPoser::TransformLookupError::Failed);
   }
 }
 

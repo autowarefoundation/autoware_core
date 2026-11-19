@@ -20,6 +20,7 @@
 #include <autoware/agnocast_wrapper/tf2.hpp>
 #include <rclcpp/rclcpp.hpp>
 #include <tf2/transform_datatypes.hpp>
+#include <tl/expected.hpp>
 
 #include <autoware_internal_debug_msgs/msg/bool_stamped.hpp>
 #include <autoware_map_msgs/msg/map_projector_info.hpp>
@@ -31,7 +32,6 @@
 #include <sensor_msgs/msg/nav_sat_fix.hpp>
 #include <tf2_geometry_msgs/tf2_geometry_msgs.hpp>
 
-#include <optional>
 #include <string>
 
 namespace autoware::gnss_poser
@@ -54,13 +54,16 @@ private:
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(autoware_sensing_msgs::msg::GnssInsOrientationStamped) &
     msg);
 
-  // The latest transform between the two frames, or std::nullopt (with a throttled warning) when TF
-  // cannot provide it. The antenna sits rigidly on the vehicle, so the transform is static and the
-  // latest one is the one that applies to every fix.
-  std::optional<geometry_msgs::msg::Transform> get_static_transform(
+  // The latest transform between the two frames, or why TF cannot provide it. The antenna sits
+  // rigidly on the vehicle, so the transform is static and the latest one is the one that applies
+  // to every fix.
+  tl::expected<geometry_msgs::msg::Transform, GnssPoser::TransformLookupError> get_static_transform(
     const std::string & target_frame, const std::string & source_frame);
   // Publish the messages the pose computation produced.
   void publish_data(const GnssPoser::Result & result);
+  // Log why the antenna transform is missing, at the fix where GnssPoser says to.
+  void log_antenna_transform_error(
+    const std::string & antenna_frame, GnssPoser::TransformLookupError error);
 
   tf2::BufferCore tf2_buffer_;
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
