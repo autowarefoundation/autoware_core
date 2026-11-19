@@ -120,6 +120,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
+  values.maximum_iterations = 3;  // iteration_num (3) has reached the limit
   values.is_ok_iteration_num = false;
 
   // Act
@@ -127,6 +128,9 @@ TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)
 
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
+  EXPECT_EQ(
+  report.message,
+  "The number of iterations has reached its upper limit. The number of iterations: 3, Limit: 3.");
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenOscillationIsDetected)
