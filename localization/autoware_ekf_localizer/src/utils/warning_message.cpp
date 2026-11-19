@@ -55,10 +55,11 @@ std::string twist_delay_time_warning_message(const double delay_time)
   return fmt::format(s, delay_time);
 }
 
-std::string mahalanobis_warning_message(const double distance, const double max_distance)
+std::string mahalanobis_warning_message(const double squared_distance, const double max_distance)
 {
-  constexpr std::string_view s = "The Mahalanobis distance {:.4f} is over the limit {:.4f}.";
-  return fmt::format(s, distance, max_distance);
+  constexpr std::string_view s =
+    "The squared Mahalanobis distance {:.4f} is over the limit {:.4f}.";
+  return fmt::format(s, squared_distance, max_distance);
 }
 
 std::string large_ekf_dt_waring_message(const double ekf_dt)
