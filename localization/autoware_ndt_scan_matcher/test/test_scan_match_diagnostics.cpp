@@ -16,7 +16,10 @@
 
 #include <gtest/gtest.h>
 
+#include <cstdint>
 #include <string>
+#include <type_traits>
+#include <utility>
 #include <variant>
 #include <vector>
 
@@ -67,6 +70,25 @@ std::vector<std::string> keys_of(const DiagnosticsReport & report)
   return keys;
 }
 
+// The value type decides how the node formats the value in /diagnostics (e.g. "3" vs "3.000000").
+std::vector<std::pair<std::string, std::string>> keys_and_types_of(const DiagnosticsReport & report)
+{
+  std::vector<std::pair<std::string, std::string>> keys_and_types;
+  for (const auto & key_value : report.key_values) {
+    const std::string type = std::visit(
+      [](const auto & value) -> std::string {
+        using T = std::decay_t<decltype(value)>;
+        if constexpr (std::is_same_v<T, bool>) return "bool";
+        if constexpr (std::is_same_v<T, int64_t>) return "int64_t";
+        if constexpr (std::is_same_v<T, double>) return "double";
+        return "string";
+      },
+      key_value.value);
+    keys_and_types.emplace_back(key_value.key, type);
+  }
+  return keys_and_types;
+}
+
 double double_value_of(const DiagnosticsReport & report, const std::string & key)
 {
   for (const auto & key_value : report.key_values) {
@@ -92,7 +114,7 @@ TEST(ScanMatchDiagnostics, ReportsOkWhenAllChecksPass)
   EXPECT_TRUE(report.message.empty());
 }
 
-TEST(ScanMatchDiagnostics, ReportsAllScanMatchingKeysInOrder)
+TEST(ScanMatchDiagnostics, ReportsAllScanMatchingKeysInOrderWithTheirValueTypes)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -101,18 +123,18 @@ TEST(ScanMatchDiagnostics, ReportsAllScanMatchingKeysInOrder)
   const DiagnosticsReport report = diagnostics.make_report(make_healthy_values());
 
   // Assert
-  const std::vector<std::string> expected{
-    "iteration_num",
-    "local_optimal_solution_oscillation_num",
-    "transform_probability",
-    "nearest_voxel_transformation_likelihood",
-    "transform_probability_diff",
-    "transform_probability_before",
-    "nearest_voxel_transformation_likelihood_diff",
-    "nearest_voxel_transformation_likelihood_before",
-    "distance_initial_to_result",
-    "execution_time"};
-  EXPECT_EQ(keys_of(report), expected);
+  const std::vector<std::pair<std::string, std::string>> expected{
+    {"iteration_num", "int64_t"},
+    {"local_optimal_solution_oscillation_num", "int64_t"},
+    {"transform_probability", "double"},
+    {"nearest_voxel_transformation_likelihood", "double"},
+    {"transform_probability_diff", "double"},
+    {"transform_probability_before", "double"},
+    {"nearest_voxel_transformation_likelihood_diff", "double"},
+    {"nearest_voxel_transformation_likelihood_before", "double"},
+    {"distance_initial_to_result", "double"},
+    {"execution_time", "double"}};
+  EXPECT_EQ(keys_and_types_of(report), expected);
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)
