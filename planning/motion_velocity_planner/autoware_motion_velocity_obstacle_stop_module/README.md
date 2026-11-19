@@ -38,6 +38,7 @@ The role of the stop planning is keeping a safe distance with static vehicle obj
 The stop planning just inserts the stop point in the trajectory to keep a distance with obstacles.
 The safe distance is parameterized as `stop_planning.stop_margin`.
 When it stops at the end of the trajectory, and obstacle is on the same point, the safe distance becomes `stop_planning.terminal_stop_margin`.
+While driving backward, `stop_planning.backward.stop_margin` and `stop_planning.backward.terminal_stop_margin` are used instead, measured from the rear bumper.
 
 When inserting the stop point, the required acceleration for the ego to stop in front of the stop point is calculated.
 If the acceleration is less than `common.min_strong_accel`, the stop planning will be cancelled since this package does not assume a strong sudden brake for emergency.
