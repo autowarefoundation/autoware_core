@@ -79,7 +79,7 @@ double double_value_of(const DiagnosticsReport & report, const std::string & key
 }
 }  // namespace
 
-TEST(ScanMatchDiagnostics, ReportsOkWhenAllChecksPass)  // NOLINT
+TEST(ScanMatchDiagnostics, ReportsOkWhenAllChecksPass)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -92,7 +92,7 @@ TEST(ScanMatchDiagnostics, ReportsOkWhenAllChecksPass)  // NOLINT
   EXPECT_TRUE(report.message.empty());
 }
 
-TEST(ScanMatchDiagnostics, ReportsAllScanMatchingKeysInOrder)  // NOLINT
+TEST(ScanMatchDiagnostics, ReportsAllScanMatchingKeysInOrder)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -115,7 +115,7 @@ TEST(ScanMatchDiagnostics, ReportsAllScanMatchingKeysInOrder)  // NOLINT
   EXPECT_EQ(keys_of(report), expected);
 }
 
-TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)  // NOLINT
+TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -129,7 +129,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)  // NOLINT
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
-TEST(ScanMatchDiagnostics, WarnsWhenOscillationIsDetected)  // NOLINT
+TEST(ScanMatchDiagnostics, WarnsWhenOscillationIsDetected)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -143,7 +143,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenOscillationIsDetected)  // NOLINT
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
-TEST(ScanMatchDiagnostics, WarnsWhenScoreIsBelowThreshold)  // NOLINT
+TEST(ScanMatchDiagnostics, WarnsWhenScoreIsBelowThreshold)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -157,7 +157,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenScoreIsBelowThreshold)  // NOLINT
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
-TEST(ScanMatchDiagnostics, ReportsErrorWhenConvergedParamTypeIsUnknown)  // NOLINT
+TEST(ScanMatchDiagnostics, ReportsErrorWhenConvergedParamTypeIsUnknown)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -171,7 +171,7 @@ TEST(ScanMatchDiagnostics, ReportsErrorWhenConvergedParamTypeIsUnknown)  // NOLI
   EXPECT_EQ(report.level, DiagnosticLevel::ERROR);
 }
 
-TEST(ScanMatchDiagnostics, OmitsKeysAfterTheScoreCheckWhenConvergedParamTypeIsUnknown)  // NOLINT
+TEST(ScanMatchDiagnostics, OmitsKeysAfterTheScoreCheckWhenConvergedParamTypeIsUnknown)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -190,7 +190,7 @@ TEST(ScanMatchDiagnostics, OmitsKeysAfterTheScoreCheckWhenConvergedParamTypeIsUn
   EXPECT_EQ(keys_of(report), expected);
 }
 
-TEST(ScanMatchDiagnostics, ReportsFirstToLastChangeOfTransformProbability)  // NOLINT
+TEST(ScanMatchDiagnostics, ReportsFirstToLastChangeOfTransformProbability)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -203,7 +203,7 @@ TEST(ScanMatchDiagnostics, ReportsFirstToLastChangeOfTransformProbability)  // N
   EXPECT_DOUBLE_EQ(double_value_of(report, "transform_probability_before"), 2.0);
 }
 
-TEST(ScanMatchDiagnostics, WarnsWhenScoreArraySizeDoesNotMatchIterationNum)  // NOLINT
+TEST(ScanMatchDiagnostics, WarnsWhenScoreArraySizeDoesNotMatchIterationNum)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -217,7 +217,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenScoreArraySizeDoesNotMatchIterationNum)  // 
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
-TEST(ScanMatchDiagnostics, WarnsWhenDistanceInitialToResultExceedsTolerance)  // NOLINT
+TEST(ScanMatchDiagnostics, WarnsWhenDistanceInitialToResultExceedsTolerance)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -231,7 +231,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenDistanceInitialToResultExceedsTolerance)  //
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
 }
 
-TEST(ScanMatchDiagnostics, ReportsOkWhenDistanceInitialToResultEqualsTolerance)  // NOLINT
+TEST(ScanMatchDiagnostics, ReportsOkWhenDistanceInitialToResultEqualsTolerance)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
@@ -245,7 +245,7 @@ TEST(ScanMatchDiagnostics, ReportsOkWhenDistanceInitialToResultEqualsTolerance) 
   EXPECT_EQ(report.level, DiagnosticLevel::OK);
 }
 
-TEST(ScanMatchDiagnostics, WarnsWhenExecutionTimeExceedsUpperBound)  // NOLINT
+TEST(ScanMatchDiagnostics, WarnsWhenExecutionTimeExceedsUpperBound)
 {
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
