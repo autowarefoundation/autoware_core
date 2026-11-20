@@ -151,8 +151,8 @@ TEST(ScanMatchDiagnostics, WarnsWhenIterationNumReachesLimit)
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
   EXPECT_EQ(
-  report.message,
-  "The number of iterations has reached its upper limit. The number of iterations: 3, Limit: 3.");
+    report.message,
+    "The number of iterations has reached its upper limit. The number of iterations: 3, Limit: 3.");
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenOscillationIsDetected)
@@ -167,6 +167,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenOscillationIsDetected)
 
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
+  EXPECT_EQ(report.message, "There is a possibility of oscillation in a local minimum");
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenScoreIsBelowThreshold)
@@ -174,6 +175,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenScoreIsBelowThreshold)
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
+  values.score = 2.2;  // below score_threshold (2.3)
   values.is_ok_score = false;
 
   // Act
@@ -181,6 +183,7 @@ TEST(ScanMatchDiagnostics, WarnsWhenScoreIsBelowThreshold)
 
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
+  EXPECT_EQ(report.message, "Score is below the threshold. Score: 2.2, Threshold: 2.3");
 }
 
 TEST(ScanMatchDiagnostics, ReportsErrorWhenConvergedParamTypeIsUnknown)
@@ -195,6 +198,9 @@ TEST(ScanMatchDiagnostics, ReportsErrorWhenConvergedParamTypeIsUnknown)
 
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::ERROR);
+  EXPECT_EQ(
+    report.message,
+    "Unknown converged param type. Please check `score_estimation.converged_param_type`");
 }
 
 TEST(ScanMatchDiagnostics, OmitsKeysAfterTheScoreCheckWhenConvergedParamTypeIsUnknown)
@@ -234,13 +240,17 @@ TEST(ScanMatchDiagnostics, WarnsWhenScoreArraySizeDoesNotMatchIterationNum)
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
-  values.transform_probability_array = {2.0f, 3.0f};
+  values.transform_probability_array = {2.0f, 3.0f};  // iteration_num (3) + 1 entries expected
 
   // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
+  EXPECT_EQ(
+    report.message,
+    "transform_probability_array size is not equal to iteration_num + 1. "
+    "transform_probability_array size: 2, iteration_num: 3");
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenDistanceInitialToResultExceedsTolerance)
@@ -248,13 +258,14 @@ TEST(ScanMatchDiagnostics, WarnsWhenDistanceInitialToResultExceedsTolerance)
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
-  values.distance_initial_to_result = 3.5;
+  values.distance_initial_to_result = 3.5;  // above the tolerance (3.0)
 
   // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
+  EXPECT_EQ(report.message, "distance_initial_to_result is too large (3.5 [m]).");
 }
 
 TEST(ScanMatchDiagnostics, ReportsOkWhenDistanceInitialToResultEqualsTolerance)
@@ -262,13 +273,14 @@ TEST(ScanMatchDiagnostics, ReportsOkWhenDistanceInitialToResultEqualsTolerance)
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
-  values.distance_initial_to_result = 3.0;
+  values.distance_initial_to_result = 3.0;  // equal to the tolerance (3.0)
 
   // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::OK);
+  EXPECT_TRUE(report.message.empty());
 }
 
 TEST(ScanMatchDiagnostics, WarnsWhenExecutionTimeExceedsUpperBound)
@@ -276,11 +288,12 @@ TEST(ScanMatchDiagnostics, WarnsWhenExecutionTimeExceedsUpperBound)
   // Arrange
   const ScanMatchDiagnostics diagnostics(make_default_config());
   auto values = make_healthy_values();
-  values.execution_time_ms = 150.0f;
+  values.execution_time_ms = 150.0f;  // above the upper bound (100 ms)
 
   // Act
   const DiagnosticsReport report = diagnostics.make_report(values);
 
   // Assert
   EXPECT_EQ(report.level, DiagnosticLevel::WARN);
+  EXPECT_EQ(report.message, "NDT exe time is too long (took 150 [ms]).");
 }
