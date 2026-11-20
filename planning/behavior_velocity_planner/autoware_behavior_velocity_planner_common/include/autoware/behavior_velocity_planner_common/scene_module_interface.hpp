@@ -199,6 +199,8 @@ protected:
     StopWatch<std::chrono::milliseconds> stop_watch;
     stop_watch.tic("Total");
     visualization_msgs::msg::MarkerArray debug_marker_array;
+    // Debug markers can be large (e.g. intersection attention areas): build them only if subscribed
+    const bool publish_debug_markers = pub_debug_->get_subscription_count() > 0;
 
     for (const auto & scene_module : scene_modules_) {
       scene_module->setPlannerData(planner_data_);
@@ -206,16 +208,20 @@ protected:
 
       // The velocity factor must be called after modifyPathVelocity.
 
-      auto module_markers = scene_module->createDebugMarkerArray();
-      debug_marker_array.markers.insert(
-        debug_marker_array.markers.end(), std::make_move_iterator(module_markers.markers.begin()),
-        std::make_move_iterator(module_markers.markers.end()));
+      if (publish_debug_markers) {
+        auto module_markers = scene_module->createDebugMarkerArray();
+        debug_marker_array.markers.insert(
+          debug_marker_array.markers.end(), std::make_move_iterator(module_markers.markers.begin()),
+          std::make_move_iterator(module_markers.markers.end()));
+      }
 
       virtual_wall_marker_creator_.add_virtual_walls(scene_module->createVirtualWalls());
     }
 
     planning_factor_interface_->publish();
-    pub_debug_->publish(debug_marker_array);
+    if (publish_debug_markers) {
+      pub_debug_->publish(debug_marker_array);
+    }
     if (is_publish_debug_path_) {
       autoware_internal_planning_msgs::msg::PathWithLaneId debug_path;
       debug_path.header = path->header;

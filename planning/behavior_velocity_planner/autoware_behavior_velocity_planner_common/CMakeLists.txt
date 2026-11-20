@@ -27,6 +27,15 @@ if(BUILD_TESTING)
     gtest_main
     ${PROJECT_NAME}
   )
+
+  # Own binary: in the same process as the tests in test_trajectory_utils.cpp, the process
+  # sometimes crashes at exit.
+  ament_add_ros_isolated_gtest(test_scene_module_manager_interface
+    test/scene_module_manager_interface/test_scene_module_manager_interface.cpp)
+  target_link_libraries(test_scene_module_manager_interface
+    gtest_main
+    ${PROJECT_NAME}
+  )
 endif()
 
 autoware_ament_auto_package(INSTALL_TO_SHARE
