@@ -104,7 +104,8 @@ private:
     sensor_points_msg_in_sensor_frame);
   bool callback_sensor_points_main(
     const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::PointCloud2) &
-    sensor_points_msg_in_sensor_frame);
+      sensor_points_msg_in_sensor_frame,
+    std::unique_lock<std::timed_mutex> & matching_lock);
 
   void service_trigger_node(
     const std_srvs::srv::SetBool::Request::SharedPtr req,
@@ -218,6 +219,7 @@ private:
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
 
   rclcpp::CallbackGroup::SharedPtr timer_callback_group_;
+  rclcpp::CallbackGroup::SharedPtr trigger_callback_group_;
 
   Guarded<std::shared_ptr<NormalDistributionsTransform>> ndt_ptr_{
     std::make_shared<NormalDistributionsTransform>()};
@@ -232,6 +234,7 @@ private:
   std::unique_ptr<autoware::localization_util::SmartPoseBuffer> regularization_pose_buffer_;
 
   std::atomic<bool> is_activated_;
+  std::timed_mutex matching_mutex_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_scan_points_;
   std::unique_ptr<ScanMatchDiagnostics> scan_match_diagnostics_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_initial_pose_;

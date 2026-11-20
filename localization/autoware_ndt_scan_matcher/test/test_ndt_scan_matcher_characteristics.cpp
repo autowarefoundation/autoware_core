@@ -43,15 +43,18 @@
 #include <gtest/gtest.h>
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
+#include <future>
 #include <memory>
 #include <optional>
 #include <stdexcept>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -1102,6 +1105,42 @@ TEST(NdtScanMatcherCharacteristics, OutOfMapRangeIsWarnOnScanAndErrorOnTimer)
   ASSERT_GE(loads.size(), 2U) << "the timer never loaded again after the move";
   EXPECT_EQ(loads.back().value("is_need_rebuild"), "True");
   EXPECT_EQ(loads.back().value("is_updated_map"), "True");
+}
+
+TEST(NdtScanMatcherCharacteristics, DeactivationDoesNotWaitForSensorCallbackGroup)
+{
+  auto harness = make_ready_harness();
+  ASSERT_EQ(harness->activate(), std::optional<bool>(true));
+
+  auto & node = harness->scan_matcher();
+  rclcpp::CallbackGroup::SharedPtr sensor_group;
+  node.for_each_callback_group([&](const auto & group) {
+    if (group->find_subscription_ptrs_if([](const auto & sub) {
+          return std::string_view(sub->get_topic_name()) == "/points_raw";
+        })) {
+      sensor_group = group;
+    }
+  });
+  ASSERT_TRUE(sensor_group);
+
+  // Occupy the same group as the point cloud subscription without depending on scan duration.
+  std::promise<void> release;
+  auto started = std::make_shared<std::atomic<bool>>(false);
+  auto timer = node.create_wall_timer(
+    1ms,
+    [started, release_signal = release.get_future().share()] {
+      if (!started->exchange(true)) {
+        release_signal.wait_for(10s);
+      }
+    },
+    sensor_group);
+  const bool sensor_group_busy = harness->wait_until([&] { return started->load(); }, 2s);
+  const auto deactivated = sensor_group_busy ? harness->deactivate(2s) : std::nullopt;
+  release.set_value();
+  timer->cancel();
+
+  ASSERT_TRUE(sensor_group_busy);
+  EXPECT_EQ(deactivated, std::optional<bool>(true));
 }
 
 /// Activating the node clears the initial-pose buffer — a side effect nothing else observes. The

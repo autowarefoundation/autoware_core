@@ -80,6 +80,8 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
   param_(this)
 {
   timer_callback_group_ = this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
+  trigger_callback_group_ =
+    this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::CallbackGroup::SharedPtr initial_pose_callback_group =
     this->create_callback_group(rclcpp::CallbackGroupType::MutuallyExclusive);
   rclcpp::CallbackGroup::SharedPtr sensor_callback_group =
@@ -184,7 +186,7 @@ NDTScanMatcher::NDTScanMatcher(const rclcpp::NodeOptions & options)
     "trigger_node_srv",
     std::bind(
       &NDTScanMatcher::service_trigger_node, this, std::placeholders::_1, std::placeholders::_2),
-    service_qos, sensor_callback_group);
+    service_qos, trigger_callback_group_);
 
   ndt_ptr_.with([&](const auto & ndt_ptr) { ndt_ptr->setParams(param_.ndt); });
 
@@ -377,9 +379,10 @@ void NDTScanMatcher::callback_sensor_points(
   // clear diagnostics
   diagnostics_scan_points_->clear();
 
-  // scan matching
+  // Keep the matching lock through the scan diagnostics publication.
+  std::unique_lock<std::timed_mutex> matching_lock(matching_mutex_, std::defer_lock);
   const bool is_succeed_scan_matching =
-    callback_sensor_points_main(sensor_points_msg_in_sensor_frame);
+    callback_sensor_points_main(sensor_points_msg_in_sensor_frame, matching_lock);
 
   // check skipping_publish_num
   static int64_t skipping_publish_num = 0;
@@ -398,7 +401,8 @@ void NDTScanMatcher::callback_sensor_points(
 
 bool NDTScanMatcher::callback_sensor_points_main(
   const AUTOWARE_MESSAGE_CONST_SHARED_PTR(sensor_msgs::msg::PointCloud2) &
-  sensor_points_msg_in_sensor_frame)
+    sensor_points_msg_in_sensor_frame,
+  std::unique_lock<std::timed_mutex> & matching_lock)
 {
   const auto exe_start_time = std::chrono::system_clock::now();
 
@@ -485,9 +489,15 @@ bool NDTScanMatcher::callback_sensor_points_main(
     // store sensor points for ndt alignment
     sensor_points_in_baselink_frame_ = sensor_points_in_baselink_frame;
 
-    // check is_activated
-    diagnostics_scan_points_->add_key_value("is_activated", static_cast<bool>(is_activated_));
-    if (!is_activated_) {
+    // Do not hold the matching lock while waiting for the NDT map lock.
+    if (is_activated_) {
+      matching_lock.lock();
+      if (!is_activated_) {
+        matching_lock.unlock();
+      }
+    }
+    diagnostics_scan_points_->add_key_value("is_activated", matching_lock.owns_lock());
+    if (!matching_lock.owns_lock()) {
       std::stringstream message;
       message << "Node is not activated.";
       diagnostics_scan_points_->update_level_and_message(
@@ -973,11 +983,18 @@ void NDTScanMatcher::service_trigger_node(
   diagnostics_trigger_node_->clear();
   diagnostics_trigger_node_->add_key_value("service_call_time_stamp", ros_time_now.nanoseconds());
 
-  is_activated_ = req->data;
-  if (is_activated_) {
+  // Stop admitting scans before waiting for the in-flight scan. Stay inactive on timeout.
+  is_activated_ = false;
+  std::unique_lock<std::timed_mutex> matching_lock(matching_mutex_, std::defer_lock);
+  res->success = matching_lock.try_lock_for(std::chrono::seconds(1));
+  if (!res->success) {
+    res->message = "Timed out waiting for the current NDT scan to finish";
+    diagnostics_trigger_node_->update_level_and_message(
+      diagnostic_msgs::msg::DiagnosticStatus::ERROR, res->message);
+  } else if (req->data) {
     initial_pose_buffer_->clear();
+    is_activated_ = true;
   }
-  res->success = true;
 
   diagnostics_trigger_node_->add_key_value("is_activated", static_cast<bool>(is_activated_));
   diagnostics_trigger_node_->add_key_value("is_succeed_service", res->success);
