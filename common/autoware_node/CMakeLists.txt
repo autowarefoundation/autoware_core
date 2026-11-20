@@ -17,8 +17,9 @@ if(BUILD_TESTING)
     ament_add_ros_isolated_gtest(${TEST_NAME} ${TEST_FILE} TIMEOUT 10)
     target_include_directories(${TEST_NAME} PRIVATE src/include)
     target_link_libraries(${TEST_NAME} ${PROJECT_NAME})
-    ament_target_dependencies(${TEST_NAME}
-      rclcpp)
+    target_link_libraries(${TEST_NAME}
+      ${rclcpp_TARGETS}
+    )
   endforeach()
 endif()
 

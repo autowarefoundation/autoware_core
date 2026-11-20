@@ -17,8 +17,11 @@ if(BUILD_TESTING)
   target_include_directories(test_autoware_point_types
     PRIVATE include
   )
-  ament_target_dependencies(test_autoware_point_types
-    point_cloud_msg_wrapper
+  target_link_libraries(test_autoware_point_types
+    ${point_cloud_msg_wrapper_LIBRARIES}
+  )
+  target_include_directories(test_autoware_point_types PRIVATE
+    ${point_cloud_msg_wrapper_INCLUDE_DIRS}
   )
 
   ament_add_ros_isolated_gtest(test_autoware_point_types_memory
@@ -27,9 +30,12 @@ if(BUILD_TESTING)
   target_include_directories(test_autoware_point_types_memory
     PRIVATE include
   )
-  ament_target_dependencies(test_autoware_point_types_memory
-    point_cloud_msg_wrapper
-    sensor_msgs
+  target_link_libraries(test_autoware_point_types_memory
+    ${point_cloud_msg_wrapper_LIBRARIES}
+    ${sensor_msgs_TARGETS}
+  )
+  target_include_directories(test_autoware_point_types_memory PRIVATE
+    ${point_cloud_msg_wrapper_INCLUDE_DIRS}
   )
 endif()
 

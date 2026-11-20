@@ -196,16 +196,20 @@ macro(autoware_agnocast_wrapper_register_node target)
     target_link_libraries(${ARGS_EXECUTABLE}
       ${target})
 
-    ament_target_dependencies(${ARGS_EXECUTABLE}
-      rclcpp
-      rclcpp_components
-      class_loader
-      agnocastlib
-      autoware_agnocast_wrapper)
+    target_link_libraries(${ARGS_EXECUTABLE}
+      ${rclcpp_TARGETS}
+      ${rclcpp_components_TARGETS}
+      ${class_loader_TARGETS}
+      ${agnocastlib_TARGETS}
+      ${autoware_agnocast_wrapper_LIBRARIES}
+    )
+    target_include_directories(${ARGS_EXECUTABLE} PRIVATE
+      ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+    )
 
     # Apply agnocast wrapper setup (adds USE_AGNOCAST_ENABLED if ENABLE_AGNOCAST=1)
     # Both the component library and the executable must have USE_AGNOCAST_ENABLED defined
-    # to ensure ABI consistency (ament_target_dependencies does not propagate PUBLIC definitions)
+    # to ensure ABI consistency (linking the wrapper library does not propagate its PUBLIC compile definitions)
     autoware_agnocast_wrapper_setup(${target})
     autoware_agnocast_wrapper_setup(${ARGS_EXECUTABLE})
 

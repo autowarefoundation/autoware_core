@@ -26,7 +26,6 @@ function(add_testcase filepath)
   string(REGEX REPLACE ".cpp" "" test_name ${filename})
   ament_add_gmock(${test_name} ${filepath})
   target_link_libraries("${test_name}" ${PROJECT_NAME})
-  ament_target_dependencies(${test_name} ${${PROJECT_NAME}_FOUND_BUILD_DEPENDS})
 endfunction()
 
 if(BUILD_TESTING)

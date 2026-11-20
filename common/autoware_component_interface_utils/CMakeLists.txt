@@ -27,11 +27,14 @@ if(BUILD_TESTING)
     PRIVATE include
   )
 
-  ament_target_dependencies(test_component_interface_utils
-    rclcpp
-    rclcpp_components
-    autoware_adapi_v1_msgs
-    autoware_component_interface_specs
+  target_link_libraries(test_component_interface_utils
+    ${rclcpp_TARGETS}
+    ${rclcpp_components_TARGETS}
+    ${autoware_adapi_v1_msgs_TARGETS}
+    ${autoware_component_interface_specs_LIBRARIES}
+  )
+  target_include_directories(test_component_interface_utils PRIVATE
+    ${autoware_component_interface_specs_INCLUDE_DIRS}
   )
 
   ament_add_ros_isolated_gtest(test_component_interface_registration
@@ -42,11 +45,14 @@ if(BUILD_TESTING)
     PRIVATE include
   )
 
-  ament_target_dependencies(test_component_interface_registration
-    rclcpp
-    rclcpp_components
-    autoware_adapi_v1_msgs
-    autoware_component_interface_specs
+  target_link_libraries(test_component_interface_registration
+    ${rclcpp_TARGETS}
+    ${rclcpp_components_TARGETS}
+    ${autoware_adapi_v1_msgs_TARGETS}
+    ${autoware_component_interface_specs_LIBRARIES}
+  )
+  target_include_directories(test_component_interface_registration PRIVATE
+    ${autoware_component_interface_specs_INCLUDE_DIRS}
   )
 
   # Pure mapping logic over InterfaceRecord -- no rclcpp::init(), no Node, no ROS
@@ -60,11 +66,14 @@ if(BUILD_TESTING)
     PRIVATE include
   )
 
-  ament_target_dependencies(test_manifest_json
-    rclcpp
-    rclcpp_components
-    autoware_adapi_v1_msgs
-    autoware_component_interface_specs
+  target_link_libraries(test_manifest_json
+    ${rclcpp_TARGETS}
+    ${rclcpp_components_TARGETS}
+    ${autoware_adapi_v1_msgs_TARGETS}
+    ${autoware_component_interface_specs_LIBRARIES}
+  )
+  target_include_directories(test_manifest_json PRIVATE
+    ${autoware_component_interface_specs_INCLUDE_DIRS}
   )
 
   target_link_libraries(test_manifest_json
@@ -84,11 +93,14 @@ if(BUILD_TESTING)
     PRIVATE include
   )
 
-  ament_target_dependencies(test_manifest_drift
-    rclcpp
-    rclcpp_components
-    autoware_adapi_v1_msgs
-    autoware_component_interface_specs
+  target_link_libraries(test_manifest_drift
+    ${rclcpp_TARGETS}
+    ${rclcpp_components_TARGETS}
+    ${autoware_adapi_v1_msgs_TARGETS}
+    ${autoware_component_interface_specs_LIBRARIES}
+  )
+  target_include_directories(test_manifest_drift PRIVATE
+    ${autoware_component_interface_specs_INCLUDE_DIRS}
   )
 
   target_link_libraries(test_manifest_drift

@@ -12,7 +12,12 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/map_height_fitter_node.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
-ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
+target_link_libraries(${PROJECT_NAME}
+  ${autoware_agnocast_wrapper_LIBRARIES}
+)
+target_include_directories(${PROJECT_NAME} PUBLIC
+  ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+)
 autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
@@ -40,7 +45,12 @@ if(BUILD_TESTING)
       test/test_map_height_fitter_fit.cpp
     )
     target_link_libraries(test_${PROJECT_NAME}_fit ${PROJECT_NAME} ${PCL_LIBRARIES})
-    ament_target_dependencies(test_${PROJECT_NAME}_fit autoware_agnocast_wrapper)
+    target_link_libraries(test_${PROJECT_NAME}_fit
+      ${autoware_agnocast_wrapper_LIBRARIES}
+    )
+    target_include_directories(test_${PROJECT_NAME}_fit PRIVATE
+      ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+    )
     autoware_agnocast_wrapper_setup(test_${PROJECT_NAME}_fit)
   endif()
 endif()

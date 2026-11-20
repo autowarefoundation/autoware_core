@@ -13,7 +13,12 @@ ament_auto_add_library(${PROJECT_NAME} SHARED
   src/utils/localization_conversion.cpp
   src/utils/route_conversion.cpp
 )
-ament_target_dependencies(${PROJECT_NAME} autoware_agnocast_wrapper)
+target_link_libraries(${PROJECT_NAME}
+  ${autoware_agnocast_wrapper_LIBRARIES}
+)
+target_include_directories(${PROJECT_NAME} PUBLIC
+  ${autoware_agnocast_wrapper_INCLUDE_DIRS}
+)
 autoware_agnocast_wrapper_setup(${PROJECT_NAME})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}

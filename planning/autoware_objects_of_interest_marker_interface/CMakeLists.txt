@@ -32,12 +32,12 @@ if(BUILD_TESTING)
   target_link_libraries(test_objects_of_interest_marker_interface
     autoware_objects_of_interest_marker_interface
   )
-  ament_target_dependencies(test_objects_of_interest_marker_interface
-    rclcpp
-    geometry_msgs
-    std_msgs
-    visualization_msgs
-    autoware_perception_msgs
+  target_link_libraries(test_objects_of_interest_marker_interface
+    ${rclcpp_TARGETS}
+    ${geometry_msgs_TARGETS}
+    ${std_msgs_TARGETS}
+    ${visualization_msgs_TARGETS}
+    ${autoware_perception_msgs_TARGETS}
   )
 endif()
 
