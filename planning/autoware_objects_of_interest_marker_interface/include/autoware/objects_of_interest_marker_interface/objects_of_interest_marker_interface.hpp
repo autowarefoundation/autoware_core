@@ -62,6 +62,7 @@ public:
 
   /**
    * @brief Publish interest objects marker
+   * @note The inserted objects are cleared on every call, even when the topic has no subscriber
    */
   void publishMarkerArray();
 
