@@ -21,6 +21,7 @@
 #include "hyper_parameters.hpp"
 #include "map_update_module.hpp"
 #include "ndt_omp/multigrid_ndt_omp.h"
+#include "scan_match_diagnostics.hpp"
 
 #include <autoware/agnocast_wrapper/node.hpp>
 #include <autoware/agnocast_wrapper/tf2.hpp>
@@ -232,6 +233,7 @@ private:
 
   std::atomic<bool> is_activated_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_scan_points_;
+  std::unique_ptr<ScanMatchDiagnostics> scan_match_diagnostics_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_initial_pose_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_regularization_pose_;
   std::unique_ptr<DiagnosticsInterface> diagnostics_map_update_;
