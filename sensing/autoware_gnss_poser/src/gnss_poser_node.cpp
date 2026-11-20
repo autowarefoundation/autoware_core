@@ -47,12 +47,14 @@ GnssPosePubMethod to_gnss_pose_pub_method(const int value)
 
 GnssPoserNode::GnssPoserNode(const rclcpp::NodeOptions & node_options)
 : autoware::agnocast_wrapper::Node("gnss_poser", node_options),
-  tf2_listener_(tf2_buffer_, *this),
-  tf2_broadcaster_(*this),
   base_frame_(declare_parameter<std::string>("base_frame")),
-  gnss_poser_(declare_gnss_poser_params(), [this](const std::string & gnss_frame) {
-    return get_static_transform(gnss_frame, base_frame_);
-  })
+  gnss_poser_(
+    declare_gnss_poser_params(),
+    [this](const std::string & gnss_frame) {
+      return get_static_transform(gnss_frame, base_frame_);
+    }),
+  tf2_listener_(tf2_buffer_, *this),
+  tf2_broadcaster_(*this)
 {
   // Subscribe to map_projector_info topic
   sub_map_projector_info_ = create_subscription<autoware_map_msgs::msg::MapProjectorInfo>(
