@@ -342,6 +342,7 @@ common/autoware_trajectory/examples/example_temporal_crop.cpp:117:121
 
 | Function                                          | Description                                                                                                                                                                                                    |
 | ------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `find_first_interval(trajectory, constraint)`     | Find the first arc-length interval on a spatial `Trajectory` where `constraint(point)` or `constraint(s)` is true. Returns `optional<Interval>`.                                                               |
 | `find_intervals(trajectory, constraint)`          | Find contiguous arc-length intervals on a spatial `Trajectory` where `constraint(point)` or `constraint(s)` is true. Returns `vector<Interval>`.                                                               |
 | `find_intervals(temporal_trajectory, constraint)` | Find contiguous time intervals on a `TemporalTrajectory` where `constraint(point)` or `constraint(t)` is true. Returns `vector<TemporalInterval>` (each entry contains both `TimeDistancePair` start and end). |
 
