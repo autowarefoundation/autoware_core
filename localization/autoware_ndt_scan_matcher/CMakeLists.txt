@@ -4,6 +4,7 @@ project(autoware_ndt_scan_matcher)
 # cspell:ignore multigrid
 
 find_package(autoware_cmake REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)
 autoware_package()
 
 # Compile flags for SIMD instructions
