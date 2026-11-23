@@ -40,6 +40,10 @@ on:
         type: string
         default: default
         required: false
+      upload-coverage:
+        type: boolean
+        default: false
+        required: false
       codecov-flag:
         type: string
         default: other
@@ -177,16 +181,18 @@ jobs:
           underlay-workspace: /opt/autoware
 
       - name: Upload coverage to CodeCov
-        if: ${{ steps.test.outputs.coverage-report-files != '' && !inputs.above }}
-        uses: codecov/codecov-action@v5
+        if: ${{ steps.test.outputs.coverage-report-files != '' && inputs.upload-coverage }}
+        uses: codecov/codecov-action@v6
         with:
           files: ${{ steps.test.outputs.coverage-report-files }}
-          disable_search: true
-          plugins: noop
           fail_ci_if_error: false
           verbose: true
           flags: ${{ inputs.codecov-flag }}
           token: ${{ secrets.codecov-token }}
+          disable_search: true
+          # Disable gcov and xcode plugins, keeping only pycoverage.
+          # Default plugins: https://github.com/getsentry/prevent-cli/blob/45e518e5ca344c9fb7a5cbe596a21b7ab85a39ed/codecov-cli/README.md?plain=1#L178
+          plugins: pycoverage
 
       - name: Show disk space after the tasks
         run: df -h

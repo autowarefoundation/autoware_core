@@ -92,6 +92,7 @@ jobs:
       container: ghcr.io/autowarefoundation/autoware:core-dependencies-jazzy
       above: false
       run-condition: ${{ needs.require-label.outputs.result == 'true' }}
+      upload-coverage: true
     secrets:
       codecov-token: ${{ secrets.CODECOV_TOKEN }}
 
