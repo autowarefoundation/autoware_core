@@ -7979,22 +7979,24 @@
 <ol>
 <li>Depend on <code>autoware_ndt_scan_matcher_common</code> and <code>pluginlib</code> in <code>package.xml</code>.</li>
 <li>Implement <code>autoware::ndt_scan_matcher::NdtBackend</code>, and export the class with <code>PLUGINLIB_EXPORT_CLASS</code>.</li>
-<li>Build the class into a library with <code>add_library()</code>, and install the library. Do not use <code>ament_auto_add_library()</code>: ament_auto exports the library and links it into the packages that depend on the backend package. pluginlib loads the library at runtime, so no other library may link it.</li>
+<li>Build the class into a library with <code>add_library()</code>, link the targets of <code>autoware_ndt_scan_matcher_common</code> and <code>pluginlib</code> with <code>target_link_libraries()</code>, and install the library. Do not use <code>ament_auto_add_library()</code>: ament_auto exports the library and links it into the packages that depend on the backend package. pluginlib loads the library at runtime, so no other library may link it. The target of <code>autoware_ndt_scan_matcher_common</code> gives only the <code>common</code> component of PCL. A backend that uses another component of PCL, for example <code>kdtree</code>, finds and links that component itself.</li>
 <li>Register the class with <code>pluginlib_export_plugin_description_file(autoware_ndt_scan_matcher_common &lt;file&gt;.xml)</code>.</li>
 </ol>
 <p><code>CMakeLists.txt</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nb">cmake_minimum_required</span><span class="p">(</span><span class="s">VERSION</span><span class="w"> </span><span class="s">3.14</span><span class="p">)</span>
 <span class="nb">project</span><span class="p">(</span><span class="s">my_package</span><span class="p">)</span>
 
-<span class="nb">find_package</span><span class="p">(</span><span class="s">ament_cmake_auto</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
-<span class="nb">ament_auto_find_build_dependencies</span><span class="p">()</span>
+<span class="nb">find_package</span><span class="p">(</span><span class="s">ament_cmake</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+<span class="nb">find_package</span><span class="p">(</span><span class="s">autoware_ndt_scan_matcher_common</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
+<span class="nb">find_package</span><span class="p">(</span><span class="s">pluginlib</span><span class="w"> </span><span class="s">REQUIRED</span><span class="p">)</span>
 
 <span class="nb">add_library</span><span class="p">(</span><span class="s">my_ndt_backend</span><span class="w"> </span><span class="s">SHARED</span><span class="w"> </span><span class="s">src/my_ndt_backend.cpp</span><span class="p">)</span>
-<span class="nb">ament_target_dependencies</span><span class="p">(</span><span class="s">my_ndt_backend</span><span class="w"> </span><span class="s">autoware_ndt_scan_matcher_common</span><span class="w"> </span><span class="s">pluginlib</span><span class="p">)</span>
+<span class="nb">target_link_libraries</span><span class="p">(</span><span class="s">my_ndt_backend</span>
+<span class="w">  </span><span class="o">${</span><span class="nv">autoware_ndt_scan_matcher_common_TARGETS</span><span class="o">}</span><span class="w"> </span><span class="o">${</span><span class="nv">pluginlib_TARGETS</span><span class="o">}</span><span class="p">)</span>
 <span class="nb">install</span><span class="p">(</span><span class="s">TARGETS</span><span class="w"> </span><span class="s">my_ndt_backend</span><span class="w"> </span><span class="s">LIBRARY</span><span class="w"> </span><span class="s">DESTINATION</span><span class="w"> </span><span class="s">lib</span><span class="p">)</span>
 <span class="nb">pluginlib_export_plugin_description_file</span><span class="p">(</span><span class="s">autoware_ndt_scan_matcher_common</span><span class="w"> </span><span class="s">plugins.xml</span><span class="p">)</span>
 
-<span class="nb">ament_auto_package</span><span class="p">()</span>
+<span class="nb">ament_package</span><span class="p">()</span>
 </code></pre></div>
 <p><code>plugins.xml</code>:</p>
 <div class="highlight"><pre><span></span><code><span class="nt">&lt;library</span><span class="w"> </span><span class="na">path=</span><span class="s">"my_ndt_backend"</span><span class="nt">&gt;</span>
@@ -8006,7 +8008,7 @@
 <p><code>path</code> is the name of the library. <code>type</code> is the class that <code>PLUGINLIB_EXPORT_CLASS</code> exports. <code>name</code> is the value of <code>ndt.backend</code> that selects the backend. Use a short, lowercase name that tells the implementation, for example <code>ndt_omp</code> or <code>ndt_cuda</code>. A name must be unique among all installed backends, so do not use only the name of a technology that other implementations can also use, for example <code>cuda</code>.</p>
 <h2 id="compile-options">Compile options<a class="headerlink" href="#compile-options" title="Permanent link">#</a></h2>
 <p><code>NdtResult</code> holds fixed-size <code>Eigen</code> types, which pass between the node and the backend library. Their memory layout depends on the static alignment of <code>Eigen</code>, which depends on the SIMD options of the compiler: AVX changes it, and SSE does not. The node also frees vectors that the backend allocated with the allocator of <code>Eigen</code>. Some options change this allocator, for example AVX or the address sanitizer of GCC.</p>
-<p>The types and the interface are in an inline namespace whose name holds the version of the interface, the <code>Eigen</code> alignment (<code>EIGEN_MAX_STATIC_ALIGN_BYTES</code>) and the <code>Eigen</code> allocator. A backend that was built against another version of the interface, or with an alignment or an allocator that differs from the node, has other C++ symbols. Then the node loads its library but finds no factory for the backend, and it stops with an error message that names this cause. Rebuild the backend against the same version of Autoware Core, and do not enable AVX or a sanitizer in only one of the two. The name does not hold the version of <code>Eigen</code>, so the node and the backend must also use the same <code>Eigen</code>.</p>
+<p>The types and the interface are in an inline namespace whose name holds the version of the interface, the <code>Eigen</code> alignment (<code>EIGEN_MAX_STATIC_ALIGN_BYTES</code>) and the <code>Eigen</code> allocator. A backend that was built against another version of the interface, or with an alignment or an allocator that differs from the node, has other C++ symbols. Then the node loads its library but finds no factory for the backend, and it stops with an error message that names this cause. Rebuild the backend against the same version of Autoware Core, and do not enable AVX or a sanitizer in only one of the two. The name does not hold the version of <code>Eigen</code> or of PCL, so the node and the backend must also use the same <code>Eigen</code> and the same PCL. <code>NdtBackend</code> passes <code>pcl::PointCloud</code> between them.</p>
 <p>When a declaration in <code>ndt_types.hpp</code> or <code>ndt_backend.hpp</code> changes, change the version <code>v1</code> in the name of the inline namespace.</p></div>
 
 
