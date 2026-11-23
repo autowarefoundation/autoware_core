@@ -72,7 +72,7 @@ TEST(LoadNdtBackend, TheBackendLibraryStaysLoaded)
   // loaded in that case too.
   NdtBackend::SharedPtr clone;
   {
-    const LogSpy spy;
+    LogSpy spy;
     clone = load_ndt_backend("ndt_omp")->clone();
     EXPECT_EQ(spy.text().find("SEVERE WARNING"), std::string::npos) << spy.text();
   }

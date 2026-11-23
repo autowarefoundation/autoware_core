@@ -32,6 +32,7 @@
 
 #include <rcl_yaml_param_parser/parser.h>
 
+#include <algorithm>
 #include <atomic>
 #include <chrono>
 #include <functional>
@@ -116,7 +117,8 @@ public:
   using Record = DiagnosticsCapture::Record;
 
   /// @param overrides Appended *after* the shipped yaml. `NodeOptions::parameter_overrides()`
-  /// is applied in vector order into a map, so the last write wins and these take effect.
+  /// is applied in vector order into a map, so the last write wins and these take effect. An
+  /// override without a value removes that parameter of the yaml.
   /// @param with_map_loader False leaves `pcd_loader_service` unserved, for the loader-absent
   /// case; everything else is unchanged.
   explicit NdtHarness(std::vector<rclcpp::Parameter> overrides = {}, bool with_map_loader = true)
@@ -560,8 +562,18 @@ private:
         node_options.parameter_overrides().push_back(parameter);
       }
     }
+    auto & parameters = node_options.parameter_overrides();
     for (const auto & parameter : overrides_) {
-      node_options.parameter_overrides().push_back(parameter);
+      if (parameter.get_type() == rclcpp::ParameterType::PARAMETER_NOT_SET) {
+        // An override without a value removes the parameter, as if the yaml did not have it.
+        parameters.erase(
+          std::remove_if(
+            parameters.begin(), parameters.end(),
+            [&](const auto & other) { return other.get_name() == parameter.get_name(); }),
+          parameters.end());
+      } else {
+        parameters.push_back(parameter);
+      }
     }
     return node_options;
   }
