@@ -26,6 +26,7 @@ ignore:
   - tools/**
   - "**/examples/*"
   - "**/examples/**/*"
+  - "**/setup.py"
 
 component_management:
   individual_components:
