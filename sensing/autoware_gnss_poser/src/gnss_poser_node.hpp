@@ -62,6 +62,13 @@ private:
   // Publish the messages the pose computation produced.
   void publish_data(const GnssPoser::Result & result);
 
+  // Declared before tf2_listener_, so that a missing or invalid parameter throws before the
+  // listener starts its spin thread. If the listener is destroyed before that thread enters
+  // spin(), the cancel is lost and the destructor waits forever in join()
+  // (https://github.com/ros2/rclcpp/issues/3172).
+  const std::string base_frame_;
+  GnssPoser gnss_poser_;
+
   tf2::BufferCore tf2_buffer_;
   autoware::agnocast_wrapper::TransformListener tf2_listener_;
   autoware::agnocast_wrapper::TransformBroadcaster tf2_broadcaster_;
@@ -74,10 +81,6 @@ private:
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseStamped) pose_pub_;
   AUTOWARE_PUBLISHER_PTR(geometry_msgs::msg::PoseWithCovarianceStamped) pose_cov_pub_;
   AUTOWARE_PUBLISHER_PTR(autoware_internal_debug_msgs::msg::BoolStamped) fixed_pub_;
-
-  const std::string base_frame_;
-
-  GnssPoser gnss_poser_;
 };
 }  // namespace autoware::gnss_poser
 
