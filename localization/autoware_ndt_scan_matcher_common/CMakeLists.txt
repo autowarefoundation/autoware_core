@@ -12,6 +12,15 @@ find_package(Eigen3 REQUIRED)
 find_package(PCL REQUIRED COMPONENTS common)
 ament_export_dependencies(eigen3_cmake_module Eigen3 PCL)
 
+# A backend package links this target. It gives the include directory, Eigen and PCL.
+add_library(${PROJECT_NAME} INTERFACE)
+target_include_directories(${PROJECT_NAME} INTERFACE
+  $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
+  $<INSTALL_INTERFACE:include/${PROJECT_NAME}>)
+target_link_libraries(${PROJECT_NAME} INTERFACE Eigen3::Eigen pcl_common)
+install(TARGETS ${PROJECT_NAME} EXPORT export_${PROJECT_NAME})
+ament_export_targets(export_${PROJECT_NAME})
+
 if(BUILD_TESTING)
   find_package(ament_cmake_gtest REQUIRED)
   find_package(class_loader REQUIRED)
@@ -30,17 +39,13 @@ if(BUILD_TESTING)
   ament_add_gtest(test_ndt_backend_abi
     test/test_ndt_backend_abi.cpp
   )
-  target_include_directories(test_ndt_backend_abi PRIVATE include)
-  target_include_directories(test_ndt_backend_abi SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
   target_link_libraries(test_ndt_backend_abi
-    Eigen3::Eigen class_loader::class_loader ${CMAKE_DL_LIBS})
+    ${PROJECT_NAME} class_loader::class_loader ${CMAKE_DL_LIBS})
 
   foreach(variant
     same align_0 align_16 align_32 align_64 allocator_eigen allocator_std)
     add_library(fake_ndt_backend_${variant} MODULE test/fake_ndt_backend.cpp)
-    target_include_directories(fake_ndt_backend_${variant} PRIVATE include)
-    target_include_directories(fake_ndt_backend_${variant} SYSTEM PRIVATE ${PCL_INCLUDE_DIRS})
-    target_link_libraries(fake_ndt_backend_${variant} Eigen3::Eigen class_loader::class_loader)
+    target_link_libraries(fake_ndt_backend_${variant} ${PROJECT_NAME} class_loader::class_loader)
     target_compile_definitions(fake_ndt_backend_${variant} PRIVATE
       ${fake_backend_definitions_${variant}})
     # $<1:...> keeps a multi-config generator from adding a directory for each configuration.

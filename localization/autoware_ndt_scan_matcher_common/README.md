@@ -33,7 +33,7 @@ A backend package does these steps:
 
 1. Depend on `autoware_ndt_scan_matcher_common` and `pluginlib` in `package.xml`.
 2. Implement `autoware::ndt_scan_matcher::NdtBackend`, and export the class with `PLUGINLIB_EXPORT_CLASS`.
-3. Build the class into a library with `add_library()`, and install the library. Do not use `ament_auto_add_library()`: ament_auto exports the library and links it into the packages that depend on the backend package. pluginlib loads the library at runtime, so no other library may link it.
+3. Build the class into a library with `add_library()`, link the targets of `autoware_ndt_scan_matcher_common` and `pluginlib` with `target_link_libraries()`, and install the library. Do not use `ament_auto_add_library()`: ament_auto exports the library and links it into the packages that depend on the backend package. pluginlib loads the library at runtime, so no other library may link it. The target of `autoware_ndt_scan_matcher_common` gives only the `common` component of PCL. A backend that uses another component of PCL, for example `kdtree`, finds and links that component itself.
 4. Register the class with `pluginlib_export_plugin_description_file(autoware_ndt_scan_matcher_common <file>.xml)`.
 
 `CMakeLists.txt`:
@@ -42,15 +42,17 @@ A backend package does these steps:
 cmake_minimum_required(VERSION 3.14)
 project(my_package)
 
-find_package(ament_cmake_auto REQUIRED)
-ament_auto_find_build_dependencies()
+find_package(ament_cmake REQUIRED)
+find_package(autoware_ndt_scan_matcher_common REQUIRED)
+find_package(pluginlib REQUIRED)
 
 add_library(my_ndt_backend SHARED src/my_ndt_backend.cpp)
-ament_target_dependencies(my_ndt_backend autoware_ndt_scan_matcher_common pluginlib)
+target_link_libraries(my_ndt_backend
+  ${autoware_ndt_scan_matcher_common_TARGETS} ${pluginlib_TARGETS})
 install(TARGETS my_ndt_backend LIBRARY DESTINATION lib)
 pluginlib_export_plugin_description_file(autoware_ndt_scan_matcher_common plugins.xml)
 
-ament_auto_package()
+ament_package()
 ```
 
 `plugins.xml`:
@@ -69,6 +71,6 @@ ament_auto_package()
 
 `NdtResult` holds fixed-size `Eigen` types, which pass between the node and the backend library. Their memory layout depends on the static alignment of `Eigen`, which depends on the SIMD options of the compiler: AVX changes it, and SSE does not. The node also frees vectors that the backend allocated with the allocator of `Eigen`. Some options change this allocator, for example AVX or the address sanitizer of GCC.
 
-The types and the interface are in an inline namespace whose name holds the version of the interface, the `Eigen` alignment (`EIGEN_MAX_STATIC_ALIGN_BYTES`) and the `Eigen` allocator. A backend that was built against another version of the interface, or with an alignment or an allocator that differs from the node, has other C++ symbols. Then the node loads its library but finds no factory for the backend, and it stops with an error message that names this cause. Rebuild the backend against the same version of Autoware Core, and do not enable AVX or a sanitizer in only one of the two. The name does not hold the version of `Eigen`, so the node and the backend must also use the same `Eigen`.
+The types and the interface are in an inline namespace whose name holds the version of the interface, the `Eigen` alignment (`EIGEN_MAX_STATIC_ALIGN_BYTES`) and the `Eigen` allocator. A backend that was built against another version of the interface, or with an alignment or an allocator that differs from the node, has other C++ symbols. Then the node loads its library but finds no factory for the backend, and it stops with an error message that names this cause. Rebuild the backend against the same version of Autoware Core, and do not enable AVX or a sanitizer in only one of the two. The name does not hold the version of `Eigen` or of PCL, so the node and the backend must also use the same `Eigen` and the same PCL. `NdtBackend` passes `pcl::PointCloud` between them.
 
 When a declaration in `ndt_types.hpp` or `ndt_backend.hpp` changes, change the version `v1` in the name of the inline namespace.

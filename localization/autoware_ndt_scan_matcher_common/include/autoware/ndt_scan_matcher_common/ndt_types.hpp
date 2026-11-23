@@ -108,7 +108,8 @@ struct NdtParams
 ///
 /// The regularization score is -s * n * d * d. s is NdtParams::regularization_scale_factor. n is
 /// the number of pairs of a point and a voxel near it. d is the distance from the pose to the
-/// regularization pose along the heading of the pose: d = dx * cos(yaw) + dy * sin(yaw).
+/// regularization pose along the heading of the pose: d = dx * cos(yaw) + dy * sin(yaw). yaw is the
+/// third angle of Eigen's eulerAngles(0, 1, 2) of the pose, as in the hessian.
 ///
 /// The backend "ndt_omp" of autoware_ndt_scan_matcher is the reference for all of these rules.
 struct NdtResult

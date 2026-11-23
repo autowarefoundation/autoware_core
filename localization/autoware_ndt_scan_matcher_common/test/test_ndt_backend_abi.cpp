@@ -58,8 +58,18 @@ int call(const std::string & library, const char * function)
   return value;
 }
 
-// The number of libraries that the tests expected not to load.
-int refused_count = 0;  // NOLINT
+// "same" has no definition of its own. The other libraries set a static alignment of 0, 16, 32
+// (AVX) or 64 bytes (AVX-512), or the allocator: the one of Eigen or std::malloc(). Which of them
+// have the configuration of the test depends on the compiler options of the build.
+constexpr const char * variants[] = {"same",     "align_0",         "align_16",     "align_32",
+                                     "align_64", "allocator_eigen", "allocator_std"};
+
+// The library must be loaded.
+bool has_same_configuration(const std::string & library)
+{
+  return call(library, "fake_ndt_backend_static_alignment") == static_alignment &&
+         call(library, "fake_ndt_backend_std_malloc") == std_malloc;
+}
 
 class FakeBackendLibrary : public testing::TestWithParam<const char *>
 {
@@ -70,39 +80,33 @@ TEST_P(FakeBackendLibrary, LoadsOnlyWithTheSameConfiguration)
 {
   const std::string library = library_path(GetParam());
   class_loader::ClassLoader loader(library);
-  const bool same_configuration =
-    call(library, "fake_ndt_backend_static_alignment") == static_alignment &&
-    call(library, "fake_ndt_backend_std_malloc") == std_malloc;
 
-  if (same_configuration) {
+  if (has_same_configuration(library)) {
     const auto backend = loader.createUniqueInstance<NdtBackend>("fake::FakeBackend");
     ASSERT_NE(backend, nullptr);
     EXPECT_EQ(backend->name(), "fake");
   } else {
-    ++refused_count;
     EXPECT_THROW(
       loader.createUniqueInstance<NdtBackend>("fake::FakeBackend"),
       class_loader::CreateClassException);
   }
 }
 
-// "same" has no definition of its own. The other libraries set a static alignment of 0, 16, 32
-// (AVX) or 64 bytes (AVX-512), or the allocator: the one of Eigen or std::malloc(). Which of them
-// have the configuration of the test depends on the compiler options of the build.
-INSTANTIATE_TEST_SUITE_P(
-  NdtBackendAbi, FakeBackendLibrary,
-  testing::Values(
-    "same", "align_0", "align_16", "align_32", "align_64", "allocator_eigen", "allocator_std"));
+INSTANTIATE_TEST_SUITE_P(NdtBackendAbi, FakeBackendLibrary, testing::ValuesIn(variants));
 
-// Runs after all tests. At least the alignments that differ from the test were refused, so the
-// definitions of the libraries had an effect.
-class RefusedCount : public testing::Environment
+// At least the alignments that differ from the test give another configuration, so the
+// definitions of the libraries have an effect.
+TEST(FakeBackendLibraries, DefinitionsChangeTheConfiguration)
 {
-public:
-  void TearDown() override { EXPECT_GE(refused_count, 3); }
-};
-
-const testing::Environment * const refused_count_environment =  // NOLINT
-  testing::AddGlobalTestEnvironment(new RefusedCount);          // NOLINT
+  int other_configuration_count = 0;
+  for (const char * variant : variants) {
+    const std::string library = library_path(variant);
+    const class_loader::ClassLoader loader(library);
+    if (!has_same_configuration(library)) {
+      ++other_configuration_count;
+    }
+  }
+  EXPECT_GE(other_configuration_count, 3);
+}
 
 }  // namespace

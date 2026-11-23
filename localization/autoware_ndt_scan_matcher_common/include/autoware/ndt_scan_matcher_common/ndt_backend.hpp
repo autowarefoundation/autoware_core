@@ -92,9 +92,10 @@ public:
   virtual bool has_target() const = 0;
 
   /// An independent instance with the same parameters, map, regularization pose and state. Later
-  /// changes to one instance do not change the other. The node calls it while it holds the lock
-  /// of the active instance, so a long copy delays the alignments. The instances can share
-  /// immutable data, for example a map that is already on the GPU.
+  /// changes to one instance do not change the other. The node calls it on the active instance
+  /// while it holds the lock of that instance, so a long copy delays the alignments. It also calls
+  /// it on the instance that the map update thread builds, which no other thread uses at that time.
+  /// The instances can share immutable data, for example a map that is already on the GPU.
   virtual SharedPtr clone() const = 0;
   /// A new instance of the same backend, with the same parameters, without a map and without a
   /// regularization pose.
