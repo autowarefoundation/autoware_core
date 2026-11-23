@@ -78,3 +78,5 @@ ament_autoware_interface_spec_lint \
 ## Gate config
 
 `config/interface_gates.yaml` maps each gate to a severity and carries the `no_raw_spec_topic` deny/allow lists and the `owner_isolation` base owner. The loader rejects an unknown gate name and rejects enabling a deferred gate (it may only be declared `off`).
+
+<!-- Temporary change to test the Python coverage upload. Revert before merge. -->
