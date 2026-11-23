@@ -135,13 +135,13 @@ bool MapUpdateModule::update_map_internal(
   if (builder_state.need_rebuild) {
     bool updated = false;
     ndt_ptr_.with([&](auto & ndt_ptr) {
-      auto param = ndt_ptr->getParams();
+      auto param = ndt_ptr->get_params();
 
       ndt_ptr.reset(new NdtType);
       // The map is rebuilt from scratch, so reset the accumulated debug map as well.
       loaded_pcd_map_.clear();
 
-      ndt_ptr->setParams(param);
+      ndt_ptr->set_params(param);
 
       updated = update_ndt(position, *ndt_ptr, diagnostics);
     });
@@ -222,14 +222,14 @@ bool MapUpdateModule::update_ndt(
   const geometry_msgs::msg::Point & position, NdtType & ndt, DiagnosticsReport & diagnostics)
 {
   diagnostics.add_key_value(
-    {"maps_size_before", static_cast<int64_t>(ndt.getCurrentMapIDs().size())});
+    {"maps_size_before", static_cast<int64_t>(ndt.get_current_map_ids().size())});
 
   auto request = std::make_shared<GetDifferentialPointCloudMap::Request>();
 
   request->area.center_x = static_cast<float>(position.x);
   request->area.center_y = static_cast<float>(position.y);
   request->area.radius = static_cast<float>(param_.map_radius);
-  request->cached_ids = ndt.getCurrentMapIDs();
+  request->cached_ids = ndt.get_current_map_ids();
 
   // Fetch the differential point cloud map. The ROS node performs the actual service call.
   const auto response = pcd_loader_(request);
@@ -262,7 +262,7 @@ bool MapUpdateModule::update_ndt(
     auto cloud = pcl::make_shared<pcl::PointCloud<PointTarget>>();
 
     pcl::fromROSMsg(map.pointcloud, *cloud);
-    ndt.addTarget(cloud, map.cell_id);
+    ndt.add_target(cloud, map.cell_id);
 
     // Keep the loaded cloud for the debug publish. Stored as the received PointCloud2 to avoid a
     // PCL round-trip, keyed by cell id so it can be erased when the cell is dropped.
@@ -273,13 +273,13 @@ bool MapUpdateModule::update_ndt(
 
   // Remove pcd
   for (const std::string & map_id_to_remove : map_ids_to_remove) {
-    ndt.removeTarget(map_id_to_remove);
+    ndt.remove_target(map_id_to_remove);
     if (param_.publish_loaded_map) {
       loaded_pcd_map_.erase(map_id_to_remove);
     }
   }
 
-  ndt.createVoxelKdtree();
+  ndt.create_voxel_kdtree();
 
   const auto exe_end_time = std::chrono::system_clock::now();
   const auto duration_micro_sec =
@@ -287,7 +287,7 @@ bool MapUpdateModule::update_ndt(
   const auto exe_time = static_cast<double>(duration_micro_sec) / 1000.0;
   diagnostics.add_key_value({"map_update_execution_time", exe_time});
   diagnostics.add_key_value(
-    {"maps_size_after", static_cast<int64_t>(ndt.getCurrentMapIDs().size())});
+    {"maps_size_after", static_cast<int64_t>(ndt.get_current_map_ids().size())});
 
   return true;  // Updated
 }
