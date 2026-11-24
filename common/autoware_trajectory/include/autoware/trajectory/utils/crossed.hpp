@@ -20,8 +20,12 @@
 #include "autoware/trajectory/forward.hpp"
 #include "autoware/trajectory/temporal_trajectory.hpp"
 #include "autoware/trajectory/threshold.hpp"
+#include "autoware_utils_geometry/geometry.hpp"
 
 #include <Eigen/Core>
+
+#include <boost/geometry/algorithms/correct.hpp>
+#include <boost/geometry/algorithms/intersects.hpp>
 
 #include <cmath>
 #include <functional>
@@ -139,6 +143,28 @@ template <class LineStringType>
   return crossed_points;
 }
 
+template <class PathPointType, class LineStringType>
+[[nodiscard]] std::vector<double> crossed(
+  const std::vector<PathPointType> & points, const LineStringType & linestring)
+{
+  using Builder = typename Trajectory<PathPointType>::Builder;
+
+  auto trajectory = Builder{}.build(points);
+  if (!trajectory.has_value()) {
+    return {};
+  }
+  return crossed(*trajectory, linestring);
+}
+
+template <class PathType, class LineStringType>
+[[nodiscard]] std::vector<double> crossed(const PathType & path, const LineStringType & linestring)
+{
+  if (path.points.size() < 2) {
+    return {};
+  }
+  return crossed(path.points, linestring);
+}
+
 /**
  * @brief Finds intersections between a trajectory and a polygon,
  * @tparam TrajectoryPointType The type of points in the trajectory.
@@ -171,6 +197,51 @@ template <class TrajectoryPointType, class PolygonClosurePointsType>
   boundary.push_back(front_point);
   return crossed_with_constraint(
     trajectory, boundary, [](const TrajectoryPointType &) { return true; });
+}
+
+template <class PathPointType, class PolygonClosurePointsType>
+[[nodiscard]] std::vector<double> crossed_with_polygon(
+  const std::vector<PathPointType> & points,
+  const PolygonClosurePointsType & open_or_closed_boundary)
+{
+  using Builder = typename Trajectory<PathPointType>::Builder;
+
+  auto trajectory = Builder{}.build(points);
+  if (!trajectory.has_value()) {
+    return {};
+  }
+  return crossed_with_polygon(*trajectory, open_or_closed_boundary);
+}
+
+template <class PathType, class PolygonClosurePointsType>
+[[nodiscard]] std::vector<double> crossed_with_polygon(
+  const PathType & path, const PolygonClosurePointsType & open_or_closed_boundary)
+{
+  if (path.points.size() < 2) {
+    return {};
+  }
+  return crossed_with_polygon(path.points, open_or_closed_boundary);
+}
+
+template <class PolygonType, class LinearRingType>
+bool crossed_with_footprint(
+  const geometry_msgs::msg::Pose & pose, const PolygonType & polygon,
+  const LinearRingType & base_footprint)
+{
+  auto transformed_footprint = autoware_utils_geometry::transform_vector(
+    base_footprint, autoware_utils_geometry::pose2transform(pose));
+  boost::geometry::correct(transformed_footprint);
+
+  // use disjoint instead of intersect to allow MultiPolygon
+  return !boost::geometry::disjoint(transformed_footprint, polygon);
+}
+
+template <class PolygonType, class PointType>
+bool crossed_with_footprint(
+  const geometry_msgs::msg::Pose & pose, const PolygonType & polygon,
+  const boost::geometry::model::polygon<PointType> & base_footprint)
+{
+  return crossed_with_footprint(pose, polygon, base_footprint.outer());
 }
 
 }  // namespace autoware::experimental::trajectory
