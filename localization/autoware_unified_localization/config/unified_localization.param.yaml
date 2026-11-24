@@ -1,0 +1,64 @@
+/**:
+  ros__parameters:
+    # Output frame ids
+    pose_frame_id: "map"
+    child_frame_id: "base_link"
+
+    # EKF (same structure as ekf_localizer for compatibility)
+    node:
+      predict_frequency: 50.0
+      enable_yaw_bias_estimation: true
+      extend_state_step: 50
+
+    pose_measurement:
+      pose_additional_delay: 0.0
+      pose_gate_dist: 49.5
+      pose_smoothing_steps: 5
+      max_pose_queue_size: 5
+
+    twist_measurement:
+      twist_additional_delay: 0.0
+      twist_gate_dist: 46.1
+      twist_smoothing_steps: 2
+      max_twist_queue_size: 2
+
+    process_noise:
+      proc_stddev_vx_c: 10.0
+      proc_stddev_wz_c: 5.0
+      proc_stddev_yaw_c: 0.005
+
+    simple_1d_filter_parameters:
+      z_filter_proc_dev: 5.0
+      roll_filter_proc_dev: 0.1
+      pitch_filter_proc_dev: 0.1
+
+    # Stop filter
+    stop_filter:
+      linear_x_threshold: 0.1
+      angular_z_threshold: 0.02
+
+    # Twist2Accel
+    twist2accel:
+      accel_lowpass_gain: 0.2
+
+    # Initialize service (AUTO method)
+    initialize:
+      auto_stop_check_enabled: false
+      auto_stop_check_duration_sec: 3.0
+      auto_stop_velocity_threshold: 0.1
+      auto_ndt_align_enabled: false
+      auto_ndt_align_service_name: "/localization/pose_estimator/ndt_align_srv"
+      auto_ndt_align_timeout_sec: 10.0
+      # YabLoc align (same srv type as NDT). Use when pose source is YabLoc (universe).
+      auto_yabloc_align_enabled: false
+      auto_yabloc_align_service_name: "/localization/pose_estimator/yabloc_align_srv"
+      auto_yabloc_align_timeout_sec: 10.0
+      # Optional: call std_srvs/SetBool (data=false before, data=true after) for each service. Same as pose_initializer ekf_trigger_node / ndt_trigger_node. Omit trigger_services to use default [] (empty list in YAML can cause parameter_value_from to fail).
+      trigger_timeout_sec: 5.0
+      # GNSS-only AUTO: when /localization/initialize is called with method AUTO and empty pose_with_covariance,
+      # use the latest pose from this topic as seed (e.g. from Eagleye or gnss_poser). Empty = disabled.
+      auto_gnss_pose_topic: ""
+      # Override initial pose covariance (align/seed/direct) with param before EKF init. Same as existing pose_initializer.
+      # When true, initial_pose_covariance replaces the covariance of the pose passed to initialize. 36 (row-major 6x6) or 6 (diagonal).
+      initial_pose_covariance_override_enabled: false
+      initial_pose_covariance: [0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.01]
