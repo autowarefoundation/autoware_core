@@ -27,6 +27,9 @@
 
 namespace
 {
+constexpr float kPi = 3.14159265358979323846f;
+constexpr float kPiOver2 = kPi / 2.0f;
+constexpr float kPiOver4 = kPi / 4.0f;
 
 float pseudoArcTan2(const float y, const float x)
 {
@@ -35,38 +38,38 @@ float pseudoArcTan2(const float y, const float x)
   // avoid divide-by-zero
   if (y == 0.0f) {
     if (x >= 0.0f) return 0.0f;
-    return M_PIf;
+    return kPi;
   }
   if (x == 0.0f) {
-    if (y >= 0.0f) return M_PI_2f;
-    return -M_PI_2f;
+    if (y >= 0.0f) return kPiOver2;
+    return -kPiOver2;
   }
 
   const float x_abs = std::abs(x);
   const float y_abs = std::abs(y);
 
   // divide to 8 zones
-  constexpr float M_2PIf = 2.0f * M_PIf;
-  constexpr float M_3PI_2f = 3.0f * M_PI_2f;
+  constexpr float k2Pi = 2.0f * kPi;
+  constexpr float k3PiOver2 = 3.0f * kPiOver2;
   if (x_abs > y_abs) {
     const float ratio = y_abs / x_abs;
-    const float angle = ratio * M_PI_4f;
+    const float angle = ratio * kPiOver4;
     if (y >= 0.0f) {
       if (x >= 0.0f) return angle;  // 1st zone
-      return M_PIf - angle;         // 2nd zone
+      return kPi - angle;           // 2nd zone
     } else {
-      if (x >= 0.0f) return M_2PIf - angle;  // 4th zone
-      return M_PIf + angle;                  // 3rd zone
+      if (x >= 0.0f) return k2Pi - angle;  // 4th zone
+      return kPi + angle;                  // 3rd zone
     }
   } else {
     const float ratio = x_abs / y_abs;
-    const float angle = ratio * M_PI_4f;
+    const float angle = ratio * kPiOver4;
     if (y >= 0.0f) {
-      if (x >= 0.0f) return M_PI_2f - angle;  // 1st zone
-      return M_PI_2f + angle;                 // 2nd zone
+      if (x >= 0.0f) return kPiOver2 - angle;  // 1st zone
+      return kPiOver2 + angle;                 // 2nd zone
     } else {
-      if (x >= 0.0f) return M_3PI_2f + angle;  // 4th zone
-      return M_3PI_2f - angle;                 // 3rd zone
+      if (x >= 0.0f) return k3PiOver2 + angle;  // 4th zone
+      return k3PiOver2 - angle;                 // 3rd zone
     }
   }
 }
@@ -77,20 +80,20 @@ float pseudoTan(const float theta)
 
   // normalize the angle, range of [-pi/2, pi/2]
   float normalized_theta = theta;
-  while (normalized_theta > M_PI_2f) {
-    normalized_theta -= M_PIf;
+  while (normalized_theta > kPiOver2) {
+    normalized_theta -= kPi;
   }
-  while (normalized_theta < -M_PI_2f) {
-    normalized_theta += M_PIf;
+  while (normalized_theta < -kPiOver2) {
+    normalized_theta += kPi;
   }
 
   // avoid divide-by-zero
   if (normalized_theta == 0.0f) return 0.0f;
 
   if (std::abs(normalized_theta) <= 1.0f) {
-    return normalized_theta / M_PI_4f;
+    return normalized_theta / kPiOver4;
   }
-  return std::copysign(M_PI_4f / (M_PI_2f - std::abs(normalized_theta)), normalized_theta);
+  return std::copysign(kPiOver4 / (kPiOver2 - std::abs(normalized_theta)), normalized_theta);
 }
 }  // namespace
 
@@ -331,9 +334,9 @@ private:
       azimuth_grids_per_radial_.resize(radial_grid_num);
       azimuth_interval_per_radial_.resize(radial_grid_num);
       azimuth_grids_per_radial_[0] = 1;
-      azimuth_interval_per_radial_[0] = 2.0f * M_PIf;
+      azimuth_interval_per_radial_[0] = 2.0f * kPi;
 
-      const int max_azimuth_grid_num = static_cast<int>(2.0 * M_PIf / grid_azimuth_size_);
+      const int max_azimuth_grid_num = static_cast<int>(2.0 * kPi / grid_azimuth_size_);
 
       int divider = 1;
       for (size_t i = radial_grid_num - 1; i > 0; --i) {
@@ -346,7 +349,7 @@ private:
         // set azimuth grid number
         const int grid_num = static_cast<int>(max_azimuth_grid_num / divider);
         const int azimuth_grid_num = std::max(std::min(grid_num, max_azimuth_grid_num), 1);
-        const float azimuth_interval_evened = 2.0f * M_PIf / azimuth_grid_num;
+        const float azimuth_interval_evened = 2.0f * kPi / azimuth_grid_num;
 
         azimuth_grids_per_radial_[i] = azimuth_grid_num;
         azimuth_interval_per_radial_[i] = azimuth_interval_evened;
