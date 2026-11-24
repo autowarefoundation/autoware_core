@@ -160,3 +160,171 @@ TEST_F(VehicleInfoUtilTest, check_internal_pose_transformation)
     EXPECT_FLOAT_EQ(footprint.at(VehicleInfo::RearLeftIndex).y(), -1.03 + 1.5);
   }
 }
+
+TEST_F(VehicleInfoUtilTest, check_footprint_polygon)
+{
+  using autoware::vehicle_info_utils::VehicleInfo;
+  using autoware::vehicle_info_utils::VehicleInfoUtils;
+  std::optional<VehicleInfoUtils> vehicle_info_util_opt{std::nullopt};
+  ASSERT_NO_THROW({ vehicle_info_util_opt.emplace(VehicleInfoUtils(*node_)); });
+  const auto & vehicle_info_util = vehicle_info_util_opt.value();
+  const auto vehicle_info = vehicle_info_util.getVehicleInfo();
+
+  // Base generation
+  {
+    const auto footprint = vehicle_info.createFootprintPolygon();
+    ASSERT_EQ(typeid(footprint), typeid(autoware_utils_geometry::Polygon2d))
+      << "footprint is not autoware_utils_geometry::Polygon2d";
+    // front-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).x(), 2.74 + 1.0);
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).y(), 1.63 / 2 + 0.1);
+    // front-right
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).x(), 2.74 + 1.0);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).y(), -(1.63 / 2 + 0.1));
+    // rear-right
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearRightIndex).x(), -1.03);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearRightIndex).y(), -(1.63 / 2 + 0.1));
+    // rear-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).x(), -1.03);
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).y(), 1.63 / 2 + 0.1);
+  }
+
+  // with margin
+  {
+    const auto footprint = vehicle_info.createFootprintPolygon(1.0, 1.1, 0.5, 0.6);
+    ASSERT_EQ(typeid(footprint), typeid(autoware_utils_geometry::Polygon2d))
+      << "footprint is not autoware_utils_geometry::Polygon2d";
+    // front-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).x(), 2.74 + 1.0 + 0.5);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).y(), 1.63 / 2 + 0.1 + 1.0);
+    // front-right
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).x(), 2.74 + 1.0 + 0.5);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).y(), -(1.63 / 2 + 0.1 + 1.1));
+    // rear-right
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearRightIndex).x(), -(1.03 + 0.6));
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearRightIndex).y(), -(1.63 / 2 + 0.1 + 1.1));
+    // rear-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).x(), -(1.03 + 0.6));
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).y(), 1.63 / 2 + 0.1 + 1.0);
+  }
+
+  // with full margin
+  {
+    const auto footprint = vehicle_info.createFootprintPolygon(1.0, 1.1, 1.2, 1.3, 0.5, 0.6);
+    ASSERT_EQ(typeid(footprint), typeid(autoware_utils_geometry::Polygon2d))
+      << "footprint is not autoware_utils_geometry::Polygon2d";
+    // front-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).x(), 2.74 + 1.0 + 0.5);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).y(), 1.63 / 2 + 0.1 + 1.0);
+    // front-right
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).x(), 2.74 + 1.0 + 0.5);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).y(), -(1.63 / 2 + 0.1 + 1.1));
+    // rear-right
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearRightIndex).x(), -(1.03 + 0.6));
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearRightIndex).y(), -(1.63 / 2 + 0.1 + 1.3));
+    // rear-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).x(), -(1.03 + 0.6));
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).y(), 1.63 / 2 + 0.1 + 1.2);
+  }
+}
+TEST_F(VehicleInfoUtilTest, check_footprint_polygon_transformation)
+
+{
+  using autoware::vehicle_info_utils::VehicleInfo;
+  using autoware::vehicle_info_utils::VehicleInfoUtils;
+  std::optional<VehicleInfoUtils> vehicle_info_util_opt{std::nullopt};
+  ASSERT_NO_THROW({ vehicle_info_util_opt.emplace(VehicleInfoUtils(*node_)); });
+  const auto & vehicle_info_util = vehicle_info_util_opt.value();
+  const auto vehicle_info = vehicle_info_util.getVehicleInfo();
+  // translation
+  {
+    geometry_msgs::msg::Pose p;
+    p.position.x = 1.0;
+    p.position.y = 1.5;
+
+    const auto footprint = vehicle_info.createFootprintPolygon(0.0, p);
+    ASSERT_EQ(typeid(footprint), typeid(autoware_utils_geometry::Polygon2d))
+      << "footprint is not autoware_utils_geometry::Polygon2d";
+    // front-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).x(), 2.74 + 1.0 + 1.0);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).y(), 1.63 / 2 + 0.1 + 1.5);
+    // front-right
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).x(), 2.74 + 1.0 + 1.0);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).y(), -(1.63 / 2 + 0.1) + 1.5);
+    // rear-right
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearRightIndex).x(), -1.03 + 1.0);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearRightIndex).y(), -(1.63 / 2 + 0.1) + 1.5);
+    // rear-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).x(), -1.03 + 1.0);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).y(), 1.63 / 2 + 0.1 + 1.5);
+  }
+
+  // rotation
+  {
+    geometry_msgs::msg::Pose p{};
+    p.orientation = autoware_utils_geometry::create_quaternion_from_yaw(M_PI / 2);
+
+    const auto footprint = vehicle_info.createFootprintPolygon(0.0, p);
+    ASSERT_EQ(typeid(footprint), typeid(autoware_utils_geometry::Polygon2d))
+      << "footprint is not autoware_utils_geometry::Polygon2d";
+    // front-left
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).x(), -(1.63 / 2 + 0.1));
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).y(), 2.74 + 1.0);
+    // front-right
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).x(), 1.63 / 2 + 0.1);
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).y(), 2.74 + 1.0);
+    // rear-right
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearRightIndex).x(), 1.63 / 2 + 0.1);
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearRightIndex).y(), -1.03);
+    // rear-left
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).x(), -(1.63 / 2 + 0.1));
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).y(), -1.03);
+  }
+
+  // both translation and rotation
+  {
+    geometry_msgs::msg::Pose p{};
+    p.position.x = 1.0;
+    p.position.y = 1.5;
+    p.orientation = autoware_utils_geometry::create_quaternion_from_yaw(M_PI / 2);
+
+    const auto footprint = vehicle_info.createFootprintPolygon(0.0, p);
+    ASSERT_EQ(typeid(footprint), typeid(autoware_utils_geometry::Polygon2d))
+      << "footprint is not autoware_utils_geometry::Polygon2d";
+    // front-left
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).x(), -(1.63 / 2 + 0.1) + 1.0);
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonFrontLeftIndex).y(), 2.74 + 1.0 + 1.5);
+    // front-right
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).x(), 1.63 / 2 + 0.1 + 1.0);
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonFrontRightIndex).y(), 2.74 + 1.0 + 1.5);
+    // rear-right
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearRightIndex).x(), 1.63 / 2 + 0.1 + 1.0);
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearRightIndex).y(), -1.03 + 1.5);
+    // rear-left
+    EXPECT_FLOAT_EQ(
+      footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).x(), -(1.63 / 2 + 0.1) + 1.0);
+    EXPECT_FLOAT_EQ(footprint.outer().at(VehicleInfo::PolygonRearLeftIndex).y(), -1.03 + 1.5);
+  }
+}
