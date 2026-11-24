@@ -3703,6 +3703,8 @@
       
         
       
+        
+      
     
     
     
@@ -4438,14 +4440,14 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../autoware_pose_initializer/" class="md-nav__link ">
+            <a href="../autoware_ndt_scan_matcher_common/" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
     
   
-    Autoware pose initializer
+    Autoware ndt scan matcher common
   
 
     
@@ -4462,7 +4464,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Autoware pose initializer
+    Autoware ndt scan matcher common
   
 
           </label>
@@ -4513,14 +4515,14 @@
         
           
           <div class="md-nav__link md-nav__container">
-            <a href="../autoware_stop_filter/" class="md-nav__link ">
+            <a href="../autoware_pose_initializer/" class="md-nav__link ">
               
   
   
   <span class="md-ellipsis">
     
   
-    Autoware stop filter
+    Autoware pose initializer
   
 
     
@@ -4537,7 +4539,7 @@
             <span class="md-nav__icon md-icon"></span>
             
   
-    Autoware stop filter
+    Autoware pose initializer
   
 
           </label>
@@ -4588,6 +4590,81 @@
         
           
           <div class="md-nav__link md-nav__container">
+            <a href="../autoware_stop_filter/" class="md-nav__link ">
+              
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Autoware stop filter
+  
+
+    
+  </span>
+  
+  
+
+            </a>
+            
+          </div>
+        
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_8">
+            <span class="md-nav__icon md-icon"></span>
+            
+  
+    Autoware stop filter
+  
+
+          </label>
+          <ul class="md-nav__list" data-md-scrollfix>
+            
+              
+            
+          </ul>
+        </nav>
+      
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    
+    
+      
+        
+          
+        
+      
+    
+    
+    
+      
+      
+        
+          
+          
+        
+      
+    
+    
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
+      
+        
+        
+          
+        
+        <input class="md-nav__toggle md-toggle md-toggle--indeterminate" type="checkbox" id="__nav_5_9" >
+        
+          
+          <div class="md-nav__link md-nav__container">
             <a href="../autoware_twist2accel/" class="md-nav__link ">
               
   
@@ -4607,8 +4684,8 @@
             
           </div>
         
-        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_8_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_5_8">
+        <nav class="md-nav" data-md-level="2" aria-labelledby="__nav_5_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_5_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -7892,6 +7969,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#ndt-backends" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        NDT backends
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#regularization" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -8444,6 +8532,13 @@
 <td>≥1</td>
 </tr>
 <tr>
+<td>backend</td>
+<td>string</td>
+<td>The pluginlib lookup name of the NDT backend. "ndt_omp" is the NDT on the CPU with OpenMP.</td>
+<td>ndt_<wbr>omp</wbr></td>
+<td>N/A</td>
+</tr>
+<tr>
 <td>regularization.<wbr>enable</wbr></td>
 <td>boolean</td>
 <td>Regularization switch.</td>
@@ -8641,6 +8736,10 @@
 </tr>
 </tbody>
 </table>
+<h2 id="ndt-backends">NDT backends<a class="headerlink" href="#ndt-backends" title="Permanent link">#</a></h2>
+<p>The node does the NDT computations through a backend, which it loads with <a href="https://github.com/ros/pluginlib">pluginlib</a>. The parameter <code>ndt.backend</code> sets the name of the backend. This package has one backend, <code>ndt_omp</code>, which is ndt_omp on the CPU. The parameter file of this package sets <code>ndt_omp</code>.</p>
+<p>A backend is a class that implements <code>autoware::ndt_scan_matcher::NdtBackend</code> from <a href="../autoware_ndt_scan_matcher_common/">autoware_ndt_scan_matcher_common</a>. That README explains how another package adds a backend.</p>
+<p>If the node cannot load the backend, the node throws an exception at startup. For an unknown name, the message lists the available backends.</p>
 <h2 id="regularization">Regularization<a class="headerlink" href="#regularization" title="Permanent link">#</a></h2>
 <h3 id="abstract">Abstract<a class="headerlink" href="#abstract" title="Permanent link">#</a></h3>
 <p>This is a function that adds the regularization term to the NDT optimization problem as follows.</p>
