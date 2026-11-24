@@ -260,7 +260,7 @@ If not shown:
 ```bash
 sudo add-apt-repository ppa:t4-system-software/agnocast
 sudo apt update
-sudo apt install agnocast-kmod-v2.3  # Match the version in autoware.repos
+sudo apt install agnocast-kmod-v2.4  # Match the version in packages_above.repos
 sudo modprobe agnocast
 ```
 
@@ -275,7 +275,7 @@ ls /opt/ros/humble/lib/libagnocast_heaphook.so
 If not found:
 
 ```bash
-sudo apt install agnocast-heaphook-v2.3  # Match the version in autoware.repos
+sudo apt install agnocast-heaphook-v2.4  # Match the version in packages_above.repos
 ```
 
 &nbsp;
