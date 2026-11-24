@@ -1146,7 +1146,7 @@ std::optional<geometry_msgs::msg::Point> ObstacleStopModule::calc_stop_point(
   const auto stop_pose = output_traj_points.at(*zero_vel_idx).pose;
   planning_factor_interface_->add(
     output_traj_points, planner_data->current_odometry.pose.pose, stop_pose, PlanningFactor::STOP,
-    safety_factor_array);
+    safety_factor_array, planner_data->is_driving_forward);
 
   prev_stop_distance_info_ = std::make_pair(output_traj_points, determined_zero_vel_dist.value());
 
