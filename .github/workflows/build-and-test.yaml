@@ -41,7 +41,8 @@ jobs:
       cache-key-element: build
       above: ${{ matrix.above }}
       enable-agnocast: ${{ matrix.enable-agnocast }}
-      codecov-flag: total-${{ matrix.rosdistro }}${{ matrix.enable-agnocast && '-agnocast' || '' }}
+      upload-coverage: ${{ matrix.rosdistro == 'jazzy' && !matrix.above && !matrix.enable-agnocast }}
+      codecov-flag: full-suite
       concurrency-group: build-and-test-${{ matrix.rosdistro }}${{ matrix.above && '-above' || '' }}${{ matrix.enable-agnocast && '-agnocast' || '' }}-${{ github.ref }}-${{ github.run_id }}
       runner: ${{ matrix.above && '["self-hosted","Linux","X64"]' || '["ubuntu-latest"]' }}
 
