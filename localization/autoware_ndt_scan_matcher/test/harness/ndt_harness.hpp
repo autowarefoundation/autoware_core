@@ -200,6 +200,8 @@ public:
 
   [[nodiscard]] DiagnosticsCapture & diag() const { return *diagnostics_; }
 
+  [[nodiscard]] rclcpp::Node & scan_matcher() const { return *node_->get_rclcpp_node(); }
+
   /// @brief The stub answering `pcd_loader_service`, or nullptr when built without one.
   ///
   /// It is a spy: `calls()` is this binary's only view of what the node asked the loader for, as
