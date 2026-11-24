@@ -1,0 +1,175 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 340" role="img" aria-labelledby="ndt-backend-add-title">
+  <title id="ndt-backend-add-title">
+    Add a backend in four steps: depend on the interface package, implement NdtBackend, build a plain library, and register the class in a plugin description file. Then the node loads the backend when
+    ndt.backend has its name.
+  </title>
+  <style data-aw-standalone="">
+    svg { --aw-c-cyan: #0098c7; --aw-c-indigo: var(--aw-indigo); --aw-d-accent: var(--aw-c-cyan); --aw-d-bg: color-mix(in
+    srgb, var(--aw-c-indigo) 2%, var(--md-default-bg-color)); --aw-d-fg: var(--md-default-fg-color); --aw-d-line: #8d90a3; --aw-d-muted: var(--md-default-fg-color--light); --aw-d-node: var(--md-default-bg-color); --aw-d-node-stroke: color-mix(in
+    srgb, var(--aw-c-indigo) 45%, transparent); --aw-flow-tone: 22%; --aw-halo-opacity: 0.22; --aw-heading-font-family: Outfit, -apple-system, BlinkMacSystemFont, Helvetica, Arial, sans-serif; --aw-indigo: #3f2ee3; --md-code-font-family: Roboto
+    Mono, ui-monospace, monospace; --md-default-bg-color: #fff; --md-default-fg-color: #000000de; --md-default-fg-color--light: #0000008c; font-family: var(--aw-heading-font-family); background-color: var(--aw-d-bg, #fff); } .aw-d-arrow {
+  fill: var(--aw-d-line);
+} .aw-d-arrow--accent {
+  fill: var(--aw-d-accent);
+} .box {
+  fill: var(--aw-d-node);
+  stroke: var(--aw-d-node-stroke);
+  stroke-width: 1.5;
+} .box.primary {
+  fill: url("#aw-grad-primary");
+  stroke: none;
+} text {
+  font-size: 14px;
+  fill: var(--aw-d-fg);
+} .lbl {
+  font-weight: 600;
+} .sub {
+  font-size: 12px;
+  fill: var(--aw-d-muted);
+} .code {
+  font-family: var(--md-code-font-family);
+  font-size: 12px;
+} .on-primary {
+  fill: #fff;
+} .on-primary.sub {
+  fill: #ffffffc7;
+} .edge-lbl {
+  font-size: 12px;
+  fill: var(--aw-d-muted);
+  paint-order: stroke;
+  stroke: var(--aw-d-bg);
+  stroke-width: 5px;
+  stroke-linejoin: round;
+} .edge {
+  fill: none;
+  stroke: var(--aw-d-line);
+  stroke-width: 1.6;
+  marker-end: url("#aw-arrow");
+} .edge.accent {
+  stroke: var(--aw-d-accent);
+  stroke-width: 2;
+  marker-end: url("#aw-arrow-accent");
+} .aw-dot {
+  fill: var(--aw-d-fg);
+  opacity: 0.12;
+} .dots {
+  fill: url("#aw-dots");
+} .halo {
+  fill: url("#aw-grad-halo");
+  opacity: var(--aw-halo-opacity);
+} .card {
+  fill: var(--aw-d-node);
+  stroke: var(--aw-d-node-stroke);
+  stroke-width: 1.2;
+  filter: url("#aw-shadow");
+} .icon-bg {
+  fill: url("#aw-grad-primary");
+} .icon-bg.on {
+  fill: #ffffff2e;
+} .icon-line {
+  fill: none;
+  stroke: #fff;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+} .flow {
+  fill: none;
+  stroke: color-mix(in srgb, var(--aw-d-line) var(--aw-flow-tone), #fff);
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-dasharray: 6 44;
+  animation: aw-flow 2.4s linear infinite;
+} .flow.flow-accent {
+  stroke: color-mix(in srgb, var(--aw-d-accent) var(--aw-flow-tone), #fff);
+} .edge.head, .edge.accent.head, .traj.head, .route.head {
+  stroke: none;
+} @keyframes aw-flow {
+  from {
+    stroke-dashoffset: 6;
+  }
+
+  to {
+    stroke-dashoffset: -94;
+  }
+} @media (prefers-reduced-motion: reduce) {.flow {
+    display: none;
+    animation: none;
+  }}
+  </style>
+  <defs data-aw-standalone="">
+    <marker id="aw-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="aw-d-arrow" d="M0,0.5 L10,5 L0,9.5 z"/>
+    </marker>
+    <marker id="aw-arrow-accent" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path class="aw-d-arrow aw-d-arrow--accent" d="M0,0.5 L10,5 L0,9.5 z"/>
+    </marker>
+    <pattern id="aw-dots" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle class="aw-dot" cx="2" cy="2" r="1.1"/>
+    </pattern>
+    <radialGradient id="aw-grad-halo">
+      <stop offset="0" stop-color="#3f2ee3" stop-opacity="1"/>
+      <stop offset="1" stop-color="#3f2ee3" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="aw-grad-primary" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3f2ee3"/>
+      <stop offset="1" stop-color="#2a6df2"/>
+    </linearGradient>
+    <filter id="aw-shadow" filterUnits="userSpaceOnUse" x="-2000" y="-2000" width="6000" height="6000">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="#00002a" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <rect x="0" y="0" width="960" height="340" rx="16" fill="#fff"/>
+  <rect class="dots" x="0" y="0" width="960" height="340"/>
+  <circle class="halo" cx="480" cy="282" r="110"/>
+
+  <rect class="card" x="20" y="20" width="200" height="150" rx="14"/>
+  <circle class="icon-bg" cx="52" cy="52" r="16"/>
+  <text class="lbl on-primary" x="52" y="52" text-anchor="middle" dominant-baseline="central">1</text>
+  <text class="lbl" x="80" y="52" dominant-baseline="central">Depend</text>
+  <text class="code" x="40" y="92" dominant-baseline="central">package.xml</text>
+  <text class="sub" x="40" y="116" dominant-baseline="central">On the interface package</text>
+  <text class="sub" x="40" y="134" dominant-baseline="central">and on pluginlib</text>
+  <path class="edge" d="M220 95 H254"/>
+
+  <rect class="card" x="260" y="20" width="200" height="150" rx="14"/>
+  <circle class="icon-bg" cx="292" cy="52" r="16"/>
+  <text class="lbl on-primary" x="292" y="52" text-anchor="middle" dominant-baseline="central">2</text>
+  <text class="lbl" x="320" y="52" dominant-baseline="central">Implement</text>
+  <text class="code" x="280" y="92" dominant-baseline="central">class My : NdtBackend</text>
+  <text class="sub" x="280" y="116" dominant-baseline="central">Export the class with</text>
+  <text class="code" x="280" y="134" dominant-baseline="central">PLUGINLIB_EXPORT_CLASS</text>
+  <path class="edge" d="M460 95 H494"/>
+
+  <rect class="card" x="500" y="20" width="200" height="150" rx="14"/>
+  <circle class="icon-bg" cx="532" cy="52" r="16"/>
+  <text class="lbl on-primary" x="532" y="52" text-anchor="middle" dominant-baseline="central">3</text>
+  <text class="lbl" x="560" y="52" dominant-baseline="central">Build</text>
+  <text class="code" x="520" y="92" dominant-baseline="central">add_library()</text>
+  <text class="sub" x="520" y="116" dominant-baseline="central">A plain library that no</text>
+  <text class="sub" x="520" y="134" dominant-baseline="central">other library links</text>
+  <path class="edge" d="M700 95 H734"/>
+
+  <rect class="card" x="740" y="20" width="200" height="150" rx="14"/>
+  <circle class="icon-bg" cx="772" cy="52" r="16"/>
+  <text class="lbl on-primary" x="772" y="52" text-anchor="middle" dominant-baseline="central">4</text>
+  <text class="lbl" x="800" y="52" dominant-baseline="central">Register</text>
+  <text class="code" x="760" y="92" dominant-baseline="central">plugins.xml</text>
+  <text class="sub" x="760" y="116" dominant-baseline="central">The name of the class is</text>
+  <text class="sub" x="760" y="134" dominant-baseline="central">the value of ndt.backend</text>
+
+  <path class="edge accent" d="M840 170 V282 H686"/>
+  <path class="flow flow-accent" pathLength="100" d="M840 170 V282 H690"/>
+  <path class="edge accent head" d="M840 170 V282 H686"/>
+  <text class="edge-lbl" x="840" y="226" text-anchor="middle" dominant-baseline="central">install</text>
+
+  <rect class="box primary" x="280" y="240" width="400" height="84" rx="14"/>
+  <circle class="icon-bg on" cx="314" cy="282" r="16"/>
+  <path class="icon-line" d="M307 282 L312 287 L321 277"/>
+  <text class="lbl on-primary" x="342" y="264" dominant-baseline="central">The node loads your backend</text>
+  <text class="code on-primary" x="342" y="285" dominant-baseline="central">ndt.backend: "my_backend"</text>
+  <text class="sub on-primary" x="342" y="305" dominant-baseline="central">No change to the node or to Autoware Core</text>
+
+  <text class="sub" x="20" y="268">pluginlib finds the backend</text>
+  <text class="sub" x="20" y="286">through the plugin description</text>
+  <text class="sub" x="20" y="304">file. No other library links it.</text>
+</svg>
