@@ -15,7 +15,7 @@
 #ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
 #define AUTOWARE__NDT_SCAN_MATCHER__NDT_OMP__ESTIMATE_COVARIANCE_HPP_
 
-#include "multigrid_ndt_omp.h"
+#include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 
 #include <Eigen/Core>
 
@@ -31,21 +31,21 @@ struct ResultOfMultiNdtCovarianceEstimation
   Eigen::Vector2d mean;
   Eigen::Matrix2d covariance;
   std::vector<Eigen::Matrix4f> ndt_initial_poses;
-  std::vector<NdtResult> ndt_results;
+  std::vector<autoware::ndt_scan_matcher::NdtResult> ndt_results;
 };
 
 /** \brief Estimate functions */
 Eigen::Matrix2d estimate_xy_covariance_by_laplace_approximation(
   const Eigen::Matrix<double, 6, 6> & hessian);
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt(
-  const NdtResult & ndt_result,
-  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const autoware::ndt_scan_matcher::NdtResult & ndt_result,
+  autoware::ndt_scan_matcher::NdtBackend & ndt_ref,
 
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source);
 ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
-  const NdtResult & ndt_result,
-  pclomp::MultiGridNormalDistributionsTransform<pcl::PointXYZ, pcl::PointXYZ> & ndt_ref,
+  const autoware::ndt_scan_matcher::NdtResult & ndt_result,
+  autoware::ndt_scan_matcher::NdtBackend & ndt_ref,
   const std::vector<Eigen::Matrix4f> & poses_to_search,
   const pcl::shared_ptr<const pcl::PointCloud<pcl::PointXYZ>> & source, const double temperature);
 
@@ -55,7 +55,7 @@ ResultOfMultiNdtCovarianceEstimation estimate_xy_covariance_by_multi_ndt_score(
  * (3) Propose search points by adding offset_x and offset_y to the center_pose
  */
 std::vector<Eigen::Matrix4f> propose_poses_to_search(
-  const NdtResult & ndt_result, const std::vector<double> & offset_x,
+  const autoware::ndt_scan_matcher::NdtResult & ndt_result, const std::vector<double> & offset_x,
   const std::vector<double> & offset_y);
 
 /** \brief Calculate weights by exponential */

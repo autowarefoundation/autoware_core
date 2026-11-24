@@ -2150,6 +2150,53 @@ TEST(NdtScanMatcherCharacteristics, SteadyStateOperationKeepsPublishingWhenMapUp
   EXPECT_EQ(second.value("is_updated_map"), "False");
 }
 
+// ---------------------------------------------------------------------------------------------
+// NDT backend
+// ---------------------------------------------------------------------------------------------
+
+/// An unknown `ndt.backend` stops the node in its constructor, with the name in the message.
+TEST(NdtScanMatcherCharacteristics, UnknownBackendThrowsAtConstruction)
+{
+  try {
+    NdtHarness harness({rclcpp::Parameter("ndt.backend", "no_such_backend")});
+    FAIL() << "the node started with an unknown backend";
+  } catch (const std::runtime_error & e) {
+    EXPECT_NE(std::string(e.what()).find("no_such_backend"), std::string::npos) << e.what();
+  }
+}
+
+/// A parameter file without `ndt.backend` (from before the parameter) stops the node in its
+/// constructor, with the line to add in the message.
+TEST(NdtScanMatcherCharacteristics, MissingBackendParameterThrowsAtConstruction)
+{
+  try {
+    NdtHarness harness({rclcpp::Parameter("ndt.backend")});
+    FAIL() << "the node started without ndt.backend";
+  } catch (const std::runtime_error & e) {
+    const std::string message = e.what();
+    EXPECT_NE(message.find("The parameter 'ndt.backend' is not set."), std::string::npos)
+      << message;
+    EXPECT_NE(message.find("`backend: \"ndt_omp\"`"), std::string::npos) << message;
+  }
+}
+
+/// An error from `initialize()` of the backend stops the node in its constructor, with the name
+/// of the backend and the cause in the message.
+TEST(NdtScanMatcherCharacteristics, BackendThatFailsToInitializeThrowsAtConstruction)
+{
+  try {
+    NdtHarness harness({rclcpp::Parameter("ndt.backend", "test_initialize_throws")});
+    FAIL() << "the node started with a backend that cannot initialize";
+  } catch (const std::runtime_error & e) {
+    const std::string message = e.what();
+    EXPECT_NE(
+      message.find("Failed to initialize the NDT backend 'test_initialize_throws'"),
+      std::string::npos)
+      << message;
+    EXPECT_NE(message.find("this computer has no test device"), std::string::npos) << message;
+  }
+}
+
 }  // namespace
 
 int main(int argc, char ** argv)

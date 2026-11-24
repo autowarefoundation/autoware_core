@@ -61,7 +61,7 @@ TEST(EstimateCovariance, CalculateWeightedMeanAndCovKnownValues)  // NOLINT
 // adds them to the center translation.
 TEST(EstimateCovariance, ProposePosesToSearchRotatesOffsets)  // NOLINT
 {
-  pclomp::NdtResult ndt_result{};
+  autoware::ndt_scan_matcher::NdtResult ndt_result{};
   ndt_result.pose = Eigen::Matrix4f::Identity();
   // 90 degrees CCW about z in the top-left 2x2 block.
   ndt_result.pose(0, 0) = 0.0f;
