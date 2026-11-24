@@ -281,10 +281,9 @@ public:
     const double yaw_threshold) const;
 
   /**
-   * Finds the closest route lanelet to the search pose satisfying the distance and yaw constraints
-   * with respect to a reference lanelet, the search set will include previous route lanelets,
-   * next route lanelets, and neighbors of reference lanelet. Returns false if failed to find
-   * lanelet.
+   * Finds the closest route lanelet to the search pose satisfying the distance and yaw constraints.
+   * The search set contains the reference lanelet and its previous and next lanelets within the
+   * route. Returns false if no lanelet satisfies the constraints.
    * @param search_pose pose to find closest lanelet to
    * @param reference_lanelet reference lanelet to decide the search set
    * @param dist_threshold distance constraint closest lanelet must be within
