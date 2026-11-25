@@ -17,12 +17,15 @@
 #include "autoware/route_handler/start_yaw.hpp"
 
 #include <autoware/lanelet2_utils/conversion.hpp>
+#include <autoware/lanelet2_utils/geometry.hpp>
 #include <autoware_utils_geometry/geometry.hpp>
 
 #include <gtest/gtest.h>
 
+#include <array>
 #include <limits>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace autoware::route_handler::test
@@ -44,6 +47,64 @@ TEST(RouteHandlerStartYaw, AllowsPerpendicularStallStartOnlyInParkingLot)
   EXPECT_FALSE(is_start_yaw_acceptable(pi * 136.0 / 180.0, true));
   EXPECT_FALSE(is_start_yaw_acceptable(pi, true));
   EXPECT_FALSE(is_start_yaw_acceptable(std::numeric_limits<double>::quiet_NaN(), true));
+}
+
+TEST_F(TestRouteHandler, AppliesParkingYawLimitWhenRoutingFromMappedParkingLot)
+{
+  set_route_handler("overlap_map.osm");
+  // This pose is in parking lot 375, alongside the one-way aisle 312.
+  // The goal is on a different lanelet reached via the aisle.
+  auto start = autoware::test_utils::createPose(3699.3, 73735.8, 0.0, 0.0, 0.0, 0.0);
+  const auto goal =
+    autoware::test_utils::createPose(3729.961182, 73727.328125, 0.0, 0.0, 0.0, 0.47);
+  const auto aisle = route_handler_->getLaneletsFromId(312);
+  const auto start_point = autoware::experimental::lanelet2_utils::from_ros(start.position);
+  const double aisle_yaw =
+    autoware::experimental::lanelet2_utils::get_lanelet_angle(aisle, start_point.basicPoint());
+  constexpr double deg_to_rad = 3.14159265358979323846 / 180.0;
+
+  for (const auto & [yaw_difference, expected] : std::array{
+         std::pair{93.0, true}, std::pair{134.0, true}, std::pair{136.0, false},
+         std::pair{180.0, false}}) {
+    SCOPED_TRACE(yaw_difference);
+    start.orientation =
+      autoware_utils_geometry::create_quaternion_from_yaw(aisle_yaw + yaw_difference * deg_to_rad);
+    lanelet::ConstLanelets lanelets;
+    lanelet::ConstLaneletOrAreas lanes_or_areas;
+    EXPECT_EQ(route_handler_->planPathLaneletsBetweenCheckpoints(start, goal, &lanelets), expected);
+    EXPECT_EQ(
+      route_handler_->planPathLaneletsBetweenCheckpoints(start, goal, &lanes_or_areas, false),
+      expected);
+    if (expected) {
+      ASSERT_FALSE(lanelets.empty());
+      ASSERT_FALSE(lanes_or_areas.empty());
+      EXPECT_EQ(lanelets.front().id(), aisle.id());
+      EXPECT_EQ(lanes_or_areas.front().id(), aisle.id());
+      EXPECT_EQ(lanelets.back().id(), 345);
+      EXPECT_EQ(lanes_or_areas.back().id(), 345);
+    }
+  }
+}
+
+TEST_F(TestRouteHandler, PreservesRoadYawLimitOutsideTheMappedParkingLot)
+{
+  set_route_handler("overlap_map.osm");
+  auto start = autoware::test_utils::createPose(3728.870361, 73739.281250, 0.0, 0.0, 0.0, 0.0);
+  const auto goal =
+    autoware::test_utils::createPose(3729.961182, 73727.328125, 0.0, 0.0, 0.0, 0.47);
+  const auto road = route_handler_->getLaneletsFromId(168);
+  const auto start_point = autoware::experimental::lanelet2_utils::from_ros(start.position);
+  const double road_yaw =
+    autoware::experimental::lanelet2_utils::get_lanelet_angle(road, start_point.basicPoint());
+  constexpr double deg_to_rad = 3.14159265358979323846 / 180.0;
+  start.orientation =
+    autoware_utils_geometry::create_quaternion_from_yaw(road_yaw + 93.0 * deg_to_rad);
+
+  lanelet::ConstLanelets lanelets;
+  lanelet::ConstLaneletOrAreas lanes_or_areas;
+  EXPECT_FALSE(route_handler_->planPathLaneletsBetweenCheckpoints(start, goal, &lanelets));
+  EXPECT_FALSE(
+    route_handler_->planPathLaneletsBetweenCheckpoints(start, goal, &lanes_or_areas, false));
 }
 
 TEST_F(TestRouteHandler, isRouteHandlerReadyTest)
