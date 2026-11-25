@@ -586,7 +586,7 @@ protected:
   // True once every endpoint of the node is visible with its message type. The peer has its own
   // endpoints on the same topics, so a topic name alone can be visible before the node's endpoint.
   // The owner node name of an endpoint can also arrive after the endpoint matched.
-  bool all_topics_discovered()
+  bool all_gnss_poser_endpoints_discovered()
   {
     const auto owned =
       [](const std::vector<rclcpp::TopicEndpointInfo> & infos, const std::string & type) {
@@ -882,7 +882,8 @@ TEST_F(GnssPoserNodeIntegration, Interface_TopicsAndQos)
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
 
-  ASSERT_TRUE(pump_until([this] { return all_topics_discovered(); }, 10s));
+  ASSERT_TRUE(pump_until([this] { return all_gnss_poser_endpoints_discovered(); }, 10s))
+    << "the peer did not see every endpoint of gnss_poser";
 
   // Act
   // Subscriptions
