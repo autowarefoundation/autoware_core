@@ -52,6 +52,8 @@ void ObjectsOfInterestMarkerInterface::insertObjectDataWithCustomColor(
 void ObjectsOfInterestMarkerInterface::publishMarkerArray()
 {
   if (pub_marker_->get_subscription_count() == 0) {
+    // Clear the objects even without a subscriber, or they accumulate.
+    obj_marker_data_array_.clear();
     return;
   }
   MarkerArray marker_array;

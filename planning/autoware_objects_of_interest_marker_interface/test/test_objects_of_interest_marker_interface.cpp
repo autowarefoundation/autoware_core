@@ -142,6 +142,55 @@ TEST_F(ObjectsOfInterestMarkerInterfaceTest, PublishMarkerArrayDoesNotPublishWit
   EXPECT_NO_THROW(interface.publishMarkerArray());
 }
 
+TEST_F(ObjectsOfInterestMarkerInterfaceTest, PublishMarkerArrayWithoutSubscriberDropsObjects)
+{
+  // Arrange
+  const auto node = std::make_shared<rclcpp::Node>("test_drop_without_sub_node");
+  ObjectsOfInterestMarkerInterface interface(node.get(), "test_module_drop");
+
+  geometry_msgs::msg::Pose pose;
+  pose.orientation.w = 1.0;
+  autoware_perception_msgs::msg::Shape shape;
+  shape.dimensions.z = 1.0;
+
+  // Three cycles without a subscriber: their objects must not be kept.
+  for (int i = 0; i < 3; ++i) {
+    interface.insertObjectData(pose, shape, ColorName::GREEN);
+    interface.publishMarkerArray();
+  }
+
+  visualization_msgs::msg::MarkerArray received_msg;
+  bool message_received = false;
+  const auto sub = node->create_subscription<visualization_msgs::msg::MarkerArray>(
+    "/planning/debug/objects_of_interest/test_module_drop", 1,
+    [&](const visualization_msgs::msg::MarkerArray::ConstSharedPtr msg) {
+      received_msg = *msg;
+      message_received = true;
+    });
+
+  // Wait briefly for discovery
+  rclcpp::WallRate discovery_rate(100);
+  for (int i = 0; i < 20 && sub->get_publisher_count() == 0; ++i) {
+    rclcpp::spin_some(node);
+    discovery_rate.sleep();
+  }
+
+  // Act: one cycle with a subscriber.
+  interface.insertObjectData(pose, shape, ColorName::GREEN);
+  interface.publishMarkerArray();
+
+  // Spin to receive
+  rclcpp::WallRate spin_rate(100);
+  for (int i = 0; i < 50 && !message_received; ++i) {
+    rclcpp::spin_some(node);
+    spin_rate.sleep();
+  }
+
+  // Assert: only the object of this cycle is published (4 markers per object).
+  ASSERT_TRUE(message_received);
+  EXPECT_EQ(received_msg.markers.size(), 4u);
+}
+
 TEST_F(
   ObjectsOfInterestMarkerInterfaceTest,
   InsertObjectDataWithCustomColorStoresAndPublishesCustomColor)
