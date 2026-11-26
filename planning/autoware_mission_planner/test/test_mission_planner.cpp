@@ -685,6 +685,29 @@ TEST_F(MissionPlannerTest, SetWaypointRouteRerouteFailsWhenOperationModeStateIsN
   expect_fail_response_with_code(result, SetRoutePointsResponse::ERROR_PLANNER_UNREADY);
 }
 
+TEST_F(MissionPlannerTest, SetWaypointRouteRerouteFailsWhenNotAllowedInAutonomousMode)
+{
+  // Arrange
+  // The vehicle is stopped, so the reroute safety check passes and only the flag can reject the
+  // reroute.
+  auto config = default_config();
+  config.allow_reroute_in_autonomous_mode = false;
+  const auto autonomous_mode = operation_mode_state(OperationModeState::AUTONOMOUS, true);
+  const auto first_request = waypoint_route_request(pose(40.0));
+  const auto second_request = waypoint_route_request(pose(90.0));
+
+  auto mission_planner = create_initialized_mission_planner(config);
+  mission_planner.on_operation_mode_state(autonomous_mode);
+  mission_planner.set_waypoint_route(first_request);
+
+  // Act
+  const auto result = mission_planner.set_waypoint_route(second_request);
+
+  // Assert
+  expect_fail_response_with_code(result, SetRoutePointsResponse::ERROR_INVALID_STATE);
+  expect_states_transition({RouteState::ROUTING, RouteState::SET});
+}
+
 TEST_F(MissionPlannerTest, SetWaypointRouteTwiceWhileDrivingKeepsFirstRouteWhenRerouteIsUnsafe)
 {
   // Arrange

@@ -145,12 +145,12 @@ ClearRoute::Response MissionPlanner::clear_route()
   return res;
 }
 
-SetLaneletRouteResult MissionPlanner::set_lanelet_route(const SetLaneletRoute::Request & req)
+template <typename Result, typename ResponseCode, typename CreateRoute>
+Result MissionPlanner::set_route(const std::string & frame_id, const CreateRoute & create_route)
 {
-  using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
   const auto is_reroute = state_ == RouteState::SET;
 
-  SetLaneletRouteResult result;
+  Result result;
   auto & res = result.response;
 
   if (state_ != RouteState::UNSET && state_ != RouteState::SET) {
@@ -184,8 +184,7 @@ SetLaneletRouteResult MissionPlanner::set_lanelet_route(const SetLaneletRoute::R
 
   geometry_msgs::msg::TransformStamped transform_to_map;
   try {
-    transform_to_map =
-      tf_buffer_.lookupTransform(map_frame_, req.header.frame_id, tf2::TimePointZero);
+    transform_to_map = tf_buffer_.lookupTransform(map_frame_, frame_id, tf2::TimePointZero);
   } catch (const tf2::TransformException &) {
     change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
     set_fail_response(
@@ -194,7 +193,7 @@ SetLaneletRouteResult MissionPlanner::set_lanelet_route(const SetLaneletRoute::R
     return result;
   }
 
-  const auto route = create_lanelet_route(req, transform_to_map);
+  const LaneletRoute route = create_route(transform_to_map, result);
 
   if (route.segments.empty()) {
     cancel_route();
@@ -225,85 +224,32 @@ SetLaneletRouteResult MissionPlanner::set_lanelet_route(const SetLaneletRoute::R
   return result;
 }
 
+SetLaneletRouteResult MissionPlanner::set_lanelet_route(const SetLaneletRoute::Request & req)
+{
+  using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoute::Response;
+  return set_route<SetLaneletRouteResult, ResponseCode>(
+    req.header.frame_id,
+    [this, &req](
+      const geometry_msgs::msg::TransformStamped & transform_to_map, SetLaneletRouteResult &) {
+      return create_lanelet_route(req, transform_to_map);
+    });
+}
+
 SetWaypointRouteResult MissionPlanner::set_waypoint_route(const SetWaypointRoute::Request & req)
 {
   using ResponseCode = autoware_adapi_v1_msgs::srv::SetRoutePoints::Response;
-  const auto is_reroute = state_ == RouteState::SET;
-
-  SetWaypointRouteResult result;
-  auto & res = result.response;
-
-  if (state_ != RouteState::UNSET && state_ != RouteState::SET) {
-    set_fail_response(
-      res, ResponseCode::ERROR_INVALID_STATE, "The route cannot be set in the current state.");
-    return result;
-  }
-  if (!is_mission_planner_ready_) {
-    set_fail_response(
-      res, ResponseCode::ERROR_PLANNER_UNREADY, "The mission planner is not ready.");
-    return result;
-  }
-  if (is_reroute && !operation_mode_state_) {
-    set_fail_response(
-      res, ResponseCode::ERROR_PLANNER_UNREADY, "Operation mode state is not received.");
-    return result;
-  }
-
-  const bool is_autonomous_driving =
-    operation_mode_state_ ? operation_mode_state_->mode == OperationModeState::AUTONOMOUS &&
-                              operation_mode_state_->is_autoware_control_enabled
-                          : false;
-
-  change_state(is_reroute ? RouteState::REROUTING : RouteState::ROUTING);
-
-  geometry_msgs::msg::TransformStamped transform_to_map;
-  try {
-    transform_to_map =
-      tf_buffer_.lookupTransform(map_frame_, req.header.frame_id, tf2::TimePointZero);
-  } catch (const tf2::TransformException &) {
-    change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-    set_fail_response(
-      res, autoware_common_msgs::msg::ResponseStatus::TRANSFORM_ERROR,
-      "Failed to transform pose to map frame.");
-    return result;
-  }
-
-  const auto waypoint_plan_result = create_waypoint_route(req, transform_to_map);
-  const auto & route = waypoint_plan_result.route;
-
-  if (waypoint_plan_result.goal_footprint) {
-    result.goal_footprint_marker =
-      lanelet2::DefaultPlanner::visualize_debug_footprint(*waypoint_plan_result.goal_footprint);
-  }
-  result.warning_message = waypoint_plan_result.warning_message;
-
-  if (route.segments.empty()) {
-    cancel_route();
-    change_state(is_reroute ? RouteState::SET : RouteState::UNSET);
-    set_fail_response(res, ResponseCode::ERROR_PLANNER_FAILED, "The planned route is empty.");
-    return result;
-  }
-
-  if (is_reroute && is_autonomous_driving) {
-    const auto reroute_safety_result = check_reroute_safety(*current_route_, route);
-    if (!reroute_safety_result.is_safe) {
-      cancel_route();
-      change_state(RouteState::SET);
-      set_fail_response(
-        res, ResponseCode::ERROR_REROUTE_FAILED, "New route is not safe. Reroute failed.");
-      result.error_message = reroute_safety_result.reason;
-      return result;
-    }
-  }
-
-  change_route(route);
-  change_state(RouteState::SET);
-  res.status.success = true;
-
-  result.route = route;
-  result.route_marker = planner_->visualize(route);
-  result.initial_pose = odometry_->pose.pose;
-  return result;
+  return set_route<SetWaypointRouteResult, ResponseCode>(
+    req.header.frame_id, [this, &req](
+                           const geometry_msgs::msg::TransformStamped & transform_to_map,
+                           SetWaypointRouteResult & result) {
+      auto plan_result = create_waypoint_route(req, transform_to_map);
+      if (plan_result.goal_footprint) {
+        result.goal_footprint_marker =
+          lanelet2::DefaultPlanner::visualize_debug_footprint(*plan_result.goal_footprint);
+      }
+      result.warning_message = plan_result.warning_message;
+      return std::move(plan_result.route);
+    });
 }
 
 void MissionPlanner::process_clear_route()
