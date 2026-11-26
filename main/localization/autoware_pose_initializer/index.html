@@ -8289,8 +8289,8 @@ This node depends on the map height fitter library.
 <p>If the score of initial pose estimation result is lower than score threshold, ERROR message is output to the <code>/diagnostics</code> topic.</p>
 <p><img src="./media/diagnostic_pose_reliability.png" alt="drawing" width="400"></p>
 <h2 id="connection-with-default-ad-api">Connection with Default AD API<a class="headerlink" href="#connection-with-default-ad-api" title="Permanent link">#</a></h2>
-<p>This <code>autoware_pose_initializer</code> is used via default AD API. For detailed description of the API description, please refer to <a href="https://github.com/autowarefoundation/autoware_universe/blob/main/system/autoware_default_adapi_universe/document/localization.md">the description of <code>autoware_default_adapi</code></a>.</p>
-<p><img src="https://github.com/autowarefoundation/autoware_universe/blob/main/system/autoware_default_adapi_universe/document/images/localization.drawio.svg" alt="drawing" width="800"></p>
+<p>This <code>autoware_pose_initializer</code> is used via default AD API. For detailed description of the API description, please refer to <a href="../../api/autoware_default_adapi/document/localization/">the description of <code>autoware_default_adapi</code></a>.</p>
+<p><img src="../../api/autoware_default_adapi/document/images/localization.drawio.svg" alt="drawing" width="800"></p>
 <h2 id="initialize-pose-via-cli">Initialize pose via CLI<a class="headerlink" href="#initialize-pose-via-cli" title="Permanent link">#</a></h2>
 <h3 id="using-the-gnss-estimated-position">Using the GNSS estimated position<a class="headerlink" href="#using-the-gnss-estimated-position" title="Permanent link">#</a></h3>
 <div class="highlight"><pre><span></span><code>ros2<span class="w"> </span>service<span class="w"> </span>call<span class="w"> </span>/localization/initialize<span class="w"> </span>autoware_localization_msgs/srv/InitializeLocalization
