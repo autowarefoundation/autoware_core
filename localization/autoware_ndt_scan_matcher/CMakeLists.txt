@@ -43,10 +43,11 @@ endif()
 
 # NO_TARGET_LINK_LIBRARIES: the node does not use ndt_omp. Only the backend "ndt_omp" does.
 ament_auto_add_library(${PROJECT_NAME} SHARED NO_TARGET_LINK_LIBRARIES
+  src/hyper_parameters_loader.cpp
   src/map_update_module.cpp
   src/ndt_backend_loader.cpp
   src/ndt_omp/estimate_covariance.cpp
-  src/ndt_scan_matcher_core.cpp
+  src/ndt_scan_matcher_node.cpp
   src/ndt_scan_matcher_helper.cpp
   src/particle.cpp
   src/scan_match_diagnostics.cpp
@@ -56,7 +57,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 target_link_libraries(${PROJECT_NAME} ${PCL_LIBRARIES})
 
 autoware_agnocast_wrapper_register_node(${PROJECT_NAME}
-  PLUGIN "autoware::ndt_scan_matcher::NDTScanMatcher"
+  PLUGIN "autoware::ndt_scan_matcher::NdtScanMatcherNode"
   EXECUTABLE ${PROJECT_NAME}_node
   ROS2_EXECUTOR MultiThreadedExecutor
   AGNOCAST_EXECUTOR AgnocastOnlyCallbackIsolatedExecutor

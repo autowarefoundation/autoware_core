@@ -12,14 +12,14 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_CORE_HPP_
-#define AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_CORE_HPP_
+#ifndef AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_NODE_HPP_
+#define AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_NODE_HPP_
 
 #define FMT_HEADER_ONLY
 
 #include "autoware/ndt_scan_matcher_common/ndt_backend.hpp"
 #include "guarded.hpp"
-#include "hyper_parameters.hpp"
+#include "hyper_parameters_loader.hpp"
 #include "map_update_module.hpp"
 #include "scan_match_diagnostics.hpp"
 
@@ -69,13 +69,13 @@ namespace autoware::ndt_scan_matcher
 using DiagnosticsInterface =
   autoware_utils_diagnostics::BasicDiagnosticsInterface<autoware::agnocast_wrapper::Node>;
 
-class NDTScanMatcher : public autoware::agnocast_wrapper::Node
+class NdtScanMatcherNode : public autoware::agnocast_wrapper::Node
 {
   using PointSource = pcl::PointXYZ;
   using PointTarget = pcl::PointXYZ;
 
 public:
-  explicit NDTScanMatcher(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
+  explicit NdtScanMatcherNode(const rclcpp::NodeOptions & options = rclcpp::NodeOptions());
 
   // This function is only used in static tools to know when timer callbacks are triggered.
   std::chrono::nanoseconds time_until_trigger() const
@@ -247,4 +247,4 @@ private:
 
 }  // namespace autoware::ndt_scan_matcher
 
-#endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_CORE_HPP_
+#endif  // AUTOWARE__NDT_SCAN_MATCHER__NDT_SCAN_MATCHER_NODE_HPP_
