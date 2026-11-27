@@ -106,6 +106,11 @@ public:
 private:
   void change_state(RouteState::_state_type state);
 
+  // Common logic of set_lanelet_route and set_waypoint_route. create_route plans the route in the
+  // map frame and may also fill the result fields that only one of the two services has.
+  template <typename Result, typename ResponseCode, typename CreateRoute>
+  Result set_route(const std::string & frame_id, const CreateRoute & create_route);
+
   void process_clear_route();
   void change_route(const LaneletRoute & route);
   void cancel_route();
