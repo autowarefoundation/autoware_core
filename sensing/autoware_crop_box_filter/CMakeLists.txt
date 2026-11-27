@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 project(autoware_crop_box_filter)
 
 find_package(autoware_cmake REQUIRED)
+find_package(Boost REQUIRED COMPONENTS date_time)
 find_package(Eigen3 REQUIRED)
 
 autoware_package()
