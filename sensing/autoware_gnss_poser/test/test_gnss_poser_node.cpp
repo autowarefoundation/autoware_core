@@ -583,22 +583,31 @@ protected:
     pump(delivery_budget);
   }
 
-  // True once every topic of the node is visible with its message type.
-  bool all_topics_discovered()
+  // True once every endpoint of the node is visible with its message type. The peer has its own
+  // endpoints on the same topics, so a topic name alone can be visible before the node's endpoint.
+  // The owner node name of an endpoint can also arrive after the endpoint matched.
+  bool all_gnss_poser_endpoints_discovered()
   {
-    const auto topics = peer_->get_topic_names_and_types();
-    const auto has = [&](const std::string & name, const std::string & type) {
-      const auto it = topics.find(name);
-      return it != topics.end() &&
-             std::find(it->second.begin(), it->second.end(), type) != it->second.end();
+    const auto owned =
+      [](const std::vector<rclcpp::TopicEndpointInfo> & infos, const std::string & type) {
+        return std::any_of(infos.begin(), infos.end(), [&](const rclcpp::TopicEndpointInfo & info) {
+          return info.node_name() == "gnss_poser" && info.topic_type() == type;
+        });
+      };
+    const auto subscribes = [&](const std::string & name, const std::string & type) {
+      return owned(peer_->get_subscriptions_info_by_topic(name), type);
     };
-    return has("/fix", "sensor_msgs/msg/NavSatFix") &&
-           has("/autoware_orientation", "autoware_sensing_msgs/msg/GnssInsOrientationStamped") &&
-           has("/map/map_projector_info", "autoware_map_msgs/msg/MapProjectorInfo") &&
-           has("/gnss_pose", "geometry_msgs/msg/PoseStamped") &&
-           has("/gnss_pose_cov", "geometry_msgs/msg/PoseWithCovarianceStamped") &&
-           has("/gnss_fixed", "autoware_internal_debug_msgs/msg/BoolStamped") &&
-           has("/tf", "tf2_msgs/msg/TFMessage");
+    const auto publishes = [&](const std::string & name, const std::string & type) {
+      return owned(peer_->get_publishers_info_by_topic(name), type);
+    };
+    return subscribes("/fix", "sensor_msgs/msg/NavSatFix") &&
+           subscribes(
+             "/autoware_orientation", "autoware_sensing_msgs/msg/GnssInsOrientationStamped") &&
+           subscribes("/map/map_projector_info", "autoware_map_msgs/msg/MapProjectorInfo") &&
+           publishes("/gnss_pose", "geometry_msgs/msg/PoseStamped") &&
+           publishes("/gnss_pose_cov", "geometry_msgs/msg/PoseWithCovarianceStamped") &&
+           publishes("/gnss_fixed", "autoware_internal_debug_msgs/msg/BoolStamped") &&
+           publishes("/tf", "tf2_msgs/msg/TFMessage");
   }
 
   // build_node() followed by the MGRS projector info.
@@ -873,7 +882,8 @@ TEST_F(GnssPoserNodeIntegration, Interface_TopicsAndQos)
   // Arrange
   ASSERT_NO_FATAL_FAILURE(build_node({}));
 
-  ASSERT_TRUE(pump_until([this] { return all_topics_discovered(); }, 10s));
+  ASSERT_TRUE(pump_until([this] { return all_gnss_poser_endpoints_discovered(); }, 10s))
+    << "the peer did not see every endpoint of gnss_poser";
 
   // Act
   // Subscriptions
