@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/behavior_velocity_planner.schema.json
 /**:
   ros__parameters:
     forward_path_length: 1000.0

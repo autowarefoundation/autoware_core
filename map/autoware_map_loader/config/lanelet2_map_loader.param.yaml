@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/lanelet2_map_loader.schema.json
 /**:
   ros__parameters:
     allow_unsupported_version: true             # flag to load unsupported format_version anyway. If true, just prints warning.

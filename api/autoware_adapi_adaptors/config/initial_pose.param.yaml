@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/initial_pose.schema.json
 /**:
   ros__parameters:
 

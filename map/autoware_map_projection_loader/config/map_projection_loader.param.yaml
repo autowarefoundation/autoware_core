@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/map_projection_loader.schema.json
 /**:
   ros__parameters:
     map_projector_info_path: $(var map_projector_info_path)

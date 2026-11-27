@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/pointcloud_map_loader.schema.json
 /**:
   ros__parameters:
     enable_whole_load: true

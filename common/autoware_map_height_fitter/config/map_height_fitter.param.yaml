@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/map_height_fitter.schema.json
 /**:
   ros__parameters:
     map_height_fitter:

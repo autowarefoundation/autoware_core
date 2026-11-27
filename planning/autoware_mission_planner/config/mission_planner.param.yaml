@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=../schema/mission_planner.schema.json
 /**:
   ros__parameters:
     map_frame: map
