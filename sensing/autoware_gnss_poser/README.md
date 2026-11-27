@@ -11,7 +11,7 @@ This node subscribes to NavSatFix to publish the pose of **base_link**. The data
 
 The antenna is rigidly mounted on the vehicle, so this transformation is expected to be static; an antenna that moves relative to `base_link` is out of scope. Publishing it on `/tf_static` is recommended, but a setup that publishes the same fixed relation on `/tf` is supported as well: the node looks up the latest transform rather than the transform at the fix's `header.stamp`, which `/tf` cannot always provide.
 
-If the transformation from `base_link` to the antenna cannot be obtained, it outputs the pose of the antenna position without performing coordinate transformation.
+If the transformation from `base_link` to the antenna cannot be obtained, the fix is skipped: `gnss_fixed` still reports the receiver's status, but no pose is published. Depending on the startup order, the transformation may arrive after the first fixes, so the fixes are skipped silently for the first 5 seconds, counted by the `header.stamp` of the fixes from the first fix (whatever its status). After that, a fix that cannot get the transformation makes the node log an error once, naming both frames, so that a `header.frame_id` that never gets a transformation is visible instead of silently yielding no pose. When TF has the transformations but the lookup still fails, for example because `header.frame_id` is not a frame name TF accepts (empty, or starting with `/`), waiting does not help, so it is logged as an error at once. Each of the two problems is logged once, and again only after the transformation has been obtained in between. A rosbag replayed in a loop gets the 5 seconds only on its first pass.
 
 ## Inputs / Outputs
 

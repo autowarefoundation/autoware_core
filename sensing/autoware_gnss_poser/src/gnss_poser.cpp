@@ -47,6 +47,12 @@ bool is_fixed(const sensor_msgs::msg::NavSatStatus & nav_sat_status_msg)
   return nav_sat_status_msg.status >= sensor_msgs::msg::NavSatStatus::STATUS_FIX;
 }
 
+/// The stamp as the time since the epoch of the clock that stamped it.
+std::chrono::nanoseconds to_stamp_time(const builtin_interfaces::msg::Time & stamp)
+{
+  return std::chrono::seconds(stamp.sec) + std::chrono::nanoseconds(stamp.nanosec);
+}
+
 /// True when the receiver reports a covariance type other than UNKNOWN.
 bool can_get_covariance(const sensor_msgs::msg::NavSatFix & nav_sat_fix_msg)
 {
@@ -228,20 +234,22 @@ void GnssPoser::set_ins_orientation(
 
 GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 {
+  if (!first_fix_stamp_.has_value()) {
+    first_fix_stamp_ = to_stamp_time(fix.header.stamp);
+  }
+
   // Return immediately if map_projector_info has not been received yet.
   if (!received_map_projector_info_) {
-    return {Outcome::NoProjectorInfo, std::nullopt, std::nullopt, std::nullopt, std::nullopt};
+    return {Outcome::NoProjectorInfo};
   }
 
   if (projector_info_.projector_type == autoware_map_msgs::msg::MapProjectorInfo::LOCAL) {
-    return {Outcome::LocalProjector, std::nullopt, std::nullopt, std::nullopt, std::nullopt};
+    return {Outcome::LocalProjector};
   }
 
   // check fixed topic
   if (!is_fixed(fix.status)) {
-    return {
-      Outcome::NotFixed, make_gnss_fixed(fix.header.stamp, false), std::nullopt, std::nullopt,
-      std::nullopt};
+    return {Outcome::NotFixed, make_gnss_fixed(fix.header.stamp, false)};
   }
 
   // get position
@@ -256,9 +264,7 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
     // fill position buffer
     position_buffer_.push_front(position);
     if (!position_buffer_.full()) {
-      return {
-        Outcome::Buffering, make_gnss_fixed(fix.header.stamp, true), std::nullopt, std::nullopt,
-        std::nullopt};
+      return {Outcome::Buffering, make_gnss_fixed(fix.header.stamp, true)};
     }
     // publish average pose or median pose of position buffer
     gnss_antenna_pose.position = (params_.gnss_pose_pub_method == GnssPosePubMethod::Average)
@@ -281,11 +287,23 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
 
   gnss_antenna_pose.orientation = orientation;
 
-  // get TF from gnss_antenna to base_link. If it cannot be obtained, the antenna pose is published
-  // as the base_link pose, i.e. the identity transform is used (a default-constructed Transform has
-  // zero translation and rotation w = 1).
-  const geometry_msgs::msg::Transform antenna_to_base_link =
-    lookup_antenna_to_base_link_(fix.header.frame_id).value_or(geometry_msgs::msg::Transform{});
+  // get TF from gnss_antenna to base_link.
+  const auto transform = lookup_antenna_to_base_link_(fix.header.frame_id);
+  // Drop this fix if its antenna transform is not available: the fix cannot be expressed as a
+  // base_link pose without it. The transform is static, so this does not resolve by asking for
+  // another time; it resolves once the transform is published.
+  if (!transform.has_value()) {
+    const TransformLookupError error = transform.error();
+    Result result{Outcome::TransformLookupFailed, make_gnss_fixed(fix.header.stamp, true)};
+    if (should_report_transform_error(error, fix.header.stamp)) {
+      mark_transform_error_reported(error);
+      result.antenna_transform_error = error;
+    }
+    return result;
+  }
+  transform_unavailable_reported_ = false;
+  transform_lookup_failed_reported_ = false;
+  const geometry_msgs::msg::Transform antenna_to_base_link = transform.value();
 
   std::array<double, 3> rotation_variances{};
   if (params_.use_gnss_ins_orientation) {
@@ -314,6 +332,39 @@ GnssPoser::Result GnssPoser::input_fix(const sensor_msgs::msg::NavSatFix & fix)
   return {
     Outcome::Published, make_gnss_fixed(fix.header.stamp, true), pose, pose_cov,
     make_transform_stamped(pose, params_.gnss_base_frame)};
+}
+
+bool GnssPoser::should_report_transform_error(
+  const TransformLookupError error, const builtin_interfaces::msg::Time & stamp) const
+{
+  bool expected = false;
+  bool reported = false;
+  switch (error) {
+    case TransformLookupError::Unavailable:
+      // Expected within the grace period, as /tf_static may arrive after the first fixes.
+      expected = to_stamp_time(stamp) - first_fix_stamp_.value() <= antenna_transform_grace_period;
+      reported = transform_unavailable_reported_;
+      break;
+
+    case TransformLookupError::Failed:
+      // Never expected: it does not resolve by waiting.
+      reported = transform_lookup_failed_reported_;
+      break;
+  }
+  return !expected && !reported;
+}
+
+void GnssPoser::mark_transform_error_reported(const TransformLookupError error)
+{
+  switch (error) {
+    case TransformLookupError::Unavailable:
+      transform_unavailable_reported_ = true;
+      break;
+
+    case TransformLookupError::Failed:
+      transform_lookup_failed_reported_ = true;
+      break;
+  }
 }
 
 }  // namespace autoware::gnss_poser
